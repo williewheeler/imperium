@@ -50,11 +50,20 @@ static var _cache := {}
 static var _icons := {}
 static var _images := {}
 
+## Art lives in PNG sheets under res://assets/art (see manifest.json), so it can be edited in any
+## pixel-art tool. Anything missing from the sheets falls back to being drawn by the code below,
+## which is also what tools/export_art.gd uses to (re)generate the sheets.
+const ART_DIR := "res://assets/art/"
+static var use_files := true
+static var _loaded := false
+static var _manifest := {}  # key -> [file, x, y, w, h]
+static var _sheets := {}  # file -> Image
+
 
 ## Returns the cached texture for `key` (see `_build` for the list).
 static func tex(key: String) -> Texture2D:
 	if not _cache.has(key):
-		var img := image(key)
+		var img := sprite(key)
 		_images[key] = img
 		_cache[key] = ImageTexture.create_from_image(img)
 	return _cache[key]
@@ -91,6 +100,8 @@ static func image(key: String) -> Image:
 			return _villager(parts[1], parts[2] == "b", int(parts[3]))
 		"pack":  # pack:<resource>:<level 0-2>
 			return _pack(int(parts[1]), int(parts[2]))
+		"ground":  # ground:<terrain id>:<variant>  (a 32x16 diamond tile)
+			return _ground_tile(int(parts[1]), int(parts[2]))
 		"town_center":
 			return _forum()
 		"house":
@@ -576,9 +587,152 @@ static func building_anchor(kind: String) -> Vector2:
 ## pixelated), at most `max_h` pixels tall.
 static func icon(key: String, max_h := 30) -> Texture2D:
 	if not _icons.has(key):
-		var img := image(key)
+		var img := sprite(key)
 		if img.get_height() > max_h:
 			var f := float(max_h) / img.get_height()
 			img.resize(maxi(1, roundi(img.get_width() * f)), max_h, Image.INTERPOLATE_NEAREST)
 		_icons[key] = ImageTexture.create_from_image(img)
 	return _icons[key]
+
+
+# ---------------------------------------------------------------- sheets (editable PNG art)
+
+static func _ensure_manifest() -> void:
+	if _loaded:
+		return
+	_loaded = true
+	var path := ART_DIR + "manifest.json"
+	if not use_files or not FileAccess.file_exists(path):
+		return
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not data is Dictionary:
+		return
+	for file: String in data.get("atlases", []):
+		var img := _load_sheet(file)
+		if img != null and not img.is_empty():
+			img.convert(Image.FORMAT_RGBA8)
+			_sheets[file] = img
+	var sprites: Dictionary = data.get("sprites", {})
+	for key: String in sprites:
+		var e: Array = sprites[key]
+		if _sheets.has(e[0]):
+			_manifest[key] = e
+
+
+## Reads a sheet. In development the PNG is read directly, so edits made in a pixel editor show
+## up on the next run without re-importing; exported builds only contain the imported copy.
+static func _load_sheet(file: String) -> Image:
+	var path := ART_DIR + file
+	if FileAccess.file_exists(path):
+		var img := Image.new()
+		if img.load_png_from_buffer(FileAccess.get_file_as_bytes(path)) == OK:
+			return img
+	var t := load(path) as Texture2D
+	return t.get_image() if t != null else null
+
+
+## The current picture for `key`: cut from the PNG sheets when they have it, otherwise drawn.
+static func sprite(key: String) -> Image:
+	_ensure_manifest()
+	if use_files and _manifest.has(key):
+		var e: Array = _manifest[key]
+		return (_sheets[e[0]] as Image).get_region(Rect2i(int(e[1]), int(e[2]), int(e[3]), int(e[4])))
+	return image(key)
+
+
+static func scenery_keys() -> Array[String]:
+	var k: Array[String] = []
+	for i in 3:
+		k.append("oak:%d" % i)
+	for i in 2:
+		k.append("pine:%d" % i)
+	k.append("cypress:0")
+	for i in 4:
+		k.append("mountain:%d" % i)
+	for i in 2:
+		k.append("hill:%d" % i)
+	k.append("berries")
+	for i in 2:
+		k.append("stone:%d" % i)
+	for i in 2:
+		k.append("gold:%d" % i)
+	for r in 4:
+		for l in 3:
+			k.append("pack:%d:%d" % [r, l])
+	return k
+
+
+static func building_keys() -> Array[String]:
+	return ["town_center", "house", "storehouse"]
+
+
+## Villager frames, one row per animation and direction (f = facing the camera, b = away).
+static func villager_rows() -> Array:
+	var rows := []
+	for anim: String in VILLAGER_FRAMES:
+		for dir in ["f", "b"]:
+			var row: Array[String] = []
+			for i in VILLAGER_FRAMES[anim]:
+				row.append("villager:%s:%s:%d" % [anim, dir, i])
+			rows.append(row)
+	return rows
+
+
+const GROUND_NAMES := ["deep_water", "shallow_water", "beach", "grass", "forest_floor", "hill_slope", "mountain_rock"]
+const GROUND_VARIANTS := 4
+
+## One row per terrain type, GROUND_VARIANTS tiles each.
+static func ground_rows() -> Array:
+	var rows := []
+	for id in GROUND_NAMES.size():
+		var row: Array[String] = []
+		for v in GROUND_VARIANTS:
+			row.append("ground:%d:%d" % [id, v])
+		rows.append(row)
+	return rows
+
+
+const GROUND_PALETTES := [
+	[Color("3a8fc0"), Color("2c7db2"), Color("206b9f"), Color("185a88")],  # deep water
+	[Color("9ae0f0"), Color("78cbe6"), Color("5db7d8"), Color("46a1c4")],  # shallows
+	[Color("f4e7b0"), Color("ebdc9e"), Color("ddca8a"), Color("cdb678")],  # beach
+	[Color("b7de5a"), Color("a2d04c"), Color("8ec142"), Color("7ab039")],  # grass
+	[Color("86b342"), Color("73a038"), Color("628e31"), Color("517c2b")],  # forest floor
+	[Color("c4d068"), Color("b0bd58"), Color("9cab4c"), Color("889842")],  # hill slopes
+	[Color("b0ab9b"), Color("9c9786"), Color("888372"), Color("736f5e")],  # mountain rock
+]
+
+
+## A 32x16 ground diamond for the TileSet. (In the game the ground is drawn by the shader, which
+## uses the same palettes; these tiles are for editing and for building maps in the Godot editor.)
+static func _ground_tile(id: int, variant: int) -> Image:
+	var img := Pixel.blank(32, 16)
+	var pal: Array = GROUND_PALETTES[id]
+	var s := id * 31 + variant * 7
+	for y in 16:
+		for x in 32:
+			if absf(x + 0.5 - 16.0) / 16.0 + absf(y + 0.5 - 8.0) / 8.0 > 1.0:
+				continue
+			var v := 0.5 + (Pixel.hash2(x / 4, y / 3, s) - 0.5) * 0.55 + (Pixel.hash2(x / 2, y / 2, s + 1) - 0.5) * 0.3
+			var c := Pixel.ramp(pal, v, x, y, 0.3)
+			var fine := Pixel.hash2(x, y, s + 2)
+			match id:
+				0, 1:
+					if posmod(x + y * 3 + variant * 5, 9) == 0 and fine > 0.4:
+						c = Pixel.shade(c, 0.12)  # ripple
+				2:
+					if fine > 0.96:
+						c = pal[3]
+				3:
+					if fine > 0.972:
+						c = Color("629931")
+					elif fine < 0.004:
+						c = Color("fff4b4")
+				4:
+					if fine > 0.95:
+						c = Color("4a6f27")
+				5:
+					if fine > 0.96:
+						c = Color("7a8a3c")
+			img.set_pixel(x, y, c)
+	return img
