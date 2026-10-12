@@ -168,7 +168,7 @@
 	"sprites": {
 		"berries": [
 			"scenery.png",
-			196,
+			231,
 			48,
 			19,
 			15
@@ -210,14 +210,14 @@
 		],
 		"gold:0": [
 			"scenery.png",
-			115,
+			99,
 			48,
 			26,
 			19
 		],
 		"gold:1": [
 			"scenery.png",
-			88,
+			72,
 			48,
 			26,
 			19
@@ -476,7 +476,7 @@
 		],
 		"oak:0": [
 			"scenery.png",
-			72,
+			126,
 			48,
 			15,
 			19
@@ -497,85 +497,85 @@
 		],
 		"pack:0:0": [
 			"scenery.png",
-			25,
+			65,
 			74,
 			7,
 			6
 		],
 		"pack:0:1": [
 			"scenery.png",
-			248,
-			48,
+			33,
+			74,
 			7,
 			8
 		],
 		"pack:0:2": [
 			"scenery.png",
-			216,
-			48,
+			1,
+			74,
 			7,
 			10
 		],
 		"pack:1:0": [
 			"scenery.png",
-			33,
+			73,
 			74,
 			7,
 			6
 		],
 		"pack:1:1": [
 			"scenery.png",
-			1,
+			41,
 			74,
 			7,
 			8
 		],
 		"pack:1:2": [
 			"scenery.png",
-			224,
-			48,
+			9,
+			74,
 			7,
 			10
 		],
 		"pack:2:0": [
 			"scenery.png",
-			41,
+			81,
 			74,
 			7,
 			6
 		],
 		"pack:2:1": [
 			"scenery.png",
-			9,
+			49,
 			74,
 			7,
 			8
 		],
 		"pack:2:2": [
 			"scenery.png",
-			232,
-			48,
+			17,
+			74,
 			7,
 			10
 		],
 		"pack:3:0": [
 			"scenery.png",
-			49,
+			89,
 			74,
 			7,
 			6
 		],
 		"pack:3:1": [
 			"scenery.png",
-			17,
+			57,
 			74,
 			7,
 			8
 		],
 		"pack:3:2": [
 			"scenery.png",
-			240,
-			48,
+			25,
+			74,
 			7,
 			10
 		],
@@ -595,14 +595,14 @@
 		],
 		"stone:0": [
 			"scenery.png",
-			169,
+			204,
 			48,
 			26,
 			18
 		],
 		"stone:1": [
 			"scenery.png",
-			142,
+			177,
 			48,
 			26,
 			18
@@ -620,6 +620,13 @@
 			1,
 			98,
 			93
+		],
+		"via": [
+			"scenery.png",
+			142,
+			48,
+			34,
+			18
 		],
 		"villager:build:b:0": [
 			"villagers.png",

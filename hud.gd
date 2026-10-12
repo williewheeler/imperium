@@ -4,6 +4,7 @@ extends CanvasLayer
 
 signal build_requested(kind: String)
 signal train_requested
+signal road_requested
 
 const GOLD := Color("e8c766")
 const CREAM := Color("f3e6c4")
@@ -16,6 +17,8 @@ const STATES := {  # unit state -> [Latin, English]
 	Unit.State.RETURN: ["Onustus redit", "Returning with a load"],
 	Unit.State.BUILD_GO: ["Ad aedificium properat", "Hurrying to the build site"],
 	Unit.State.BUILDING: ["Aedificat", "Building"],
+	Unit.State.ROAD_GO: ["Ad viam properat", "Hurrying to the road"],
+	Unit.State.PAVING: ["Viam munit", "Building the road"],
 }
 const HELP := [  # [Latin, English]
 	["Sinistra  elige", "Left click: select a unit, building or resource (see how much is left). Drag a box: select a group. Click empty ground: deselect."],
@@ -29,6 +32,8 @@ var minimap: Minimap
 
 var _game  # Main
 var _theme := Theme.new()
+var _era_num: Label
+var _era_name: Label
 var _res_labels: Array[Label] = []
 var _pop_label: Label
 var _sel_name: Label
@@ -66,6 +71,21 @@ func setup(game) -> void:
 		_res_labels.append(l)
 	_pop_label = _label("", 16)
 	row.add_child(_pop_label)
+
+	var banner := _panel(0, 0)  # which era we're in, top centre
+	banner.anchor_left = 0.5
+	banner.anchor_right = 0.5
+	banner.offset_left = 0.0
+	banner.offset_right = 0.0
+	banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	var bv := VBoxContainer.new()
+	banner.add_child(bv)
+	_era_num = _label("", 11, GOLD)
+	_era_num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_era_name = _label("", 18)
+	_era_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bv.add_child(_era_num)
+	bv.add_child(_era_name)
 
 	var help := _panel(1, 0)
 	var hv := VBoxContainer.new()
@@ -163,6 +183,10 @@ func refresh() -> void:
 	var cap: int = _game.pop_cap()
 	_say(_pop_label, "Populus %d/%d" % [pop, cap], "Population: %d of %d (build Houses to raise the limit)" % [pop, cap])
 
+	var era: Dictionary = Defs.ERAS[_game.era]
+	_say(_era_num, "Aetas %s" % era["numeral"], "Era %s" % era["numeral"])
+	_say(_era_name, era["latin"], "%s  (%s)" % [era["english"], era["years"]])
+
 	var us: Array[Unit] = _game.selected_units()
 	var b: Building = _game.selected_building()
 	var mode := "none"
@@ -181,7 +205,10 @@ func refresh() -> void:
 		btn.tooltip_text = base + ("  —  not enough resources" if poor else "  —  population limit reached: build a House" if full else "")
 
 	_bar.visible = false
-	if _game.placing != "":
+	if _game.placing_road:
+		_say(_sel_name, "Via", "Road")
+		_say(_sel_info, "Sinistra: trahe  ·  Dextra: abroga", "Left click and drag to lay a road  ·  Right click to stop")
+	elif _game.placing != "":
 		var def: Dictionary = Defs.BUILDINGS[_game.placing]
 		_say(_sel_name, "Pone %s" % def["acc"], "Place %s" % def["english"])
 		_say(_sel_info, "Sinistra: pone  ·  Dextra: abroga", "Left click: place  ·  Right click: cancel")
@@ -246,6 +273,8 @@ func _rebuild_buttons(mode: String) -> void:
 				var def: Dictionary = Defs.BUILDINGS[kind]
 				_add_button(kind, def["name"], "Build a %s (%s)" % [def["english"], _cost_text(def["cost"])],
 					def["cost"], func() -> void: build_requested.emit(kind))
+			_add_button("via", "Via", "Lay a paved road: drag across the ground (%s per tile). Villagers pave it tile by tile." % _cost_text(Defs.ROAD_COST),
+				Defs.ROAD_COST, func() -> void: road_requested.emit())
 		"town_center":
 			_add_button("villager", "Colonus", "Train a villager (%s)" % _cost_text(Defs.VILLAGER_COST),
 				Defs.VILLAGER_COST, func() -> void: train_requested.emit())

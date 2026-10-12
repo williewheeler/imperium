@@ -6,6 +6,7 @@ shader_type canvas_item;
 
 uniform sampler2D terrain : filter_nearest, repeat_disable;
 uniform sampler2D road_mask : filter_linear, repeat_disable; // dirt roads, 8 pixels per tile
+uniform sampler2D paved_mask : filter_linear, repeat_disable; // paved Roman roads
 uniform vec2 map_size = vec2(80.0, 80.0);
 uniform vec2 origin = vec2(0.0); // world position of this rect's top-left corner
 
@@ -119,6 +120,23 @@ void fragment() {
 				col = ramp4(hx(0xdcc08a), hx(0xcdae76), hx(0xbc9d66), hx(0xa88a56), 0.55 + (fbm(wp * 0.2) - 0.5) * 0.8 + d);
 				if (e < 0.6) col = hx(0x9a7c4c); // trodden edge
 				else if (fine > 0.975) col = hx(0x8e7446); // pebbles
+			}
+		}
+	}
+	// Paved Roman roads: dark polygonal basalt blocks laid in the iso grid, with lighter curb stones.
+	if (id == 2 || id == 3) {
+		vec2 gt = to_tile(wp);
+		if (gt.x > 0.0 && gt.y > 0.0 && gt.x < map_size.x && gt.y < map_size.y) {
+			float pe = texture(paved_mask, gt / map_size).r + (vnoise(wp * 0.45) - 0.5) * 0.15;
+			if (pe > 0.5) {
+				vec2 q = gt * 6.0;
+				vec2 cell = floor(q);
+				vec2 f = fract(q);
+				float tone = hash(cell + 17.0);
+				col = ramp4(hx(0x9a9aa0), hx(0x82828a), hx(0x6c6c74), hx(0x585860), 0.25 + tone * 0.6 + d * 0.5);
+				if (f.x < 0.14 || f.y < 0.14) col = hx(0x3e3e46); // gaps between the blocks
+				else if (f.x < 0.3 || f.y < 0.3) col = col * 1.12; // lit edges (light from the top-left)
+				if (pe < 0.62) col = ramp4(hx(0xd2cdbe), hx(0xc2bdac), hx(0xa8a392), hx(0x908b7a), 0.5 + tone * 0.4); // curb stones
 			}
 		}
 	}

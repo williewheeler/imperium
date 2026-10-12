@@ -43,6 +43,13 @@ func _draw() -> void:
 		d.append(d[0])
 		draw_polyline(d, GOLD, 1.0)
 
+	for p: Vector2i in game.road_plans:  # road tiles waiting to be paved
+		var pts := _diamond(Vector2(p), Vector2.ONE)
+		draw_colored_polygon(pts, Color(0.85, 0.78, 0.55, 0.28))
+		pts.append(pts[0])
+		draw_polyline(pts, Color(0.95, 0.88, 0.6, 0.8), 1.0)
+	if game.placing_road:
+		_draw_road_ghost()
 	for b: Building in game.buildings:
 		var origin := Iso.to_screen(Vector2(b.tile + b.size)).round()
 		var w := float(b.size.x * Iso.TILE_W)
@@ -68,6 +75,24 @@ func _draw() -> void:
 func _bar(at: Vector2, width: float, frac: float, color: Color) -> void:
 	draw_rect(Rect2(at, Vector2(width, 4)), Color(0, 0, 0, 0.75))
 	draw_rect(Rect2(at + Vector2(1, 1), Vector2((width - 2) * clampf(frac, 0, 1), 2)), color)
+
+
+func _draw_road_ghost() -> void:
+	var good := 0
+	for p in game.road_drag:
+		var ok: bool = game.road_tile_error(p) == ""
+		good += 1 if ok else 0
+		var tint := Color(0.35, 1, 0.35) if ok else Color(1, 0.3, 0.3)
+		var pts := _diamond(Vector2(p), Vector2.ONE)
+		draw_colored_polygon(pts, Color(tint, 0.38))
+		pts.append(pts[0])
+		draw_polyline(pts, Color(tint, 0.95), 1.0)
+	if game.road_drag.size() > 1:
+		var last: Vector2i = game.road_drag[-1]
+		var text := Latin.t("Via: %d  ·  Lapis %d" % [good, good * Defs.ROAD_COST[Defs.Res.STONE]])
+		var at := Iso.to_screen(Vector2(last) + Vector2(0.5, 0.5)) + Vector2(-100, -12)
+		draw_string_outline(Latin.FONT, at, text, HORIZONTAL_ALIGNMENT_CENTER, 200, 9, 4, Color(0, 0, 0, 0.8))
+		draw_string(Latin.FONT, at, text, HORIZONTAL_ALIGNMENT_CENTER, 200, 9, CREAM)
 
 
 func _draw_ghost() -> void:

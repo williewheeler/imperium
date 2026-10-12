@@ -52,7 +52,7 @@ func update_view() -> void:
 
 func _work_anim() -> String:
 	match unit.state:
-		Unit.State.BUILDING:
+		Unit.State.BUILDING, Unit.State.PAVING:
 			return "build"
 		Unit.State.GATHERING:
 			if unit.working_farm:

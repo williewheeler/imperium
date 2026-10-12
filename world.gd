@@ -38,7 +38,7 @@ func setup(p_game) -> void:
 	add_child(overlay)
 
 
-## A tile just wore into a dirt road.
+## A tile just became a road (worn dirt, or a paved one laid by villagers).
 func road_changed(p: Vector2i) -> void:
 	ground.update_road(p)
 

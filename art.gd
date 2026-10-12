@@ -104,6 +104,8 @@ static func image(key: String) -> Image:
 			return _pack(int(parts[1]), int(parts[2]))
 		"ground":  # ground:<terrain id>:<variant>  (a 32x16 diamond tile)
 			return _ground_tile(int(parts[1]), int(parts[2]))
+		"via":
+			return _via_tile()
 		"hut":
 			return _hut()
 		"farm":  # farm:<stage> 0 ripe .. 3 freshly sown
@@ -671,6 +673,7 @@ static func scenery_keys() -> Array[String]:
 	for r in 4:
 		for l in 3:
 			k.append("pack:%d:%d" % [r, l])
+	k.append("via")
 	return k
 
 
@@ -846,3 +849,27 @@ static func _farm(stage: int) -> Image:
 		Pixel.line(img, Vector2i(a), Vector2i(b), rim)
 		Pixel.rect(img, int(a.x) - 1, int(a.y) - 3, 2, 3, WOOD[1])
 	return Pixel.outlined(img, OUT_WARM)
+
+
+## One tile of Roman paving (the road icon): dark basalt blocks with lighter curb stones.
+static func _via_tile() -> Image:
+	var img := Pixel.blank(32, 16)
+	var stone := [Color("9a9aa0"), Color("82828a"), Color("6c6c74"), Color("585860")]
+	for y in 16:
+		for x in 32:
+			var dxn := absf(x + 0.5 - 16.0) / 16.0
+			var dyn := absf(y + 0.5 - 8.0) / 8.0
+			if dxn + dyn > 1.0:
+				continue
+			var gt := Iso.to_tile(Vector2(x + 0.5 - 16.0, y + 0.5)) * 6.0
+			var f := Vector2(gt.x - floorf(gt.x), gt.y - floorf(gt.y))
+			var tone := Pixel.hash2(int(floorf(gt.x)), int(floorf(gt.y)), 17)
+			var c := Pixel.ramp(stone, 0.25 + tone * 0.6, x, y, 0.2)
+			if f.x < 0.14 or f.y < 0.14:
+				c = Color("3e3e46")
+			elif f.x < 0.3 or f.y < 0.3:
+				c = Pixel.shade(c, 0.05)
+			if dxn + dyn > 0.8:
+				c = Color("c2bdac") if (x + y) % 2 == 0 else Color("a8a392")  # curb
+			img.set_pixel(x, y, c)
+	return Pixel.outlined(img, OUT_ROCK)

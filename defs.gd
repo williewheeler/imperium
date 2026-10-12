@@ -17,6 +17,19 @@ const START_STOCK := [300, 200, 100, 50]
 const VILLAGER_COST := [0, 50, 0, 0]
 const VILLAGER_TRAIN_TIME := 8.0
 
+# Paved Roman road ("via"): cost per tile and the time one villager needs to lay a tile.
+const ROAD_COST := [0, 0, 2, 0]
+const ROAD_BUILD_TIME := 2.5
+
+# The eras of Roman history, as the game's progression. Years are the traditional dates.
+const ERAS := [
+	{"numeral": "I", "latin": "Regnum", "english": "The Kingdom", "years": "753–509 BC"},
+	{"numeral": "II", "latin": "Res Publica", "english": "The Early Republic", "years": "509–264 BC"},
+	{"numeral": "III", "latin": "Imperium Populi Romani", "english": "The Republic Expands", "years": "264–27 BC"},
+	{"numeral": "IV", "latin": "Principatus", "english": "The Empire at its Height", "years": "27 BC–284 AD"},
+	{"numeral": "V", "latin": "Dominatus", "english": "The Late Empire", "years": "284–476 AD"},
+]
+
 const FARM_FOOD := 250
 const FARM_REGROW_TIME := 20.0  # seconds a harvested field takes to ripen again
 

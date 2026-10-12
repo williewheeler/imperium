@@ -35,6 +35,10 @@ var camera: Camera2D
 var hud: Hud
 
 var placing := ""  # building kind currently being placed, or ""
+var placing_road := false  # laying a paved road: drag across the ground to paint tiles
+var road_drag: Array[Vector2i] = []  # tiles under the current drag (or just the hovered tile)
+var road_plans := {}  # Vector2i -> Unit or null: tiles queued for paving, and who is on the job
+var era := 0  # index into Defs.ERAS
 var selected_deposit := Vector2i(-1, -1)  # clicked resource tile, or (-1, -1)
 var dragging := false
 var drag_rect := Rect2()  # world pixels
@@ -44,6 +48,8 @@ var cam_pos := Vector2.ZERO  # camera centre in world pixels (smooth; the Camera
 var zoom_px := 0  # whole physical screen pixels per art pixel, so pixels stay square
 var _zoom_accum := 0.0
 var _drag_start := Vector2.ZERO
+var _road_dragging := false
+var _road_start := Vector2i.ZERO
 var _fog_timer := 0.0
 var _cities := 0
 var _screenshot_path := ""
@@ -86,7 +92,10 @@ func _ready() -> void:
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup(self)
-	hud.build_requested.connect(func(kind: String) -> void: placing = kind)
+	hud.build_requested.connect(func(kind: String) -> void:
+		placing = kind
+		_cancel_road_mode())
+	hud.road_requested.connect(start_road_mode)
 	hud.train_requested.connect(_train_villager)
 	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: cam_pos = Iso.to_screen(tile_pos))
 	hud.flash("Elige colonos et iube eos laborare.")
@@ -154,6 +163,9 @@ func placing_tile() -> Vector2i:
 func placement_error(kind: String, tile: Vector2i) -> String:
 	var def: Dictionary = Defs.BUILDINGS[kind]
 	var rect := Rect2i(tile, def["size"])
+	for rt in road_plans:
+		if rect.has_point(rt):
+			return "Locus occupatus."
 	for other in buildings:  # checked first so the message says why (a field's crop tile isn't "free land")
 		if other.rect().intersects(rect):
 			return "Locus occupatus."
@@ -181,13 +193,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
-				if placing != "":
+				if placing_road:
+					_road_dragging = true
+					_road_start = _mouse_tile()
+				elif placing != "":
 					_try_place()
 				else:
 					dragging = true
 					_drag_start = get_global_mouse_position()
 			MOUSE_BUTTON_RIGHT:
-				if placing != "":
+				if placing_road:
+					_cancel_road_mode()
+				elif placing != "":
 					placing = ""
 				else:
 					_command_at(get_global_mouse_position())
@@ -313,6 +330,10 @@ func _command_at(mp: Vector2) -> void:
 		for u in us:
 			_order_gather(u, res)
 		return
+	if road_plans.has(tile):  # right-click a marked road tile: go and pave it
+		for u in us:
+			_assign_road_work(u)
+		return
 	var b := building_under(mp)
 	if b != null and not b.complete:
 		for u in us:
@@ -348,6 +369,7 @@ func _set_path(u: Unit, goal: Vector2i) -> bool:
 
 
 func _order_move(u: Unit, goal: Vector2i) -> void:
+	_release_road(u)
 	if _set_path(u, goal):
 		u.state = Unit.State.MOVE
 		u.target_building = null
@@ -356,6 +378,7 @@ func _order_move(u: Unit, goal: Vector2i) -> void:
 
 
 func _order_gather(u: Unit, tile: Vector2i) -> bool:
+	_release_road(u)
 	var d: Deposit = map.deposits.get(tile)
 	if d == null:
 		return false
@@ -376,6 +399,7 @@ func _order_gather(u: Unit, tile: Vector2i) -> bool:
 
 
 func _order_build(u: Unit, b: Building) -> void:
+	_release_road(u)
 	var stand := map.stand_tile(b.rect(), u.pos)
 	if stand.x < 0 or not _set_path(u, stand):
 		hud.flash("Iter nullum est.")
@@ -471,6 +495,131 @@ func _find_building_site(kind: String, near: Vector2i, min_r: int) -> Vector2i:
 	return map.find_site(Defs.BUILDINGS[kind]["size"], near, min_r, 16, avoid)
 
 
+# ---------- Paved roads ----------
+
+func _mouse_tile() -> Vector2i:
+	return Vector2i(Iso.to_tile(get_global_mouse_position()).floor())
+
+
+func start_road_mode() -> void:
+	placing = ""
+	placing_road = true
+
+
+func _cancel_road_mode() -> void:
+	placing_road = false
+	_road_dragging = false
+	road_drag.clear()
+
+
+## Tiles along a straight line between two tiles (Bresenham), for dragging out a road.
+func _road_line(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var dx := absi(b.x - a.x)
+	var dy := -absi(b.y - a.y)
+	var sx := 1 if a.x < b.x else -1
+	var sy := 1 if a.y < b.y else -1
+	var err := dx + dy
+	var p := a
+	while out.size() < 80:
+		out.append(p)
+		if p == b:
+			break
+		var e2 := 2 * err
+		if e2 >= dy:
+			err += dy
+			p.x += sx
+		if e2 <= dx:
+			err += dx
+			p.y += sy
+	return out
+
+
+## Empty if a paved road can be laid on `p`, otherwise the reason it can't.
+func road_tile_error(p: Vector2i) -> String:
+	if not fog.is_explored(p):
+		return "Terra incognita."
+	if not map.can_pave(p) or building_at(p) != null:
+		return "Locus liber et planus requiritur."
+	if road_plans.has(p):
+		return "Locus occupatus."
+	return ""
+
+
+func _update_road_drag() -> void:
+	if not placing_road:
+		return
+	if get_viewport().gui_get_hovered_control() != null and not _road_dragging:
+		road_drag.clear()  # pointing at the interface, not the ground
+		return
+	var cur := _mouse_tile()
+	if _road_dragging:
+		road_drag = _road_line(_road_start, cur)
+		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			_road_dragging = false
+			_commit_road(road_drag)
+			road_drag = [cur]
+	else:
+		road_drag = [cur]
+
+
+## Pays for the dragged tiles and sends the selected villagers to pave them.
+func _commit_road(line: Array[Vector2i]) -> void:
+	var tiles: Array[Vector2i] = []
+	for p in line:
+		if road_tile_error(p) == "":
+			tiles.append(p)
+	if tiles.is_empty():
+		hud.flash(road_tile_error(line[0]) if not line.is_empty() and road_tile_error(line[0]) != "" else "Locus liber et planus requiritur.")
+		return
+	var n := tiles.size()
+	for r in 4:
+		if Defs.ROAD_COST[r] > 0:
+			n = mini(n, stock[r] / Defs.ROAD_COST[r])
+	if n < tiles.size():
+		hud.flash("Copiae non sufficiunt.")
+	for i in n:
+		_pay(Defs.ROAD_COST)
+		road_plans[tiles[i]] = null
+	for u in selected_units():
+		_assign_road_work(u)
+
+
+## Sends `u` to the nearest planned road tile nobody is working on. False if there's none.
+func _assign_road_work(u: Unit) -> bool:
+	var candidates: Array[Vector2i] = []
+	for p: Vector2i in road_plans:
+		if road_plans[p] == null:
+			candidates.append(p)
+	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(u.pos) < Vector2(b).distance_squared_to(u.pos))
+	for p in candidates:
+		_release_road(u)
+		if _set_path(u, p):
+			road_plans[p] = u
+			u.road_tile = p
+			u.state = Unit.State.ROAD_GO
+			u.target_building = null
+			return true
+	return false
+
+
+## Lets go of the planned tile `u` was heading for, so someone else can take it.
+func _release_road(u: Unit) -> void:
+	if u.road_tile.x >= 0 and road_plans.get(u.road_tile) == u:
+		road_plans[u.road_tile] = null
+	u.road_tile = Vector2i(-1, -1)
+
+
+func _finish_road_tile(u: Unit) -> void:
+	var p := u.road_tile
+	if map.make_paved(p) and _world != null:
+		_world.road_changed(p)
+	road_plans.erase(p)
+	u.road_tile = Vector2i(-1, -1)
+	if not _assign_road_work(u):
+		u.state = Unit.State.IDLE
+
+
 # ---------- Simulation ----------
 
 func _process(delta: float) -> void:
@@ -494,6 +643,7 @@ func _process(delta: float) -> void:
 			dragging = false
 			_finish_select(drag_rect, Input.is_key_pressed(KEY_SHIFT))
 
+	_update_road_drag()
 	if selected_deposit.x >= 0 and not map.deposits.has(selected_deposit):
 		selected_deposit = Vector2i(-1, -1)  # used up
 	_update_world_tip()
@@ -578,15 +728,20 @@ func _follow(u: Unit, delta: float) -> bool:
 			u.path.clear()  # jostling around a crowded spot: settle in where we are
 			u.detour = Vector2.INF
 			return true
+	u.detour_cooldown = maxf(0.0, u.detour_cooldown - delta)
 	var budget := delta
+	var guard := 0
 	while not u.path.is_empty() and budget > 0.0:
+		guard += 1
+		if guard > 12:
+			break  # safety net: never spin in here, whatever the geometry
 		var wp := u.path[0]
 		var last := u.path.size() == 1
 		var to_wp := wp - u.pos
 		var dist := to_wp.length()
 		var speed := VILLAGER_SPEED / map.move_cost(Vector2i(u.pos))
 		var step := speed * budget
-		if u.detour == Vector2.INF and dist > WAYPOINT_REACH:
+		if u.detour == Vector2.INF and u.detour_cooldown <= 0.0 and dist > WAYPOINT_REACH:
 			var around := _detour_around(u, to_wp / dist)
 			if around != Vector2.INF:
 				u.detour = around
@@ -595,6 +750,7 @@ func _follow(u: Unit, delta: float) -> bool:
 		if not last and dist <= maxf(step, WAYPOINT_REACH):
 			if wp == u.detour:
 				u.detour = Vector2.INF
+				u.detour_cooldown = 0.5  # don't instantly plan another around the same person
 				while u.path.size() > 2 and u.path[1].distance_to(wp) < DETOUR_SKIP:
 					u.path.remove_at(1)  # those lie back by the obstacle we just walked around
 			u.path.remove_at(0)  # close enough: head for the next one
@@ -755,6 +911,14 @@ func _update_unit(u: Unit, delta: float) -> void:
 					u.carry = 0
 				if not (map.deposits.has(u.target_tile) and _order_gather(u, u.target_tile)) and not _retarget(u):
 					u.state = Unit.State.IDLE
+		Unit.State.ROAD_GO:
+			if _follow(u, delta):
+				u.state = Unit.State.PAVING
+				u.work = 0.0
+		Unit.State.PAVING:
+			u.work += delta
+			if u.work >= Defs.ROAD_BUILD_TIME:
+				_finish_road_tile(u)
 		Unit.State.BUILD_GO:
 			if _follow(u, delta):
 				var b := u.target_building
@@ -873,6 +1037,27 @@ func _report_text() -> String:
 	return "\n".join(lines)
 
 
+## --demo: lay out a paved road on the first open run of grass near the Forum, for two villagers.
+func _demo_road(start: Vector2i) -> void:
+	for length: int in [9, 7, 5]:
+		for dir: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+			for r in range(2, 14):
+				for y in range(start.y - r, start.y + r + 1):
+					for x in range(start.x - r, start.x + r + 1):
+						var line := _road_line(Vector2i(x, y), Vector2i(x, y) + dir * (length - 1))
+						var ok := line.size() == length
+						for p in line:
+							ok = ok and road_tile_error(p) == "" and not map.is_road(p)
+						if ok:
+							_clear_selection()
+							units[2].selected = true
+							units[3].selected = true
+							_commit_road(line)
+							_clear_selection()
+							cam_pos = Iso.to_screen(Vector2(line[length / 2]) + Vector2(0.5, 0.5))  # so a screenshot shows it
+							return
+
+
 ## --demo: put every villager to work on a different resource.
 func _run_demo(start: Vector2i) -> void:
 	_clear_selection()
@@ -883,8 +1068,11 @@ func _run_demo(start: Vector2i) -> void:
 			var b := _add_building(kind, site, true)
 			if kind == "farm":
 				field = b
+	_demo_road(start)
 	var kinds := [Defs.Res.WOOD, Defs.Res.FOOD, Defs.Res.WOOD, Defs.Res.STONE, Defs.Res.GOLD]
 	for i in units.size():
+		if (i == 2 or i == 3) and not road_plans.is_empty():
+			continue  # these two are paving the road
 		var best := Vector2i(-1, -1)
 		var best_d := INF
 		for p: Vector2i in map.deposits:
