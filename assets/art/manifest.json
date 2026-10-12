@@ -131,6 +131,22 @@
 					"villager:forage:b:3"
 				],
 				[
+					"villager:till:f:0",
+					"villager:till:f:1",
+					"villager:till:f:2",
+					"villager:till:f:3",
+					"villager:till:f:4",
+					"villager:till:f:5"
+				],
+				[
+					"villager:till:b:0",
+					"villager:till:b:1",
+					"villager:till:b:2",
+					"villager:till:b:3",
+					"villager:till:b:4",
+					"villager:till:b:5"
+				],
+				[
 					"villager:build:f:0",
 					"villager:build:f:1",
 					"villager:build:f:2",
@@ -163,6 +179,34 @@
 			1,
 			11,
 			26
+		],
+		"farm:0": [
+			"buildings.png",
+			1,
+			95,
+			98,
+			64
+		],
+		"farm:1": [
+			"buildings.png",
+			100,
+			95,
+			98,
+			64
+		],
+		"farm:2": [
+			"buildings.png",
+			1,
+			160,
+			98,
+			64
+		],
+		"farm:3": [
+			"buildings.png",
+			100,
+			160,
+			98,
+			64
 		],
 		"gold:0": [
 			"scenery.png",
@@ -395,6 +439,13 @@
 			66,
 			67
 		],
+		"hut": [
+			"buildings.png",
+			199,
+			160,
+			34,
+			48
+		],
 		"mountain:0": [
 			"scenery.png",
 			71,
@@ -573,84 +624,84 @@
 		"villager:build:b:0": [
 			"villagers.png",
 			0,
-			264,
+			312,
 			22,
 			24
 		],
 		"villager:build:b:1": [
 			"villagers.png",
 			22,
-			264,
+			312,
 			22,
 			24
 		],
 		"villager:build:b:2": [
 			"villagers.png",
 			44,
-			264,
+			312,
 			22,
 			24
 		],
 		"villager:build:b:3": [
 			"villagers.png",
 			66,
-			264,
+			312,
 			22,
 			24
 		],
 		"villager:build:b:4": [
 			"villagers.png",
 			88,
-			264,
+			312,
 			22,
 			24
 		],
 		"villager:build:b:5": [
 			"villagers.png",
 			110,
-			264,
+			312,
 			22,
 			24
 		],
 		"villager:build:f:0": [
 			"villagers.png",
 			0,
-			240,
+			288,
 			22,
 			24
 		],
 		"villager:build:f:1": [
 			"villagers.png",
 			22,
-			240,
+			288,
 			22,
 			24
 		],
 		"villager:build:f:2": [
 			"villagers.png",
 			44,
-			240,
+			288,
 			22,
 			24
 		],
 		"villager:build:f:3": [
 			"villagers.png",
 			66,
-			240,
+			288,
 			22,
 			24
 		],
 		"villager:build:f:4": [
 			"villagers.png",
 			88,
-			240,
+			288,
 			22,
 			24
 		],
 		"villager:build:f:5": [
 			"villagers.png",
 			110,
-			240,
+			288,
 			22,
 			24
 		],
@@ -903,6 +954,90 @@
 			"villagers.png",
 			110,
 			144,
+			22,
+			24
+		],
+		"villager:till:b:0": [
+			"villagers.png",
+			0,
+			264,
+			22,
+			24
+		],
+		"villager:till:b:1": [
+			"villagers.png",
+			22,
+			264,
+			22,
+			24
+		],
+		"villager:till:b:2": [
+			"villagers.png",
+			44,
+			264,
+			22,
+			24
+		],
+		"villager:till:b:3": [
+			"villagers.png",
+			66,
+			264,
+			22,
+			24
+		],
+		"villager:till:b:4": [
+			"villagers.png",
+			88,
+			264,
+			22,
+			24
+		],
+		"villager:till:b:5": [
+			"villagers.png",
+			110,
+			264,
+			22,
+			24
+		],
+		"villager:till:f:0": [
+			"villagers.png",
+			0,
+			240,
+			22,
+			24
+		],
+		"villager:till:f:1": [
+			"villagers.png",
+			22,
+			240,
+			22,
+			24
+		],
+		"villager:till:f:2": [
+			"villagers.png",
+			44,
+			240,
+			22,
+			24
+		],
+		"villager:till:f:3": [
+			"villagers.png",
+			66,
+			240,
+			22,
+			24
+		],
+		"villager:till:f:4": [
+			"villagers.png",
+			88,
+			240,
+			22,
+			24
+		],
+		"villager:till:f:5": [
+			"villagers.png",
+			110,
+			240,
 			22,
 			24
 		],

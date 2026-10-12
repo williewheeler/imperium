@@ -15,6 +15,7 @@ var gather_kind := -1  # Defs.Res being gathered
 var target_building: Building
 var carry_kind := -1
 var carry := 0
+var working_farm := false  # the deposit being worked is a wheat field
 var work := 0.0  # fractional progress toward the next gathered unit
 
 # Animation

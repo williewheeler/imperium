@@ -17,18 +17,32 @@ const START_STOCK := [300, 200, 100, 50]
 const VILLAGER_COST := [0, 50, 0, 0]
 const VILLAGER_TRAIN_TIME := 8.0
 
+const FARM_FOOD := 250
+const FARM_REGROW_TIME := 20.0  # seconds a harvested field takes to ripen again
+
 # "acc" is the accusative form used after verbs ("Aedifica domum"); "done" and "ready" agree
-# with the noun's gender (forum, horreum are neuter; domus is feminine).
+# with the noun's gender (forum, horreum are neuter; domus, casa feminine; ager masculine).
+# "walkable" buildings (fields) don't block movement and are drawn under the villagers.
 const BUILDINGS := {
 	"town_center": {
 		"name": "Forum", "acc": "Forum", "english": "Town Center", "done": "perfectum est", "ready": "Paratum",
 		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0],
 		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3], "pop": 10,
 	},
+	"hut": {
+		"name": "Casa", "acc": "Casam", "english": "Hut", "done": "perfecta est", "ready": "Parata",
+		"size": Vector2i(1, 1), "cost": [25, 0, 0, 0],
+		"build_time": 10.0, "sight": 4.0, "accepts": [], "pop": 3,
+	},
 	"house": {
 		"name": "Domus", "acc": "Domum", "english": "House", "done": "perfecta est", "ready": "Parata",
 		"size": Vector2i(2, 2), "cost": [50, 0, 0, 0],
 		"build_time": 20.0, "sight": 4.0, "accepts": [], "pop": 5,
+	},
+	"farm": {
+		"name": "Ager", "acc": "Agrum", "english": "Wheat Field", "done": "perfectus est", "ready": "Paratus",
+		"size": Vector2i(3, 3), "cost": [60, 0, 0, 0], "walkable": true,
+		"build_time": 18.0, "sight": 4.0, "accepts": [], "pop": 0,
 	},
 	"storehouse": {
 		"name": "Horreum", "acc": "Horreum", "english": "Storehouse", "done": "perfectum est", "ready": "Paratum",

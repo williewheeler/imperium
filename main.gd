@@ -154,6 +154,9 @@ func placing_tile() -> Vector2i:
 func placement_error(kind: String, tile: Vector2i) -> String:
 	var def: Dictionary = Defs.BUILDINGS[kind]
 	var rect := Rect2i(tile, def["size"])
+	for other in buildings:  # checked first so the message says why (a field's crop tile isn't "free land")
+		if other.rect().intersects(rect):
+			return "Locus occupatus."
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var p := Vector2i(x, y)
@@ -161,9 +164,10 @@ func placement_error(kind: String, tile: Vector2i) -> String:
 				return "Terra incognita."
 			if not map.is_free_land(p):
 				return "Locus liber et planus requiritur."
-	for u in units:
-		if rect.has_point(Vector2i(u.pos)):
-			return "Coloni impediunt."
+	if not def.get("walkable", false):
+		for u in units:
+			if rect.has_point(Vector2i(u.pos)):
+				return "Coloni impediunt."
 	if not can_afford(def["cost"]):
 		return "Copiae non sufficiunt."
 	return ""
@@ -314,6 +318,10 @@ func _command_at(mp: Vector2) -> void:
 		for u in us:
 			_order_build(u, b)
 		return
+	if b != null and b.kind == "farm":
+		for u in us:
+			_order_gather(u, b.field_tile())
+		return
 	var goals := map.spread_goals(tile, us.size())
 	if goals.is_empty():
 		hud.flash("Iter nullum est.")
@@ -360,6 +368,7 @@ func _order_gather(u: Unit, tile: Vector2i) -> bool:
 		u.carry = 0
 	u.state = Unit.State.GATHER_GO
 	u.target_tile = tile
+	u.working_farm = d.farm
 	u.gather_kind = d.kind
 	u.carry_kind = d.kind
 	u.target_building = null
@@ -403,8 +412,28 @@ func _add_building(kind: String, tile: Vector2i, complete: bool) -> Building:
 	if kind == "town_center":
 		_cities += 1
 	buildings.append(b)
-	map.set_solid(b.rect(), true)
+	if not Defs.BUILDINGS[kind].get("walkable", false):
+		map.set_solid(b.rect(), true)
+	if complete:
+		_on_complete(b)
 	return b
+
+
+## A building just became usable: fields start growing, depots get a trodden plaza around them.
+func _on_complete(b: Building) -> void:
+	match b.kind:
+		"farm":
+			var d := Deposit.new(Defs.Res.FOOD, Defs.FARM_FOOD)
+			d.renews = true
+			d.farm = true
+			map.deposits[b.field_tile()] = d
+		"town_center", "storehouse":
+			var r := b.rect().grow(1)
+			for y in range(r.position.y, r.end.y):
+				for x in range(r.position.x, r.end.x):
+					var p := Vector2i(x, y)
+					if not b.rect().has_point(p) and map.make_road(p) and _world != null:
+						_world.road_changed(p)
 
 
 ## Population limit: each finished Town Center and House adds room.
@@ -584,6 +613,8 @@ func _follow(u: Unit, delta: float) -> bool:
 		var before := u.pos
 		_move_unit(u, u.pos + heading * step)
 		var moved := u.pos.distance_to(before)
+		if moved > 0.0 and map.add_wear(Vector2i(u.pos), moved) and _world != null:
+			_world.road_changed(Vector2i(u.pos))
 		u.walk += moved * WALK_CYCLE_PER_TILE
 		u.moving = true
 		_set_facing(u, heading)
@@ -737,6 +768,7 @@ func _update_unit(u: Unit, delta: float) -> void:
 				b.work += delta
 				if b.work >= float(b.def()["build_time"]):
 					b.complete = true
+					_on_complete(b)
 					hud.flash("%s %s." % [b.def()["name"], b.def()["done"]], "%s complete." % b.def()["english"])
 
 
@@ -754,6 +786,10 @@ func _gather(u: Unit, delta: float) -> void:
 		u.work -= 1.0
 		u.carry += 1
 		d.amount -= 1
+	if d.amount <= 0 and d.renews:  # an emptied field: wait for it to ripen again
+		if u.carry > 0:
+			_return_to_dropsite(u)
+		return
 	if d.amount <= 0:
 		if map.remove_deposit(u.target_tile):
 			_world.tile_changed(u.target_tile)
@@ -796,7 +832,24 @@ func _retarget(u: Unit) -> bool:
 	return best.x >= 0 and _order_gather(u, best)
 
 
+func _update_farm(b: Building, delta: float) -> void:
+	var d: Deposit = map.deposits.get(b.field_tile())
+	if d == null:
+		return
+	if d.amount <= 0:
+		b.regrow += delta
+		if b.regrow >= Defs.FARM_REGROW_TIME:
+			b.regrow = 0.0
+			d.amount = d.max_amount
+	var frac := float(d.amount) / d.max_amount
+	b.stage = 0 if frac >= 0.66 else (1 if frac >= 0.33 else (2 if d.amount > 0 else 3))
+
+
 func _update_building(b: Building, delta: float) -> void:
+	if b.kind == "farm":
+		if b.complete:
+			_update_farm(b, delta)
+		return
 	if not b.complete or b.queue <= 0:
 		return
 	b.train_progress += delta
@@ -823,6 +876,13 @@ func _report_text() -> String:
 ## --demo: put every villager to work on a different resource.
 func _run_demo(start: Vector2i) -> void:
 	_clear_selection()
+	var field: Building = null
+	for kind in ["farm", "hut", "hut", "house", "hut"]:
+		var site := _find_building_site(kind, start, 3)
+		if site.x >= 0:
+			var b := _add_building(kind, site, true)
+			if kind == "farm":
+				field = b
 	var kinds := [Defs.Res.WOOD, Defs.Res.FOOD, Defs.Res.WOOD, Defs.Res.STONE, Defs.Res.GOLD]
 	for i in units.size():
 		var best := Vector2i(-1, -1)
@@ -831,5 +891,7 @@ func _run_demo(start: Vector2i) -> void:
 			if map.deposits[p].kind == kinds[i] and (Vector2(p) + Vector2(0.5, 0.5)).distance_to(units[i].pos) < best_d:
 				best_d = (Vector2(p) + Vector2(0.5, 0.5)).distance_to(units[i].pos)
 				best = p
-		if best.x >= 0:
+		if i < 2 and field != null:  # the first two villagers work the wheat field
+			_order_gather(units[i], field.field_tile())
+		elif best.x >= 0:
 			_order_gather(units[i], best)

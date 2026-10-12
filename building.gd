@@ -10,10 +10,22 @@ var complete := false
 var selected := false
 var queue := 0  # villagers waiting to be trained
 var train_progress := 0.0
+var stage := 0  # fields: 0 ripe .. 3 freshly sown
+var regrow := 0.0  # fields: seconds since they were emptied
 
 
 func def() -> Dictionary:
 	return Defs.BUILDINGS[kind]
+
+
+## Key of the sprite to draw (fields change picture as they're harvested).
+func sprite_key() -> String:
+	return "farm:%d" % stage if kind == "farm" else kind
+
+
+## The tile at the middle of the footprint (where a field's crop lives).
+func field_tile() -> Vector2i:
+	return tile + size / 2
 
 
 func rect() -> Rect2i:

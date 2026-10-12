@@ -5,6 +5,7 @@ shader_type canvas_item;
 // terrain's palette with ordered dithering. Everything is snapped to whole world pixels.
 
 uniform sampler2D terrain : filter_nearest, repeat_disable;
+uniform sampler2D road_mask : filter_linear, repeat_disable; // dirt roads, 8 pixels per tile
 uniform vec2 map_size = vec2(80.0, 80.0);
 uniform vec2 origin = vec2(0.0); // world position of this rect's top-left corner
 
@@ -107,6 +108,19 @@ void fragment() {
 		if (fine > 0.972) col = hx(0x629931);
 		else if (fine < 0.0016) col = hx(0xfff4b4);
 		else if (fine > 0.9962) col = hx(0xf4b8d0);
+	}
+	// Dirt roads worn by walking, over open ground only. The mask is smoothed by filtering and
+	// cut with noise, so the edges are ragged and pixelly.
+	if (id == 2 || id == 3) {
+		vec2 gp = to_tile(wp + (vec2(vnoise(wp * 0.31), vnoise(wp * 0.31 + vec2(9.7, 3.3))) - 0.5) * 3.0);
+		if (gp.x > 0.0 && gp.y > 0.0 && gp.x < map_size.x && gp.y < map_size.y) {
+			float e = texture(road_mask, gp / map_size).r + (vnoise(wp * 0.45) - 0.5) * 0.4;
+			if (e > 0.5) {
+				col = ramp4(hx(0xdcc08a), hx(0xcdae76), hx(0xbc9d66), hx(0xa88a56), 0.55 + (fbm(wp * 0.2) - 0.5) * 0.8 + d);
+				if (e < 0.6) col = hx(0x9a7c4c); // trodden edge
+				else if (fine > 0.975) col = hx(0x8e7446); // pebbles
+			}
+		}
 	}
 	COLOR = vec4(col, 1.0);
 }

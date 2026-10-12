@@ -190,6 +190,9 @@ func refresh() -> void:
 		var st: Array = STATES[u.state]
 		var latin: String = st[0]
 		var english: String = st[1]
+		if u.working_farm and u.state == Unit.State.GATHERING:
+			latin = "Colit"  # tends the field
+			english = "Farming"
 		if u.carry > 0:
 			latin += "  ·  onus: %s %d" % [Defs.RES_NAMES[u.carry_kind], u.carry]
 			english += "  ·  carrying %d %s" % [u.carry, Defs.RES_ENGLISH[u.carry_kind].to_lower()]
@@ -211,11 +214,14 @@ func refresh() -> void:
 			_say(_sel_info, "Aedificatur  %d%%" % pct, "Under construction  %d%%" % pct)
 		elif b.queue > 0:
 			_say(_sel_info, "In ordine: %d" % b.queue, "Villagers in training: %d" % b.queue)
+		elif b.kind == "farm" and map_deposit_for(b) != null:
+			var fd: Deposit = map_deposit_for(b)
+			_say(_sel_info, "Reliquum: %d / %d" % [fd.amount, fd.max_amount], "Remaining: %d of %d food%s" % [fd.amount, fd.max_amount, "  (ripening again...)" if fd.amount <= 0 else ""])
 		else:
 			_say(_sel_info, def["ready"], "Ready")
 	elif _game.selected_deposit.x >= 0 and _game.map.deposits.has(_game.selected_deposit):
 		var d: Deposit = _game.map.deposits[_game.selected_deposit]
-		var full: int = Defs.DEPOSIT_AMOUNT[d.kind]
+		var full: int = d.max_amount
 		var res: String = Defs.RES_ENGLISH[d.kind].to_lower()
 		var english := "Remaining: %d of %d %s" % [d.amount, full, res]
 		_say(_sel_name, Defs.DEPOSIT_LATIN[d.kind], "%s: a source of %s" % [Defs.DEPOSIT_ENGLISH[d.kind], res])
@@ -275,6 +281,10 @@ func _say(c: Control, latin: String, english: String) -> void:
 	c.tooltip_text = english
 	if c is Label and english != "":
 		c.mouse_filter = Control.MOUSE_FILTER_PASS  # labels ignore the mouse by default, which hides tooltips
+
+
+func map_deposit_for(b: Building) -> Deposit:
+	return _game.map.deposits.get(b.field_tile())
 
 
 ## Pins a control to a screen corner (ax, ay in {0, 1}), growing inward.

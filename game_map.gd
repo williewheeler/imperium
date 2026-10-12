@@ -6,6 +6,8 @@ enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN }
 
 # Movement cost per terrain; INF = impassable.
 const MOVE_COST := [INF, INF, 1.1, 1.0, 1.6, 2.2, INF]
+const ROAD_SPEED := 1.3  # roads are this much faster to walk
+const ROAD_WEAR := 7.0  # tiles of walking before a path becomes a road
 const TILE_COLORS := [
 	Color("12406b"), Color("1f6f9c"), Color("e0cf94"), Color("5f9a3e"),
 	Color("4a8a36"), Color("8f9a58"), Color("8a8580"),
@@ -16,6 +18,8 @@ var h: int
 var seed_value: int
 var tiles := PackedByteArray()
 var deposits := {}  # Vector2i -> Deposit
+var road := PackedByteArray()  # 1 where a dirt road has worn into the ground
+var wear := PackedFloat32Array()  # distance walked over each tile so far
 var astar := AStarGrid2D.new()
 
 
@@ -24,6 +28,8 @@ func _init(p_seed: int, p_w := 80, p_h := 80) -> void:
 	w = p_w
 	h = p_h
 	_generate()
+	road.resize(w * h)
+	wear.resize(w * h)
 	_build_nav()
 
 
@@ -103,7 +109,39 @@ func is_walkable(p: Vector2i) -> bool:
 
 
 func move_cost(p: Vector2i) -> float:
-	return MOVE_COST[tile(p.x, p.y)] if in_bounds(p) else 1.0
+	if not in_bounds(p):
+		return 1.0
+	var c: float = MOVE_COST[tile(p.x, p.y)]
+	return c / ROAD_SPEED if road[p.y * w + p.x] == 1 else c
+
+
+func is_road(p: Vector2i) -> bool:
+	return in_bounds(p) and road[p.y * w + p.x] == 1
+
+
+## Dirt roads only form on open ground: grass or beach, no buildings, trees or mines.
+func can_road(p: Vector2i) -> bool:
+	if not in_bounds(p) or road[p.y * w + p.x] == 1 or astar.is_point_solid(p) or deposits.has(p):
+		return false
+	var t := tile(p.x, p.y)
+	return t == Terrain.GRASS or t == Terrain.BEACH
+
+
+func make_road(p: Vector2i) -> bool:
+	if not can_road(p):
+		return false
+	road[p.y * w + p.x] = 1
+	astar.set_point_weight_scale(p, float(MOVE_COST[tile(p.x, p.y)]) / ROAD_SPEED)  # pathfinding prefers roads
+	return true
+
+
+## Records `dist` tiles of walking over a tile. Returns true if that wore it into a road.
+func add_wear(p: Vector2i, dist: float) -> bool:
+	if not can_road(p):
+		return false
+	var i := p.y * w + p.x
+	wear[i] += dist
+	return wear[i] >= ROAD_WEAR and make_road(p)
 
 
 ## Open grass with nothing on it: where buildings can go.

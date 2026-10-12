@@ -5,16 +5,21 @@ extends Node2D
 
 var building: Building
 var _sprite := Sprite2D.new()
+var _key := ""
 
 
 func _ready() -> void:
 	_sprite.centered = false
-	_sprite.texture = Art.tex(building.kind)
+	_key = building.sprite_key()
+	_sprite.texture = Art.tex(_key)
 	add_child(_sprite)
 	position = Iso.to_screen(Vector2(building.tile + building.size)).round()
 
 
 func update_view() -> void:
+	if building.sprite_key() != _key:
+		_key = building.sprite_key()
+		_sprite.texture = Art.tex(_key)
 	var anchor := Art.building_anchor(building.kind)
 	var size := _sprite.texture.get_size()
 	if building.complete:

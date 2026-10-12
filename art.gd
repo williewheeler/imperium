@@ -26,7 +26,7 @@ const GOLD := [Color("fff0a0"), Color("f2c230"), Color("b88a1c")]
 const BERRY := Color("d8403c")
 
 ## Frames per villager animation.
-const VILLAGER_FRAMES := {"idle": 2, "walk": 6, "chop": 6, "mine": 6, "forage": 4, "build": 6}
+const VILLAGER_FRAMES := {"idle": 2, "walk": 6, "chop": 6, "mine": 6, "forage": 4, "till": 6, "build": 6}
 ## Where the villager's feet are inside each villager image (for anchoring).
 const VILLAGER_FEET := Vector2(11, 20)
 
@@ -44,6 +44,8 @@ const BUILDING_GEOM := {
 	"town_center": {"n": 3, "ridge": 35.0},
 	"house": {"n": 2, "ridge": 25.0},
 	"storehouse": {"n": 2, "ridge": 25.0},
+	"hut": {"n": 1, "ridge": 22.0},
+	"farm": {"n": 3, "ridge": 6.0},
 }
 
 static var _cache := {}
@@ -102,6 +104,10 @@ static func image(key: String) -> Image:
 			return _pack(int(parts[1]), int(parts[2]))
 		"ground":  # ground:<terrain id>:<variant>  (a 32x16 diamond tile)
 			return _ground_tile(int(parts[1]), int(parts[2]))
+		"hut":
+			return _hut()
+		"farm":  # farm:<stage> 0 ripe .. 3 freshly sown
+			return _farm(variant)
 		"town_center":
 			return _forum()
 		"house":
@@ -488,6 +494,9 @@ static func _villager(anim: String, back: bool, frame: int) -> Image:
 		"build":
 			pose.tool = "hammer"
 			pose.angle = _swing(ph, -PI / 2.0 + 0.2, 0.8)
+		"till":
+			pose.tool = "hoe"
+			pose.angle = _swing(ph, -PI / 2.0 - 0.3, 1.0)
 		"forage":
 			var d := sin(ph * TAU)
 			pose.lean = 1 if frame % 2 == 0 else 2
@@ -557,6 +566,9 @@ static func _villager(anim: String, back: bool, frame: int) -> Image:
 				Pixel.line(img, Vector2i(tip - perp * 2.6), Vector2i(tip + perp * 2.6), ROCK[1])
 			"hammer":
 				Pixel.rect(img, int(tip.x) - 1, int(tip.y) - 1, 3, 2, ROCK[2])
+			"hoe":
+				Pixel.line(img, Vector2i(tip), Vector2i(tip + perp * 2.5 + dir * 1.0), ROCK[2])
+				Pixel.put(img, int(tip.x + perp.x * 2.5 + dir.x * 1.0), int(tip.y + perp.y * 2.5 + dir.y * 1.0), ROCK[1])
 	return Pixel.outlined(img, OUT_VILLAGER)
 
 
@@ -663,7 +675,7 @@ static func scenery_keys() -> Array[String]:
 
 
 static func building_keys() -> Array[String]:
-	return ["town_center", "house", "storehouse"]
+	return ["town_center", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3"]
 
 
 ## Villager frames, one row per animation and direction (f = facing the camera, b = away).
@@ -736,3 +748,101 @@ static func _ground_tile(id: int, variant: int) -> Image:
 						c = Color("7a8a3c")
 			img.set_pixel(x, y, c)
 	return img
+
+
+# ---------------------------------------------------------------- huts and fields
+
+const THATCH := [Color("f0d686"), Color("dab55c"), Color("b88f40"), Color("8f6a2c")]
+const WATTLE := [Color("e0bb82"), Color("c49a60"), Color("9a7646")]
+const WHEAT := [Color("f8e060"), Color("e6c444"), Color("c89e2c"), Color("94721e")]
+const SOIL := [Color("9a7650"), Color("7e5c3c"), Color("5f442c")]
+
+
+## Casa: the founding-era hut. Round wattle-and-daub walls under a conical thatched roof.
+## 1x1 tile.
+static func _hut() -> Image:
+	var hs := 46
+	var img := Pixel.blank(32, hs)
+	var f := Frame.new(Vector2(16, hs - 1 - 16))
+	_dirt_patch(img, f, 1.0, 0.0)
+	var cx := 16.0
+	var base_y := float(hs - 1 - 8)  # centre of the footprint diamond
+	var rx := 11.0
+	var ry := 5.5
+	var wall_h := 8.0
+	var cone_h := 15.0
+	var apex_y := base_y - wall_h - cone_h
+	var eave_y := base_y - wall_h
+	for y in range(int(eave_y) - 1, int(base_y + ry) + 2):  # the round wall
+		for x in range(int(cx - rx) - 1, int(cx + rx) + 2):
+			var dx := (x + 0.5 - cx) / rx
+			if absf(dx) > 1.0:
+				continue
+			if y + 0.5 > base_y + ry * sqrt(1.0 - dx * dx) or y + 0.5 < eave_y:
+				continue
+			var v := (0.66 if dx < 0.1 else 0.3) + (Pixel.hash2(x, y, 31) - 0.5) * 0.25 - (0.22 if posmod(x, 3) == 0 else 0.0)
+			Pixel.put(img, x, y, Pixel.ramp(WATTLE, v, x, y, 0.15))
+	Pixel.rect(img, int(cx) - 5, int(base_y + 5.0) - 6, 4, 6, WOOD[2])  # low doorway
+	Pixel.rect(img, int(cx) - 4, int(base_y + 5.0) - 5, 2, 5, Color("2c1c12"))
+	for y in range(int(apex_y) - 1, int(eave_y + 7.0) + 2):  # the thatched cone
+		for x in range(int(cx) - 16, int(cx) + 17):
+			var dx := x + 0.5 - cx
+			var t := clampf((y + 0.5 - apex_y) / cone_h, 0.0, 1.0)
+			if y + 0.5 < apex_y or absf(dx) > 15.0 * pow(t, 1.3):  # concave sides, like a real thatched cone
+				continue
+			var low := eave_y + 7.0 * sqrt(maxf(0.0, 1.0 - (dx / 15.0) * (dx / 15.0))) + (Pixel.hash2(x, 7, 9) - 0.5) * 2.4
+			if y + 0.5 > low:
+				continue
+			# smooth light-to-shade across the roundness, with curved courses of thatch
+			var v := 0.58 - (dx / 15.0) * 0.42 - t * 0.12 + (Pixel.hash2(x, y, 12) - 0.5) * 0.22
+			if posmod(y - int(dx * dx * 0.045), 3) == 0:
+				v -= 0.2
+			Pixel.put(img, x, y, Pixel.ramp(THATCH, v, x, y, 0.2))
+	Pixel.put(img, int(cx), int(apex_y) - 1, THATCH[3])  # the tied-off peak
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## Ager: a 3x3 wheat field. Stage 0 ripe, 1 half-harvested, 2 stubble, 3 freshly sown.
+static func _farm(stage: int) -> Image:
+	var n := 3.0
+	var hs := int(n * 16 + 6.0 + 8.0)
+	var img := Pixel.blank(96, hs)
+	var f := Frame.new(Vector2(48, hs - 1 - 48))
+	var inset := 0.08
+	var diamond: Array = [f.p(inset, inset, 0), f.p(n - inset, inset, 0), f.p(n - inset, n - inset, 0), f.p(inset, n - inset, 0)]
+	Pixel.poly(img, diamond, func(x: int, y: int) -> Color:
+		return Pixel.ramp(SOIL, 0.5 + (Pixel.hash2(x, y, 41) - 0.5) * 0.5, x, y, 0.3))
+	for y in range(hs - 1, -1, -1):  # bottom-up so tall ears land on the soil behind them
+		for x in 96:
+			if absf(x + 0.5 - 48.0) / 48.0 + absf(y + 0.5 - (hs - 1 - 24.0)) / 24.0 > 0.97:
+				continue
+			var row := int(floor(y - 0.5 * x))
+			var furrow := posmod(row, 4) == 0
+			var h := Pixel.hash2(x, y, 43 + stage)
+			match stage:
+				0:  # ripe, dense, golden
+					if not furrow:
+						Pixel.put(img, x, y, Pixel.ramp(WHEAT, 0.55 + (Pixel.hash2(x / 2, y, 44) - 0.5) * 0.5 - (0.0 if posmod(row, 4) != 3 else 0.15), x, y, 0.3))
+						if h < 0.34 and y > 0:
+							Pixel.put(img, x, y - 1, WHEAT[0])  # ears standing above the rows
+				1:  # half the field cut down
+					if not furrow and (Pixel.hash2(x / 6, y / 4, 45) < 0.5):
+						Pixel.put(img, x, y, Pixel.ramp(WHEAT, 0.5 + (Pixel.hash2(x / 2, y, 44) - 0.5) * 0.5, x, y, 0.3))
+						if h < 0.3 and y > 0:
+							Pixel.put(img, x, y - 1, WHEAT[0])
+					elif not furrow and h < 0.5:
+						Pixel.put(img, x, y, Color("c9ad6a"))  # stubble
+				2:  # stubble
+					if not furrow and h < 0.55:
+						Pixel.put(img, x, y, Color("c9ad6a") if h < 0.35 else Color("a98e50"))
+				3:  # just sown: green shoots in the furrows
+					if furrow and h < 0.4:
+						Pixel.put(img, x, y, Color("7ab039"))
+						Pixel.put(img, x, y - 1, Color("a2d04c"))
+	var rim := SOIL[2]
+	for i in 4:  # soil rim and corner stakes
+		var a: Vector2 = diamond[i]
+		var b: Vector2 = diamond[(i + 1) % 4]
+		Pixel.line(img, Vector2i(a), Vector2i(b), rim)
+		Pixel.rect(img, int(a.x) - 1, int(a.y) - 3, 2, 3, WOOD[1])
+	return Pixel.outlined(img, OUT_WARM)

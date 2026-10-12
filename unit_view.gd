@@ -3,7 +3,7 @@ extends Node2D
 ## Draws one villager: picks the animation frame from what the unit is doing, mirrors the sprite
 ## for left-facing, and shows a carried pack and a selection ring.
 
-const WORK_RATE := {"chop": 1.1, "mine": 1.0, "build": 1.5, "forage": 0.9}  # swings per second
+const WORK_RATE := {"chop": 1.1, "mine": 1.0, "build": 1.5, "forage": 0.9, "till": 1.0}  # swings per second
 
 var unit: Unit
 var _body := Sprite2D.new()
@@ -55,6 +55,8 @@ func _work_anim() -> String:
 		Unit.State.BUILDING:
 			return "build"
 		Unit.State.GATHERING:
+			if unit.working_farm:
+				return "till"
 			match unit.gather_kind:
 				Defs.Res.WOOD:
 					return "chop"

@@ -6,6 +6,7 @@ extends Node2D
 
 var game  # Main
 var ground: GroundView
+var decals := Node2D.new()  # flat things drawn on the ground but under the villagers (fields)
 var objects := Node2D.new()
 
 var _tile_objects := {}  # Vector2i -> Array[Node2D]: a tile's trees / hill / mountain sprites
@@ -22,6 +23,7 @@ func setup(p_game) -> void:
 	add_child(ground)
 	ground.setup(game.map)
 
+	add_child(decals)
 	objects.y_sort_enabled = true
 	add_child(objects)
 	_populate_terrain()
@@ -34,6 +36,11 @@ func setup(p_game) -> void:
 	var overlay := OverlayView.new()
 	overlay.game = game
 	add_child(overlay)
+
+
+## A tile just wore into a dirt road.
+func road_changed(p: Vector2i) -> void:
+	ground.update_road(p)
 
 
 ## A tile's terrain changed (forest felled): update the ground and drop its trees.
@@ -103,7 +110,7 @@ func _process(_delta: float) -> void:
 		if not _building_views.has(b):
 			var v := BuildingView.new()
 			v.building = b
-			objects.add_child(v)
+			(decals if b.kind == "farm" else objects).add_child(v)
 			_building_views[b] = v
 		_building_views[b].update_view()
 	for p: Vector2i in _deposit_nodes.keys():  # a mine or bush that got used up
