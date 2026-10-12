@@ -51,6 +51,17 @@ var _drag_start := Vector2.ZERO
 var _road_dragging := false
 var _road_start := Vector2i.ZERO
 var _fog_timer := 0.0
+var _window_ready := true  # false while a requested windowed mode is still being applied
+var _record_dir := ""  # --record=DIR: save every frame there as a JPEG
+var _rec_frame := 0
+var _draws_since_switch := 0
+var _show_on := false  # --showcase: a scripted run that plays like a person would, for recording
+var _show_t := 0.0
+var _show_duration := 60.0
+var _show_jobs := {}  # Unit -> Callable that gives it (more) work when it goes idle
+var _show_events: Array = []  # [seconds, Callable], fired in order
+var _show_farm: Building
+var _show_newcomer_jobs: Array = []  # jobs for the villagers the Forum trains, in order
 var _cities := 0
 var _screenshot_path := ""
 var _report := false
@@ -64,6 +75,11 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		var kv := a.lstrip("-").split("=", true, 1)
 		args[kv[0]] = kv[1] if kv.size() > 1 else true
+
+	_record_dir = String(args.get("record", ""))
+	if args.has("windowed") or args.has("showcase") or args.has("shot"):
+		_window_ready = false
+		_setup_window(String(args.get("size", "1280x720")))  # the project starts fullscreen; recordings and screenshots want a window
 
 	map = GameMap.new(int(args.get("seed", randi() % 65536)))
 	var start := map.find_start()
@@ -106,10 +122,43 @@ func _ready() -> void:
 	if args.has("select"):
 		for u in units:
 			u.selected = true
+	if args.has("showcase"):
+		_show_duration = float(args.get("duration", 60.0))
+		_showcase_setup()
+	if _record_dir != "":
+		DirAccess.make_dir_recursive_absolute(_record_dir)
+		RenderingServer.frame_post_draw.connect(_save_recorded_frame)
 	Engine.time_scale = float(args.get("speed", 1.0))
 	_screenshot_path = args.get("shot", "")
 	_report = args.has("report")
 	_shot_frame = int(args.get("shot-frame", 20))
+
+
+## Debug/recording: leave the project's fullscreen mode for a real window of the given size.
+## (Startup re-applies the project's window mode for a little while, so wait it out first.)
+func _setup_window(size_text: String) -> void:
+	for i in 100:
+		await get_tree().process_frame
+	var dims := size_text.split("x")
+	var win := get_window()
+	win.mode = Window.MODE_WINDOWED
+	win.size = Vector2i(int(dims[0]), int(dims[1]))
+	win.move_to_center()
+	# macOS plays a transition when leaving fullscreen and nothing is drawn until it ends, so wait
+	# until real frames are being rendered (give up after a while: headless runs never draw)
+	_draws_since_switch = 0
+	RenderingServer.frame_post_draw.connect(func() -> void: _draws_since_switch += 1)
+	var waited := 0
+	while _draws_since_switch < 8 and waited < 900:
+		await get_tree().process_frame
+		waited += 1
+	_window_ready = true
+
+
+func _save_recorded_frame() -> void:
+	if _window_ready and _show_on:
+		get_viewport().get_texture().get_image().save_jpg("%s/f%05d.jpg" % [_record_dir, _rec_frame], 0.95)
+		_rec_frame += 1
 
 
 # ---------- Queries ----------
@@ -644,6 +693,8 @@ func _process(delta: float) -> void:
 			_finish_select(drag_rect, Input.is_key_pressed(KEY_SHIFT))
 
 	_update_road_drag()
+	if _show_on:
+		_showcase_update(delta)
 	if selected_deposit.x >= 0 and not map.deposits.has(selected_deposit):
 		selected_deposit = Vector2i(-1, -1)  # used up
 	_update_world_tip()
@@ -654,7 +705,7 @@ func _process(delta: float) -> void:
 		_update_fog()
 	hud.refresh()
 
-	if _screenshot_path != "" or _report:
+	if (_screenshot_path != "" or _report) and _window_ready:
 		_frame += 1
 		if _frame == _shot_frame:
 			if _report:
@@ -1035,6 +1086,123 @@ func _report_text() -> String:
 	for b in buildings:
 		lines.append("building %s complete=%s queue=%d" % [b.kind, b.complete, b.queue])
 	return "\n".join(lines)
+
+
+## --showcase: a scripted ~minute of play for recording. Villagers chop, forage, mine, build a
+## field and huts, till the field, and the Forum trains new villagers. Only Era I things.
+func _showcase_setup() -> void:
+	_show_on = true
+	zoom_px = 3
+	_apply_zoom()
+	var tc := buildings[0]
+	var forum := tc.center()
+	# each villager gets a standing job; when they go idle they're sent back to it
+	var chop := func(u: Unit) -> void: _order_gather(u, _show_pick(Defs.Res.WOOD, forum, 12.0, u.pos))
+	var forage := func(u: Unit) -> void: _order_gather(u, _show_pick(Defs.Res.FOOD, forum, 16.0, u.pos))
+	var mine := func(u: Unit) -> void: _order_gather(u, _show_pick(Defs.Res.STONE, forum, 18.0, u.pos))
+	var till := func(u: Unit) -> void:
+		if _show_farm != null and _show_farm.complete:
+			_order_gather(u, _show_farm.field_tile())
+		else:
+			chop.call(u)
+	_show_jobs[units[0]] = chop
+	_show_jobs[units[1]] = chop
+	_show_jobs[units[2]] = forage
+	_show_jobs[units[3]] = mine
+	for u in units:
+		u.selected = true  # shows the command bar at the start
+	_show_events = [
+		[0.3, func() -> void: _show_start_field()],
+		[0.4, func() -> void: _show_train()],
+		[5.0, func() -> void: _clear_selection()],
+		[18.0, func() -> void: _show_hut(units[0], chop)],
+		[26.0, func() -> void: _show_train()],
+		[40.0, func() -> void: _show_hut(units[1], chop)],
+		[44.0, func() -> void: _show_train()],
+	]
+	_show_jobs[units[4]] = till
+	_show_newcomer_jobs = [till, chop, forage]
+
+
+## Nearest reachable resource of `kind` near `center`, skipping ones hidden behind the Forum.
+func _show_pick(kind: int, center: Vector2, max_dist: float, from: Vector2) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := INF
+	for p: Vector2i in map.deposits:
+		var d: Deposit = map.deposits[p]
+		if d.kind != kind or d.farm:
+			continue
+		var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(from)
+		if (Vector2(p) + Vector2(0.5, 0.5)).distance_to(center) > max_dist or dist >= best_d:
+			continue
+		if building_under(Iso.to_screen(Vector2(p) + Vector2(0.5, 0.5))) != null:
+			continue
+		if map.find_path(Vector2i(from), map.stand_tile(Rect2i(p, Vector2i.ONE), from)).is_empty():
+			continue
+		best_d = dist
+		best = p
+	return best
+
+
+## A building spot beside the Forum: tries each preferred offset (tile units from the Forum;
+## +x runs down-right on screen, +y down-left) and takes the first that has room nearby.
+func _show_site(kind: String, offsets: Array) -> Vector2i:
+	var avoid: Array[Vector2i] = []
+	for u in units:
+		avoid.append(Vector2i(u.pos))
+	for off: Vector2i in offsets:
+		var site := map.find_site(Defs.BUILDINGS[kind]["size"], buildings[0].tile + off, 0, 3, avoid)
+		if site.x >= 0:
+			return site
+	return Vector2i(-1, -1)
+
+
+func _show_start_field() -> void:
+	var site := _show_site("farm", [Vector2i(5, -3), Vector2i(-4, 5), Vector2i(0, -6)])
+	if site.x < 0 or not can_afford(Defs.BUILDINGS["farm"]["cost"]):
+		return
+	_pay(Defs.BUILDINGS["farm"]["cost"])
+	_show_farm = _add_building("farm", site, false)
+	_order_build(units[4], _show_farm)
+
+
+func _show_train() -> void:
+	if can_afford(Defs.VILLAGER_COST) and has_pop_room():
+		_pay(Defs.VILLAGER_COST)
+		buildings[0].queue += 1
+
+
+func _show_hut(builder: Unit, then: Callable) -> void:
+	var site := _show_site("hut", [Vector2i(-2, 5), Vector2i(-4, 3)] if builder == units[0] else [Vector2i(5, 1), Vector2i(4, -5)])
+	if site.x < 0 or not can_afford(Defs.BUILDINGS["hut"]["cost"]):
+		return
+	_pay(Defs.BUILDINGS["hut"]["cost"])
+	var hut := _add_building("hut", site, false)
+	_order_build(builder, hut)  # when they finish they go idle and return to their job
+
+
+func _showcase_update(delta: float) -> void:
+	if not _window_ready:
+		return
+	_show_t += delta
+	while not _show_events.is_empty() and _show_events[0][0] <= _show_t:
+		_show_events.pop_front()[1].call()
+	for u in units:  # newly trained villagers get the next job on the list
+		if not _show_jobs.has(u):
+			_show_jobs[u] = _show_newcomer_jobs.pop_front() if not _show_newcomer_jobs.is_empty() else _show_jobs.values()[0]
+	for u: Unit in _show_jobs.keys():
+		if u.state == Unit.State.IDLE and _show_t > 1.0:
+			_show_jobs[u].call(u)
+	# the camera drifts gently to keep the action centred
+	var focus := buildings[0].center()
+	var n := 1.0
+	for u in units:
+		if u.pos.distance_to(buildings[0].center()) < 12.0:
+			focus += u.pos
+			n += 1.0
+	cam_pos = cam_pos.lerp(Iso.to_screen(focus / n), 1.0 - exp(-delta * 0.6)) if _show_t > 1.0 else cam_pos
+	if _show_t >= _show_duration:
+		get_tree().quit()
 
 
 ## --demo: lay out a paved road on the first open run of grass near the Forum, for two villagers.

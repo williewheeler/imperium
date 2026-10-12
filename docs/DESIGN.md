@@ -1,0 +1,114 @@
+# IMPERIVM — design notes
+
+A real-time strategy game about the rise and fall of Rome, from a village of huts on the Palatine
+to the end of the Western Empire. Isometric pixel art, Empire Earth–style play: you start with a few
+villagers and a Forum, gather, build, and advance through historical eras.
+
+Status key: **built** (in the game now), **decided** (agreed, not built yet), **proposed** (a first
+guess to tune or change), **open** (needs a decision).
+
+---
+
+## Pillars
+
+1. **Period-accurate and Roman.** Art, buildings, names and progression follow Roman history.
+2. **Latin on screen, English on hover.** All UI text is Latin in Roman capitals (V for U), and every
+   piece of text has an English tooltip. Nothing is shown in English only except tooltips.
+3. **Pixel art you can edit.** All art lives in PNG sheets (`assets/art/`), so an artist can replace it
+   without touching code.
+4. **Rise and fall.** The eras are a story arc: build up through the Kingdom and the Republic, peak
+   under the Principate, then hold on through the Late Empire's crises.
+
+---
+
+## The eras
+
+Dates are the traditional ones. Confidence: high from the Republic onward; the Kingdom is partly
+legendary (the monarchy itself is generally accepted as real, the individual kings and dates much
+less so). "Principate" and "Dominate" are modern scholarly labels, and the fall was gradual, so
+historians draw the end points differently.
+
+| # | Latin name (banner) | English | Dates | What it is |
+|---|---|---|---|---|
+| I | Regnum | The Kingdom | 753–509 BC | Founding by Romulus and seven kings (the last three Etruscan; Tarquin the Proud expelled 509 BC). Archaeology shows a real Iron Age hut village; the Forum is drained and the first temples rise. |
+| II | Res Publica | The Early Republic | 509–264 BC | Two annual consuls and the Senate; patricians vs plebeians; the Twelve Tables (c. 450 BC); the Gauls sack Rome (traditionally 390 BC); Italy is conquered through the Latin and Samnite wars and Pyrrhus. First paved road and first aqueduct in 312 BC (the Via Appia, Appius Claudius Caecus). |
+| III | Imperium Populi Romani | The Republic Expands | 264–27 BC | The Punic Wars (Carthage destroyed 146 BC), conquest of Greece and Spain, the Gracchi, Marius's army reforms, Sulla, Spartacus, Pompey, Caesar (Gaul 58–50, Rubicon 49, assassinated 44), Actium 31 BC; Octavian becomes Augustus in 27 BC. |
+| IV | Principatus | The Empire at its Height | 27 BC–284 AD | Augustus and the Pax Romana (about 200 years); the Colosseum (80 AD); greatest extent under Trajan (117). Ends with the Crisis of the Third Century (235–284): plague, civil war, inflation. |
+| V | Dominatus | The Late Empire | 284–476 AD | Diocletian's reforms, Constantine (Christianity legalised 313, Constantinople 330), the permanent split in 395, Rome sacked in 410 and 455, last Western emperor deposed 476. (The Eastern half lasted until 1453; out of scope.) |
+
+The era shows in a banner at the top centre of the screen: `AETAS I` over `REGNVM`, with the English
+name and dates on hover. **Built** (display only; see Advancement for what's still to do).
+
+### What each era is for (flavour and content)
+
+| Era | Feel | Content (planned) |
+|---|---|---|
+| I Regnum | A hut village finding its feet | Villagers; Casa (hut); Ager (wheat field); Horreum; Forum; dirt roads that wear into the ground |
+| II Res Publica | Citizens, civic life, first conquests | Stone Domus; **paved roads (Via)**; citizen militia; Curia (Senate house); first aqueduct |
+| III Imperium Populi Romani | Legions and expansion | Legions, barracks, ships and harbours, provinces, bigger aqueducts |
+| IV Principatus | Peak: monuments, baths, amphitheatres | Baths, amphitheatre, triumphal arches, roads and aqueducts at scale |
+| V Dominatus | Holding on | Walls and fortifications, barbarian pressure, economic strain; the "fall" gameplay |
+
+---
+
+## Advancing through eras — decided: option A
+
+The player advances at the **Forum** with an **Advance** button (Latin: *Progredere*), as in Age of
+Empires. Advancing costs resources and has prerequisites, and takes some time. New buildings and
+features unlock only once you have reached the era.
+
+Why this over the alternatives (automatic milestones, or "prestige" points): it is familiar,
+predictable, and makes use of the buildings we already have.
+
+### Proposed gates (numbers to be tuned in playtesting)
+
+| To reach | Cost | Prerequisites | Time |
+|---|---|---|---|
+| II Res Publica | 300 food, 300 wood, 100 stone | population 15; 3 Casae; a working Ager; a Horreum | ~45 s |
+| III Imperium Populi Romani | *open* | *open* — should lean on Era II content: Domus, paved road tiles, Curia | |
+| IV Principatus | *open* | | |
+| V Dominatus | *open* — probably triggered by the Crisis of the Third Century rather than bought | | |
+
+### What each era unlocks — decided: be era-realistic
+
+- **Era I (Regnum):** Forum, Casa, Ager, Horreum, dirt roads (these wear into the ground from foot
+  traffic and need no building).
+- **Era II (Res Publica):** the stone **Domus** and **paved roads (Via)** are locked until Era II. The
+  historical hook is the Via Appia in 312 BC. *(Today the game still offers both from the start;
+  gating them is the next piece of work.)*
+- Later eras: see the content table above.
+
+A full **tech tree** (upgrades such as better axes or farming) is a separate, larger piece of work;
+era gating of buildings comes first.
+
+---
+
+## What is built today
+
+- Isometric pixel-art map (32×16 tiles) with fog of war, minimap, edge-scroll camera, whole-pixel zoom.
+- **Villagers:** click / drag-select, right-click to move, gather, build; they walk around each other.
+  Animations: walk, chop, mine, forage, till, build.
+- **Economy:** wood, food, stone, gold; 15-unit loads hauled to the nearest depot; population cap.
+- **Buildings:** Forum (start), Casa (+3 pop), Domus (+5 pop), Horreum (depot), Ager (renewable field).
+  The Forum trains villagers.
+- **Roads:** dirt roads wear into the ground where villagers walk (faster, preferred by pathfinding);
+  **paved roads** can be laid by dragging, paid for in stone and built tile by tile by villagers.
+- **Interface:** Latin text with English tooltips; icon command bar; resource panel for a clicked
+  deposit; era banner.
+- **Art pipeline:** sprites are drawn in code (`art.gd`) and baked into editable PNG sheets and a Godot
+  TileSet (`assets/art/`, `tools/export_art.sh`).
+
+## Open questions
+
+1. Prerequisites and costs for eras III–V.
+2. How the fall works in Eras IV–V: scripted crises, barbarian raids, economic strain, civil war?
+3. Military: units, combat, and rival factions (Etruscans, Latins, Samnites, Carthaginians, Gauls...).
+4. Whether the player is "Rome" in one fixed location, or can found additional cities.
+5. A tech tree (upgrades) and how it relates to eras.
+
+## Conventions
+
+- **Latin lettering:** capitals only, V for U (IMPERIVM). Text goes through `Latin.t()`; English
+  glosses live next to the Latin (see `latin.gd`, `hud.gd`).
+- **Names:** Latin buildings have an accusative form for verbs ("Aedifica Domum").
+- **Era data** lives in `Defs.ERAS`; `Main.era` is the current era.
