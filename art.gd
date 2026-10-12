@@ -106,6 +106,8 @@ static func image(key: String) -> Image:
 			return _ground_tile(int(parts[1]), int(parts[2]))
 		"via":
 			return _via_tile()
+		"advance":
+			return _standard()
 		"hut":
 			return _hut()
 		"farm":  # farm:<stage> 0 ripe .. 3 freshly sown
@@ -674,6 +676,7 @@ static func scenery_keys() -> Array[String]:
 		for l in 3:
 			k.append("pack:%d:%d" % [r, l])
 	k.append("via")
+	k.append("advance")
 	return k
 
 
@@ -873,3 +876,31 @@ static func _via_tile() -> Image:
 				c = Color("c2bdac") if (x + y) % 2 == 0 else Color("a8a392")  # curb
 			img.set_pixel(x, y, c)
 	return Pixel.outlined(img, OUT_ROCK)
+
+
+## A Roman standard (vexillum): a red banner with gold trim on a pole. The "advance era" icon.
+static func _standard() -> Image:
+	var img := Pixel.blank(26, 30)
+	Pixel.rect(img, 12, 3, 2, 27, WOOD[2])  # pole
+	Pixel.rect(img, 12, 3, 1, 27, WOOD[1])
+	Pixel.ellipse(img, 13.0, 2.5, 2.4, 2.4, GOLD[1])  # finial
+	Pixel.put(img, 12, 1, GOLD[0])
+	Pixel.rect(img, 3, 7, 20, 2, GOLD[2])  # crossbar
+	Pixel.rect(img, 3, 7, 20, 1, GOLD[1])
+	for x in range(4, 22):  # the hanging banner, with a notched hem
+		for y in range(9, 24):
+			var notch := (x - 4) % 6 < 3
+			if y > 20 and notch:
+				continue
+			var c: Color = TUNIC[1]
+			if x < 7:
+				c = TUNIC[0]
+			elif x > 19:
+				c = TUNIC[2]
+			Pixel.put(img, x, y, c)
+	Pixel.rect(img, 4, 9, 18, 1, GOLD[1])  # gold edging
+	Pixel.rect(img, 4, 9, 1, 12, GOLD[1])
+	Pixel.rect(img, 21, 9, 1, 12, GOLD[2])
+	Pixel.ellipse(img, 13.0, 15.0, 3.2, 3.2, GOLD[1])  # emblem
+	Pixel.put(img, 12, 14, GOLD[0])
+	return Pixel.outlined(img, OUT_VILLAGER)

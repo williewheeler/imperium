@@ -11,6 +11,8 @@ const GLOSS := {
 	"Elige colonos et aedifica forum.": "Select villagers and build a Town Center.",
 	"Terra incognita.": "Unknown land: you can't build on unexplored ground.",
 	"Locus liber et planus requiritur.": "A clear, level site is required (open grassland).",
+	"Nondum licet.": "Not yet allowed: it unlocks in a later era.",
+	"Progredimur.": "Advancing to the next era...",
 	"Locus occupatus.": "That spot is already taken.",
 	"Coloni impediunt.": "Villagers are in the way.",
 	"Copiae non sufficiunt.": "Not enough resources.",

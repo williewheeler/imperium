@@ -30,6 +30,17 @@ const ERAS := [
 	{"numeral": "V", "latin": "Dominatus", "english": "The Late Empire", "years": "284–476 AD"},
 ]
 
+# Advancing to the next era happens at the Forum. Index = the era you're in now (null = no
+# further advance defined yet). "needs" are [what, how many]: "pop" or a building id.
+# Numbers are first guesses, to tune in play. The era you reach unlocks buildings: see "era"
+# on each building below and ROAD_ERA.
+const ERA_ADVANCE := [
+	{"cost": [300, 300, 100, 0], "time": 45.0, "needs": [["pop", 15], ["hut", 3], ["farm", 1], ["storehouse", 1]]},
+	null,
+	null,
+	null,
+]
+const ROAD_ERA := 1  # paved roads are Era II (the Via Appia dates from 312 BC)
 const FARM_FOOD := 250
 const FARM_REGROW_TIME := 20.0  # seconds a harvested field takes to ripen again
 
@@ -48,7 +59,7 @@ const BUILDINGS := {
 		"build_time": 10.0, "sight": 4.0, "accepts": [], "pop": 3,
 	},
 	"house": {
-		"name": "Domus", "acc": "Domum", "english": "House", "done": "perfecta est", "ready": "Parata",
+		"name": "Domus", "acc": "Domum", "english": "House", "done": "perfecta est", "ready": "Parata", "era": 1,
 		"size": Vector2i(2, 2), "cost": [50, 0, 0, 0],
 		"build_time": 20.0, "sight": 4.0, "accepts": [], "pop": 5,
 	},

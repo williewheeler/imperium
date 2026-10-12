@@ -5,6 +5,7 @@ extends CanvasLayer
 signal build_requested(kind: String)
 signal train_requested
 signal road_requested
+signal advance_requested
 
 const GOLD := Color("e8c766")
 const CREAM := Color("f3e6c4")
@@ -34,6 +35,7 @@ var _game  # Main
 var _theme := Theme.new()
 var _era_num: Label
 var _era_name: Label
+var _era_prog: Label
 var _res_labels: Array[Label] = []
 var _pop_label: Label
 var _sel_name: Label
@@ -84,8 +86,11 @@ func setup(game) -> void:
 	_era_num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_era_name = _label("", 18)
 	_era_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_era_prog = _label("", 11, GOLD)
+	_era_prog.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bv.add_child(_era_num)
 	bv.add_child(_era_name)
+	bv.add_child(_era_prog)
 
 	var help := _panel(1, 0)
 	var hv := VBoxContainer.new()
@@ -186,6 +191,10 @@ func refresh() -> void:
 	var era: Dictionary = Defs.ERAS[_game.era]
 	_say(_era_num, "Aetas %s" % era["numeral"], "Era %s" % era["numeral"])
 	_say(_era_name, era["latin"], "%s  (%s)" % [era["english"], era["years"]])
+	_era_prog.visible = _game.advancing
+	if _game.advancing:
+		var pct := int(_game.advance_progress / float(_game.advance_data()["time"]) * 100.0)
+		_say(_era_prog, "Progreditur %d%%" % pct, "Advancing to the next era: %d%% done" % pct)
 
 	var us: Array[Unit] = _game.selected_units()
 	var b: Building = _game.selected_building()
@@ -198,11 +207,25 @@ func refresh() -> void:
 		_mode = mode
 		_rebuild_buttons(mode)
 	for btn in _buttons:
+		if btn.get_meta("advance", false):  # the era-advance button explains itself in full
+			btn.disabled = not _game.can_advance()
+			btn.tooltip_text = _game.advance_tooltip()
+			continue
 		var base: String = btn.get_meta("tip")
+		var need_era: int = btn.get_meta("era", 0)
+		var locked: bool = need_era > _game.era
 		var poor: bool = not _game.can_afford(btn.get_meta("cost"))
 		var full: bool = btn.get_meta("train", false) and not _game.has_pop_room()
-		btn.disabled = poor or full
-		btn.tooltip_text = base + ("  —  not enough resources" if poor else "  —  population limit reached: build a House" if full else "")
+		btn.lock_numeral = Defs.ERAS[need_era]["numeral"] if locked else ""
+		btn.disabled = locked or poor or full
+		var why := ""
+		if locked:
+			why = "  —  unlocks in Era %s (%s)" % [Defs.ERAS[need_era]["numeral"], Defs.ERAS[need_era]["english"]]
+		elif poor:
+			why = "  —  not enough resources"
+		elif full:
+			why = "  —  population limit reached: build a House"
+		btn.tooltip_text = base + why
 
 	_bar.visible = false
 	if _game.placing_road:
@@ -273,12 +296,17 @@ func _rebuild_buttons(mode: String) -> void:
 				var def: Dictionary = Defs.BUILDINGS[kind]
 				_add_button(kind, def["name"], "Build a %s (%s)" % [def["english"], _cost_text(def["cost"])],
 					def["cost"], func() -> void: build_requested.emit(kind))
+				_buttons[-1].set_meta("era", def.get("era", 0))
 			_add_button("via", "Via", "Lay a paved road: drag across the ground (%s per tile). Villagers pave it tile by tile." % _cost_text(Defs.ROAD_COST),
 				Defs.ROAD_COST, func() -> void: road_requested.emit())
+			_buttons[-1].set_meta("era", Defs.ROAD_ERA)
 		"town_center":
 			_add_button("villager", "Colonus", "Train a villager (%s)" % _cost_text(Defs.VILLAGER_COST),
 				Defs.VILLAGER_COST, func() -> void: train_requested.emit())
 			_buttons[-1].set_meta("train", true)
+			var adv: Variant = _game.advance_data()
+			_add_button("advance", "Progredere", "", adv["cost"] if adv != null else [0, 0, 0, 0], func() -> void: advance_requested.emit())
+			_buttons[-1].set_meta("advance", true)
 
 
 ## An icon button: `icon` picks the picture, `caption` is the short Latin label, and `english`

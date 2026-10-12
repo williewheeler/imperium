@@ -12,6 +12,11 @@ const FILL := {
 var icon_kind := ""  # "town_center", "house", "storehouse" or "villager"
 var caption := ""  # already in Roman lettering (see Latin.t)
 var cost: Array = []
+var lock_numeral := "":  # e.g. "II" while this needs a later era
+	set(v):
+		if v != lock_numeral:
+			lock_numeral = v
+			queue_redraw()
 
 var _styles := {}
 
@@ -45,6 +50,9 @@ func _draw() -> void:
 			state = "disabled"
 	draw_style_box(_styles[state], Rect2(Vector2.ZERO, size))
 	_draw_icon(Vector2(size.x / 2.0, 36))
+	if lock_numeral != "":  # locked: dimmed, with the era that unlocks it
+		draw_rect(Rect2(Vector2(3, 3), size - Vector2(6, 6)), Color(0.05, 0.03, 0.03, 0.45))
+		draw_string(Latin.FONT, Vector2(size.x - 30, 17), lock_numeral, HORIZONTAL_ALIGNMENT_RIGHT, 24, 12, GOLD)
 	var text_color := Color(CREAM, 0.45) if disabled else CREAM
 	draw_string(Latin.FONT, Vector2(0, size.y - 25), caption, HORIZONTAL_ALIGNMENT_CENTER, size.x, 13, text_color)
 	_draw_cost(size.y - 9, text_color)

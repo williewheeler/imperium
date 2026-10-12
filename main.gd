@@ -39,6 +39,8 @@ var placing_road := false  # laying a paved road: drag across the ground to pain
 var road_drag: Array[Vector2i] = []  # tiles under the current drag (or just the hovered tile)
 var road_plans := {}  # Vector2i -> Unit or null: tiles queued for paving, and who is on the job
 var era := 0  # index into Defs.ERAS
+var advancing := false  # an era advance is being researched at the Forum
+var advance_progress := 0.0  # seconds into it
 var selected_deposit := Vector2i(-1, -1)  # clicked resource tile, or (-1, -1)
 var dragging := false
 var drag_rect := Rect2()  # world pixels
@@ -112,6 +114,7 @@ func _ready() -> void:
 		placing = kind
 		_cancel_road_mode())
 	hud.road_requested.connect(start_road_mode)
+	hud.advance_requested.connect(start_advance)
 	hud.train_requested.connect(_train_villager)
 	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: cam_pos = Iso.to_screen(tile_pos))
 	hud.flash("Elige colonos et iube eos laborare.")
@@ -122,6 +125,8 @@ func _ready() -> void:
 	if args.has("select"):
 		for u in units:
 			u.selected = true
+	if args.has("forum"):
+		buildings[0].selected = true
 	if args.has("showcase"):
 		_show_duration = float(args.get("duration", 60.0))
 		_showcase_setup()
@@ -458,6 +463,10 @@ func _order_build(u: Unit, b: Building) -> void:
 
 
 func _try_place() -> void:
+	if era < int(Defs.BUILDINGS[placing].get("era", 0)):
+		hud.flash("Nondum licet.")
+		placing = ""
+		return
 	var tile := placing_tile()
 	var err := placement_error(placing, tile)
 	if err != "":
@@ -551,6 +560,9 @@ func _mouse_tile() -> Vector2i:
 
 
 func start_road_mode() -> void:
+	if era < Defs.ROAD_ERA:
+		hud.flash("Nondum licet.")
+		return
 	placing = ""
 	placing_road = true
 
@@ -559,6 +571,86 @@ func _cancel_road_mode() -> void:
 	placing_road = false
 	_road_dragging = false
 	road_drag.clear()
+
+
+# ---------- Eras ----------
+
+func _count_built(kind: String) -> int:
+	var n := 0
+	for b in buildings:
+		if b.kind == kind and b.complete:
+			n += 1
+	return n
+
+
+## The next advance's data (cost, time, needs), or null if there isn't one yet.
+func advance_data() -> Variant:
+	return Defs.ERA_ADVANCE[era] if era < Defs.ERA_ADVANCE.size() else null
+
+
+## What the next advance needs, as [English text, met?] pairs.
+func advance_requirements() -> Array:
+	var out := []
+	var data: Variant = advance_data()
+	if data == null:
+		return out
+	for need: Array in data["needs"]:
+		var want: int = need[1]
+		if need[0] == "pop":
+			out.append(["Population %d (you have %d)" % [want, units.size()], units.size() >= want])
+		else:
+			var have := _count_built(need[0])
+			out.append(["%d x %s (you have %d)" % [want, Defs.BUILDINGS[need[0]]["english"], have], have >= want])
+	return out
+
+
+func can_advance() -> bool:
+	var data: Variant = advance_data()
+	if data == null or advancing:
+		return false
+	for r: Array in advance_requirements():
+		if not r[1]:
+			return false
+	return can_afford(data["cost"])
+
+
+## English tooltip for the Advance button: what it gets you, what it costs, what's still missing.
+func advance_tooltip() -> String:
+	var data: Variant = advance_data()
+	if data == null:
+		return "No further advance is available yet."
+	var next: Dictionary = Defs.ERAS[era + 1]
+	var cost_parts: Array[String] = []
+	for i in 4:
+		if data["cost"][i] > 0:
+			cost_parts.append("%d %s" % [data["cost"][i], Defs.RES_ENGLISH[i].to_lower()])
+	var lines: Array[String] = [
+		"Advance to Era %s: %s (%s)" % [next["numeral"], next["english"], next["years"]],
+		"Cost: %s  -  takes %d seconds" % [", ".join(cost_parts), int(data["time"])],
+	]
+	for r: Array in advance_requirements():
+		lines.append("  %s  %s" % ["[met]   " if r[1] else "[needed]", r[0]])
+	return "\n".join(lines)
+
+
+func start_advance() -> void:
+	if not can_advance():
+		return
+	_pay(advance_data()["cost"])
+	advancing = true
+	advance_progress = 0.0
+	hud.flash("Progredimur.", "Advancing to the next era...")
+
+
+func _update_advance(delta: float) -> void:
+	if not advancing:
+		return
+	advance_progress += delta
+	if advance_progress >= float(advance_data()["time"]):
+		advancing = false
+		era += 1
+		var e: Dictionary = Defs.ERAS[era]
+		hud.flash("Aetas %s: %s" % [e["numeral"], e["latin"]], "Era %s begins: %s (%s)" % [e["numeral"], e["english"], e["years"]])
 
 
 ## Tiles along a straight line between two tiles (Bresenham), for dragging out a road.
@@ -614,6 +706,9 @@ func _update_road_drag() -> void:
 
 ## Pays for the dragged tiles and sends the selected villagers to pave them.
 func _commit_road(line: Array[Vector2i]) -> void:
+	if era < Defs.ROAD_ERA:
+		hud.flash("Nondum licet.")
+		return
 	var tiles: Array[Vector2i] = []
 	for p in line:
 		if road_tile_error(p) == "":
@@ -693,6 +788,7 @@ func _process(delta: float) -> void:
 			_finish_select(drag_rect, Input.is_key_pressed(KEY_SHIFT))
 
 	_update_road_drag()
+	_update_advance(delta)
 	if _show_on:
 		_showcase_update(delta)
 	if selected_deposit.x >= 0 and not map.deposits.has(selected_deposit):

@@ -37,7 +37,7 @@ historians draw the end points differently.
 | V | Dominatus | The Late Empire | 284–476 AD | Diocletian's reforms, Constantine (Christianity legalised 313, Constantinople 330), the permanent split in 395, Rome sacked in 410 and 455, last Western emperor deposed 476. (The Eastern half lasted until 1453; out of scope.) |
 
 The era shows in a banner at the top centre of the screen: `AETAS I` over `REGNVM`, with the English
-name and dates on hover. **Built** (display only; see Advancement for what's still to do).
+name and dates on hover, and a progress readout while an advance is under way. **Built.**
 
 ### What each era is for (flavour and content)
 
@@ -54,7 +54,8 @@ name and dates on hover. **Built** (display only; see Advancement for what's sti
 ## Advancing through eras — decided: option A
 
 The player advances at the **Forum** with an **Advance** button (Latin: *Progredere*), as in Age of
-Empires. Advancing costs resources and has prerequisites, and takes some time. New buildings and
+Empires. **Built for Era I → II** (the Forum's command bar; hover the button for the cost and a
+checklist of what is still missing). Advancing costs resources and has prerequisites, and takes some time. New buildings and
 features unlock only once you have reached the era.
 
 Why this over the alternatives (automatic milestones, or "prestige" points): it is familiar,
@@ -64,7 +65,7 @@ predictable, and makes use of the buildings we already have.
 
 | To reach | Cost | Prerequisites | Time |
 |---|---|---|---|
-| II Res Publica | 300 food, 300 wood, 100 stone | population 15; 3 Casae; a working Ager; a Horreum | ~45 s |
+| II Res Publica | 300 food, 300 wood, 100 stone | population 15; 3 Casae; a working Ager; a Horreum | 45 s — **built** (`Defs.ERA_ADVANCE`) |
 | III Imperium Populi Romani | *open* | *open* — should lean on Era II content: Domus, paved road tiles, Curia | |
 | IV Principatus | *open* | | |
 | V Dominatus | *open* — probably triggered by the Crisis of the Third Century rather than bought | | |
@@ -74,8 +75,9 @@ predictable, and makes use of the buildings we already have.
 - **Era I (Regnum):** Forum, Casa, Ager, Horreum, dirt roads (these wear into the ground from foot
   traffic and need no building).
 - **Era II (Res Publica):** the stone **Domus** and **paved roads (Via)** are locked until Era II. The
-  historical hook is the Via Appia in 312 BC. *(Today the game still offers both from the start;
-  gating them is the next piece of work.)*
+  historical hook is the Via Appia in 312 BC. **Built:** while locked, their buttons show greyed with the
+  unlocking era's numeral (II) and a tooltip saying so; placing one is refused (*Nondum licet*, "not yet
+  allowed"). The Domus's `era` and `Defs.ROAD_ERA` set the gates.
 - Later eras: see the content table above.
 
 A full **tech tree** (upgrades such as better axes or farming) is a separate, larger piece of work;
@@ -93,6 +95,8 @@ era gating of buildings comes first.
   The Forum trains villagers.
 - **Roads:** dirt roads wear into the ground where villagers walk (faster, preferred by pathfinding);
   **paved roads** can be laid by dragging, paid for in stone and built tile by tile by villagers.
+- **Eras:** the banner, the Forum's Advance button (Era I → II), and era-gated buildings (Domus and paved
+  roads unlock in Era II).
 - **Interface:** Latin text with English tooltips; icon command bar; resource panel for a clicked
   deposit; era banner.
 - **Art pipeline:** sprites are drawn in code (`art.gd`) and baked into editable PNG sheets and a Godot
