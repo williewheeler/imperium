@@ -127,6 +127,21 @@ func _ready() -> void:
 			u.selected = true
 	if args.has("forum"):
 		buildings[0].selected = true
+	if args.has("builds"):  # debug: buildings at several stages of construction
+		var specs := [["house", 0.3], ["storehouse", 0.65], ["hut", 0.5], ["house", 1.0]]
+		var offs := [Vector2i(-6, 2), Vector2i(4, 4), Vector2i(-3, 6), Vector2i(6, -2)]
+		for i in specs.size():
+			var spot := map.find_site(Defs.BUILDINGS[specs[i][0]]["size"], buildings[0].tile + offs[i], 0, 4, [])
+			if spot.x >= 0:
+				var b := _add_building(specs[i][0], spot, specs[i][1] >= 1.0)
+				b.work = float(b.def()["build_time"]) * float(specs[i][1])
+	if args.has("ring"):  # debug: villagers standing around the Forum's walls, to check drawing order
+		var r := buildings[0].rect()
+		var spots := [Vector2(r.position.x + 0.6, r.end.y + 0.5), Vector2(r.position.x + 1.6, r.end.y + 0.5),
+			Vector2(r.end.x + 0.5, r.position.y + 1.6), Vector2(r.end.x + 0.5, r.position.y + 0.6),
+			Vector2(r.position.x - 0.5, r.position.y + 1.5)]
+		for i in units.size():
+			units[i].pos = spots[i]
 	if args.has("showcase"):
 		_show_duration = float(args.get("duration", 60.0))
 		_showcase_setup()

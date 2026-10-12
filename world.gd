@@ -110,7 +110,8 @@ func _process(_delta: float) -> void:
 		if not _building_views.has(b):
 			var v := BuildingView.new()
 			v.building = b
-			(decals if b.kind == "farm" else objects).add_child(v)
+			v.objects = objects
+			decals.add_child(v)
 			_building_views[b] = v
 		_building_views[b].update_view()
 	for p: Vector2i in _deposit_nodes.keys():  # a mine or bush that got used up
