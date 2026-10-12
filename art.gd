@@ -45,6 +45,7 @@ const BUILDING_GEOM := {
 	"house": {"a": 2, "b": 2, "ridge": 25.0},
 	"storehouse": {"a": 2, "b": 2, "ridge": 25.0},
 	"hut": {"a": 1, "b": 1, "ridge": 22.0},
+	"regia": {"a": 3, "b": 3, "ridge": 30.0},
 	"farm": {"a": 3, "b": 3, "ridge": 6.0},
 	"vineyard": {"a": 3, "b": 3, "ridge": 9.0},
 	"curia": {"a": 3, "b": 3, "ridge": 33.0},
@@ -128,6 +129,8 @@ static func image(key: String) -> Image:
 			return _villager(parts[1], parts[2] == "b", int(parts[3]), "soldier")
 		"hut":
 			return _hut()
+		"regia":
+			return _regia()
 		"farm":  # farm:<stage> 0 ripe .. 3 freshly sown
 			return _farm(variant)
 		"town_center":
@@ -614,7 +617,7 @@ static func _pack(res: int, level: int) -> Image:
 
 ## Pixel inside a building's texture that sits on the front (bottom) corner of its footprint.
 static func building_anchor(kind: String) -> Vector2:
-	var g: Dictionary = BUILDING_GEOM[kind]
+	var g: Dictionary = BUILDING_GEOM[kind.split(":")[0]]
 	var a: int = g["a"]
 	var b: int = g["b"]
 	return Vector2(a * 16 + 1, int((a + b) * 8 + g["ridge"] + 8))
@@ -706,7 +709,7 @@ static func scenery_keys() -> Array[String]:
 
 
 static func building_keys() -> Array[String]:
-	return ["town_center", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
+	return ["town_center", "regia", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
 		"curia", "aqueduct", "castra", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
 
 
@@ -803,12 +806,18 @@ static func _hut() -> Image:
 	var img := Pixel.blank(32, hs)
 	var f := Frame.new(Vector2(16, hs - 1 - 16))
 	_dirt_patch(img, f, 1.0, 0.0)
-	var cx := 16.0
-	var base_y := float(hs - 1 - 8)  # centre of the footprint diamond
-	var rx := 11.0
-	var ry := 5.5
-	var wall_h := 8.0
-	var cone_h := 15.0
+	_round_hut(img, 16.0, float(hs - 1 - 8), 1.0)
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## One round wattle-and-daub hut with a thatched cone, centred at (cx, base_y) on the ground.
+## `s` scales it (1.0 = the 1x1 Casa, whose wall radius is 11 px).
+static func _round_hut(img: Image, cx: float, base_y: float, s: float) -> void:
+	var rx := 11.0 * s
+	var ry := 5.5 * s
+	var wall_h := 8.0 * s
+	var cone_h := 15.0 * s
+	var cone_r := 15.0 * s
 	var apex_y := base_y - wall_h - cone_h
 	var eave_y := base_y - wall_h
 	for y in range(int(eave_y) - 1, int(base_y + ry) + 2):  # the round wall
@@ -820,23 +829,58 @@ static func _hut() -> Image:
 				continue
 			var v := (0.66 if dx < 0.1 else 0.3) + (Pixel.hash2(x, y, 31) - 0.5) * 0.25 - (0.22 if posmod(x, 3) == 0 else 0.0)
 			Pixel.put(img, x, y, Pixel.ramp(WATTLE, v, x, y, 0.15))
-	Pixel.rect(img, int(cx) - 5, int(base_y + 5.0) - 6, 4, 6, WOOD[2])  # low doorway
-	Pixel.rect(img, int(cx) - 4, int(base_y + 5.0) - 5, 2, 5, Color("2c1c12"))
-	for y in range(int(apex_y) - 1, int(eave_y + 7.0) + 2):  # the thatched cone
-		for x in range(int(cx) - 16, int(cx) + 17):
+	Pixel.rect(img, int(cx) - int(5.0 * s), int(base_y + 5.0 * s) - int(6.0 * s), int(4.0 * s), int(6.0 * s), WOOD[2])  # low doorway
+	Pixel.rect(img, int(cx) - int(4.0 * s), int(base_y + 5.0 * s) - int(5.0 * s), maxi(2, int(2.0 * s)), int(5.0 * s), Color("2c1c12"))
+	for y in range(int(apex_y) - 1, int(eave_y + 7.0 * s) + 2):  # the thatched cone
+		for x in range(int(cx - cone_r) - 1, int(cx + cone_r) + 2):
 			var dx := x + 0.5 - cx
 			var t := clampf((y + 0.5 - apex_y) / cone_h, 0.0, 1.0)
-			if y + 0.5 < apex_y or absf(dx) > 15.0 * pow(t, 1.3):  # concave sides, like a real thatched cone
+			if y + 0.5 < apex_y or absf(dx) > cone_r * pow(t, 1.3):  # concave sides, like a real thatched cone
 				continue
-			var low := eave_y + 7.0 * sqrt(maxf(0.0, 1.0 - (dx / 15.0) * (dx / 15.0))) + (Pixel.hash2(x, 7, 9) - 0.5) * 2.4
+			var low := eave_y + 7.0 * s * sqrt(maxf(0.0, 1.0 - (dx / cone_r) * (dx / cone_r))) + (Pixel.hash2(x, 7, 9) - 0.5) * 2.4
 			if y + 0.5 > low:
 				continue
 			# smooth light-to-shade across the roundness, with curved courses of thatch
-			var v := 0.58 - (dx / 15.0) * 0.42 - t * 0.12 + (Pixel.hash2(x, y, 12) - 0.5) * 0.22
-			if posmod(y - int(dx * dx * 0.045), 3) == 0:
+			var v := 0.58 - (dx / cone_r) * 0.42 - t * 0.12 + (Pixel.hash2(x, y, 12) - 0.5) * 0.22
+			if posmod(y - int(dx * dx * 0.045 / s), 3) == 0:
 				v -= 0.2
 			Pixel.put(img, x, y, Pixel.ramp(THATCH, v, x, y, 0.2))
 	Pixel.put(img, int(cx), int(apex_y) - 1, THATCH[3])  # the tied-off peak
+
+
+## Regia: the Era I town centre, the king's house. A great round hall and two lesser huts around
+## a trodden yard with the sacred hearth. (Early Rome was a cluster of thatched huts; the Forum
+## itself was a drained marsh until about 600 BC.) 3x3 tiles.
+static func _regia() -> Image:
+	var n := 3.0
+	var hs := int(n * 16 + 30.0 + 8.0)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	_dirt_patch(img, f, n, 0.0)
+	for i in 2:  # a palisade of stakes along the two back edges
+		for k in 13:
+			var a := f.p(0.15 + k * 0.225, 0.0, 0.0) if i == 0 else f.p(0.0, 0.15 + k * 0.225, 0.0)
+			if k % 2 == 0 or k == 12:
+				Pixel.rect(img, int(a.x), int(a.y) - 7, 2, 7, WOOD[1 + (k % 2)])
+				Pixel.put(img, int(a.x), int(a.y) - 8, WOOD[0])
+	var hall := f.p(1.15, 1.15, 0.0)
+	_round_hut(img, hall.x, hall.y, 1.75)
+	for p: Vector2 in [Vector2(0.55, 2.1), Vector2(2.1, 0.55)]:
+		var c := f.p(p.x, p.y, 0.0)
+		_round_hut(img, c.x, c.y, 0.82)
+	# crossed beams on the great hall's peak
+	var peak := Vector2(hall.x, hall.y - 8.0 * 1.75 - 15.0 * 1.75)
+	for d in [-1, 1]:
+		for k in 5:
+			Pixel.put(img, int(peak.x) + d * k, int(peak.y) - 2 - k, WOOD[1])
+	# the sacred hearth: a ring of stones round a fire
+	var h := f.p(2.15, 2.15, 0.0)
+	for k in 10:
+		var a := TAU * k / 10.0
+		Pixel.rect(img, int(h.x + cos(a) * 5.5), int(h.y + sin(a) * 2.8) - 1, 2, 2, ROCK[1 + (k % 3)])
+	Pixel.rect(img, int(h.x) - 2, int(h.y) - 1, 4, 2, Color("3a2418"))
+	Pixel.poly(img, [Vector2(h.x - 2, h.y - 1), Vector2(h.x + 2, h.y - 1), Vector2(h.x + 1, h.y - 6), Vector2(h.x, h.y - 9), Vector2(h.x - 1, h.y - 6)], Color("e8552b"))
+	Pixel.poly(img, [Vector2(h.x - 1, h.y - 1), Vector2(h.x + 1, h.y - 1), Vector2(h.x, h.y - 6)], Color("ffd24a"))
 	return Pixel.outlined(img, OUT_WARM)
 
 

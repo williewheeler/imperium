@@ -208,6 +208,7 @@ func refresh() -> void:
 
 	if _game.era != _chrome_era:  # a new era brings new chrome
 		_chrome_era = _game.era
+		_mode = ""  # rebuild the buttons: names and icons change with the era
 		for p in _panels:
 			p.set_era(_chrome_era)
 	var era: Dictionary = Defs.ERAS[_game.era]
@@ -254,7 +255,7 @@ func refresh() -> void:
 		_say(_sel_name, "Via", "Road")
 		_say(_sel_info, "Sinistra: trahe  ·  Dextra: abroga", "Left click and drag to lay a road  ·  Right click to stop")
 	elif _game.placing != "":
-		var def: Dictionary = Defs.BUILDINGS[_game.placing]
+		var def: Dictionary = Building.def_for(_game.placing)
 		_say(_sel_name, "Pone %s" % def["acc"], "Place %s" % def["english"])
 		_say(_sel_info, "Sinistra: pone  ·  Dextra: abroga", "Left click: place  ·  Right click: cancel")
 	elif us.size() == 1:
@@ -329,7 +330,7 @@ func _rebuild_buttons(mode: String) -> void:
 	match parts[0]:
 		"villagers":
 			for kind: String in Defs.BUILDINGS:
-				var def: Dictionary = Defs.BUILDINGS[kind]
+				var def: Dictionary = Building.def_for(kind)
 				_add_button(kind, def["name"], "Build a %s (%s)" % [def["english"], _cost_text(def["cost"])],
 					def["cost"], func() -> void: build_requested.emit(kind))
 				_buttons[-1].set_meta("era", def.get("era", 0))

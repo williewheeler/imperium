@@ -58,7 +58,7 @@ func _draw() -> void:
 		elif b.queue > 0:
 			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.train_progress / float(Defs.UNITS[b.def()["trains"]]["time"]), GOLD)
 		if b.complete and b.kind == "town_center":
-			var anchor := Art.building_anchor(b.kind)
+			var anchor := Art.building_anchor(b.sprite_key())
 			var label := Latin.t(b.building_name)
 			var pos := origin + Vector2(-100, -anchor.y + 6)
 			draw_string_outline(Latin.FONT, pos, label, HORIZONTAL_ALIGNMENT_CENTER, 200, 9, 4, Color(0, 0, 0, 0.75))
@@ -105,4 +105,4 @@ func _draw_ghost() -> void:
 	pts.append(pts[0])
 	draw_polyline(pts, Color(tint, 0.95), 1.0)
 	var origin := Iso.to_screen(Vector2(tile + def["size"])).round()
-	draw_texture(Art.tex(game.placing), origin - Art.building_anchor(game.placing), Color(1, 1, 1, 0.6))
+	draw_texture(Art.tex(Building.look_key(game.placing)), origin - Art.building_anchor(Building.look_key(game.placing)), Color(1, 1, 1, 0.6))

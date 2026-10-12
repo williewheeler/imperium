@@ -199,8 +199,8 @@
 		],
 		"aqueduct": [
 			"buildings.png",
-			100,
-			95,
+			1,
+			184,
 			82,
 			82
 		],
@@ -213,7 +213,7 @@
 		],
 		"castra": [
 			"buildings.png",
-			1,
+			100,
 			95,
 			98,
 			84
@@ -234,29 +234,29 @@
 		],
 		"farm:0": [
 			"buildings.png",
-			100,
-			316,
+			1,
+			403,
 			98,
 			64
 		],
 		"farm:1": [
 			"buildings.png",
-			1,
-			384,
+			100,
+			403,
 			98,
 			64
 		],
 		"farm:2": [
 			"buildings.png",
-			100,
-			384,
+			1,
+			468,
 			98,
 			64
 		],
 		"farm:3": [
 			"buildings.png",
-			1,
-			449,
+			100,
+			468,
 			98,
 			64
 		],
@@ -500,15 +500,15 @@
 		],
 		"house": [
 			"buildings.png",
-			183,
-			95,
+			84,
+			184,
 			66,
 			67
 		],
 		"hut": [
 			"buildings.png",
-			100,
-			449,
+			199,
+			468,
 			34,
 			48
 		],
@@ -694,6 +694,13 @@
 			23,
 			26
 		],
+		"regia": [
+			"buildings.png",
+			1,
+			95,
+			98,
+			88
+		],
 		"soldier:idle:b:0": [
 			"villagers.png",
 			0,
@@ -822,8 +829,8 @@
 		],
 		"storehouse": [
 			"buildings.png",
-			1,
-			180,
+			151,
+			184,
 			66,
 			67
 		],
@@ -1347,29 +1354,29 @@
 		],
 		"vineyard:0": [
 			"buildings.png",
-			68,
-			180,
+			1,
+			267,
 			98,
 			67
 		],
 		"vineyard:1": [
 			"buildings.png",
-			1,
-			248,
+			100,
+			267,
 			98,
 			67
 		],
 		"vineyard:2": [
 			"buildings.png",
-			100,
-			248,
+			1,
+			335,
 			98,
 			67
 		],
 		"vineyard:3": [
 			"buildings.png",
-			1,
-			316,
+			100,
+			335,
 			98,
 			67
 		]

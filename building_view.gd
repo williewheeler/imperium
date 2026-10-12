@@ -53,7 +53,7 @@ func remove() -> void:
 
 
 func update_view() -> void:
-	var anchor := Art.building_anchor(building.kind)
+	var anchor := Art.building_anchor(building.sprite_key())
 	if building.sprite_key() != _key:
 		_key = building.sprite_key()
 		var tex := Art.tex(_key)

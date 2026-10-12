@@ -51,6 +51,14 @@ name and dates on hover, and a progress readout while an advance is under way. *
 
 ---
 
+### Era I town centre: the Regia
+
+Early Rome was a cluster of thatched wattle-and-daub huts, and the Forum was a drained marsh (paved c. 600 BC),
+not a marble building. So in Era I the town centre is the **Regia** (the king's house): a great round hall
+beside two lesser huts, a stake palisade and the sacred hearth. Entering Era II upgrades it in place to the
+marble **Forum**. It is the same building in the game logic (`town_center`); only its name and sprite (`regia`
+vs `town_center`) depend on the era (`Building.era`).
+
 ### Era II content — built
 
 | Thing | Latin | Notes |

@@ -14,6 +14,7 @@ const GLOSS := {
 	"Nondum licet.": "Not yet allowed: it unlocks in a later era.",
 	"Progredimur.": "Advancing to the next era...",
 	"Locus occupatus.": "That spot is already taken.",
+	"Regia": "The King's House: the royal hall of early Rome, a great hut beside the sacred hearth.",
 	"Coloni impediunt.": "Villagers are in the way.",
 	"Copiae non sufficiunt.": "Not enough resources.",
 	"Iter nullum est.": "There is no route there.",

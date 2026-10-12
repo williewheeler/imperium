@@ -1,6 +1,10 @@
 class_name Building
 extends RefCounted
 
+## The era the game is in. The town centre changes from the Regia to the marble Forum in Era II.
+static var era := 0
+static var _regia_def := {}
+
 var kind: String
 var building_name := ""
 var tile := Vector2i.ZERO  # top-left footprint tile
@@ -15,7 +19,21 @@ var regrow := 0.0  # fields: seconds since they were emptied
 
 
 func def() -> Dictionary:
-	return Defs.BUILDINGS[kind]
+	return def_for(kind)
+
+
+## Building data, with the town centre named for the era (Regia before Era II, Forum after).
+static func def_for(k: String) -> Dictionary:
+	if k == "town_center" and era < 1:
+		if _regia_def.is_empty():
+			_regia_def = Defs.BUILDINGS[k].merged({"name": "Regia", "acc": "Regiam", "english": "King's House (Town Center)"}, true)
+		return _regia_def
+	return Defs.BUILDINGS[k]
+
+
+## Sprite key for a building kind in the current era.
+static func look_key(k: String) -> String:
+	return "regia" if k == "town_center" and era < 1 else k
 
 
 ## Fields (wheat, vines) are flat, renewable crops that villagers work.
@@ -25,7 +43,7 @@ func is_field() -> bool:
 
 ## Key of the sprite to draw (fields change picture as they're harvested).
 func sprite_key() -> String:
-	return "%s:%d" % [kind, stage] if is_field() else kind
+	return "%s:%d" % [kind, stage] if is_field() else look_key(kind)
 
 
 ## The tile at the middle of the footprint (where a field's crop lives).

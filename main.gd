@@ -38,7 +38,10 @@ var placing := ""  # building kind currently being placed, or ""
 var placing_road := false  # laying a paved road: drag across the ground to paint tiles
 var road_drag: Array[Vector2i] = []  # tiles under the current drag (or just the hovered tile)
 var road_plans := {}  # Vector2i -> Unit or null: tiles queued for paving, and who is on the job
-var era := 0  # index into Defs.ERAS
+var era := 0:  # index into Defs.ERAS
+	set(v):
+		era = v
+		Building.era = v
 var advancing := false  # an era advance is being researched at the Forum
 var advance_progress := 0.0  # seconds into it
 var selected_deposit := Vector2i(-1, -1)  # clicked resource tile, or (-1, -1)
@@ -346,8 +349,8 @@ func _finish_select(rect: Rect2, additive: bool) -> void:
 func building_under(mp: Vector2) -> Building:
 	var hit: Building = null
 	for b in buildings:
-		var origin := Iso.to_screen(Vector2(b.tile + b.size)).round() - Art.building_anchor(b.kind)
-		if Art.solid_at(b.kind, Vector2i((mp - origin).floor())) and (hit == null or b.tile.y > hit.tile.y):
+		var origin := Iso.to_screen(Vector2(b.tile + b.size)).round() - Art.building_anchor(b.sprite_key())
+		if Art.solid_at(b.sprite_key(), Vector2i((mp - origin).floor())) and (hit == null or b.tile.y > hit.tile.y):
 			hit = b
 	return hit
 

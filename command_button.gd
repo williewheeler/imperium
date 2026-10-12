@@ -90,7 +90,7 @@ func _draw_cost(y: float, text_color: Color) -> void:
 
 func _draw_icon(c: Vector2) -> void:
 	var key := icon_kind + ":idle:f:0" if icon_kind in ["villager", "soldier"] else icon_kind
-	var t: Texture2D = Art.tex(key) if icon_kind in ["villager", "soldier"] else Art.icon(key, 17 if compact else 30)
+	var t: Texture2D = Art.tex(key) if icon_kind in ["villager", "soldier"] else Art.icon(Building.look_key(key), 17 if compact else 30)
 	var scale := 2.0
 	var sz := t.get_size() * scale
 	draw_texture_rect(t, Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz), false, Color(0.45, 0.45, 0.45, 0.7) if disabled else Color.WHITE)
