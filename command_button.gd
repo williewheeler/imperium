@@ -12,6 +12,11 @@ const FILL := {
 var icon_kind := ""  # "town_center", "house", "storehouse" or "villager"
 var caption := ""  # already in Roman lettering (see Latin.t)
 var cost: Array = []
+var compact := false:  # a smaller button, so the bar can hold ten of them in two rows
+	set(v):
+		compact = v
+		custom_minimum_size = Vector2(64, 70) if v else Vector2(92, 98)
+		queue_redraw()
 var lock_numeral := "":  # e.g. "II" while this needs a later era
 	set(v):
 		if v != lock_numeral:
@@ -49,13 +54,16 @@ func _draw() -> void:
 		DRAW_DISABLED:
 			state = "disabled"
 	draw_style_box(_styles[state], Rect2(Vector2.ZERO, size))
-	_draw_icon(Vector2(size.x / 2.0, 36))
+	_draw_icon(Vector2(size.x / 2.0, 26 if compact else 36))
 	if lock_numeral != "":  # locked: dimmed, with the era that unlocks it
 		draw_rect(Rect2(Vector2(3, 3), size - Vector2(6, 6)), Color(0.05, 0.03, 0.03, 0.45))
 		draw_string(Latin.FONT, Vector2(size.x - 30, 17), lock_numeral, HORIZONTAL_ALIGNMENT_RIGHT, 24, 12, GOLD)
 	var text_color := Color(CREAM, 0.45) if disabled else CREAM
-	draw_string(Latin.FONT, Vector2(0, size.y - 25), caption, HORIZONTAL_ALIGNMENT_CENTER, size.x, 13, text_color)
-	_draw_cost(size.y - 9, text_color)
+	var font_px := 11 if compact else 13
+	while font_px > 7 and Latin.FONT.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_px).x > size.x - 4.0:
+		font_px -= 1  # long Latin names (AQVAEDVCTVS) shrink to fit
+	draw_string(Latin.FONT, Vector2(0, size.y - (21 if compact else 25)), caption, HORIZONTAL_ALIGNMENT_CENTER, size.x, font_px, text_color)
+	_draw_cost(size.y - (7 if compact else 9), text_color)
 
 
 ## Greys a colour out while the button is disabled.
@@ -81,8 +89,8 @@ func _draw_cost(y: float, text_color: Color) -> void:
 
 
 func _draw_icon(c: Vector2) -> void:
-	var key := "villager:idle:f:0" if icon_kind == "villager" else icon_kind
-	var t: Texture2D = Art.tex(key) if icon_kind == "villager" else Art.icon(key)
+	var key := icon_kind + ":idle:f:0" if icon_kind in ["villager", "soldier"] else icon_kind
+	var t: Texture2D = Art.tex(key) if icon_kind in ["villager", "soldier"] else Art.icon(key, 20 if compact else 30)
 	var scale := 2.0
 	var sz := t.get_size() * scale
 	draw_texture_rect(t, Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz), false, Color(0.45, 0.45, 0.45, 0.7) if disabled else Color.WHITE)

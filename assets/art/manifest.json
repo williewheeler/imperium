@@ -161,6 +161,30 @@
 					"villager:build:b:3",
 					"villager:build:b:4",
 					"villager:build:b:5"
+				],
+				[
+					"soldier:idle:f:0",
+					"soldier:idle:f:1"
+				],
+				[
+					"soldier:idle:b:0",
+					"soldier:idle:b:1"
+				],
+				[
+					"soldier:walk:f:0",
+					"soldier:walk:f:1",
+					"soldier:walk:f:2",
+					"soldier:walk:f:3",
+					"soldier:walk:f:4",
+					"soldier:walk:f:5"
+				],
+				[
+					"soldier:walk:b:0",
+					"soldier:walk:b:1",
+					"soldier:walk:b:2",
+					"soldier:walk:b:3",
+					"soldier:walk:b:4",
+					"soldier:walk:b:5"
 				]
 			]
 		}
@@ -168,71 +192,99 @@
 	"sprites": {
 		"advance": [
 			"scenery.png",
-			198,
+			141,
 			1,
 			28,
 			32
 		],
+		"aqueduct": [
+			"buildings.png",
+			100,
+			95,
+			82,
+			82
+		],
 		"berries": [
 			"scenery.png",
-			135,
-			85,
+			63,
+			75,
 			19,
 			15
+		],
+		"castra": [
+			"buildings.png",
+			1,
+			95,
+			98,
+			84
+		],
+		"curia": [
+			"buildings.png",
+			100,
+			1,
+			98,
+			91
 		],
 		"cypress:0": [
 			"scenery.png",
 			25,
-			58,
+			48,
 			11,
 			26
 		],
 		"farm:0": [
 			"buildings.png",
-			1,
-			95,
+			100,
+			316,
 			98,
 			64
 		],
 		"farm:1": [
 			"buildings.png",
-			100,
-			95,
+			1,
+			384,
 			98,
 			64
 		],
 		"farm:2": [
 			"buildings.png",
-			1,
-			160,
+			100,
+			384,
 			98,
 			64
 		],
 		"farm:3": [
 			"buildings.png",
-			100,
-			160,
+			1,
+			449,
 			98,
 			64
 		],
-		"frame": [
+		"frame:0": [
 			"scenery.png",
+			199,
 			1,
+			28,
+			28
+		],
+		"frame:1": [
+			"scenery.png",
+			170,
 			1,
-			56,
-			56
+			28,
+			28
 		],
 		"gold:0": [
 			"scenery.png",
-			168,
-			58,
+			184,
+			48,
 			26,
 			19
 		],
 		"gold:1": [
 			"scenery.png",
 			141,
-			58,
+			48,
 			26,
 			19
 		],
@@ -435,202 +487,202 @@
 		"hill:0": [
 			"scenery.png",
 			37,
-			58,
+			48,
 			32,
 			25
 		],
 		"hill:1": [
 			"scenery.png",
 			70,
-			58,
+			48,
 			32,
 			25
 		],
 		"house": [
 			"buildings.png",
-			100,
-			1,
+			183,
+			95,
 			66,
 			67
 		],
 		"hut": [
 			"buildings.png",
-			199,
-			160,
+			100,
+			449,
 			34,
 			48
 		],
 		"icon:food": [
 			"scenery.png",
-			103,
-			85,
+			131,
+			75,
 			15,
 			15
 		],
 		"icon:gold": [
 			"scenery.png",
-			71,
-			85,
+			99,
+			75,
 			15,
 			15
 		],
 		"icon:pop": [
 			"scenery.png",
-			55,
-			85,
+			83,
+			75,
 			15,
 			15
 		],
 		"icon:stone": [
 			"scenery.png",
-			87,
-			85,
+			115,
+			75,
 			15,
 			15
 		],
 		"icon:wood": [
 			"scenery.png",
-			119,
-			85,
+			147,
+			75,
 			15,
 			15
 		],
 		"mountain:0": [
 			"scenery.png",
-			128,
+			71,
 			1,
 			34,
 			38
 		],
 		"mountain:1": [
 			"scenery.png",
-			93,
+			36,
 			1,
 			34,
 			42
 		],
 		"mountain:2": [
 			"scenery.png",
-			58,
+			1,
 			1,
 			34,
 			46
 		],
 		"mountain:3": [
 			"scenery.png",
-			163,
+			106,
 			1,
 			34,
 			38
 		],
 		"oak:0": [
 			"scenery.png",
-			195,
-			58,
+			168,
+			48,
 			15,
 			19
 		],
 		"oak:1": [
 			"scenery.png",
 			123,
-			58,
+			48,
 			17,
 			21
 		],
 		"oak:2": [
 			"scenery.png",
 			103,
-			58,
+			48,
 			19,
 			23
 		],
 		"pack:0:0": [
 			"scenery.png",
-			243,
-			85,
+			235,
+			75,
 			7,
 			6
 		],
 		"pack:0:1": [
 			"scenery.png",
-			211,
-			85,
+			203,
+			75,
 			7,
 			8
 		],
 		"pack:0:2": [
 			"scenery.png",
-			155,
-			85,
+			187,
+			75,
 			7,
 			10
 		],
 		"pack:1:0": [
 			"scenery.png",
-			235,
-			85,
+			1,
+			94,
 			7,
 			6
 		],
 		"pack:1:1": [
 			"scenery.png",
-			203,
-			85,
+			219,
+			75,
 			7,
 			8
 		],
 		"pack:1:2": [
 			"scenery.png",
-			163,
-			85,
+			179,
+			75,
 			7,
 			10
 		],
 		"pack:2:0": [
 			"scenery.png",
-			227,
-			85,
+			243,
+			75,
 			7,
 			6
 		],
 		"pack:2:1": [
 			"scenery.png",
-			195,
-			85,
+			211,
+			75,
 			7,
 			8
 		],
 		"pack:2:2": [
 			"scenery.png",
 			171,
-			85,
+			75,
 			7,
 			10
 		],
 		"pack:3:0": [
 			"scenery.png",
-			219,
-			85,
+			227,
+			75,
 			7,
 			6
 		],
 		"pack:3:1": [
 			"scenery.png",
-			187,
-			85,
+			195,
+			75,
 			7,
 			8
 		],
 		"pack:3:2": [
 			"scenery.png",
-			179,
-			85,
+			163,
+			75,
 			7,
 			10
 		],
 		"pine:0": [
 			"scenery.png",
-			227,
+			228,
 			1,
 			23,
 			26
@@ -638,28 +690,140 @@
 		"pine:1": [
 			"scenery.png",
 			1,
-			58,
+			48,
 			23,
 			26
 		],
+		"soldier:idle:b:0": [
+			"villagers.png",
+			0,
+			360,
+			22,
+			24
+		],
+		"soldier:idle:b:1": [
+			"villagers.png",
+			22,
+			360,
+			22,
+			24
+		],
+		"soldier:idle:f:0": [
+			"villagers.png",
+			0,
+			336,
+			22,
+			24
+		],
+		"soldier:idle:f:1": [
+			"villagers.png",
+			22,
+			336,
+			22,
+			24
+		],
+		"soldier:walk:b:0": [
+			"villagers.png",
+			0,
+			408,
+			22,
+			24
+		],
+		"soldier:walk:b:1": [
+			"villagers.png",
+			22,
+			408,
+			22,
+			24
+		],
+		"soldier:walk:b:2": [
+			"villagers.png",
+			44,
+			408,
+			22,
+			24
+		],
+		"soldier:walk:b:3": [
+			"villagers.png",
+			66,
+			408,
+			22,
+			24
+		],
+		"soldier:walk:b:4": [
+			"villagers.png",
+			88,
+			408,
+			22,
+			24
+		],
+		"soldier:walk:b:5": [
+			"villagers.png",
+			110,
+			408,
+			22,
+			24
+		],
+		"soldier:walk:f:0": [
+			"villagers.png",
+			0,
+			384,
+			22,
+			24
+		],
+		"soldier:walk:f:1": [
+			"villagers.png",
+			22,
+			384,
+			22,
+			24
+		],
+		"soldier:walk:f:2": [
+			"villagers.png",
+			44,
+			384,
+			22,
+			24
+		],
+		"soldier:walk:f:3": [
+			"villagers.png",
+			66,
+			384,
+			22,
+			24
+		],
+		"soldier:walk:f:4": [
+			"villagers.png",
+			88,
+			384,
+			22,
+			24
+		],
+		"soldier:walk:f:5": [
+			"villagers.png",
+			110,
+			384,
+			22,
+			24
+		],
 		"stone:0": [
 			"scenery.png",
-			28,
-			85,
+			211,
+			48,
 			26,
 			18
 		],
 		"stone:1": [
 			"scenery.png",
-			1,
-			85,
+			36,
+			75,
 			26,
 			18
 		],
 		"storehouse": [
 			"buildings.png",
-			167,
 			1,
+			180,
 			66,
 			67
 		],
@@ -672,8 +836,8 @@
 		],
 		"via": [
 			"scenery.png",
-			211,
-			58,
+			1,
+			75,
 			34,
 			18
 		],
@@ -1180,6 +1344,34 @@
 			48,
 			22,
 			24
+		],
+		"vineyard:0": [
+			"buildings.png",
+			68,
+			180,
+			98,
+			67
+		],
+		"vineyard:1": [
+			"buildings.png",
+			1,
+			248,
+			98,
+			67
+		],
+		"vineyard:2": [
+			"buildings.png",
+			100,
+			248,
+			98,
+			67
+		],
+		"vineyard:3": [
+			"buildings.png",
+			1,
+			316,
+			98,
+			67
 		]
 	},
 	"version": 1

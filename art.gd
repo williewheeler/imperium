@@ -41,11 +41,15 @@ const RES_COLORS := [Color("8a5a2b"), Color("d94a4a"), Color("a8a8a8"), Color("f
 
 ## Footprint size (tiles) and roof height of each building, which fix where its ground corner is.
 const BUILDING_GEOM := {
-	"town_center": {"n": 3, "ridge": 35.0},
-	"house": {"n": 2, "ridge": 25.0},
-	"storehouse": {"n": 2, "ridge": 25.0},
-	"hut": {"n": 1, "ridge": 22.0},
-	"farm": {"n": 3, "ridge": 6.0},
+	"town_center": {"a": 3, "b": 3, "ridge": 35.0},
+	"house": {"a": 2, "b": 2, "ridge": 25.0},
+	"storehouse": {"a": 2, "b": 2, "ridge": 25.0},
+	"hut": {"a": 1, "b": 1, "ridge": 22.0},
+	"farm": {"a": 3, "b": 3, "ridge": 6.0},
+	"vineyard": {"a": 3, "b": 3, "ridge": 9.0},
+	"curia": {"a": 3, "b": 3, "ridge": 33.0},
+	"aqueduct": {"a": 4, "b": 1, "ridge": 32.0},
+	"castra": {"a": 3, "b": 3, "ridge": 26.0},
 }
 
 static var _cache := {}
@@ -110,8 +114,18 @@ static func image(key: String) -> Image:
 			return _standard()
 		"icon":  # icon:<wood|food|stone|gold|pop>, the resource symbols for the HUD
 			return _resource_icon(parts[1])
-		"frame":
-			return _frame()
+		"frame":  # frame:<era>
+			return _frame(variant)
+		"curia":
+			return _curia()
+		"aqueduct":
+			return _aqueduct()
+		"castra":
+			return _castra()
+		"vineyard":  # vineyard:<stage> 0 laden .. 3 newly pruned
+			return _vineyard(variant)
+		"soldier":  # soldier:<anim>:<f|b>:<frame>
+			return _villager(parts[1], parts[2] == "b", int(parts[3]), "soldier")
 		"hut":
 			return _hut()
 		"farm":  # farm:<stage> 0 ripe .. 3 freshly sown
@@ -476,7 +490,7 @@ static func _swing(phase: float, raised: float, strike: float) -> float:
 
 ## One frame of a Roman villager in a red tunic. `back` shows them from behind (walking away
 ## from the camera). They always face to the right; the game mirrors the sprite for left.
-static func _villager(anim: String, back: bool, frame: int) -> Image:
+static func _villager(anim: String, back: bool, frame: int, kit := "") -> Image:
 	var n: int = VILLAGER_FRAMES[anim]
 	var ph := float(frame) / n
 	var pose := {"bob": 0, "foot_f": Vector2i(2, 0), "foot_b": Vector2i(-2, 0), "hand_f": Vector2i(1, 4), "hand_b": Vector2i(-1, 4), "tool": "", "angle": 0.0, "lean": 0}
@@ -577,6 +591,8 @@ static func _villager(anim: String, back: bool, frame: int) -> Image:
 			"hoe":
 				Pixel.line(img, Vector2i(tip), Vector2i(tip + perp * 2.5 + dir * 1.0), ROCK[2])
 				Pixel.put(img, int(tip.x + perp.x * 2.5 + dir.x * 1.0), int(tip.y + perp.y * 2.5 + dir.y * 1.0), ROCK[1])
+	if kit == "soldier":
+		_soldier_gear(img, fx, hx, hy, sh_y, hand, bob, back)
 	return Pixel.outlined(img, OUT_VILLAGER)
 
 
@@ -599,8 +615,9 @@ static func _pack(res: int, level: int) -> Image:
 ## Pixel inside a building's texture that sits on the front (bottom) corner of its footprint.
 static func building_anchor(kind: String) -> Vector2:
 	var g: Dictionary = BUILDING_GEOM[kind]
-	var n: int = g["n"]
-	return Vector2(n * 16 + 1, int(n * 16 + g["ridge"] + 8))
+	var a: int = g["a"]
+	var b: int = g["b"]
+	return Vector2(a * 16 + 1, int((a + b) * 8 + g["ridge"] + 8))
 
 
 ## Small version of a sprite for the command bar (shrunk with nearest-neighbour so it stays
@@ -683,12 +700,14 @@ static func scenery_keys() -> Array[String]:
 	k.append("advance")
 	for n in ["wood", "food", "stone", "gold", "pop"]:
 		k.append("icon:" + n)
-	k.append("frame")
+	for e in FRAME_STYLES.size():
+		k.append("frame:%d" % e)
 	return k
 
 
 static func building_keys() -> Array[String]:
-	return ["town_center", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3"]
+	return ["town_center", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
+		"curia", "aqueduct", "castra", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
 
 
 ## Villager frames, one row per animation and direction (f = facing the camera, b = away).
@@ -699,6 +718,12 @@ static func villager_rows() -> Array:
 			var row: Array[String] = []
 			for i in VILLAGER_FRAMES[anim]:
 				row.append("villager:%s:%s:%d" % [anim, dir, i])
+			rows.append(row)
+	for anim in ["idle", "walk"]:  # soldiers only stand and march
+		for dir in ["f", "b"]:
+			var row: Array[String] = []
+			for i in VILLAGER_FRAMES[anim]:
+				row.append("soldier:%s:%s:%d" % [anim, dir, i])
 			rows.append(row)
 	return rows
 
@@ -980,66 +1005,314 @@ const MEANDER := [
 	"#.#####.",
 ]
 
+## Pixels per art-pixel of the HUD frame (1 = slim, 2 = chunky).
+const FRAME_SCALE := 1
+## Thickness of the frame border in on-screen pixels.
+const FRAME_PX := 10.0 * FRAME_SCALE
 
-## The HUD panel frame, for a 9-patch: 10px corners with a gilded block, 8px edges carrying a
-## Greek key in gold on dark red, and a dark fill in the middle. 28x28 before it's doubled.
-static func _frame() -> Image:
+## The look of the HUD chrome in each era. "pattern" picks the border motif.
+const FRAME_STYLES := [
+	{  # Era I: gilded Greek key on dark red
+		"pattern": "meander", "band": Color("5a1d18"), "outline": Color("2a1008"),
+		"line1": Color("fff0a0"), "line2": Color("b88a1c"), "edge": Color("f2c230"),
+		"key": Color("f2c230"), "block": Color("f2c230"), "gem": Color("5a1d18"), "spark": Color("fff0a0"),
+		"fill": Color(0.157, 0.07, 0.055, 0.93),
+	},
+	{  # Era II: white marble and Roman purple, with a wave scroll
+		"pattern": "waves", "band": Color("3b1a4c"), "outline": Color("140a1c"),
+		"line1": Color("f2c230"), "line2": Color("a99fb8"), "edge": Color("ece6d6"),
+		"key": Color("ece6d6"), "block": Color("ece6d6"), "gem": Color("5c2a74"), "spark": Color("ffffff"),
+		"fill": Color(0.1, 0.055, 0.125, 0.94),
+	},
+]
+
+
+## Is the border pattern lit at (u along the edge, v 0..5 deep)?
+static func _frame_pattern(pattern: String, u: int, v: int) -> bool:
+	if pattern == "waves":
+		# a running wave with a dot under each crest: the Vitruvian scroll
+		var y := 2.4 + 1.9 * sin((posmod(u, 8) + 0.5) / 8.0 * TAU)
+		if absf(v + 0.5 - y) < 0.8:
+			return true
+		return (posmod(u, 8) == 2 and v == 5) or (posmod(u, 8) == 6 and v == 0)
+	return (MEANDER[v] as String)[posmod(u, 8)] == "."
+
+
+## The HUD panel frame for an era, for a 9-patch: corners with a block and gem, edges carrying
+## the era's border pattern, and a dark fill in the middle. 28x28 before any scaling.
+static func _frame(era: int) -> Image:
+	var st: Dictionary = FRAME_STYLES[mini(era, FRAME_STYLES.size() - 1)]
 	var n := 28
 	var corner := 10
 	var img := Pixel.blank(n, n)
-	var gold := GOLD[1]
-	var gold_hi := GOLD[0]
-	var gold_lo := GOLD[2]
-	var band := Color("5a1d18")
-	var outline := Color("2a1008")
-	var fill := Color(0.157, 0.07, 0.055, 0.93)
 	for y in n:
 		for x in n:
 			var d := mini(mini(x, y), mini(n - 1 - x, n - 1 - y))
 			if d >= corner:
-				img.set_pixel(x, y, fill)
+				img.set_pixel(x, y, st["fill"])
 				continue
-			var c := band
+			var c: Color = st["band"]
 			if d == 0:
-				c = outline
+				c = st["outline"]
 			elif d == 1:
-				c = gold_hi
+				c = st["line1"]
 			elif d == 2:
-				c = gold_lo
+				c = st["line2"]
 			elif d == corner - 1:
-				c = gold
+				c = st["edge"]
 			else:
 				var in_corner_x := x < corner or x >= n - corner
 				var in_corner_y := y < corner or y >= n - corner
-				if in_corner_x and in_corner_y:  # a gilded corner block with a rosette
-					c = gold
+				if in_corner_x and in_corner_y:  # a corner block with a gem in it
+					c = st["block"]
 					var cx := 4.5 if x < corner else n - 5.5
 					var cy := 4.5 if y < corner else n - 5.5
 					var r := Vector2(x - cx, y - cy)
 					if absf(r.x) < 1.6 and absf(r.y) < 1.6:
-						c = band
+						c = st["gem"]
 					elif (absf(r.x) < 0.6 or absf(r.y) < 0.6) and r.length() < 3.4:
-						c = gold_hi
+						c = st["spark"]
 				else:
 					# along the edge: u runs with the edge, v is the depth into the frame (3..8)
 					var u := (x - corner) if (y < corner or y >= n - corner) else (y - corner)
-					var v := (d - 3)
-					if (MEANDER[v] as String)[posmod(u, 8)] == ".":
-						c = gold
+					if _frame_pattern(st["pattern"], u, d - 3):
+						c = st["key"]
 			img.set_pixel(x, y, c)
-	img.resize(n * 2, n * 2, Image.INTERPOLATE_NEAREST)  # chunky pixels, like the rest of the art
+	if FRAME_SCALE > 1:
+		img.resize(n * FRAME_SCALE, n * FRAME_SCALE, Image.INTERPOLATE_NEAREST)
 	return img
 
 
-## The frame as a 9-patch style for a panel. Only the border is drawn: the panel's own contents
-## are inset to sit exactly inside it, so fill behind them with a flat colour.
-static func frame_style() -> StyleBoxTexture:
+## The era's frame as a 9-patch style for a panel. Only the border is drawn: the panel's own
+## contents are inset to sit exactly inside it, so fill behind them with a flat colour.
+static func frame_style(era := 0) -> StyleBoxTexture:
 	var sb := StyleBoxTexture.new()
-	sb.texture = tex("frame")
+	sb.texture = tex("frame:%d" % era)
 	sb.draw_center = false
 	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
-		sb.set_texture_margin(side, 20.0)
-		sb.set_content_margin(side, 20.0)
+		sb.set_texture_margin(side, FRAME_PX)
+		sb.set_content_margin(side, FRAME_PX)
 	sb.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
 	sb.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
 	return sb
+
+
+# ---------------------------------------------------------------- soldiers
+
+const BRONZE := [Color("f0c878"), Color("c8963e"), Color("94682a")]
+
+
+## Early-Republic citizen soldier kit over the villager rig: bronze helmet with a red crest,
+## a bronze breastplate, a round shield and a spear.
+static func _soldier_gear(img: Image, fx: int, hx: int, hy: int, sh_y: int, hand: Vector2i, bob: int, back: bool) -> void:
+	Pixel.rect(img, fx - 2, sh_y + 1, 5, 3, BRONZE[1])  # breastplate over the top of the tunic
+	Pixel.rect(img, fx - 2, sh_y + 1, 5, 1, BRONZE[0])
+	Pixel.put(img, fx + 2, sh_y + 2, BRONZE[2])
+	Pixel.rect(img, hx - 1, hy, 3, 2, BRONZE[1])  # helmet
+	Pixel.rect(img, hx - 1, hy, 3, 1, BRONZE[0])
+	Pixel.put(img, hx, hy - 1, TUNIC[1])  # crest
+	Pixel.put(img, hx - 1 if back else hx + 1, hy - 1, TUNIC[2])
+	if back:  # the back of the head under the helmet
+		Pixel.rect(img, hx - 1, hy + 2, 3, 1, BRONZE[2])
+	# round shield on the far arm, drawn over the torso edge
+	var sc := Vector2(fx - 3.5, sh_y + 4.0 + bob * 0.0)
+	for y in range(int(sc.y) - 3, int(sc.y) + 4):
+		for x in range(int(sc.x) - 3, int(sc.x) + 4):
+			var d := Vector2(x + 0.5 - sc.x, y + 0.5 - sc.y).length()
+			if d <= 3.3:
+				Pixel.put(img, x, y, BRONZE[1] if d > 2.3 else Color("b0382e"))
+	Pixel.put(img, int(sc.x), int(sc.y), BRONZE[0])  # the boss
+	# spear held upright in the front hand
+	var sx := hand.x + 1
+	Pixel.line(img, Vector2i(sx, hand.y + 3), Vector2i(sx, hy - 3), WOOD[1])
+	Pixel.put(img, sx, hy - 4, ROCK[0])
+	Pixel.put(img, sx, hy - 5, ROCK[1])
+
+
+# ---------------------------------------------------------------- Era II buildings
+
+const TRAV := [Color("ece0c2"), Color("d2c39e"), Color("aa9a72")]  # travertine
+const BRICK := [Color("dc9566"), Color("c47a4c"), Color("9d5a38")]
+const CANVAS := [Color("f6ecd2"), Color("ddd0ae"), Color("b8a982")]
+const AQUA := [Color("a8e6f4"), Color("6cc2e2"), Color("46a1c4")]  # the aqueduct's water
+const GRAPE := Color("5a2a6e")
+const LEAF := [Color("8cc044"), Color("62993a"), Color("457a2a")]
+
+
+static func _brick(x: int, y: int, lit: bool) -> Color:
+	var v := 0.64 if lit else 0.34
+	v += (Pixel.hash2(x / 3, y / 3, 61) - 0.5) * 0.25
+	if posmod(y, 3) == 0:
+		v -= 0.24  # mortar courses
+	elif posmod(x + ((y / 3) % 2) * 3, 6) == 0:
+		v -= 0.14
+	return Pixel.ramp(BRICK, v, x, y, 0.1)
+
+
+## Curia: the Senate house. A plain, solid brick hall with marble pilasters and a cornice, high
+## windows, big bronze doors at the top of a stepped podium, and a low pedimented roof. 3x3.
+static func _curia() -> Image:
+	var n := 3.0
+	var podium_h := 4.0
+	var wall_top := podium_h + 20.0
+	var ridge_h := wall_top + 9.0
+	var hs := int(n * 16 + ridge_h + 8.0)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	var m_lit := func(x: int, y: int) -> Color: return Pixel.ramp(MARBLE, 0.68 + (Pixel.hash2(x, y, 8) - 0.5) * 0.2, x, y, 0.15)
+	var m_shade := func(x: int, y: int) -> Color: return Pixel.ramp(MARBLE, 0.36 + (Pixel.hash2(x, y, 9) - 0.5) * 0.2, x, y, 0.15)
+	_box(img, f, 0.0, n, 0.0, n, 0, 2.0, m_lit, m_shade, func(x: int, y: int) -> Color: return Pixel.ramp(MARBLE, 0.42 + (Pixel.hash2(x, y, 3) - 0.5) * 0.3, x, y, 0.3))
+	_box(img, f, 0.25, n - 0.25, 0.25, n - 0.25, 2.0, podium_h, m_lit, m_shade, func(x: int, y: int) -> Color: return Pixel.ramp(MARBLE, 0.5 + (Pixel.hash2(x, y, 4) - 0.5) * 0.3, x, y, 0.3))
+	var w0 := 0.5
+	var w1 := n - 0.5
+	_box(img, f, w0, w1, w0, w1, podium_h, wall_top, func(x: int, y: int) -> Color: return _brick(x, y, true), func(x: int, y: int) -> Color: return _brick(x, y, false), BRICK[1])
+	for xp in [0.62, 1.43, 2.24]:  # pilasters along the long (left) wall
+		_box(img, f, xp, xp + 0.16, w1, w1 + 0.08, podium_h, wall_top, m_lit, m_shade, MARBLE[0])
+	for yp in [0.62, 2.24]:  # ... and either side of the door
+		_box(img, f, w1, w1 + 0.08, yp, yp + 0.16, podium_h, wall_top, m_lit, m_shade, MARBLE[0])
+	for wx in [0.9, 1.72]:  # high windows, dark with a pale frame
+		Pixel.poly(img, [f.p(wx - 0.03, w1, podium_h + 11), f.p(wx + 0.33, w1, podium_h + 11), f.p(wx + 0.33, w1, podium_h + 19), f.p(wx - 0.03, w1, podium_h + 19)], MARBLE[1])
+		Pixel.poly(img, [f.p(wx, w1, podium_h + 12), f.p(wx + 0.3, w1, podium_h + 12), f.p(wx + 0.3, w1, podium_h + 18), f.p(wx, w1, podium_h + 18)], Color("2b2a33"))
+	# the great bronze doors on the front (right) wall
+	Pixel.poly(img, [f.p(w1, 1.0, podium_h), f.p(w1, 2.0, podium_h), f.p(w1, 2.0, podium_h + 12), f.p(w1, 1.0, podium_h + 12)], MARBLE[1])
+	Pixel.poly(img, [f.p(w1, 1.06, podium_h), f.p(w1, 1.94, podium_h), f.p(w1, 1.94, podium_h + 11), f.p(w1, 1.06, podium_h + 11)], Color("6a4a26"))
+	Pixel.poly(img, [f.p(w1, 1.12, podium_h + 1), f.p(w1, 1.46, podium_h + 1), f.p(w1, 1.46, podium_h + 10), f.p(w1, 1.12, podium_h + 10)], Color("8a6434"))
+	Pixel.poly(img, [f.p(w1, 1.54, podium_h + 1), f.p(w1, 1.88, podium_h + 1), f.p(w1, 1.88, podium_h + 10), f.p(w1, 1.54, podium_h + 10)], Color("7a5a2e"))
+	_box(img, f, w0 - 0.08, w1 + 0.08, w0 - 0.08, w1 + 0.08, wall_top - 2.0, wall_top, m_lit, m_shade, MARBLE[0])  # cornice
+	_gable_roof(img, f, w0 - 0.15, w1 + 0.15, w0 - 0.15, w1 + 0.15, wall_top, ridge_h, func(x: int, y: int) -> Color: return _plaster(x, y, false, 15))
+	var e := f.p(w1 + 0.15, n / 2.0, wall_top + 4)  # a gilded roundel in the pediment
+	Pixel.ellipse(img, e.x, e.y, 2.0, 2.0, GOLD[1])
+	Pixel.put(img, int(e.x) - 1, int(e.y) - 1, GOLD[0])
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## Aquaeductus: a four-arch stretch of aqueduct carrying a channel of water. 4x1, walkable
+## (people pass under the arches).
+static func _aqueduct() -> Image:
+	var a := 4.0
+	var b := 1.0
+	var pier_h := 24.0
+	var top_h := 28.0
+	var hs := int((a + b) * 8 + 32.0 + 8.0)
+	var img := Pixel.blank(int((a + b) * 16), hs)
+	var f := Frame.new(Vector2(b * 16, hs - 1 - (a + b) * 8))
+	var y0 := 0.1
+	var y1 := 0.9
+	var lit := func(x: int, y: int) -> Color:
+		var v := 0.68 + (Pixel.hash2(x, y, 71) - 0.5) * 0.22
+		if posmod(int(floor(y - 0.5 * x)), 6) == 0:
+			v -= 0.22  # courses of blocks
+		return Pixel.ramp(TRAV, v, x, y, 0.12)
+	var shade := func(x: int, y: int) -> Color:
+		var v := 0.34 + (Pixel.hash2(x, y, 72) - 0.5) * 0.2
+		if posmod(int(floor(y + 0.5 * x)), 6) == 0:
+			v -= 0.2
+		return Pixel.ramp(TRAV, v, x, y, 0.12)
+	_box(img, f, 0.0, a, y0, y1, 0, pier_h, lit, shade, func(x: int, y: int) -> Color: return Pixel.ramp(TRAV, 0.55 + (Pixel.hash2(x, y, 73) - 0.5) * 0.2, x, y, 0.2))
+	_box(img, f, 0.0, a, y0, y0 + 0.16, pier_h, top_h, lit, shade, TRAV[0])  # the channel's walls...
+	Pixel.poly(img, [f.p(0, y0 + 0.16, pier_h + 1), f.p(a, y0 + 0.16, pier_h + 1), f.p(a, y1 - 0.16, pier_h + 1), f.p(0, y1 - 0.16, pier_h + 1)], AQUA[1])
+	Pixel.poly(img, [f.p(0, y0 + 0.2, pier_h + 1), f.p(a, y0 + 0.2, pier_h + 1), f.p(a, y0 + 0.3, pier_h + 1), f.p(0, y0 + 0.3, pier_h + 1)], AQUA[0])
+	_box(img, f, 0.0, a, y1 - 0.16, y1, pier_h, top_h, lit, shade, TRAV[0])  # ...and the front wall hides half the water
+	for i in 4:  # carve the arches through
+		var pts: Array = []
+		var xl := i + 0.2
+		var xr := i + 0.8
+		pts.append(f.p(xl, y1, 0))
+		pts.append(f.p(xr, y1, 0))
+		for k in range(0, 9):
+			var ang := PI * k / 8.0
+			pts.append(f.p(i + 0.5 + 0.3 * cos(ang), y1, 14.0 + 6.0 * sin(ang)))
+		Pixel.poly(img, pts, Pixel.CLEAR)
+	return Pixel.outlined(img, OUT_WARM)
+
+
+static func _stakes(img: Image, f: Frame, a: Vector2, b: Vector2, h: float, lit: bool, gap: Vector2 = Vector2(-1, -1)) -> void:
+	var steps := int(a.distance_to(b) * 6.0)
+	for i in steps + 1:
+		var t := float(i) / steps
+		if t > gap.x and t < gap.y:
+			continue
+		var base := f.p(lerpf(a.x, b.x, t), lerpf(a.y, b.y, t), 0)
+		var hh := h + (Pixel.hash2(i, 5, 81) - 0.5) * 2.0
+		var c: Color = WOOD[0] if lit else WOOD[1]
+		Pixel.rect(img, int(base.x) - 1, int(base.y - hh), 2, int(hh) + 1, c if i % 2 == 0 else c.darkened(0.12))
+		Pixel.put(img, int(base.x) - 1, int(base.y - hh) - 1, WOOD[0])  # the sharpened tip
+
+
+## Castra: a legionary camp, a palisade round a tent and a standard, with a gate. 3x3.
+static func _castra() -> Image:
+	var n := 3.0
+	var hs := int(n * 16 + 26.0 + 8.0)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	Pixel.poly(img, [f.p(0, 0, 0), f.p(n, 0, 0), f.p(n, n, 0), f.p(0, n, 0)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(DIRT, 0.3 + (Pixel.hash2(x, y, 82) - 0.5) * 0.4, x, y, 0.3))
+	_stakes(img, f, Vector2(0, 0), Vector2(0, n), 9.0, false)  # the back two sides first
+	_stakes(img, f, Vector2(0, 0), Vector2(n, 0), 9.0, true)
+	# the tent: low canvas walls under a gabled canvas roof
+	_box(img, f, 0.9, 2.1, 0.9, 2.1, 0, 5, func(x: int, y: int) -> Color: return Pixel.ramp(CANVAS, 0.7 + (Pixel.hash2(x, y, 83) - 0.5) * 0.15, x, y, 0.1), func(x: int, y: int) -> Color: return Pixel.ramp(CANVAS, 0.35 + (Pixel.hash2(x, y, 84) - 0.5) * 0.15, x, y, 0.1), CANVAS[1])
+	var tent_front := func(x: int, y: int) -> Color: return Pixel.ramp(CANVAS, 0.74 - (0.12 if posmod(x, 5) == 0 else 0.0), x, y, 0.08)
+	var tent_back := func(x: int, y: int) -> Color: return Pixel.ramp(CANVAS, 0.42, x, y, 0.08)
+	Pixel.poly(img, [f.p(0.85, 1.0, 5), f.p(2.15, 1.0, 5), f.p(2.15, 1.5, 15), f.p(0.85, 1.5, 15)], tent_back)
+	Pixel.poly(img, [f.p(2.15, 2.15, 5), f.p(2.15, 0.85, 5), f.p(2.15, 1.5, 15)], func(x: int, y: int) -> Color: return Pixel.ramp(CANVAS, 0.3, x, y, 0.08))
+	Pixel.poly(img, [f.p(0.85, 2.15, 5), f.p(2.15, 2.15, 5), f.p(2.15, 1.5, 15), f.p(0.85, 1.5, 15)], tent_front)
+	Pixel.poly(img, [f.p(1.9, 2.15, 0), f.p(2.15, 2.15, 0), f.p(2.15, 2.15, 4), f.p(1.9, 2.15, 4)], Color("3a2a20"))  # the flap
+	# the legion's standard beside the tent
+	var sp := f.p(2.45, 0.8, 0)
+	Pixel.rect(img, int(sp.x), int(sp.y) - 18, 1, 18, WOOD[2])
+	Pixel.rect(img, int(sp.x) + 1, int(sp.y) - 17, 5, 5, TUNIC[1])
+	Pixel.rect(img, int(sp.x) + 1, int(sp.y) - 17, 5, 1, GOLD[1])
+	Pixel.put(img, int(sp.x), int(sp.y) - 19, GOLD[0])
+	_stakes(img, f, Vector2(0, n), Vector2(n, n), 9.0, true)  # then the front two sides
+	_stakes(img, f, Vector2(n, 0), Vector2(n, n), 9.0, false, Vector2(0.4, 0.6))  # with a gate gap
+	for t in [0.4, 0.6]:  # gate posts and lintel
+		var gp := f.p(n, n * t, 0)
+		Pixel.rect(img, int(gp.x) - 1, int(gp.y) - 13, 3, 14, WOOD[2])
+	var g0 := f.p(n, n * 0.4, 12)
+	var g1 := f.p(n, n * 0.6, 12)
+	Pixel.line(img, Vector2i(g0), Vector2i(g1), WOOD[1])
+	Pixel.line(img, Vector2i(g0) + Vector2i(0, 1), Vector2i(g1) + Vector2i(0, 1), WOOD[2])
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## Vinea: a vineyard of trellised vines. Stage 0 heavy with grapes, 1 half picked, 2 bare, 3 newly pruned.
+static func _vineyard(stage: int) -> Image:
+	var n := 3.0
+	var hs := int(n * 16 + 9.0 + 8.0)
+	var img := Pixel.blank(96, hs)
+	var f := Frame.new(Vector2(48, hs - 1 - 48))
+	var inset := 0.08
+	var diamond: Array = [f.p(inset, inset, 0), f.p(n - inset, inset, 0), f.p(n - inset, n - inset, 0), f.p(inset, n - inset, 0)]
+	Pixel.poly(img, diamond, func(x: int, y: int) -> Color:
+		return Pixel.ramp(SOIL, 0.55 + (Pixel.hash2(x, y, 91) - 0.5) * 0.5, x, y, 0.3))
+	for y in range(hs - 1, -1, -1):
+		for x in 96:
+			if absf(x + 0.5 - 48.0) / 48.0 + absf(y + 0.5 - (hs - 1 - 24.0)) / 24.0 > 0.95:
+				continue
+			var row := int(floor(y - 0.5 * x))
+			if posmod(row, 5) != 0:
+				continue
+			var h := Pixel.hash2(x, y, 92 + stage)
+			if posmod(x, 9) == 0:  # trellis posts
+				Pixel.rect(img, x, y - 4, 1, 5, WOOD[1])
+				continue
+			match stage:
+				0, 1:
+					Pixel.put(img, x, y, Pixel.ramp(LEAF, 0.5 + (h - 0.5) * 0.7, x, y, 0.3))
+					Pixel.put(img, x, y - 1, Pixel.ramp(LEAF, 0.6 + (Pixel.hash2(x, y, 93) - 0.5) * 0.6, x, y, 0.3))
+					Pixel.put(img, x, y - 2, LEAF[1] if h < 0.5 else LEAF[2])
+					if h < (0.34 if stage == 0 else 0.1):
+						Pixel.put(img, x, y, GRAPE)  # a bunch hanging below the leaves
+						Pixel.put(img, x, y + 1, GRAPE.darkened(0.2))
+				2:
+					if h < 0.7:
+						Pixel.put(img, x, y - 1, Color("8a7440") if h < 0.35 else Color("6e5c30"))
+						Pixel.put(img, x, y, Color("6e5c30"))
+				3:
+					if h < 0.4:
+						Pixel.put(img, x, y - 1, LEAF[0])
+						Pixel.put(img, x, y, Color("6e5c30"))
+	for i in 4:
+		var p: Vector2 = diamond[i]
+		Pixel.line(img, Vector2i(p), Vector2i(diamond[(i + 1) % 4]), SOIL[2])
+	return Pixel.outlined(img, OUT_WARM)

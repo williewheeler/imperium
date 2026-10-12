@@ -115,7 +115,7 @@ func _ready() -> void:
 		_cancel_road_mode())
 	hud.road_requested.connect(start_road_mode)
 	hud.advance_requested.connect(start_advance)
-	hud.train_requested.connect(_train_villager)
+	hud.train_requested.connect(_train_unit)
 	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: cam_pos = Iso.to_screen(tile_pos))
 	hud.flash("Elige colonos et iube eos laborare.")
 
@@ -125,6 +125,20 @@ func _ready() -> void:
 	if args.has("select"):
 		for u in units:
 			u.selected = true
+	if args.has("zoom"):  # debug: physical pixels per art pixel
+		zoom_px = int(args["zoom"])
+		_apply_zoom()
+	if args.has("era"):
+		era = int(args["era"])
+	if args.has("cycle"):  # debug: press E this many times at startup
+		for i in int(args["cycle"]):
+			_cycle_era(1)
+	if args.has("select") and args.has("cycle"):  # selection was cleared by the era jump
+		for u in units:
+			u.selected = u.kind == "villager"
+	if args.has("look"):  # debug: aim the camera this many tiles (x,y) from the Forum
+		var off := String(args["look"]).split(",")
+		cam_pos = Iso.to_screen(buildings[0].center() + Vector2(float(off[0]), float(off[1])))
 	if args.has("forum"):
 		buildings[0].selected = true
 	if args.has("builds"):  # debug: buildings at several stages of construction
@@ -259,6 +273,8 @@ func placement_error(kind: String, tile: Vector2i) -> String:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		get_tree().quit()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		_cycle_era(-1 if event.shift_pressed else 1)  # temporary: jump through the eras
 	elif event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
@@ -385,39 +401,56 @@ func _drain_zoom_accum() -> void:
 
 # ---------- Orders ----------
 
+func selected_workers() -> Array[Unit]:
+	var out: Array[Unit] = []
+	for u in selected_units():
+		if u.kind == "villager":
+			out.append(u)
+	return out
+
+
 func _command_at(mp: Vector2) -> void:
 	var us := selected_units()
 	if us.is_empty():
 		return
+	var workers := selected_workers()
 	var pos := Iso.to_tile(mp)
 	var tile := Vector2i(pos.floor())
 	if not map.in_bounds(tile):
 		return
 	markers.append({"pos": pos, "t": 0.0})
 	var res := deposit_near(mp)
-	if res.x >= 0:
-		for u in us:
-			_order_gather(u, res)
-		return
-	if road_plans.has(tile):  # right-click a marked road tile: go and pave it
-		for u in us:
-			_assign_road_work(u)
-		return
 	var b := building_under(mp)
-	if b != null and not b.complete:
-		for u in us:
-			_order_build(u, b)
+	var movers := us  # who just walks there
+	if not workers.is_empty():
+		var handled := true
+		if res.x >= 0:
+			for u in workers:
+				_order_gather(u, res)
+		elif road_plans.has(tile):  # right-click a marked road tile: go and pave it
+			for u in workers:
+				_assign_road_work(u)
+		elif b != null and not b.complete:
+			for u in workers:
+				_order_build(u, b)
+		elif b != null and b.is_field():
+			for u in workers:
+				_order_gather(u, b.field_tile())
+		else:
+			handled = false
+		if handled:  # soldiers in the same group have no work to do; they march to the spot
+			movers = []
+			for u in us:
+				if u.kind != "villager":
+					movers.append(u)
+	if movers.is_empty():
 		return
-	if b != null and b.kind == "farm":
-		for u in us:
-			_order_gather(u, b.field_tile())
-		return
-	var goals := map.spread_goals(tile, us.size())
+	var goals := map.spread_goals(tile, movers.size())
 	if goals.is_empty():
 		hud.flash("Iter nullum est.")
 		return
-	for i in us.size():
-		_order_move(us[i], goals[i % goals.size()])
+	for i in movers.size():
+		_order_move(movers[i], goals[i % goals.size()])
 
 
 func _set_path(u: Unit, goal: Vector2i) -> bool:
@@ -489,7 +522,7 @@ func _try_place() -> void:
 		return
 	_pay(Defs.BUILDINGS[placing]["cost"])
 	var b := _add_building(placing, tile, false)
-	for u in selected_units():
+	for u in selected_workers():
 		_order_build(u, b)
 	placing = ""
 
@@ -518,12 +551,13 @@ func _add_building(kind: String, tile: Vector2i, complete: bool) -> Building:
 
 ## A building just became usable: fields start growing, depots get a trodden plaza around them.
 func _on_complete(b: Building) -> void:
+	if b.is_field():
+		var d := Deposit.new(b.def()["yield"], b.def()["crop"])
+		d.renews = true
+		d.farm = true
+		map.deposits[b.field_tile()] = d
+		return
 	match b.kind:
-		"farm":
-			var d := Deposit.new(Defs.Res.FOOD, Defs.FARM_FOOD)
-			d.renews = true
-			d.farm = true
-			map.deposits[b.field_tile()] = d
 		"town_center", "storehouse":
 			var r := b.rect().grow(1)
 			for y in range(r.position.y, r.end.y):
@@ -549,14 +583,18 @@ func has_pop_room() -> bool:
 	return units.size() + queued < pop_cap()
 
 
-func _train_villager() -> void:
+## Train whatever the selected building trains: villagers at the Forum, soldiers at the Castra.
+func _train_unit() -> void:
 	var b := selected_building()
-	if b == null or not b.complete or not can_afford(Defs.VILLAGER_COST):
+	if b == null or not b.complete or not b.def().has("trains"):
+		return
+	var cost: Array = Defs.UNITS[b.def()["trains"]]["cost"]
+	if not can_afford(cost):
 		return
 	if not has_pop_room():
 		hud.flash("Domus plures requiruntur.")
 		return
-	_pay(Defs.VILLAGER_COST)
+	_pay(cost)
 	b.queue += 1
 
 
@@ -566,6 +604,211 @@ func _find_building_site(kind: String, near: Vector2i, min_r: int) -> Vector2i:
 	for u in units:
 		avoid.append(Vector2i(u.pos))
 	return map.find_site(Defs.BUILDINGS[kind]["size"], near, min_r, 16, avoid)
+
+
+# ---------- Temporary: jump through the eras ----------
+## Press E to jump to the next era (Shift+E for the previous one). The map is dressed to look
+## like a town that has grown into that era: buildings, roads, workers, soldiers. This is a
+## stand-in for playing through the eras for real, to look at the art and interface.
+
+var _dressed_buildings: Array[Building] = []
+var _dressed_units: Array[Unit] = []
+var _dressed_road: Array[Vector2i] = []
+
+
+func _cycle_era(step: int) -> void:
+	era = posmod(era + step, Defs.ERAS.size())
+	advancing = false
+	_clear_selection()
+	placing = ""
+	_cancel_road_mode()
+	_undress()
+	_reveal_around(buildings[0].center(), 17.0)
+	_dress_era_one()
+	if era >= 1:
+		_dress_era_two()
+	_dress_jobs()
+	var e: Dictionary = Defs.ERAS[era]
+	hud.flash("Aetas %s: %s" % [e["numeral"], e["latin"]], "Era %s: %s (%s).  (Debug: E = next era, Shift+E = previous)" % [e["numeral"], e["english"], e["years"]])
+
+
+func _undress() -> void:
+	for b in _dressed_buildings:
+		_remove_building(b)
+	_dressed_buildings.clear()
+	for u in _dressed_units:
+		_release_road(u)
+		units.erase(u)
+	_dressed_units.clear()
+	if not _dressed_road.is_empty():
+		for p in _dressed_road:
+			map.clear_road(p)
+		_dressed_road.clear()
+		_world.roads_rebuilt()
+
+
+func _remove_building(b: Building) -> void:
+	buildings.erase(b)
+	if not b.def().get("walkable", false):
+		map.set_solid(b.rect(), false)
+	if b.is_field():
+		map.deposits.erase(b.field_tile())
+	for u in units:
+		if u.target_building == b:
+			u.target_building = null
+			u.state = Unit.State.IDLE
+
+
+func _reveal_around(center: Vector2, radius: float) -> void:
+	for y in range(maxi(0, int(center.y - radius)), mini(map.h, int(center.y + radius) + 1)):
+		for x in range(maxi(0, int(center.x - radius)), mini(map.w, int(center.x + radius) + 1)):
+			if Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius and fog.state[y * map.w + x] == Fog.HIDDEN:
+				fog.state[y * map.w + x] = Fog.EXPLORED
+	fog.update([])  # redraw the fog texture
+
+
+## Could a building go here? Open grass or woodland that the growing town can clear.
+func _dress_rect_ok(rect: Rect2i, taken: Array, unit_tiles: Dictionary) -> bool:
+	for r: Rect2i in taken:
+		if rect.intersects(r):
+			return false
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			var p := Vector2i(x, y)
+			if not map.in_bounds(p) or unit_tiles.has(p) or map.astar.is_point_solid(p) or road_plans.has(p):
+				return false
+			var t := map.tile(x, y)
+			if t != GameMap.Terrain.GRASS and t != GameMap.Terrain.FOREST:
+				return false
+			var d: Deposit = map.deposits.get(p)
+			if d != null and d.kind != Defs.Res.WOOD:
+				return false  # berries and mines stay
+	return true
+
+
+## Fells the trees on a tile (debug town growth).
+func _dress_clear(p: Vector2i) -> void:
+	if map.in_bounds(p) and map.tile(p.x, p.y) == GameMap.Terrain.FOREST:
+		map.remove_deposit(p)
+		_world.tile_changed(p)
+
+
+## Put a finished building near the Forum, as close as it fits to the first preferred offset
+## that has room (clearing woodland if need be), else as close to the Forum as it fits.
+func _dress_place(kind: String, prefs: Array) -> Building:
+	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
+	var taken := []
+	for other in buildings:
+		taken.append(other.rect().grow(1))  # a tile of space between buildings
+	var unit_tiles := {}
+	for u in units:
+		unit_tiles[Vector2i(u.pos)] = true
+	var forum := buildings[0].tile
+	var site := Vector2i(-1, -1)
+	for pref: Vector2i in prefs + [Vector2i(0, 0)]:
+		var target := forum + pref
+		var best_d := INF
+		for dy in range(-5, 6):
+			for dx in range(-5, 6):
+				var tile := target + Vector2i(dx, dy)
+				if Vector2(tile).distance_to(Vector2(target)) < best_d and _dress_rect_ok(Rect2i(tile, size), taken, unit_tiles):
+					best_d = Vector2(tile).distance_to(Vector2(target))
+					site = tile
+		if site.x >= 0:
+			break
+	if site.x < 0:
+		return null
+	for y in range(site.y, site.y + size.y):
+		for x in range(site.x, site.x + size.x):
+			_dress_clear(Vector2i(x, y))
+	var b := _add_building(kind, site, true)
+	_dressed_buildings.append(b)
+	return b
+
+
+func _dress_unit(kind: String, at: Vector2) -> Unit:
+	var u := Unit.new()
+	u.kind = kind
+	u.pos = at
+	units.append(u)
+	_dressed_units.append(u)
+	return u
+
+
+func _dress_era_one() -> void:
+	for plan in [["hut", [Vector2i(-3, 5), Vector2i(-5, 3)]], ["hut", [Vector2i(5, 4), Vector2i(6, 2)]],
+			["hut", [Vector2i(-5, -1)]], ["hut", [Vector2i(4, -4)]], ["farm", [Vector2i(5, -3), Vector2i(-4, 5)]],
+			["storehouse", [Vector2i(0, 6), Vector2i(-6, -3)]]]:
+		_dress_place(plan[0], plan[1])
+	for i in 3:
+		_dress_unit("villager", buildings[0].center() + Vector2(float(i) - 1.0, 2.5))
+
+
+func _dress_era_two() -> void:
+	# the big civic buildings first, so they get good spots
+	for plan in [["curia", [Vector2i(-6, 3), Vector2i(6, 6)]], ["castra", [Vector2i(6, 5), Vector2i(-6, -5)]],
+			["aqueduct", [Vector2i(3, -6), Vector2i(-7, -5)]], ["vineyard", [Vector2i(7, -4), Vector2i(-8, -2)]],
+			["house", [Vector2i(-6, -3)]], ["house", [Vector2i(6, 1)]], ["house", [Vector2i(-2, -5)]]]:
+		_dress_place(plan[0], plan[1])
+	for b in _dressed_buildings:
+		if b.kind == "castra":
+			var goals := map.spread_goals(b.tile + Vector2i(b.size.x + 1, b.size.y / 2), 6)
+			var gate := map.stand_tile(b.rect(), b.center())
+			for i in mini(6, goals.size()):
+				var soldier := _dress_unit("soldier", Vector2(gate) + Vector2(0.5, 0.5))
+				_order_move(soldier, goals[i])
+	for i in 2:
+		_dress_unit("villager", buildings[0].center() + Vector2(float(i) * 1.5, 3.2))
+	_dress_paved_avenue()
+
+
+## A paved avenue leading away from the Forum, clearing any woodland in its way: the longest
+## straight run (up to 9 tiles) that starts beside the Forum and has clear ground.
+func _dress_paved_avenue() -> void:
+	var ring := buildings[0].rect().grow(1)
+	var starts: Array[Vector2i] = []
+	for y in range(ring.position.y, ring.end.y):
+		for x in range(ring.position.x, ring.end.x):
+			if not buildings[0].rect().has_point(Vector2i(x, y)):
+				starts.append(Vector2i(x, y))
+	for length: int in [9, 7, 5]:
+		for start in starts:
+			for dir: Vector2i in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+				var line := _road_line(start, start + dir * (length - 1))
+				var ok := line.size() == length
+				for p in line:
+					var t := map.tile(p.x, p.y) if map.in_bounds(p) else GameMap.Terrain.DEEP
+					var d: Deposit = map.deposits.get(p) if map.in_bounds(p) else null
+					ok = ok and (t == GameMap.Terrain.GRASS or t == GameMap.Terrain.FOREST) and building_at(p) == null \
+						and not map.astar.is_point_solid(p) and (d == null or d.kind == Defs.Res.WOOD)
+				if ok:
+					for p in line:
+						_dress_clear(p)
+						if map.make_paved(p):
+							_dressed_road.append(p)
+							_world.road_changed(p)
+					return
+
+
+## Send the dressed villagers off to work, so the town looks lived in.
+func _dress_jobs() -> void:
+	var forum := buildings[0].center()
+	var kinds := [Defs.Res.WOOD, Defs.Res.FOOD, Defs.Res.STONE, Defs.Res.WOOD, Defs.Res.GOLD]
+	var fields: Array[Building] = []
+	for b in _dressed_buildings:
+		if b.is_field():
+			fields.append(b)
+	var i := 0
+	for u in _dressed_units:
+		if u.kind != "villager":
+			continue
+		if i < fields.size():
+			_order_gather(u, fields[i].field_tile())
+		else:
+			var tile := _show_pick(kinds[i % kinds.size()], forum, 16.0, u.pos)
+			if tile.x >= 0:
+				_order_gather(u, tile)
+		i += 1
 
 
 # ---------- Paved roads ----------
@@ -740,7 +983,7 @@ func _commit_road(line: Array[Vector2i]) -> void:
 	for i in n:
 		_pay(Defs.ROAD_COST)
 		road_plans[tiles[i]] = null
-	for u in selected_units():
+	for u in selected_workers():
 		_assign_road_work(u)
 
 
@@ -1164,7 +1407,7 @@ func _update_farm(b: Building, delta: float) -> void:
 		return
 	if d.amount <= 0:
 		b.regrow += delta
-		if b.regrow >= Defs.FARM_REGROW_TIME:
+		if b.regrow >= float(b.def()["regrow"]):
 			b.regrow = 0.0
 			d.amount = d.max_amount
 	var frac := float(d.amount) / d.max_amount
@@ -1172,17 +1415,19 @@ func _update_farm(b: Building, delta: float) -> void:
 
 
 func _update_building(b: Building, delta: float) -> void:
-	if b.kind == "farm":
+	if b.is_field():
 		if b.complete:
 			_update_farm(b, delta)
 		return
 	if not b.complete or b.queue <= 0:
 		return
+	var trains: String = b.def()["trains"]
 	b.train_progress += delta
-	if b.train_progress >= Defs.VILLAGER_TRAIN_TIME:
+	if b.train_progress >= float(Defs.UNITS[trains]["time"]):
 		b.train_progress = 0.0
 		b.queue -= 1
 		var u := Unit.new()
+		u.kind = trains
 		var spawn := map.stand_tile(b.rect(), b.center())
 		u.pos = Vector2(spawn) + Vector2(0.5, 0.5)
 		units.append(u)

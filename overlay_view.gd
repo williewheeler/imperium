@@ -56,7 +56,7 @@ func _draw() -> void:
 		if not b.complete:
 			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.build_fraction(), Color("7dff7d"))
 		elif b.queue > 0:
-			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.train_progress / Defs.VILLAGER_TRAIN_TIME, GOLD)
+			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.train_progress / float(Defs.UNITS[b.def()["trains"]]["time"]), GOLD)
 		if b.complete and b.kind == "town_center":
 			var anchor := Art.building_anchor(b.kind)
 			var label := Latin.t(b.building_name)

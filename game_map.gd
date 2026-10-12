@@ -137,6 +137,14 @@ func can_pave(p: Vector2i) -> bool:
 	return t == Terrain.GRASS or t == Terrain.BEACH
 
 
+## Takes a road (dirt or paved) back off a tile.
+func clear_road(p: Vector2i) -> void:
+	if in_bounds(p) and road[p.y * w + p.x] != 0:
+		road[p.y * w + p.x] = 0
+		wear[p.y * w + p.x] = 0.0
+		astar.set_point_weight_scale(p, float(MOVE_COST[tile(p.x, p.y)]))
+
+
 func make_paved(p: Vector2i) -> bool:
 	if not can_pave(p):
 		return false
@@ -247,7 +255,7 @@ func _start_tiles(start: Vector2i) -> Array[Vector2i]:
 ## Closest spot to `near` (between min_r and max_r tiles away) where a building of `size` fits
 ## on clear grass, with a walkable ring around it and none of the `avoid` tiles inside it.
 ## Returns (-1, -1) if there is none.
-func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Array[Vector2i]) -> Vector2i:
+func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Array[Vector2i], avoid_rects: Array = []) -> Vector2i:
 	for r in range(min_r, max_r + 1):
 		for y in range(near.y - r, near.y + r + 1):
 			for x in range(near.x - r, near.x + r + 1):
@@ -262,6 +270,9 @@ func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Ar
 							ok = false
 				for p in avoid:
 					if rect.has_point(p):
+						ok = false
+				for other: Rect2i in avoid_rects:  # keep a tile of space around existing buildings
+					if rect.grow(1).intersects(other):
 						ok = false
 				if ok:
 					return Vector2i(x, y)

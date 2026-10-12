@@ -23,7 +23,7 @@ func _ready() -> void:
 	position = Iso.to_screen(Vector2(building.tile + building.size)).round()
 	_key = building.sprite_key()
 	var tex := Art.tex(_key)
-	if building.kind == "farm":
+	if building.is_field():
 		_flat = Sprite2D.new()
 		_flat.centered = false
 		_flat.texture = tex
@@ -43,6 +43,13 @@ func _ready() -> void:
 		objects.add_child(node)
 		_halves.append(node)
 		_sprites.append(sprite)
+
+
+## The building was demolished.
+func remove() -> void:
+	for node in _halves:
+		node.queue_free()
+	queue_free()
 
 
 func update_view() -> void:

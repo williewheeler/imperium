@@ -6,9 +6,9 @@ LibreSprite...) and the game picks the changes up on the next run, with no code 
 
 | Sheet | Contents |
 |---|---|
-| `scenery.png` | oak 0-2, pine 0-1, cypress, mountain 0-3, hill 0-1, berries, stone 0-1, gold 0-1, carried packs, `via` (paving tile, the road icon), `advance` (a Roman standard: the era-advance icon), `icon:wood/food/stone/gold/pop` (the resource-bar pictures), `frame` (the Greek-key panel border: a 28x28 nine-patch, 10px corners, 8px repeating edges, doubled to 56x56) |
-| `buildings.png` | town_center (Forum), house (Domus), storehouse (Horreum), hut (Casa, 1x1), farm:0-3 (Ager, a 3x3 wheat field: ripe, half-harvested, stubble, freshly sown) |
-| `villagers.png` | grid, 22x24 cells. One row per animation and direction (idle, walk, chop, mine, forage, till, build; each front then back), one column per frame. Villagers always face right; the game mirrors them. |
+| `scenery.png` | oak 0-2, pine 0-1, cypress, mountain 0-3, hill 0-1, berries, stone 0-1, gold 0-1, carried packs, `via` (paving tile, the road icon), `advance` (a Roman standard: the era-advance icon), `icon:wood/food/stone/gold/pop` (the resource-bar pictures), `frame:0`, `frame:1` (the HUD panel borders for Era I and II: a 28x28 nine-patch, 10px corners, 8px repeating edges) |
+| `buildings.png` | town_center (Forum), house (Domus), storehouse (Horreum), hut (Casa, 1x1), farm:0-3 (Ager, a 3x3 wheat field: ripe, half-harvested, stubble, freshly sown), vineyard:0-3 (Vinea: laden, half picked, bare, newly pruned), curia (Senate house, 3x3), aqueduct (4x1), castra (3x3) |
+| `villagers.png` | grid, 22x24 cells. One row per animation and direction (idle, walk, chop, mine, forage, till, build; each front then back), then the soldier rows (idle, walk), one column per frame. Villagers always face right; the game mirrors them. |
 | `ground_tiles.png` | 32x16 diamond tiles, one row per terrain (deep water, shallows, beach, grass, forest floor, hill slope, mountain rock), 4 variants each |
 | `ground_tileset.tres` | a Godot isometric `TileSet` built from `ground_tiles.png`, for painting maps in the editor |
 

@@ -31,6 +31,9 @@ const HELP := [  # [Latin, English]
 
 var minimap: Minimap
 
+var _panels: Array[FramedPanel] = []
+var _chrome_era := 0
+
 var _game  # Main
 var _theme := Theme.new()
 var _era_num: Label
@@ -41,7 +44,7 @@ var _res_icons: Array[TextureRect] = []
 var _pop_label: Label
 var _sel_name: Label
 var _sel_info: Label
-var _btn_box: HBoxContainer
+var _btn_box: HFlowContainer
 var _bar: ProgressBar
 var _bar_fill: StyleBoxFlat
 var _buttons: Array[Button] = []
@@ -109,12 +112,13 @@ func setup(game) -> void:
 	var sel := _panel(0, 1, 8.0)  # command bar: spans the bottom, up to the minimap
 	sel.anchor_right = 1.0
 	sel.offset_right = -(Minimap.SIZE.x + 2.0 * FramedPanel.FRAME + 2.0 * MARGIN)
-	sel.custom_minimum_size.y = 120
+	sel.custom_minimum_size.y = 98.0 + 2.0 * (FramedPanel.FRAME + 8.0)  # fits the tallest buttons (unit training)
 	var bar_row := HBoxContainer.new()
 	sel.add_child(bar_row)
 	var left := VBoxContainer.new()  # what's selected
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.custom_minimum_size.x = 260
+	left.custom_minimum_size.x = 188
+	left.size_flags_horizontal = Control.SIZE_FILL
 	bar_row.add_child(left)
 	_sel_name = _label("", 16, GOLD)
 	_sel_info = _label("", 12)
@@ -133,8 +137,12 @@ func setup(game) -> void:
 	_bar.add_theme_stylebox_override("fill", _bar_fill)
 	_bar.visible = false
 	left.add_child(_bar)
-	_btn_box = HBoxContainer.new()  # command icons
-	_btn_box.add_theme_constant_override("separation", 8)
+	_btn_box = HFlowContainer.new()  # command icons, wrapping into rows
+	_btn_box.add_theme_constant_override("h_separation", 6)
+	_btn_box.add_theme_constant_override("v_separation", 6)
+	_btn_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_btn_box.alignment = FlowContainer.ALIGNMENT_END
+	_btn_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar_row.add_child(_btn_box)
 
 	var map_frame := _panel(1, 1, 0.0)  # the minimap sits inside its own frame
@@ -198,6 +206,10 @@ func refresh() -> void:
 	_say(_pop_label, "%d/%d" % [pop, cap], pop_tip)
 	_res_icons[4].tooltip_text = pop_tip
 
+	if _game.era != _chrome_era:  # a new era brings new chrome
+		_chrome_era = _game.era
+		for p in _panels:
+			p.set_era(_chrome_era)
 	var era: Dictionary = Defs.ERAS[_game.era]
 	_say(_era_num, "Aetas %s" % era["numeral"], "Era %s" % era["numeral"])
 	_say(_era_name, era["latin"], "%s  (%s)" % [era["english"], era["years"]])
@@ -210,9 +222,9 @@ func refresh() -> void:
 	var b: Building = _game.selected_building()
 	var mode := "none"
 	if not us.is_empty():
-		mode = "villagers"
-	elif b != null and b.complete and b.kind == "town_center":
-		mode = "town_center"
+		mode = "villagers" if not _game.selected_workers().is_empty() else "soldiers"
+	elif b != null and b.complete and b.def().has("trains"):
+		mode = "trainer:" + b.kind
 	if mode != _mode:
 		_mode = mode
 		_rebuild_buttons(mode)
@@ -247,6 +259,7 @@ func refresh() -> void:
 		_say(_sel_info, "Sinistra: pone  ·  Dextra: abroga", "Left click: place  ·  Right click: cancel")
 	elif us.size() == 1:
 		var u := us[0]
+		var uname: Dictionary = Defs.UNITS[u.kind]
 		var st: Array = STATES[u.state]
 		var latin: String = st[0]
 		var english: String = st[1]
@@ -256,14 +269,26 @@ func refresh() -> void:
 		if u.carry > 0:
 			latin += "  ·  onus: %s %d" % [Defs.RES_NAMES[u.carry_kind], u.carry]
 			english += "  ·  carrying %d %s" % [u.carry, Defs.RES_ENGLISH[u.carry_kind].to_lower()]
-		_say(_sel_name, "Colonus", "Villager")
+		_say(_sel_name, uname["name"], uname["english"])
 		_say(_sel_info, latin, english)
 	elif us.size() > 1:
 		var idle := 0
+		var soldiers := 0
 		for u in us:
 			if u.state == Unit.State.IDLE:
 				idle += 1
-		_say(_sel_name, "%d coloni" % us.size(), "%d villagers" % us.size())
+			if u.kind == "soldier":
+				soldiers += 1
+		var workers := us.size() - soldiers
+		var latin_parts: Array[String] = []
+		var english_parts: Array[String] = []
+		if workers > 0:
+			latin_parts.append("%d coloni" % workers)
+			english_parts.append("%d villagers" % workers)
+		if soldiers > 0:
+			latin_parts.append("%d milites" % soldiers)
+			english_parts.append("%d soldiers" % soldiers)
+		_say(_sel_name, "  ·  ".join(latin_parts), ", ".join(english_parts))
 		_say(_sel_info, "%d otiosi" % idle, "%d idle" % idle)
 	elif b != null:
 		var def := b.def()
@@ -274,9 +299,9 @@ func refresh() -> void:
 			_say(_sel_info, "Aedificatur  %d%%" % pct, "Under construction  %d%%" % pct)
 		elif b.queue > 0:
 			_say(_sel_info, "In ordine: %d" % b.queue, "Villagers in training: %d" % b.queue)
-		elif b.kind == "farm" and map_deposit_for(b) != null:
+		elif b.is_field() and map_deposit_for(b) != null:
 			var fd: Deposit = map_deposit_for(b)
-			_say(_sel_info, "Reliquum: %d / %d" % [fd.amount, fd.max_amount], "Remaining: %d of %d food%s" % [fd.amount, fd.max_amount, "  (ripening again...)" if fd.amount <= 0 else ""])
+			_say(_sel_info, "Reliquum: %d / %d" % [fd.amount, fd.max_amount], "Remaining: %d of %d %s%s" % [fd.amount, fd.max_amount, Defs.RES_ENGLISH[fd.kind].to_lower(), "  (ripening again...)" if fd.amount <= 0 else ""])
 		else:
 			_say(_sel_info, def["ready"], "Ready")
 	elif _game.selected_deposit.x >= 0 and _game.map.deposits.has(_game.selected_deposit):
@@ -300,23 +325,29 @@ func _rebuild_buttons(mode: String) -> void:
 	for c in _btn_box.get_children():
 		c.queue_free()
 	_buttons.clear()
-	match mode:
+	var parts := mode.split(":")
+	match parts[0]:
 		"villagers":
 			for kind: String in Defs.BUILDINGS:
 				var def: Dictionary = Defs.BUILDINGS[kind]
 				_add_button(kind, def["name"], "Build a %s (%s)" % [def["english"], _cost_text(def["cost"])],
 					def["cost"], func() -> void: build_requested.emit(kind))
 				_buttons[-1].set_meta("era", def.get("era", 0))
+				_buttons[-1].compact = true
 			_add_button("via", "Via", "Lay a paved road: drag across the ground (%s per tile). Villagers pave it tile by tile." % _cost_text(Defs.ROAD_COST),
 				Defs.ROAD_COST, func() -> void: road_requested.emit())
 			_buttons[-1].set_meta("era", Defs.ROAD_ERA)
-		"town_center":
-			_add_button("villager", "Colonus", "Train a villager (%s)" % _cost_text(Defs.VILLAGER_COST),
-				Defs.VILLAGER_COST, func() -> void: train_requested.emit())
+			_buttons[-1].compact = true
+		"trainer":
+			var unit_kind: String = Defs.BUILDINGS[parts[1]]["trains"]
+			var unit: Dictionary = Defs.UNITS[unit_kind]
+			_add_button(unit_kind, unit["name"], "Train a %s (%s)" % [String(unit["english"]).to_lower(), _cost_text(unit["cost"])],
+				unit["cost"], func() -> void: train_requested.emit())
 			_buttons[-1].set_meta("train", true)
-			var adv: Variant = _game.advance_data()
-			_add_button("advance", "Progredere", "", adv["cost"] if adv != null else [0, 0, 0, 0], func() -> void: advance_requested.emit())
-			_buttons[-1].set_meta("advance", true)
+			if parts[1] == "town_center":
+				var adv: Variant = _game.advance_data()
+				_add_button("advance", "Progredere", "", adv["cost"] if adv != null else [0, 0, 0, 0], func() -> void: advance_requested.emit())
+				_buttons[-1].set_meta("advance", true)
 
 
 ## An icon button: `icon` picks the picture, `caption` is the short Latin label, and `english`
@@ -385,6 +416,7 @@ func _panel_style(margin_x: float, margin_y: float) -> StyleBoxFlat:
 
 func _panel(ax: int, ay: int, pad := 11.0) -> FramedPanel:
 	var p := FramedPanel.new(pad)
+	_panels.append(p)
 	p.theme = _theme
 	add_child(p)
 	_anchor(p, ax, ay)

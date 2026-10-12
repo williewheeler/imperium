@@ -16,6 +16,14 @@ const CARRY_CAP := 15
 const START_STOCK := [300, 200, 100, 50]
 const VILLAGER_COST := [0, 50, 0, 0]
 const VILLAGER_TRAIN_TIME := 8.0
+const SOLDIER_COST := [30, 50, 0, 0]
+const SOLDIER_TRAIN_TIME := 12.0
+
+# What a building's "trains" entry produces.
+const UNITS := {
+	"villager": {"name": "Colonus", "english": "Villager", "cost": VILLAGER_COST, "time": VILLAGER_TRAIN_TIME},
+	"soldier": {"name": "Miles", "english": "Soldier", "cost": SOLDIER_COST, "time": SOLDIER_TRAIN_TIME},
+}
 
 # Paved Roman road ("via"): cost per tile and the time one villager needs to lay a tile.
 const ROAD_COST := [0, 0, 2, 0]
@@ -41,8 +49,6 @@ const ERA_ADVANCE := [
 	null,
 ]
 const ROAD_ERA := 1  # paved roads are Era II (the Via Appia dates from 312 BC)
-const FARM_FOOD := 250
-const FARM_REGROW_TIME := 20.0  # seconds a harvested field takes to ripen again
 
 # "acc" is the accusative form used after verbs ("Aedifica domum"); "done" and "ready" agree
 # with the noun's gender (forum, horreum are neuter; domus, casa feminine; ager masculine).
@@ -50,7 +56,7 @@ const FARM_REGROW_TIME := 20.0  # seconds a harvested field takes to ripen again
 const BUILDINGS := {
 	"town_center": {
 		"name": "Forum", "acc": "Forum", "english": "Town Center", "done": "perfectum est", "ready": "Paratum",
-		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0],
+		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": "villager",
 		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3], "pop": 10,
 	},
 	"hut": {
@@ -66,11 +72,33 @@ const BUILDINGS := {
 	"farm": {
 		"name": "Ager", "acc": "Agrum", "english": "Wheat Field", "done": "perfectus est", "ready": "Paratus",
 		"size": Vector2i(3, 3), "cost": [60, 0, 0, 0], "walkable": true,
+		"field": true, "yield": 1, "crop": 250, "regrow": 20.0,
 		"build_time": 18.0, "sight": 4.0, "accepts": [], "pop": 0,
+	},
+	"vineyard": {
+		"name": "Vinea", "acc": "Vineam", "english": "Vineyard", "done": "perfecta est", "ready": "Parata", "era": 1,
+		"size": Vector2i(3, 3), "cost": [80, 0, 0, 0], "walkable": true,
+		"field": true, "yield": 3, "crop": 200, "regrow": 30.0,  # wine, sold: it yields gold
+		"build_time": 25.0, "sight": 4.0, "accepts": [], "pop": 0,
 	},
 	"storehouse": {
 		"name": "Horreum", "acc": "Horreum", "english": "Storehouse", "done": "perfectum est", "ready": "Paratum",
 		"size": Vector2i(2, 2), "cost": [60, 0, 0, 0],
 		"build_time": 15.0, "sight": 5.0, "accepts": [0, 2, 3], "pop": 0,
+	},
+	"curia": {
+		"name": "Curia", "acc": "Curiam", "english": "Senate House", "done": "perfecta est", "ready": "Parata", "era": 1,
+		"size": Vector2i(3, 3), "cost": [100, 0, 150, 0],  # the Senate's powers come later; for now it's the seat of the Republic
+		"build_time": 50.0, "sight": 9.0, "accepts": [], "pop": 0,
+	},
+	"aqueduct": {
+		"name": "Aquaeductus", "acc": "Aquaeductum", "english": "Aqueduct", "done": "perfectus est", "ready": "Paratus", "era": 1,
+		"size": Vector2i(4, 1), "cost": [0, 0, 160, 0], "walkable": true,  # people walk under the arches
+		"build_time": 40.0, "sight": 4.0, "accepts": [], "pop": 8,  # fresh water lets a bigger town live here
+	},
+	"castra": {
+		"name": "Castra", "acc": "Castra", "english": "Barracks", "done": "perfecta sunt", "ready": "Parata", "era": 1,
+		"size": Vector2i(3, 3), "cost": [100, 0, 50, 0], "trains": "soldier",
+		"build_time": 35.0, "sight": 8.0, "accepts": [], "pop": 0,
 	},
 }

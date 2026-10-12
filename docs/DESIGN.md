@@ -44,12 +44,36 @@ name and dates on hover, and a progress readout while an advance is under way. *
 | Era | Feel | Content (planned) |
 |---|---|---|
 | I Regnum | A hut village finding its feet | Villagers; Casa (hut); Ager (wheat field); Horreum; Forum; dirt roads that wear into the ground |
-| II Res Publica | Citizens, civic life, first conquests | Stone Domus; **paved roads (Via)**; citizen militia; Curia (Senate house); first aqueduct |
+| II Res Publica | Citizens, civic life, first conquests | Stone Domus; **paved roads (Via)**; **Vinea** (vineyards); **Curia** (Senate house); **Aquaeductus**; **Castra** and citizen soldiers (**Milites**). All built (see below) |
 | III Imperium Populi Romani | Legions and expansion | Legions, barracks, ships and harbours, provinces, bigger aqueducts |
 | IV Principatus | Peak: monuments, baths, amphitheatres | Baths, amphitheatre, triumphal arches, roads and aqueducts at scale |
 | V Dominatus | Holding on | Walls and fortifications, barbarian pressure, economic strain; the "fall" gameplay |
 
 ---
+
+### Era II content — built
+
+| Thing | Latin | Notes |
+|---|---|---|
+| Domus | *Domus* | stone house, +5 population |
+| Paved road | *Via* | dragged out and paved by villagers; 1.7x speed |
+| Senate house | *Curia* | brick hall with marble pilasters and bronze doors. Pure prestige for now: its powers (the Senate) come later |
+| Aqueduct | *Aquaeductus* | a 4x1 run of arches carrying a water channel; +8 population (fresh water lets a bigger town live here). People walk under the arches |
+| Barracks | *Castra* | a palisaded camp; trains soldiers |
+| Soldier | *Miles* | an early-Republic citizen soldier: bronze helmet with a crest, breastplate, round shield, spear. Can march but not work, and there is no combat yet |
+| Vineyard | *Vinea* | a renewable field like the Ager, but its crop is wine, sold for **gold** (200 per crop, ripens again in 30 s) |
+
+**Why vineyards are Era II.** Vines reached Latium early (the Etruscans and Greeks brought viticulture
+in the 8th–6th centuries BC), so a few vines in Era I would not be wrong. But large-scale, commercial
+winemaking is a Republic story (Cato's *De Agri Cultura*, c. 160 BC, treats vineyards in detail). So wheat
+is Era I's farm and wine is Era II's trade crop. (Moderate confidence.)
+
+**Chrome.** Each era has its own HUD frame (`Art.FRAME_STYLES`): Era I is gold Greek key on dark red;
+Era II is white marble with a wave scroll on Roman purple. Eras III–V reuse Era II's until they are designed.
+
+**Trying it out.** Press **E** to jump to the next era (**Shift+E** for the previous one). The map is dressed
+as a town grown into that era (buildings, a paved avenue, workers, soldiers), clearing woodland as it
+goes. This is a temporary tool for looking at the art and interface, not a game mechanic.
 
 ## Advancing through eras — decided: option A
 
@@ -95,8 +119,8 @@ era gating of buildings comes first.
   The Forum trains villagers.
 - **Roads:** dirt roads wear into the ground where villagers walk (faster, preferred by pathfinding);
   **paved roads** can be laid by dragging, paid for in stone and built tile by tile by villagers.
-- **Eras:** the banner, the Forum's Advance button (Era I → II), and era-gated buildings (Domus and paved
-  roads unlock in Era II).
+- **Eras:** the banner, the Forum's Advance button (Era I → II), era-gated buildings (Domus, paved roads,
+  Vinea, Curia, Aquaeductus and Castra unlock in Era II), per-era HUD chrome, and an E-key era jump for testing.
 - **Interface:** Latin text with English tooltips; icon command bar; resource panel for a clicked
   deposit; era banner. Every panel shares a gilded Greek-key (meander) frame (`FramedPanel`), and the
   resource bar uses pixel-art icons (logs, wheat, stone, gold ingots, a villager) instead of words.

@@ -38,6 +38,11 @@ func setup(p_game) -> void:
 	add_child(overlay)
 
 
+## Roads were removed (debug era changes): repaint them.
+func roads_rebuilt() -> void:
+	ground.rebuild_roads()
+
+
 ## A tile just became a road (worn dirt, or a paved one laid by villagers).
 func road_changed(p: Vector2i) -> void:
 	ground.update_road(p)
@@ -114,6 +119,14 @@ func _process(_delta: float) -> void:
 			decals.add_child(v)
 			_building_views[b] = v
 		_building_views[b].update_view()
+	for u: Unit in _unit_views.keys():  # things that no longer exist
+		if not game.units.has(u):
+			_unit_views[u].queue_free()
+			_unit_views.erase(u)
+	for b: Building in _building_views.keys():
+		if not game.buildings.has(b):
+			_building_views[b].remove()
+			_building_views.erase(b)
 	for p: Vector2i in _deposit_nodes.keys():  # a mine or bush that got used up
 		if not game.map.deposits.has(p):
 			_deposit_nodes[p].queue_free()

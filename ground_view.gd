@@ -53,6 +53,17 @@ func set_tile(p: Vector2i, terrain: int) -> void:
 	_texture.update(_image)
 
 
+## Roads were taken off the map: repaint the masks from scratch.
+func rebuild_roads() -> void:
+	_dirt_image.fill(Color(0, 0, 0))
+	_paved_image.fill(Color(0, 0, 0))
+	for y in _map.h:
+		for x in _map.w:
+			_stroke_tile(Vector2i(x, y))
+	_dirt_texture.update(_dirt_image)
+	_paved_texture.update(_paved_image)
+
+
 ## A tile became a road (dirt or paved): paint it and its links to neighbouring road tiles.
 func update_road(p: Vector2i) -> void:
 	_stroke_tile(p)

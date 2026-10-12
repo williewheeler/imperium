@@ -18,9 +18,14 @@ func def() -> Dictionary:
 	return Defs.BUILDINGS[kind]
 
 
+## Fields (wheat, vines) are flat, renewable crops that villagers work.
+func is_field() -> bool:
+	return def().get("field", false)
+
+
 ## Key of the sprite to draw (fields change picture as they're harvested).
 func sprite_key() -> String:
-	return "farm:%d" % stage if kind == "farm" else kind
+	return "%s:%d" % [kind, stage] if is_field() else kind
 
 
 ## The tile at the middle of the footprint (where a field's crop lives).

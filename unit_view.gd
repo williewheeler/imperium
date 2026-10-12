@@ -34,7 +34,7 @@ func update_view() -> void:
 			frame = int(fposmod(unit.anim * WORK_RATE[work], 1.0) * frames)
 	var back := unit.sdir.y < 0.0
 	var flip := unit.sdir.x < 0.0
-	_body.texture = Art.tex("villager:%s:%s:%d" % [anim, "b" if back else "f", frame])
+	_body.texture = Art.tex("%s:%s:%s:%d" % [unit.kind, anim, "b" if back else "f", frame])
 	_body.flip_h = flip
 	var w := _body.texture.get_width()
 	_body.offset = Vector2(-(w - Art.VILLAGER_FEET.x) if flip else -Art.VILLAGER_FEET.x, -Art.VILLAGER_FEET.y)
