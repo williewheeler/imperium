@@ -58,7 +58,6 @@ func _draw() -> void:
 		pts.append(_to_mini(c))
 	pts.append(pts[0])
 	draw_polyline(pts, Color.WHITE, 1.0)
-	draw_rect(Rect2(Vector2.ZERO, size), Color("b8913f"), false, 2.0)
 
 
 func _gui_input(event: InputEvent) -> void:

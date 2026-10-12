@@ -98,7 +98,8 @@ era gating of buildings comes first.
 - **Eras:** the banner, the Forum's Advance button (Era I → II), and era-gated buildings (Domus and paved
   roads unlock in Era II).
 - **Interface:** Latin text with English tooltips; icon command bar; resource panel for a clicked
-  deposit; era banner.
+  deposit; era banner. Every panel shares a gilded Greek-key (meander) frame (`FramedPanel`), and the
+  resource bar uses pixel-art icons (logs, wheat, stone, gold ingots, a villager) instead of words.
 - **Art pipeline:** sprites are drawn in code (`art.gd`) and baked into editable PNG sheets and a Godot
   TileSet (`assets/art/`, `tools/export_art.sh`).
 

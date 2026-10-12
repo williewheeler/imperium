@@ -60,18 +60,8 @@ func setup(game) -> void:
 	_theme.set_font_size("font_size", "TooltipLabel", 14)
 
 	var top := _panel(0, 0)
-	top.add_theme_stylebox_override("panel", Art.frame_style())  # gilded Greek-key border
-	top.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # crisp pixels, no seams between tiles
-	var fill := ColorRect.new()  # the panel colour, behind the contents and inside the frame
-	fill.color = Color(0.157, 0.07, 0.055, 0.93)
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(fill)
-	var pad := MarginContainer.new()
-	for side in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
-		pad.add_theme_constant_override(side, 7)
-	top.add_child(pad)
 	var tv := VBoxContainer.new()
-	pad.add_child(tv)
+	top.add_child(tv)
 	var title := _label("", 12, GOLD)
 	_say(title, "Imperium  ·  sors %d" % _game.map.seed_value, "Empire  ·  map seed %d" % _game.map.seed_value)
 	tv.add_child(title)
@@ -116,9 +106,9 @@ func setup(game) -> void:
 		_say(l, line[0], line[1])
 		hv.add_child(l)
 
-	var sel := _panel(0, 1)  # command bar: spans the bottom, up to the minimap
+	var sel := _panel(0, 1, 8.0)  # command bar: spans the bottom, up to the minimap
 	sel.anchor_right = 1.0
-	sel.offset_right = -(Minimap.SIZE.x + 2.0 * MARGIN)
+	sel.offset_right = -(Minimap.SIZE.x + 2.0 * FramedPanel.FRAME + 2.0 * MARGIN)
 	sel.custom_minimum_size.y = 120
 	var bar_row := HBoxContainer.new()
 	sel.add_child(bar_row)
@@ -147,10 +137,10 @@ func setup(game) -> void:
 	_btn_box.add_theme_constant_override("separation", 8)
 	bar_row.add_child(_btn_box)
 
+	var map_frame := _panel(1, 1, 0.0)  # the minimap sits inside its own frame
 	minimap = Minimap.new()
 	minimap.setup(game)
-	add_child(minimap)
-	_anchor(minimap, 1, 1)
+	map_frame.add_child(minimap)
 
 	_msg = _label("", 18)
 	_msg.theme = _theme
@@ -393,10 +383,9 @@ func _panel_style(margin_x: float, margin_y: float) -> StyleBoxFlat:
 	return sb
 
 
-func _panel(ax: int, ay: int) -> PanelContainer:
-	var p := PanelContainer.new()
+func _panel(ax: int, ay: int, pad := 11.0) -> FramedPanel:
+	var p := FramedPanel.new(pad)
 	p.theme = _theme
-	p.add_theme_stylebox_override("panel", _panel_style(14, 10))
 	add_child(p)
 	_anchor(p, ax, ay)
 	return p
