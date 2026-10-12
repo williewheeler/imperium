@@ -18,7 +18,7 @@ var carry := 0
 var work := 0.0  # fractional progress toward the next gathered unit
 
 # Animation
-var facing := 1.0  # +1 faces right, -1 faces left
+var sdir := Vector2(1, 1)  # which way they face on screen: x -1/+1 = left/right, y +1 = toward the camera
 var moving := false  # moved this frame
 var stuck := 0.0  # seconds spent blocked while trying to walk
 var best_goal_dist := INF  # closest this unit has got to the end of its path

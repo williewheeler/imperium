@@ -19,6 +19,7 @@ var _styles := {}
 func _init() -> void:
 	custom_minimum_size = Vector2(92, 98)
 	focus_mode = Control.FOCUS_NONE
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	for state: String in FILL:
 		var sb := StyleBoxFlat.new()
@@ -66,33 +67,14 @@ func _draw_cost(y: float, text_color: Color) -> void:
 			total += 9.0 + w + 6.0
 	var x := (size.x - total) / 2.0
 	for it in items:
-		draw_circle(Vector2(x + 3.5, y - 4), 3.5, _t(EntitiesView.RES_COLORS[it[0]]))
+		draw_circle(Vector2(x + 3.5, y - 4), 3.5, _t(Art.RES_COLORS[it[0]]))
 		draw_string(font, Vector2(x + 9.0, y), it[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, text_color)
 		x += 9.0 + it[2] + 6.0
 
 
 func _draw_icon(c: Vector2) -> void:
-	match icon_kind:
-		"town_center":  # temple front: pediment, columns, steps
-			draw_rect(Rect2(c + Vector2(-22, 14), Vector2(44, 4)), _t(Color("c9bea4")))
-			draw_rect(Rect2(c + Vector2(-19, 10), Vector2(38, 4)), _t(Color("e9e0cc")))
-			for i in 4:
-				draw_rect(Rect2(c + Vector2(-15 + i * 10.0, -6), Vector2(5, 16)), _t(Color("f1ead8")))
-			draw_rect(Rect2(c + Vector2(-20, -10), Vector2(40, 4)), _t(Color("e9e0cc")))
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-23, -10), c + Vector2(0, -24), c + Vector2(23, -10)]), _t(Color("b3262a")))
-		"house":
-			draw_rect(Rect2(c + Vector2(-15, -4), Vector2(30, 20)), _t(Color("e6d9bd")))
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-20, -3), c + Vector2(0, -20), c + Vector2(20, -3)]), _t(Color("b5532f")))
-			draw_rect(Rect2(c + Vector2(-4, 5), Vector2(8, 11)), _t(Color("5a3a1e")))
-			draw_rect(Rect2(c + Vector2(-12, 0), Vector2(5, 5)), _t(Color("5a3a1e")))
-		"storehouse":  # granary on posts, with sacks at the door
-			draw_rect(Rect2(c + Vector2(-14, 12), Vector2(4, 6)), _t(Color("5a3a1e")))
-			draw_rect(Rect2(c + Vector2(10, 12), Vector2(4, 6)), _t(Color("5a3a1e")))
-			draw_rect(Rect2(c + Vector2(-17, -6), Vector2(34, 18)), _t(Color("9b6f3e")))
-			draw_line(c + Vector2(-17, 0), c + Vector2(17, 0), _t(Color("7a5530")), 2.0)
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-21, -5), c + Vector2(-13, -16), c + Vector2(13, -16), c + Vector2(21, -5)]), _t(Color("6e4a2a")))
-			draw_rect(Rect2(c + Vector2(-4, 3), Vector2(8, 9)), _t(Color("3e2a16")))
-		"villager":
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-15, 20), c + Vector2(-11, 4), c + Vector2(11, 4), c + Vector2(15, 20)]), _t(EntitiesView.ROMAN_RED))
-			draw_circle(c + Vector2(0, -6), 9.0, _t(EntitiesView.SKIN))
-			draw_arc(c + Vector2(0, -6), 9.4, PI * 1.05, PI * 1.95, 12, _t(EntitiesView.HAIR), 4.0)
+	var key := "villager:idle:f:0" if icon_kind == "villager" else icon_kind
+	var t: Texture2D = Art.tex(key) if icon_kind == "villager" else Art.icon(key)
+	var scale := 2.0
+	var sz := t.get_size() * scale
+	draw_texture_rect(t, Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz), false, Color(0.45, 0.45, 0.45, 0.7) if disabled else Color.WHITE)

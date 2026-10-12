@@ -1,7 +1,7 @@
 class_name Main
 extends Node2D
 
-const T := 32
+const MARKER_LIFE := 0.7
 const VILLAGER_SPEED := 1.5  # tiles/sec on grass
 const VILLAGER_SIGHT := 7.0
 const FOUNDATION_SIGHT := 4.0
@@ -15,10 +15,11 @@ const DETOUR_SKIP := 1.3  # waypoints this close to a finished detour are skippe
 const STALL_TIME := 2.5  # no progress for this long near the goal: settle where you are
 const WAYPOINT_REACH := 0.3  # how close counts as "at" an intermediate waypoint
 const STUCK_TIME := 1.2  # a walker blocked this long is allowed to push through
-const PAN_SPEED := 700.0
+const PAN_SPEED := 700.0  # screen pixels per second
 const EDGE_PAN_MARGIN := 8.0  # screen pixels from the edge that trigger scrolling
-const ZOOM_MIN := 0.5
-const ZOOM_MAX := 2.5
+const ZOOM_LOGICAL_MIN := 1.0  # zoom range in on-screen pixels per art pixel
+const ZOOM_LOGICAL_MAX := 4.0
+const ZOOM_LOGICAL_START := 2.5
 const CITY_NAMES := [
 	"Antium", "Ostia", "Veii", "Tibur", "Praeneste", "Alba Longa",
 	"Ardea", "Lanuvium", "Cora", "Signia", "Fidenae", "Gabii",
@@ -38,7 +39,10 @@ var selected_deposit := Vector2i(-1, -1)  # clicked resource tile, or (-1, -1)
 var dragging := false
 var drag_rect := Rect2()  # world pixels
 
-var _map_view: MapView
+var _world: World
+var cam_pos := Vector2.ZERO  # camera centre in world pixels (smooth; the Camera2D gets it rounded)
+var zoom_px := 0  # whole physical screen pixels per art pixel, so pixels stay square
+var _zoom_accum := 0.0
 var _drag_start := Vector2.ZERO
 var _fog_timer := 0.0
 var _cities := 0
@@ -69,30 +73,30 @@ func _ready() -> void:
 		_add_building("town_center", site, true)
 	map.place_resources(start)  # after the Town Center, so berries and mines go around it
 
-	_map_view = MapView.new()
-	_map_view.map = map
-	add_child(_map_view)
-
-	var entities := EntitiesView.new()
-	entities.game = self
-	add_child(entities)
+	_world = World.new()
+	add_child(_world)
+	_world.setup(self)
 
 	camera = Camera2D.new()
-	camera.position = (Vector2(start) + Vector2(0.5, 0.5)) * T
-	camera.zoom = Vector2.ONE * 1.4
+	cam_pos = Iso.to_screen(Vector2(start) + Vector2(0.5, 0.5))
+	camera.position = cam_pos.round()
 	add_child(camera)
+	_apply_zoom()
 
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup(self)
 	hud.build_requested.connect(func(kind: String) -> void: placing = kind)
 	hud.train_requested.connect(_train_villager)
-	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: camera.position = tile_pos * T)
+	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: cam_pos = Iso.to_screen(tile_pos))
 	hud.flash("Elige colonos et iube eos laborare.")
 
 	_update_fog()
 	if args.has("demo"):
 		_run_demo(start)
+	if args.has("select"):
+		for u in units:
+			u.selected = true
 	Engine.time_scale = float(args.get("speed", 1.0))
 	_screenshot_path = args.get("shot", "")
 	_report = args.has("report")
@@ -130,16 +134,19 @@ func can_afford(cost: Array) -> bool:
 	return true
 
 
-## Visible area in tile coordinates.
-func get_view_rect() -> Rect2:
-	var size := get_viewport_rect().size / camera.zoom.x / T
-	return Rect2(camera.position / T - size / 2.0, size)
+## The four corners of the visible area, in tile coordinates (a diamond-ish quad).
+func view_corners() -> Array[Vector2]:
+	var half := get_viewport_rect().size / camera.zoom.x / 2.0
+	var out: Array[Vector2] = []
+	for s in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		out.append(Iso.to_tile(cam_pos + half * s))
+	return out
 
 
 ## Top-left tile of the building footprint being placed, centred under the cursor.
 func placing_tile() -> Vector2i:
 	var size: Vector2i = Defs.BUILDINGS[placing]["size"]
-	var m := get_global_mouse_position() / T
+	var m := Iso.to_tile(get_global_mouse_position())
 	return Vector2i((m - Vector2(size) / 2.0 + Vector2(0.5, 0.5)).floor())
 
 
@@ -179,15 +186,17 @@ func _unhandled_input(event: InputEvent) -> void:
 				if placing != "":
 					placing = ""
 				else:
-					_command_at(get_global_mouse_position() / T)
+					_command_at(get_global_mouse_position())
 			MOUSE_BUTTON_WHEEL_UP:
-				_zoom_at(1.1)
+				_zoom_step(1)
 			MOUSE_BUTTON_WHEEL_DOWN:
-				_zoom_at(1.0 / 1.1)
+				_zoom_step(-1)
 	elif event is InputEventMagnifyGesture:
-		_zoom_at(event.factor)
+		_zoom_accum += log(event.factor)
+		_drain_zoom_accum()
 	elif event is InputEventPanGesture:
-		_zoom_at(1.0 - event.delta.y * 0.05)
+		_zoom_accum -= event.delta.y * 0.05
+		_drain_zoom_accum()
 
 
 func _clear_selection() -> void:
@@ -202,54 +211,109 @@ func _finish_select(rect: Rect2, additive: bool) -> void:
 	if not additive:
 		_clear_selection()
 	if rect.size.length() * camera.zoom.x < 6.0:  # a click, not a drag
-		var tile_pos := rect.position / T
+		var mp := rect.position
+		var best: Unit = null
+		var best_d := 10.0  # world pixels from the villager's body
 		for u in units:
-			if u.pos.distance_to(tile_pos) < 0.7:
-				u.selected = true
-				return
-		var b := building_at(Vector2i(tile_pos.floor()))
+			var d := (Iso.to_screen(u.pos) + Vector2(0, -6)).distance_to(mp)
+			if d < best_d:
+				best_d = d
+				best = u
+		if best != null:
+			best.selected = true
+			return
+		var b := building_under(mp)
 		if b != null:
 			b.selected = true
 			return
-		var tile := Vector2i(tile_pos.floor())
-		if fog.is_explored(tile) and map.deposits.has(tile):
+		var tile := deposit_near(mp)
+		if tile.x >= 0:
 			selected_deposit = tile
 		return
 	for u in units:
-		if rect.has_point(u.pos * T):
+		if rect.has_point(Iso.to_screen(u.pos) + Vector2(0, -6)):
 			u.selected = true
 
 
-func _zoom_at(factor: float) -> void:
-	# Keep the world point under the cursor fixed while zooming.
+## The building whose picture is under world position `mp`. Sprites stand tall, so this tests
+## the actual pixel under the cursor (transparent corners don't count).
+func building_under(mp: Vector2) -> Building:
+	var hit: Building = null
+	for b in buildings:
+		var origin := Iso.to_screen(Vector2(b.tile + b.size)).round() - Art.building_anchor(b.kind)
+		if Art.solid_at(b.kind, Vector2i((mp - origin).floor())) and (hit == null or b.tile.y > hit.tile.y):
+			hit = b
+	return hit
+
+
+## An explored resource tile at world position `mp`, allowing for trees/bushes standing above
+## the ground (so clicking a canopy finds the tile it grows on). (-1, -1) if none.
+func deposit_near(mp: Vector2) -> Vector2i:
+	for dy in [0.0, 5.0, 10.0]:
+		var t := Vector2i(Iso.to_tile(mp + Vector2(0, dy)).floor())
+		if fog.is_explored(t) and map.deposits.has(t):
+			return t
+	return Vector2i(-1, -1)
+
+
+## Physical screen pixels per logical (stretched) pixel.
+func _pixel_scale() -> float:
+	var logical := get_viewport_rect().size.x
+	return maxf(0.25, float(DisplayServer.window_get_size().x) / logical) if logical > 0.0 else 1.0
+
+
+## Pixel art stays crisp only if each art pixel covers a whole number of screen pixels, so the
+## zoom is stored as that whole number and converted to the camera's logical zoom.
+func _apply_zoom() -> void:
+	var s := _pixel_scale()
+	var lo := maxi(1, ceili(s * ZOOM_LOGICAL_MIN))
+	var hi := maxi(lo, floori(s * ZOOM_LOGICAL_MAX))
+	if zoom_px == 0:
+		zoom_px = roundi(s * ZOOM_LOGICAL_START)
+	zoom_px = clampi(zoom_px, lo, hi)
+	camera.zoom = Vector2.ONE * (zoom_px / s)
+
+
+## Zoom one level in or out, keeping the world point under the cursor fixed.
+func _zoom_step(dir: int) -> void:
 	var mouse := get_viewport().get_mouse_position()
 	var half := get_viewport_rect().size / 2.0
-	var before := camera.position + (mouse - half) / camera.zoom.x
-	var z := clampf(camera.zoom.x * factor, ZOOM_MIN, ZOOM_MAX)
-	camera.zoom = Vector2.ONE * z
-	camera.position = before - (mouse - half) / z
+	var before := cam_pos + (mouse - half) / camera.zoom.x
+	zoom_px += dir
+	_apply_zoom()
+	cam_pos = before - (mouse - half) / camera.zoom.x
+
+
+func _drain_zoom_accum() -> void:
+	while _zoom_accum > 0.3:
+		_zoom_accum -= 0.3
+		_zoom_step(1)
+	while _zoom_accum < -0.3:
+		_zoom_accum += 0.3
+		_zoom_step(-1)
 
 
 # ---------- Orders ----------
 
-func _command_at(pos: Vector2) -> void:
+func _command_at(mp: Vector2) -> void:
 	var us := selected_units()
 	if us.is_empty():
 		return
+	var pos := Iso.to_tile(mp)
 	var tile := Vector2i(pos.floor())
 	if not map.in_bounds(tile):
 		return
 	markers.append({"pos": pos, "t": 0.0})
-	if fog.is_explored(tile):
-		if map.deposits.has(tile):
-			for u in us:
-				_order_gather(u, tile)
-			return
-		var b := building_at(tile)
-		if b != null and not b.complete:
-			for u in us:
-				_order_build(u, b)
-			return
+	var res := deposit_near(mp)
+	if res.x >= 0:
+		for u in us:
+			_order_gather(u, res)
+		return
+	var b := building_under(mp)
+	if b != null and not b.complete:
+		for u in us:
+			_order_build(u, b)
+		return
 	var goals := map.spread_goals(tile, us.size())
 	if goals.is_empty():
 		hud.flash("Iter nullum est.")
@@ -391,7 +455,7 @@ func _process(delta: float) -> void:
 		_update_building(b, delta)
 	for i in range(markers.size() - 1, -1, -1):
 		markers[i].t += delta
-		if markers[i].t > EntitiesView.MARKER_LIFE:
+		if markers[i].t > MARKER_LIFE:
 			markers.remove_at(i)
 
 	if dragging:
@@ -417,6 +481,7 @@ func _process(delta: float) -> void:
 			if _report:
 				print(_report_text())
 			else:
+				print("frame time %.1f ms, %d fps, %d draw calls, %d objects" % [Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Engine.get_frames_per_second(), Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
 				get_viewport().get_texture().get_image().save_png(_screenshot_path)
 			get_tree().quit()
 
@@ -425,12 +490,13 @@ func _process(delta: float) -> void:
 func _update_world_tip() -> void:
 	var tip := ""
 	if placing == "" and not dragging and get_viewport().gui_get_hovered_control() == null:
-		var b := building_at(Vector2i((get_global_mouse_position() / T).floor()))
+		var mp := get_global_mouse_position()
+		var b := building_under(mp)
 		if b != null and fog.is_explored(b.tile):
 			tip = b.def()["english"] if b.kind != "town_center" else "%s (%s)" % [b.building_name, b.def()["english"]]
 		else:
-			var t := Vector2i((get_global_mouse_position() / T).floor())
-			if fog.is_explored(t) and map.deposits.has(t):
+			var t := deposit_near(mp)
+			if t.x >= 0:
 				var d: Deposit = map.deposits[t]
 				tip = "%s: %d left" % [Defs.DEPOSIT_ENGLISH[d.kind], d.amount]
 	hud.set_world_tip(tip)
@@ -452,8 +518,11 @@ func _pan_camera(delta: float) -> void:
 		elif mouse.y >= view.y - EDGE_PAN_MARGIN:
 			dir.y += 1
 	dir = dir.clamp(Vector2(-1, -1), Vector2(1, 1))
-	camera.position += dir * PAN_SPEED / camera.zoom.x * delta
-	camera.position = camera.position.clamp(Vector2.ZERO, Vector2(map.w, map.h) * T)
+	_apply_zoom()
+	cam_pos += dir * PAN_SPEED / camera.zoom.x * delta
+	# stay over the map: its bounding box in world pixels
+	cam_pos = cam_pos.clamp(Vector2(-map.h * Iso.HALF_W, 0), Vector2(map.w * Iso.HALF_W, (map.w + map.h) * Iso.HALF_H))
+	camera.position = cam_pos.round()  # whole world pixels, so sprites don't shimmer
 
 
 func _update_fog() -> void:
@@ -517,8 +586,7 @@ func _follow(u: Unit, delta: float) -> bool:
 		var moved := u.pos.distance_to(before)
 		u.walk += moved * WALK_CYCLE_PER_TILE
 		u.moving = true
-		if absf(heading.x) > 0.05:
-			u.facing = signf(heading.x)
+		_set_facing(u, heading)
 		u.stuck = u.stuck + delta if moved < step * 0.3 else maxf(0.0, u.stuck - delta * 2.0)
 		budget = 0.0
 	return u.path.is_empty()
@@ -579,10 +647,18 @@ func _spot_taken(u: Unit, spot: Vector2) -> bool:
 	return false
 
 
+## Face along a movement direction given in tile space.
+func _set_facing(u: Unit, tile_dir: Vector2) -> void:
+	var s := Iso.screen_dir(tile_dir)
+	if absf(s.x) > 0.05:
+		u.sdir.x = signf(s.x)
+	if absf(s.y) > 0.05:
+		u.sdir.y = signf(s.y)
+
+
 ## Turn a working villager toward what they're working on.
 func _face(u: Unit, target_tile_pos: Vector2) -> void:
-	if absf(target_tile_pos.x - u.pos.x) > 0.05:
-		u.facing = signf(target_tile_pos.x - u.pos.x)
+	_set_facing(u, target_tile_pos - u.pos)
 
 
 ## Last-resort overlap fix (steering handles almost everything). A walker gives way to anyone
@@ -680,7 +756,7 @@ func _gather(u: Unit, delta: float) -> void:
 		d.amount -= 1
 	if d.amount <= 0:
 		if map.remove_deposit(u.target_tile):
-			_map_view.refresh_tile(u.target_tile)
+			_world.tile_changed(u.target_tile)
 	if u.carry >= Defs.CARRY_CAP or (d.amount <= 0 and u.carry > 0):
 		_return_to_dropsite(u)
 

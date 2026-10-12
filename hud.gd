@@ -77,7 +77,7 @@ func setup(game) -> void:
 
 	var sel := _panel(0, 1)  # command bar: spans the bottom, up to the minimap
 	sel.anchor_right = 1.0
-	sel.offset_right = -(180.0 + 2.0 * MARGIN)
+	sel.offset_right = -(Minimap.SIZE.x + 2.0 * MARGIN)
 	sel.custom_minimum_size.y = 120
 	var bar_row := HBoxContainer.new()
 	sel.add_child(bar_row)
@@ -223,7 +223,7 @@ func refresh() -> void:
 		_bar.max_value = full
 		_bar.value = d.amount
 		_bar.tooltip_text = english
-		_bar_fill.bg_color = EntitiesView.RES_COLORS[d.kind]
+		_bar_fill.bg_color = Art.RES_COLORS[d.kind]
 		_bar.visible = true
 	else:
 		_say(_sel_name, "Nihil electum", "Nothing selected")
