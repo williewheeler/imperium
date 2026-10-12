@@ -728,10 +728,24 @@ func _dress_place(kind: String, prefs: Array) -> Building:
 	return b
 
 
+## The nearest spot to `at` where no other unit stands (so nobody gets shoved apart on arrival).
+func _free_spot(at: Vector2) -> Vector2:
+	for spot in map.spread_goals(Vector2i(at), 60):
+		var c := Vector2(spot) + Vector2(0.5, 0.5)
+		var clear := true
+		for other in units:
+			if other.pos.distance_to(c) < 1.0:
+				clear = false
+				break
+		if clear:
+			return c
+	return at
+
+
 func _dress_unit(kind: String, at: Vector2) -> Unit:
 	var u := Unit.new()
 	u.kind = kind
-	u.pos = at
+	u.pos = _free_spot(at)
 	units.append(u)
 	_dressed_units.append(u)
 	return u
