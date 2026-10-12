@@ -37,6 +37,7 @@ var _era_num: Label
 var _era_name: Label
 var _era_prog: Label
 var _res_labels: Array[Label] = []
+var _res_icons: Array[TextureRect] = []
 var _pop_label: Label
 var _sel_name: Label
 var _sel_info: Label
@@ -59,20 +60,35 @@ func setup(game) -> void:
 	_theme.set_font_size("font_size", "TooltipLabel", 14)
 
 	var top := _panel(0, 0)
+	top.add_theme_stylebox_override("panel", Art.frame_style())  # gilded Greek-key border
+	top.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # crisp pixels, no seams between tiles
+	var fill := ColorRect.new()  # the panel colour, behind the contents and inside the frame
+	fill.color = Color(0.157, 0.07, 0.055, 0.93)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(fill)
+	var pad := MarginContainer.new()
+	for side in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
+		pad.add_theme_constant_override(side, 7)
+	top.add_child(pad)
 	var tv := VBoxContainer.new()
-	top.add_child(tv)
+	pad.add_child(tv)
 	var title := _label("", 12, GOLD)
 	_say(title, "Imperium  ·  sors %d" % _game.map.seed_value, "Empire  ·  map seed %d" % _game.map.seed_value)
 	tv.add_child(title)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 22)
 	tv.add_child(row)
-	for i in 4:
+	for i in 5:  # wood, food, stone, gold, then population: a little picture and its number
+		var pair := HBoxContainer.new()
+		pair.add_theme_constant_override("separation", 6)
+		var icon := _icon("icon:" + ["wood", "food", "stone", "gold", "pop"][i])
+		pair.add_child(icon)
+		_res_icons.append(icon)
 		var l := _label("", 16)
-		row.add_child(l)
+		pair.add_child(l)
+		row.add_child(pair)
 		_res_labels.append(l)
-	_pop_label = _label("", 16)
-	row.add_child(_pop_label)
+	_pop_label = _res_labels[4]
 
 	var banner := _panel(0, 0)  # which era we're in, top centre
 	banner.anchor_left = 0.5
@@ -183,10 +199,14 @@ func set_world_tip(text: String) -> void:
 func refresh() -> void:
 	var stock: Array[int] = _game.stock
 	for i in 4:
-		_say(_res_labels[i], "%s %d" % [Defs.RES_NAMES[i], stock[i]], "%s: %d" % [Defs.RES_ENGLISH[i], stock[i]])
+		var tip := "%s (%s): %d" % [Defs.RES_NAMES[i], Defs.RES_ENGLISH[i].to_lower(), stock[i]]
+		_say(_res_labels[i], "%d" % stock[i], tip)
+		_res_icons[i].tooltip_text = tip
 	var pop: int = _game.units.size()
 	var cap: int = _game.pop_cap()
-	_say(_pop_label, "Populus %d/%d" % [pop, cap], "Population: %d of %d (build Houses to raise the limit)" % [pop, cap])
+	var pop_tip := "Populus (population): %d of %d villagers (build Casae and Domus to raise the limit)" % [pop, cap]
+	_say(_pop_label, "%d/%d" % [pop, cap], pop_tip)
+	_res_icons[4].tooltip_text = pop_tip
 
 	var era: Dictionary = Defs.ERAS[_game.era]
 	_say(_era_num, "Aetas %s" % era["numeral"], "Era %s" % era["numeral"])
@@ -380,6 +400,19 @@ func _panel(ax: int, ay: int) -> PanelContainer:
 	add_child(p)
 	_anchor(p, ax, ay)
 	return p
+
+
+## A pixel-art picture shown at double size, with a tooltip once its text is set.
+func _icon(key: String) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = Art.tex(key)
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_SCALE
+	r.custom_minimum_size = r.texture.get_size() * 2.0
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.mouse_filter = Control.MOUSE_FILTER_PASS
+	r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return r
 
 
 func _label(text: String, size: int, color := CREAM) -> Label:

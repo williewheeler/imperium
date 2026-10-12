@@ -108,6 +108,10 @@ static func image(key: String) -> Image:
 			return _via_tile()
 		"advance":
 			return _standard()
+		"icon":  # icon:<wood|food|stone|gold|pop>, the resource symbols for the HUD
+			return _resource_icon(parts[1])
+		"frame":
+			return _frame()
 		"hut":
 			return _hut()
 		"farm":  # farm:<stage> 0 ripe .. 3 freshly sown
@@ -677,6 +681,9 @@ static func scenery_keys() -> Array[String]:
 			k.append("pack:%d:%d" % [r, l])
 	k.append("via")
 	k.append("advance")
+	for n in ["wood", "food", "stone", "gold", "pop"]:
+		k.append("icon:" + n)
+	k.append("frame")
 	return k
 
 
@@ -904,3 +911,135 @@ static func _standard() -> Image:
 	Pixel.ellipse(img, 13.0, 15.0, 3.2, 3.2, GOLD[1])  # emblem
 	Pixel.put(img, 12, 14, GOLD[0])
 	return Pixel.outlined(img, OUT_VILLAGER)
+
+
+# ---------------------------------------------------------------- HUD art
+
+## Little pictures for the resource bar (12x12 plus an outline).
+static func _resource_icon(which: String) -> Image:
+	var img := Pixel.blank(13, 13)
+	match which:
+		"wood":  # three logs seen end-on, stacked
+			for log in [Vector3(3.6, 9.0, 3.6), Vector3(9.4, 9.0, 3.6), Vector3(6.5, 4.6, 3.6)]:
+				for y in 13:
+					for x in 13:
+						var d := Vector2(x + 0.5 - log.x, y + 0.5 - log.y).length()
+						if d > log.z:
+							continue
+						var c := BARK[1] if d > log.z - 1.1 else Color("dcb67c")
+						if d > 1.0 and d < 2.0:
+							c = Color("c29a5e")  # a growth ring
+						elif d <= 1.0:
+							c = Color("a5784a")
+						img.set_pixel(x, y, c)
+		"food":  # a tied sheaf of wheat
+			for ear_x in [4, 9]:
+				Pixel.line(img, Vector2i(ear_x, 12), Vector2i(ear_x, 4), WHEAT[3])  # stalk
+				Pixel.put(img, ear_x, 1, WHEAT[0])  # tip
+				for k in 4:  # grains in pairs up the ear
+					var gy := 2 + k * 2
+					Pixel.put(img, ear_x - 1, gy, WHEAT[1])
+					Pixel.put(img, ear_x + 1, gy, WHEAT[0])
+					Pixel.put(img, ear_x, gy + 1, WHEAT[2])
+			Pixel.line(img, Vector2i(4, 12), Vector2i(9, 12), WHEAT[3])
+			Pixel.rect(img, 3, 9, 8, 2, TUNIC[1])  # the band
+			Pixel.rect(img, 3, 9, 8, 1, TUNIC[0])
+		"stone":  # two quarried blocks
+			for blk in [Vector3(0, 6, 7), Vector3(5, 3, 7)]:
+				var x := int(blk.x)
+				var y := int(blk.y)
+				Pixel.poly(img, [Vector2(x + 3.5, y), Vector2(x + 7, y + 2), Vector2(x + 3.5, y + 4), Vector2(x, y + 2)], Color("f4f1e8"))
+				Pixel.poly(img, [Vector2(x, y + 2), Vector2(x + 3.5, y + 4), Vector2(x + 3.5, y + 7.5), Vector2(x, y + 5.5)], ROCK[2])
+				Pixel.poly(img, [Vector2(x + 3.5, y + 4), Vector2(x + 7, y + 2), Vector2(x + 7, y + 5.5), Vector2(x + 3.5, y + 7.5)], ROCK[3])
+		"gold":  # a pyramid of ingots
+			for bar in [Vector2(0, 8), Vector2(6, 8), Vector2(3, 4)]:
+				var x := int(bar.x)
+				var y := int(bar.y)
+				Pixel.poly(img, [Vector2(x + 2, y), Vector2(x + 7, y), Vector2(x + 5, y + 2), Vector2(x, y + 2)], GOLD[0])
+				Pixel.rect(img, x, y + 2, 5, 3, GOLD[1])
+				Pixel.poly(img, [Vector2(x + 5, y + 2), Vector2(x + 7, y), Vector2(x + 7, y + 3), Vector2(x + 5, y + 5)], GOLD[2])
+		"pop":  # a villager's head and shoulders
+			Pixel.poly(img, [Vector2(0.5, 13), Vector2(1.5, 8), Vector2(11.5, 8), Vector2(12.5, 13)], TUNIC[1])
+			Pixel.rect(img, 1, 8, 2, 5, TUNIC[0])
+			Pixel.rect(img, 10, 8, 2, 5, TUNIC[2])
+			Pixel.ellipse(img, 6.5, 4.2, 3.1, 3.3, SKIN[0])
+			Pixel.rect(img, 4, 1, 5, 2, HAIR)
+			Pixel.put(img, 4, 3, HAIR)
+			Pixel.put(img, 5, 5, Color("3a2416"))
+			Pixel.put(img, 8, 5, Color("3a2416"))
+	return Pixel.outlined(img, OUT_VILLAGER)
+
+
+## One unit of a Greek key (meander): 8 wide, 6 tall, tiling along an edge.
+const MEANDER := [
+	"#######.",
+	"#.....#.",
+	"#.###.#.",
+	"#.#.#.#.",
+	"#.#...#.",
+	"#.#####.",
+]
+
+
+## The HUD panel frame, for a 9-patch: 10px corners with a gilded block, 8px edges carrying a
+## Greek key in gold on dark red, and a dark fill in the middle. 28x28 before it's doubled.
+static func _frame() -> Image:
+	var n := 28
+	var corner := 10
+	var img := Pixel.blank(n, n)
+	var gold := GOLD[1]
+	var gold_hi := GOLD[0]
+	var gold_lo := GOLD[2]
+	var band := Color("5a1d18")
+	var outline := Color("2a1008")
+	var fill := Color(0.157, 0.07, 0.055, 0.93)
+	for y in n:
+		for x in n:
+			var d := mini(mini(x, y), mini(n - 1 - x, n - 1 - y))
+			if d >= corner:
+				img.set_pixel(x, y, fill)
+				continue
+			var c := band
+			if d == 0:
+				c = outline
+			elif d == 1:
+				c = gold_hi
+			elif d == 2:
+				c = gold_lo
+			elif d == corner - 1:
+				c = gold
+			else:
+				var in_corner_x := x < corner or x >= n - corner
+				var in_corner_y := y < corner or y >= n - corner
+				if in_corner_x and in_corner_y:  # a gilded corner block with a rosette
+					c = gold
+					var cx := 4.5 if x < corner else n - 5.5
+					var cy := 4.5 if y < corner else n - 5.5
+					var r := Vector2(x - cx, y - cy)
+					if absf(r.x) < 1.6 and absf(r.y) < 1.6:
+						c = band
+					elif (absf(r.x) < 0.6 or absf(r.y) < 0.6) and r.length() < 3.4:
+						c = gold_hi
+				else:
+					# along the edge: u runs with the edge, v is the depth into the frame (3..8)
+					var u := (x - corner) if (y < corner or y >= n - corner) else (y - corner)
+					var v := (d - 3)
+					if (MEANDER[v] as String)[posmod(u, 8)] == ".":
+						c = gold
+			img.set_pixel(x, y, c)
+	img.resize(n * 2, n * 2, Image.INTERPOLATE_NEAREST)  # chunky pixels, like the rest of the art
+	return img
+
+
+## The frame as a 9-patch style for a panel. Only the border is drawn: the panel's own contents
+## are inset to sit exactly inside it, so fill behind them with a flat colour.
+static func frame_style() -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = tex("frame")
+	sb.draw_center = false
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		sb.set_texture_margin(side, 20.0)
+		sb.set_content_margin(side, 20.0)
+	sb.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+	sb.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+	return sb
