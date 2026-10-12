@@ -630,7 +630,6 @@ func _cycle_era(step: int) -> void:
 	_dress_era_one()
 	if era >= 1:
 		_dress_era_two()
-	_dress_jobs()
 	var e: Dictionary = Defs.ERAS[era]
 	hud.flash("Aetas %s: %s" % [e["numeral"], e["latin"]], "Era %s: %s (%s).  (Debug: E = next era, Shift+E = previous)" % [e["numeral"], e["english"], e["years"]])
 
@@ -753,13 +752,11 @@ func _dress_era_two() -> void:
 			["aqueduct", [Vector2i(3, -6), Vector2i(-7, -5)]], ["vineyard", [Vector2i(7, -4), Vector2i(-8, -2)]],
 			["house", [Vector2i(-6, -3)]], ["house", [Vector2i(6, 1)]], ["house", [Vector2i(-2, -5)]]]:
 		_dress_place(plan[0], plan[1])
-	for b in _dressed_buildings:
-		if b.kind == "castra":
-			var goals := map.spread_goals(b.tile + Vector2i(b.size.x + 1, b.size.y / 2), 6)
-			var gate := map.stand_tile(b.rect(), b.center())
-			for i in mini(6, goals.size()):
-				var soldier := _dress_unit("soldier", Vector2(gate) + Vector2(0.5, 0.5))
-				_order_move(soldier, goals[i])
+	# the soldiers stand at ease in a block beside the Forum, where they're easy to see
+	var forum := buildings[0]
+	var spots := map.spread_goals(Vector2i(forum.tile.x - 2, forum.tile.y + 1), 6)
+	for spot in spots:
+		_dress_unit("soldier", Vector2(spot) + Vector2(0.5, 0.5))
 	for i in 2:
 		_dress_unit("villager", buildings[0].center() + Vector2(float(i) * 1.5, 3.2))
 	_dress_paved_avenue()
