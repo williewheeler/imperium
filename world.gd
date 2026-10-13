@@ -14,6 +14,7 @@ var _deposit_nodes := {}  # Vector2i -> Sprite2D: berries, stone and gold
 var _unit_views := {}  # Unit -> UnitView
 var _building_views := {}  # Building -> BuildingView
 var _ghosts := {}  # Unit -> Sprite2D: a see-through copy drawn over whatever hides the unit
+var _rings := {}  # Unit -> SelectionRing: shown over scenery that hides a selected unit's ring
 var _ghost_layer := Node2D.new()
 var _ghost_material: ShaderMaterial
 var _alpha_images := {}  # Texture2D -> Image, for pixel-accurate "is something solid here"
@@ -179,6 +180,9 @@ func _process(delta: float) -> void:
 			if _ghosts.has(u):
 				_ghosts[u].queue_free()
 				_ghosts.erase(u)
+			if _rings.has(u):
+				_rings[u].queue_free()
+				_rings.erase(u)
 			_unit_views.erase(u)
 	for b: Building in _building_views.keys():
 		if not game.buildings.has(b):
@@ -201,7 +205,14 @@ func _update_ghost(u: Unit, view: UnitView) -> void:
 		_ghosts[u] = g
 	var ghost: Sprite2D = _ghosts[u]
 	var body := view.body()
-	ghost.visible = _is_hidden(view.position, view.position.y)
+	if not _rings.has(u):
+		var r := SelectionRing.new()
+		_ghost_layer.add_child(r)
+		_rings[u] = r
+	var ring: SelectionRing = _rings[u]
+	ring.visible = u.selected and _is_hidden(view.position, view.position.y, SelectionRing.POINTS)
+	ring.position = view.position
+	ghost.visible = _is_hidden(view.position, view.position.y, BODY_POINTS)
 	if ghost.visible:
 		ghost.texture = body.texture
 		ghost.flip_h = body.flip_h
@@ -209,37 +220,37 @@ func _update_ghost(u: Unit, view: UnitView) -> void:
 		ghost.position = view.position
 
 
-func _is_hidden(feet: Vector2, sort_y: float) -> bool:
+func _is_hidden(feet: Vector2, sort_y: float, points: Array) -> bool:
 	var t := Vector2i(Iso.to_tile(feet).floor())
 	for dy in range(-1, 7):
 		for dx in range(-1, 7):
 			var p := Vector2i(t.x + dx, t.y + dy)
 			for n: Node2D in _tile_objects.get(p, []):
-				if _covers(n, feet, sort_y):
+				if _covers(n, feet, sort_y, points):
 					return true
-			if _deposit_nodes.has(p) and _covers(_deposit_nodes[p], feet, sort_y):
+			if _deposit_nodes.has(p) and _covers(_deposit_nodes[p], feet, sort_y, points):
 				return true
 	for bv: BuildingView in _building_views.values():
 		for half in bv.halves():
 			for sp in half.get_children():
-				if sp is Sprite2D and half.position.y > sort_y and _solid_over(sp, feet):
+				if sp is Sprite2D and half.position.y > sort_y and _solid_over(sp, feet, points):
 					return true
 	return false
 
 
-func _covers(n: Node2D, feet: Vector2, sort_y: float) -> bool:
-	return n is Sprite2D and n.position.y > sort_y and _solid_over(n, feet)
+func _covers(n: Node2D, feet: Vector2, sort_y: float, points: Array) -> bool:
+	return n is Sprite2D and n.position.y > sort_y and _solid_over(n, feet, points)
 
 
-## Is any of the body points (around `feet`) over a solid pixel of sprite `s`?
-func _solid_over(s: Sprite2D, feet: Vector2) -> bool:
+## Is any of the `points` (relative to `feet`) over a solid pixel of sprite `s`?
+func _solid_over(s: Sprite2D, feet: Vector2, points: Array) -> bool:
 	var tex := s.texture
 	if tex == null:
 		return false
 	if not _alpha_images.has(tex):
 		_alpha_images[tex] = tex.get_image()
 	var img: Image = _alpha_images[tex]
-	for bp: Vector2 in BODY_POINTS:
+	for bp: Vector2 in points:
 		var local := (feet + bp) - s.global_position - s.offset
 		if s.region_enabled:
 			if local.x < 0 or local.y < 0 or local.x >= s.region_rect.size.x or local.y >= s.region_rect.size.y:
