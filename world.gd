@@ -19,8 +19,8 @@ var _ghost_layer := Node2D.new()
 var _ghost_material: ShaderMaterial
 var _alpha_images := {}  # Texture2D -> Image, for pixel-accurate "is something solid here"
 
-## Points on a villager's body (relative to their feet) that must be hidden for the ghost to show.
-const BODY_POINTS := [Vector2(0, -3), Vector2(0, -8), Vector2(0, -13)]
+## How much of a villager must be covered before the see-through silhouette appears.
+const HIDDEN_SHARE := 0.6
 const GHOST_TINT := Color(1.0, 0.93, 0.55, 0.8)
 
 
@@ -194,8 +194,8 @@ func _process(delta: float) -> void:
 			_deposit_nodes.erase(p)
 
 
-## Trees, buildings and mountains can hide a villager. When one does, draw a flat tinted copy of
-## them on top so they can still be found.
+## Trees, buildings and mountains can hide a villager. When most of them is covered, draw a flat
+## tinted copy on top so they can still be found.
 func _update_ghost(u: Unit, view: UnitView) -> void:
 	if not _ghosts.has(u):
 		var g := Sprite2D.new()
@@ -210,48 +210,79 @@ func _update_ghost(u: Unit, view: UnitView) -> void:
 		_ghost_layer.add_child(r)
 		_rings[u] = r
 	var ring: SelectionRing = _rings[u]
-	ring.visible = u.selected and _is_hidden(view.position, view.position.y, SelectionRing.POINTS)
-	ring.position = view.position
-	ghost.visible = _is_hidden(view.position, view.position.y, BODY_POINTS)
-	if ghost.visible:
-		ghost.texture = body.texture
-		ghost.flip_h = body.flip_h
-		ghost.offset = body.offset
-		ghost.position = view.position
+	var feet := view.position
+	ring.position = feet
+	ring.visible = false
+	if u.selected:
+		var ring_area := Rect2(feet + Vector2(-10, -5), Vector2(20, 10))
+		var blockers := _occluders(feet.y, ring_area)
+		for bp: Vector2 in SelectionRing.POINTS:
+			if _any_solid(blockers, feet + bp):
+				ring.visible = true
+				break
+	ghost.visible = false
+	if body.texture != null:
+		var size := body.texture.get_size()
+		var area := Rect2(feet + body.offset, size)
+		var blockers := _occluders(feet.y, area)
+		if not blockers.is_empty() and _covered_share(body, area, blockers) >= HIDDEN_SHARE:
+			ghost.visible = true
+			ghost.texture = body.texture
+			ghost.flip_h = body.flip_h
+			ghost.offset = body.offset
+			ghost.position = feet
 
 
-func _is_hidden(feet: Vector2, sort_y: float, points: Array) -> bool:
-	var t := Vector2i(Iso.to_tile(feet).floor())
+## The fraction of a villager's drawn pixels (sampled every other pixel) that sit under `blockers`.
+func _covered_share(body: Sprite2D, area: Rect2, blockers: Array[Sprite2D]) -> float:
+	if not _alpha_images.has(body.texture):
+		_alpha_images[body.texture] = body.texture.get_image()
+	var img: Image = _alpha_images[body.texture]
+	var total := 0
+	var covered := 0
+	for y in range(0, img.get_height(), 2):
+		for x in range(0, img.get_width(), 2):
+			if img.get_pixel(x, y).a <= 0.5:
+				continue
+			total += 1
+			var sx := img.get_width() - 1 - x if body.flip_h else x
+			if _any_solid(blockers, area.position + Vector2(sx + 0.5, y + 0.5)):
+				covered += 1
+	return float(covered) / total if total > 0 else 0.0
+
+
+## Sprites drawn in front of something standing at depth `sort_y` that overlap `area`.
+func _occluders(sort_y: float, area: Rect2) -> Array[Sprite2D]:
+	var out: Array[Sprite2D] = []
+	var t := Vector2i(Iso.to_tile(area.get_center()).floor())
 	for dy in range(-1, 7):
 		for dx in range(-1, 7):
 			var p := Vector2i(t.x + dx, t.y + dy)
 			for n: Node2D in _tile_objects.get(p, []):
-				if _covers(n, feet, sort_y, points):
-					return true
-			if _deposit_nodes.has(p) and _covers(_deposit_nodes[p], feet, sort_y, points):
-				return true
+				_collect(n, n.position.y, sort_y, area, out)
+			if _deposit_nodes.has(p):
+				_collect(_deposit_nodes[p], _deposit_nodes[p].position.y, sort_y, area, out)
 	for bv: BuildingView in _building_views.values():
 		for half in bv.halves():
 			for sp in half.get_children():
-				if sp is Sprite2D and half.position.y > sort_y and _solid_over(sp, feet, points):
-					return true
-	return false
+				_collect(sp, half.position.y, sort_y, area, out)
+	return out
 
 
-func _covers(n: Node2D, feet: Vector2, sort_y: float, points: Array) -> bool:
-	return n is Sprite2D and n.position.y > sort_y and _solid_over(n, feet, points)
+func _collect(n: Node, node_y: float, sort_y: float, area: Rect2, out: Array[Sprite2D]) -> void:
+	if not n is Sprite2D or node_y <= sort_y or n.texture == null:
+		return
+	var size: Vector2 = n.region_rect.size if n.region_enabled else n.texture.get_size()
+	if Rect2(n.global_position + n.offset, size).intersects(area):
+		out.append(n)
 
 
-## Is any of the `points` (relative to `feet`) over a solid pixel of sprite `s`?
-func _solid_over(s: Sprite2D, feet: Vector2, points: Array) -> bool:
-	var tex := s.texture
-	if tex == null:
-		return false
-	if not _alpha_images.has(tex):
-		_alpha_images[tex] = tex.get_image()
-	var img: Image = _alpha_images[tex]
-	for bp: Vector2 in points:
-		var local := (feet + bp) - s.global_position - s.offset
+func _any_solid(sprites: Array[Sprite2D], world_pt: Vector2) -> bool:
+	for s in sprites:
+		if not _alpha_images.has(s.texture):
+			_alpha_images[s.texture] = s.texture.get_image()
+		var img: Image = _alpha_images[s.texture]
+		var local := world_pt - s.global_position - s.offset
 		if s.region_enabled:
 			if local.x < 0 or local.y < 0 or local.x >= s.region_rect.size.x or local.y >= s.region_rect.size.y:
 				continue
