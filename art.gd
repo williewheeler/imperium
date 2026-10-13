@@ -233,8 +233,7 @@ static func _mountain(seed_v: int) -> Image:
 	var ax := 31.0 - apex.x if flip else apex.x
 	var sx := 31.0 - shoulder.x if flip else shoulder.x
 	Pixel.poly(img, pts, func(x: int, y: int) -> Color:
-		var lit := (x < ax + 1.0) if not flip else (x > ax - 1.0)
-		lit = lit != (y > mid_y - 2.0 and false)
+		var lit := x < ax + 1.0  # light comes from the top-left, even when the shape is mirrored
 		var strata := (Pixel.hash2(x / 2, y, seed_v + 3) - 0.5) * 0.3
 		var gully := 0.0
 		if posmod(x * 7 + y * 3 + seed_v * 5, 11) == 0:
