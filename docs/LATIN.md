@@ -101,6 +101,11 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Milites laborare non possunt. | Fighting men can't work: only villagers gather and build |
 | Nondum licet. | Not yet allowed: it unlocks in a later era |
 | Copiae non sufficiunt. | Not enough resources |
+| Pluit. | It begins to rain |
+| Tonat. | A storm breaks: thunder and heavy rain |
+| Nebula oritur. | Fog is rolling in |
+| Sol lucet. | The sun shines |
+| Caelum nubilum est. | The sky clouds over |
 | Palus siccatur. | The marsh around the city is drained (the Cloaca Maxima) |
 | Domus plures requiruntur. | Population limit reached: build more houses |
 | Aedifica forum vel horreum. | Build a Town Center or Storehouse to drop off resources |

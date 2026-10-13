@@ -71,6 +71,7 @@ var _show_jobs := {}  # Unit -> Callable that gives it (more) work when it goes 
 var _show_events: Array = []  # [seconds, Callable], fired in order
 var _show_farm: Building
 var _show_newcomer_jobs: Array = []  # jobs for the villagers the Forum trains, in order
+var weather: Weather
 var _cities := 0
 var _villagers_made := 0  # alternates the sexes of new villagers
 var _looks_made := {}  # unit kind -> how many have been made, to hand out the looks in turn
@@ -118,13 +119,22 @@ func _ready() -> void:
 	add_child(camera)
 	_apply_zoom()
 
+	weather = Weather.new()
+	weather.setup(map.seed_value)
+	add_child(weather)
+	var weather_view := WeatherView.new()
+	weather_view.weather = weather
+	add_child(weather_view)  # over the world, under the interface
+
 	hud = Hud.new()
+	hud.layer = 2
 	add_child(hud)
 	hud.setup(self)
 	hud.build_requested.connect(func(kind: String) -> void:
 		placing = kind
 		_cancel_road_mode())
 	hud.road_requested.connect(start_road_mode)
+	weather.changed.connect(_on_weather_changed)
 	hud.advance_requested.connect(start_advance)
 	hud.action_requested.connect(command_selected)
 	hud.train_requested.connect(_train_unit)
@@ -137,6 +147,14 @@ func _ready() -> void:
 	if args.has("select"):
 		for u in units:
 			u.selected = true
+	if args.has("weather"):  # debug: start in a given weather (clear, cloudy, fog, rain, storm), fully developed
+		weather.set_state(Weather.NAMES.find(String(args["weather"])))
+		var look: Dictionary = Weather.LOOK[weather.state]
+		weather.dark = look["dark"]
+		weather.shadow = look["shadow"]
+		weather.rain = look["rain"]
+		weather.fog = look["fog"]
+		weather.flash = 1.0 if args.has("flash") else 0.0
 	if args.has("zoom"):  # debug: physical pixels per art pixel
 		zoom_px = int(args["zoom"])
 		_apply_zoom()
@@ -291,6 +309,21 @@ func placement_error(kind: String, tile: Vector2i) -> String:
 
 # ---------- Input ----------
 
+## A short flash when the sky changes: rain starts, a storm breaks, fog comes in, the sun returns.
+func _on_weather_changed(state: int) -> void:
+	match state:
+		Weather.State.RAIN:
+			hud.flash("Pluit.", "It begins to rain.")
+		Weather.State.STORM:
+			hud.flash("Tonat.", "A storm breaks: thunder and heavy rain.")
+		Weather.State.FOG:
+			hud.flash("Nebula oritur.", "Fog is rolling in.")
+		Weather.State.CLEAR:
+			hud.flash("Sol lucet.", "The sun shines.")
+		Weather.State.CLOUDY:
+			hud.flash("Caelum nubilum est.", "The sky clouds over.")
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_Q:
 		get_tree().quit()
@@ -305,6 +338,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		command_selected("explore")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_S and not event.ctrl_pressed and not event.meta_pressed:
 		command_selected("stop")
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_W:
+		weather.cycle()  # temporary: step through the weather to look at it
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		_cycle_era(-1 if event.shift_pressed else 1)  # temporary: jump through the eras
 	elif event is InputEventMouseButton and event.pressed:
