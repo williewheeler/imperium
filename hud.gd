@@ -21,6 +21,7 @@ const STATES := {  # unit state -> [Latin, English]
 	Unit.State.BUILDING: ["Aedificat", "Building"],
 	Unit.State.ROAD_GO: ["Ad viam properat", "Hurrying to the road"],
 	Unit.State.PAVING: ["Viam munit", "Building the road"],
+	Unit.State.EXPLORE: ["Explorat", "Exploring"],
 }
 const HELP := [  # [Latin, English]
 	["Sinistra  elige", "Left click: select a unit, building or resource (see how much is left). Drag a box: select a group. Click empty ground: deselect."],

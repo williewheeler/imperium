@@ -85,6 +85,7 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Aedificat | Building |
 | Ad viam properat | Hurrying to the road |
 | Viam munit | Building the road |
+| Explorat | Exploring |
 | Onus | Load (as in "carrying") |
 
 ## Messages
