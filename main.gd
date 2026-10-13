@@ -334,9 +334,14 @@ func _finish_select(rect: Rect2, additive: bool) -> void:
 	if rect.size.length() * camera.zoom.x < 6.0:  # a click, not a drag
 		var mp := rect.position
 		var best: Unit = null
-		var best_d := 10.0  # world pixels from the villager's body
-		for u in units:
-			var d := (Iso.to_screen(u.pos) + Vector2(0, -6)).distance_to(mp)
+		var best_d := INF
+		for u in units:  # a click picks someone only if it lands on their body, not just near it
+			var feet := Iso.to_screen(u.pos)
+			var half_w := 9.0 if u.kind == "horseman" else 5.0
+			var height := 22.0 if u.kind == "horseman" else 16.0
+			if absf(mp.x - feet.x) > half_w or mp.y < feet.y - height or mp.y > feet.y + 2.0:
+				continue
+			var d := (feet + Vector2(0, -6)).distance_to(mp)
 			if d < best_d:
 				best_d = d
 				best = u
