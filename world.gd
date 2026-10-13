@@ -85,6 +85,43 @@ func _sprite(key: String, foot: Vector2) -> Sprite2D:
 	return s
 
 
+## Trees lean a pixel in gusts: each has a second picture in the scenery sheet ("oak:0:1") with its
+## crown blown to the right. A slow wind wave rolls across the map, so neighbouring trees lean
+## together, always the same way, and ease back upright when it passes.
+const GUST := 0.35  # how strong the wind must blow to tip a tree over
+const WIND_STEP := 0.25  # seconds between checks
+const WIND_SPEED := 0.22  # radians per second: one gust every half minute or so
+
+var _trees: Array[Sprite2D] = []
+var _tree_frames: Array = []  # parallel to _trees: [upright, leaning] textures
+var _tree_leaning := PackedByteArray()
+var _wind_clock := 0.0
+
+
+func _tree(key: String, foot: Vector2) -> Sprite2D:
+	var s := _sprite(key, foot)
+	_trees.append(s)
+	_tree_frames.append([s.texture, Art.tex(key + ":1")])
+	_tree_leaning.append(0)
+	return s
+
+
+func _sway_trees(delta: float) -> void:
+	_wind_clock += delta
+	if _wind_clock < WIND_STEP:
+		return
+	_wind_clock = 0.0
+	var t := Time.get_ticks_msec() / 1000.0
+	for i in _trees.size():
+		var s := _trees[i]
+		if not is_instance_valid(s):
+			continue
+		var lean := 1 if sin(t * WIND_SPEED - s.position.x * 0.006 - s.position.y * 0.01) > GUST else 0
+		if lean != _tree_leaning[i]:
+			_tree_leaning[i] = lean
+			s.texture = _tree_frames[i][lean]
+
+
 func _populate_terrain() -> void:
 	var map: GameMap = game.map
 	for y in map.h:
@@ -101,7 +138,7 @@ func _populate_terrain() -> void:
 							key = "cypress:0"
 						elif pick > 0.55:
 							key = "pine:%d" % int(Pixel.hash2(x, y, 50 + i) * 2.0)
-						list.append(_sprite(key, foot))
+						list.append(_tree(key, foot))
 				GameMap.Terrain.HILLS:
 					list.append(_sprite("hill:%d" % int(Pixel.hash2(x, y, 60) * 2.0), Iso.to_screen(Vector2(x + 1, y + 1))))
 				GameMap.Terrain.MOUNTAIN:
@@ -118,7 +155,8 @@ func _populate_terrain() -> void:
 				_tile_objects[p] = list
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_sway_trees(delta)
 	for u: Unit in game.units:
 		if not _unit_views.has(u):
 			var v := UnitView.new()

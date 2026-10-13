@@ -87,6 +87,8 @@ static func solid_at(key: String, p: Vector2i) -> bool:
 static func image(key: String) -> Image:
 	var parts := key.split(":")
 	var variant := int(parts[1]) if parts.size() > 1 else 0
+	if parts.size() == 3 and parts[0] in ["oak", "pine", "cypress"]:  # <tree>:<variant>:<lean>
+		return _leaning(image("%s:%s" % [parts[0], parts[1]]), int(parts[2]))
 	match parts[0]:
 		"oak":
 			return _oak(5 + variant % 3, variant)
@@ -696,6 +698,19 @@ static func sprite(key: String) -> Image:
 	return image(key)
 
 
+static func tree_keys() -> Array[String]:
+	return ["oak:0", "oak:1", "oak:2", "pine:0", "pine:1", "cypress:0"]
+
+
+## A tree in the wind: everything above the trunk moves `lean` pixels to the right.
+static func _leaning(img: Image, lean: int) -> Image:
+	var out := Image.create(img.get_width(), img.get_height(), false, Image.FORMAT_RGBA8)
+	var split := int(img.get_height() * 0.6)
+	for y in img.get_height():
+		out.blit_rect(img, Rect2i(0, y, img.get_width(), 1), Vector2i(lean if y < split else 0, y))
+	return out
+
+
 static func scenery_keys() -> Array[String]:
 	var k: Array[String] = []
 	for i in 3:
@@ -703,6 +718,8 @@ static func scenery_keys() -> Array[String]:
 	for i in 2:
 		k.append("pine:%d" % i)
 	k.append("cypress:0")
+	for t in tree_keys():  # the same trees with their crowns blown a pixel to the right
+		k.append(t + ":1")
 	for i in 4:
 		k.append("mountain:%d" % i)
 	for i in 2:
