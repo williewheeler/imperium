@@ -81,7 +81,7 @@ vec3 cliff_colour(vec2 wp, int kind, int top_id, float v) {
 		col = ramp4(hx(0xc4bfae), hx(0xa29d8c), hx(0x84806f), hx(0x66624f), t);
 	} else {
 		col = ramp4(hx(0xcba66b), hx(0xb28c58), hx(0x987344), hx(0x7a5a33), t);
-		if (v < 0.22 && hash(wp + 5.0) < 0.85) { // grass overhanging the lip
+		if (v < 0.5 && hash(wp + 5.0) < 1.15 - v) { // grass hanging over the lip
 			col = kind == 1 ? hx(0x8ec142) : hx(0x628e31);
 		}
 	}
@@ -89,7 +89,7 @@ vec3 cliff_colour(vec2 wp, int kind, int top_id, float v) {
 	return col;
 }
 
-vec3 ground_colour(vec2 wp, vec2 g, float time) {
+vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 	float bd = bayer(wp);
 	vec2 warp = (vec2(vnoise(wp * 0.11), vnoise(wp * 0.11 + vec2(17.3, 5.1))) - 0.5) * 10.0;
 	vec2 gw = g + to_tile(warp); // the tile this pixel is "in", after the coastline wobble
@@ -104,6 +104,8 @@ vec3 ground_colour(vec2 wp, vec2 g, float time) {
 	if (id >= 2) { // the land is lit from the top-left: slopes that face the light brighten, the others darken
 		d += (texture(relief, gw / map_size).r - 0.5) * 1.4;
 	}
+	d += float(lvl) * 0.1; // higher terraces are a touch lighter, so the steps read
+	if (below_wall) d -= 0.4; // the foot of a cliff sits in shadow
 	float t = floor(time * 1.4);
 	vec3 col;
 
@@ -174,6 +176,9 @@ void fragment() {
 	if (cliff > 0) {
 		COLOR = vec4(cliff_colour(wp, cliff, terrain_at(g), wall_v), 1.0);
 	} else {
-		COLOR = vec4(ground_colour(wp, g, TIME), 1.0);
+		int c2;
+		float v2;
+		surface(wp - vec2(0.0, 3.0), c2, v2);
+		COLOR = vec4(ground_colour(wp, g, TIME, c2 > 0, level_at(g)), 1.0);
 	}
 }

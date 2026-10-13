@@ -12,7 +12,8 @@ const SEA_LEVEL := 0.40  # elevation of all water; the land rises from here
 const RELIEF_SCALE := 10.0  # how strongly a slope shows as light or shade
 const SLOPE_COST := 5.0  # extra walking cost per unit of steepness (elevation change per tile)
 ## Height above the sea at which each terrace starts: finer on the plains, coarser up the hills.
-const LEVEL_STARTS := [0.05, 0.10, 0.18, 0.28, 0.40]
+const LEVEL_STARTS := [0.075, 0.15, 0.24, 0.33, 0.42]
+const MIN_TERRACE := 14  # tiles: a smaller patch of one level is folded into its neighbour
 const MAX_LEVEL := 5  # = LEVEL_STARTS.size()
 ## Direction the light comes from, as a unit vector in tile space: the top-left of the screen.
 const LIGHT := Vector2(-0.95, -0.32)
@@ -162,6 +163,20 @@ func _compute_levels(smooth: PackedFloat32Array) -> void:
 				if wide[i] - SEA_LEVEL >= start:
 					level += 1
 		levels[i] = level
+	for _pass in 2:  # a majority filter straightens ragged terrace edges into longer ledges
+		var smoothed := levels.duplicate()
+		for y in range(1, h - 1):
+			for x in range(1, w - 1):
+				var counts := {}
+				for oy in range(-1, 2):
+					for ox in range(-1, 2):
+						var l := levels[(y + oy) * w + x + ox]
+						counts[l] = counts.get(l, 0) + 1
+				for l: int in counts:
+					if counts[l] >= 5:
+						smoothed[y * w + x] = l
+		levels = smoothed
+	_merge_small_terraces()
 	for _pass in 2:  # fold in single-tile bumps and pits
 		for y in range(1, h - 1):
 			for x in range(1, w - 1):
@@ -173,6 +188,48 @@ func _compute_levels(smooth: PackedFloat32Array) -> void:
 						same += 1
 				if same == 0 and ring.count(ring[0]) >= 3:
 					levels[y * w + x] = ring[0]
+
+
+## Folds terraces smaller than MIN_TERRACE tiles into the neighbouring terrace they share the
+## longest border with, so a step is a proper ledge and not a scatter of short dashes.
+func _merge_small_terraces() -> void:
+	for _round in 3:
+		var seen := PackedByteArray()
+		seen.resize(w * h)
+		for start in w * h:
+			if seen[start] == 1:
+				continue
+			var level := levels[start]
+			var region: Array[int] = []
+			var stack: Array[int] = [start]
+			seen[start] = 1
+			var border := {}
+			while not stack.is_empty():
+				var i: int = stack.pop_back()
+				region.append(i)
+				var x := i % w
+				var y := i / w
+				for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var nx := x + d.x
+					var ny := y + d.y
+					if nx < 0 or ny < 0 or nx >= w or ny >= h:
+						continue
+					var j := ny * w + nx
+					if levels[j] == level:
+						if seen[j] == 0:
+							seen[j] = 1
+							stack.append(j)
+					else:
+						border[levels[j]] = border.get(levels[j], 0) + 1
+			if region.size() < MIN_TERRACE and not border.is_empty():
+				var best := -1
+				var best_n := 0
+				for l: int in border:
+					if border[l] > best_n:
+						best_n = border[l]
+						best = l
+				for i in region:
+					levels[i] = best
 
 
 ## Terrace of the tile under a position in tile coordinates.
