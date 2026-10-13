@@ -88,8 +88,9 @@ func tile_changed(p: Vector2i) -> void:
 
 
 func remove_tile_objects(p: Vector2i) -> void:
-	for n: Node2D in _tile_objects.get(p, []):
-		n.queue_free()
+	for n in _tile_objects.get(p, []):  # untyped: a node may already be gone, and a typed loop variable can't hold one
+		if is_instance_valid(n):
+			n.queue_free()
 	_tile_objects.erase(p)
 
 
@@ -130,7 +131,7 @@ func _sway_trees(delta: float) -> void:
 	_wind_clock = 0.0
 	var t := Time.get_ticks_msec() / 1000.0
 	for chunk: Dictionary in _chunks.values():  # only the trees that are loaded, i.e. near the screen
-		for s: Sprite2D in chunk["trees"]:
+		for s in chunk["trees"]:  # felled trees are freed, so check before touching one
 			if not is_instance_valid(s):
 				continue
 			var lean := 1 if sin(t * WIND_SPEED - s.position.x * 0.006 - s.position.y * 0.01) > GUST else 0
@@ -225,7 +226,7 @@ func _stream_terrain(delta: float) -> void:
 
 func _unload_chunk(c: Vector2i) -> void:
 	var chunk: Dictionary = _chunks[c]
-	for n: Node in chunk["nodes"]:
+	for n in chunk["nodes"]:
 		if is_instance_valid(n):
 			n.queue_free()
 	var map: GameMap = game.map
@@ -410,9 +411,10 @@ func _occluders(sort_y: float, area: Rect2) -> Array[Sprite2D]:
 	for dy in range(-1, 7):
 		for dx in range(-1, 7):
 			var p := Vector2i(t.x + dx, t.y + dy)
-			for n: Node2D in _tile_objects.get(p, []):
-				_collect(n, n.position.y, sort_y, area, out)
-			if _deposit_nodes.has(p):
+			for n in _tile_objects.get(p, []):
+				if is_instance_valid(n):
+					_collect(n, n.position.y, sort_y, area, out)
+			if _deposit_nodes.has(p) and is_instance_valid(_deposit_nodes[p]):
 				_collect(_deposit_nodes[p], _deposit_nodes[p].position.y, sort_y, area, out)
 	for bv: BuildingView in _building_views.values():
 		for half in bv.halves():
