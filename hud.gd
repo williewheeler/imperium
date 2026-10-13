@@ -372,6 +372,8 @@ func _rebuild_buttons(mode: String) -> void:
 	match parts[0]:
 		"villagers":
 			for kind: String in Defs.BUILDINGS:
+				if Defs.BUILDINGS[kind].get("landmark", false):
+					continue  # landmarks aren't something the player builds
 				var def: Dictionary = Building.def_for(kind)
 				_add_button(kind, def["name"], "Build a %s (%s)" % [def["english"], _cost_text(def["cost"])],
 					def["cost"], func() -> void: build_requested.emit(kind))

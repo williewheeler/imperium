@@ -59,6 +59,7 @@ const BUILDING_GEOM := {
 	"vineyard": {"a": 3, "b": 3, "ridge": 9.0},
 	"curia": {"a": 3, "b": 3, "ridge": 33.0},
 	"aqueduct": {"a": 4, "b": 1, "ridge": 32.0},
+	"circus": {"a": 10, "b": 4, "ridge": 24.0},
 	"castra": {"a": 3, "b": 3, "ridge": 26.0},
 	"arx": {"a": 3, "b": 3, "ridge": 34.0},
 	"stabulum": {"a": 3, "b": 3, "ridge": 26.0},
@@ -154,6 +155,8 @@ static func image(key: String) -> Image:
 			return _horseman(parts[1], int(parts[3]), int(parts[4]) if parts.size() > 4 else 0)
 		"stabulum":
 			return _stabulum()
+		"circus":
+			return _circus()
 		"lupa":
 			return _lupa()
 		"reeds":
@@ -797,7 +800,7 @@ static func scenery_keys() -> Array[String]:
 
 static func building_keys() -> Array[String]:
 	return ["town_center", "regia", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
-		"curia", "aqueduct", "castra", "arx", "stabulum", "aedes", "temple", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
+		"curia", "aqueduct", "castra", "arx", "stabulum", "circus", "aedes", "temple", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
 
 
 ## Villager frames, one row per animation and direction (f = facing the camera, b = away).
@@ -1809,6 +1812,76 @@ static func _thatch_roof(img: Image, f: Frame, x0: float, x1: float, y0: float, 
 		return Pixel.ramp(THATCH, 0.3 + (Pixel.hash2(x, y, 98) - 0.5) * 0.2, x, y, 0.15))
 	Pixel.poly(img, [f.p(x0, y1, wall_h), f.p(x1, y1, wall_h), f.p(x1, ym, ridge_h), f.p(x0, ym, ridge_h)], func(x: int, y: int) -> Color:
 		return Pixel.ramp(THATCH, 0.68 + (Pixel.hash2(x, y, 99) - 0.5) * 0.25 - (0.2 if posmod(y, 3) == 0 else 0.0), x, y, 0.15))
+
+## Circus Maximus: the great racecourse in the valley between the Palatine and the Aventine, traditionally
+## laid out by Tarquinius Priscus (the fifth king, c. 600 BC) with wooden stands. A sand track with a low
+## central spine and turning posts, tiered timber seating down both long sides and the starting gates at
+## the far end. 10x4 tiles.
+static func _circus() -> Image:
+	var a := 10.0
+	var b := 4.0
+	var hs := int((a + b) * 8 + 24.0 + 8.0)
+	var img := Pixel.blank(int((a + b) * 16), hs)
+	var f := Frame.new(Vector2(b * 16, hs - 1 - (a + b) * 8))
+	var sand := [Color("f2e2ae"), Color("e4cd90"), Color("d0b476"), Color("b99a5e")]
+	var plank_lit := func(x: int, y: int) -> Color:
+		var v := 0.62 + (Pixel.hash2(x, y, 141) - 0.5) * 0.2 - (0.22 if posmod(x, 5) == 0 else 0.0)
+		return Pixel.ramp(WOOD, v, x, y, 0.12)
+	var plank_shade := func(x: int, y: int) -> Color:
+		var v := 0.32 + (Pixel.hash2(x, y, 142) - 0.5) * 0.2 - (0.2 if posmod(x, 5) == 0 else 0.0)
+		return Pixel.ramp(WOOD, v, x, y, 0.12)
+	var bench := func(x: int, y: int) -> Color:
+		return Pixel.ramp(WOOD, 0.78 + (Pixel.hash2(x, y, 143) - 0.5) * 0.25 - (0.18 if posmod(y, 3) == 0 else 0.0), x, y, 0.1)
+	# the track
+	Pixel.poly(img, [f.p(0, 0, 0), f.p(a, 0, 0), f.p(a, b, 0), f.p(0, b, 0)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(sand, 0.6 + (Pixel.hash2(x, y, 144) - 0.5) * 0.35, x, y, 0.25))
+	# the far wall with the starting gates (its inner face is the one we see)
+	Pixel.poly(img, [f.p(0, 0.9, 0), f.p(0, 3.1, 0), f.p(0, 3.1, 8), f.p(0, 0.9, 8)], plank_shade)
+	for i in 6:
+		var gy := 1.05 + i * 0.34
+		Pixel.poly(img, [f.p(0, gy, 0), f.p(0, gy + 0.24, 0), f.p(0, gy + 0.24, 5), f.p(0, gy, 5)], Color("2a1a10"))
+	# the stands behind the track: tiers rising away from it, back one first so the lower ones overlap
+	var crowd := [TUNIC[1], LINEN[1], WOOL[0], DYED[1], GOLD[1], Color("f4f1e8"), TUNIC[0]]
+	for i in 4:
+		var y0 := 0.0 + i * 0.25
+		var h := 12.0 - i * 3.0
+		_box(img, f, 0.0, a, y0, y0 + 0.25, 0, h, plank_lit, plank_shade, bench)
+		for k in 34:  # people on the bench
+			var cx := Pixel.hash2(k, i, 145) * (a - 0.4) + 0.2
+			var at := f.p(cx, y0 + 0.12, h)
+			Pixel.put(img, int(at.x), int(at.y) - 1, crowd[int(Pixel.hash2(k, i, 146) * crowd.size())])
+			Pixel.put(img, int(at.x), int(at.y), SKIN[0] if Pixel.hash2(k, i, 147) < 0.7 else HAIR)
+	# the spine down the middle, with a turning post at each end
+	_box(img, f, 1.4, 8.6, 1.92, 2.08, 0, 3, plank_lit, plank_shade, bench)
+	for px: float in [1.0, 9.0]:
+		var foot := f.p(px, 2.0, 0)
+		Pixel.rect(img, int(foot.x) - 1, int(foot.y) - 8, 3, 8, BRONZE[1])
+		Pixel.rect(img, int(foot.x) - 1, int(foot.y) - 8, 1, 8, BRONZE[0])
+		Pixel.put(img, int(foot.x), int(foot.y) - 9, BRONZE[0])
+	# the stand on the near side: lower, so it doesn't hide the whole track, with its outer wall to us
+	_box(img, f, 0.0, a, 3.0, b, 0, 9, plank_lit, plank_shade, bench)
+	for k in 40:
+		var cx := Pixel.hash2(k, 9, 148) * (a - 0.4) + 0.2
+		var at := f.p(cx, 3.5, 9)
+		Pixel.put(img, int(at.x), int(at.y) - 1, crowd[int(Pixel.hash2(k, 9, 149) * crowd.size())])
+		Pixel.put(img, int(at.x), int(at.y), SKIN[0] if Pixel.hash2(k, 9, 150) < 0.7 else HAIR)
+	for i in 11:  # posts along the outer wall, with dark gaps for the stairs
+		var post := f.p(i * 0.95 + 0.1, b, 0)
+		Pixel.rect(img, int(post.x), int(post.y) - 9, 1, 9, WOOD[2])
+	for i in 3:
+		var door := f.p(2.0 + i * 3.0, b, 0)
+		Pixel.rect(img, int(door.x) - 2, int(door.y) - 5, 5, 5, Color("2a1a10"))
+	# the near end: a low timber wall with an entrance
+	_box(img, f, 9.6, a, 0.9, 3.1, 0, 6, plank_lit, plank_shade, bench)
+	var gate := f.p(a, 2.0, 0)
+	Pixel.rect(img, int(gate.x) - 2, int(gate.y) - 4, 4, 4, Color("2a1a10"))
+	# flags on the far corners and the near end
+	for fp: Vector2 in [Vector2(0.1, 0.1), Vector2(0.1, 3.9), Vector2(9.9, 0.2)]:
+		var base := f.p(fp.x, fp.y, 9 if fp.y < 1.0 else 6)
+		Pixel.rect(img, int(base.x), int(base.y) - 12, 1, 12, WOOD[2])
+		Pixel.rect(img, int(base.x) + 1, int(base.y) - 12, 5, 4, TUNIC[1])
+		Pixel.rect(img, int(base.x) + 1, int(base.y) - 12, 5, 1, GOLD[1])
+	return Pixel.outlined(img, OUT_WARM)
 
 
 ## Aedes Vestae: the Era I temple. Vesta's shrine was a round thatched hut, not a marble building,

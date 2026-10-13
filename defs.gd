@@ -115,6 +115,11 @@ const BUILDINGS := {
 		"size": Vector2i(3, 3), "cost": [100, 0, 0, 0], "trains": "horseman",  # the Celeres, the wealthy citizens' horsemen
 		"build_time": 30.0, "sight": 6.0, "accepts": [], "pop": 0,
 	},
+	"circus": {
+		"name": "Circus Maximus", "acc": "Circum Maximum", "english": "Circus Maximus (the Great Circus)", "done": "perfectus est", "ready": "Paratus",
+		"size": Vector2i(10, 4), "cost": [0, 0, 0, 0], "landmark": true,  # never built by the player: it stands in the valley from the start
+		"build_time": 1.0, "sight": 8.0, "accepts": [], "pop": 0,
+	},
 	"temple": {
 		"name": "Templum", "acc": "Templum", "english": "Temple", "done": "perfectum est", "ready": "Paratum",
 		"size": Vector2i(2, 2), "cost": [80, 0, 100, 0],  # no powers yet: a place of worship and prestige

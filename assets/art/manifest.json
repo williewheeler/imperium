@@ -573,7 +573,7 @@
 		"aedes": [
 			"buildings.png",
 			151,
-			272,
+			419,
 			66,
 			70
 		],
@@ -608,14 +608,14 @@
 		"aqueduct": [
 			"buildings.png",
 			1,
-			272,
+			419,
 			82,
 			82
 		],
 		"arx": [
 			"buildings.png",
 			100,
-			1,
+			148,
 			98,
 			92
 		],
@@ -629,14 +629,21 @@
 		"castra": [
 			"buildings.png",
 			100,
-			187,
+			334,
 			98,
 			84
+		],
+		"circus": [
+			"buildings.png",
+			1,
+			1,
+			226,
+			146
 		],
 		"curia": [
 			"buildings.png",
 			1,
-			95,
+			242,
 			98,
 			91
 		],
@@ -657,28 +664,28 @@
 		"farm:0": [
 			"buildings.png",
 			1,
-			624,
+			771,
 			98,
 			64
 		],
 		"farm:1": [
 			"buildings.png",
 			100,
-			559,
+			706,
 			98,
 			64
 		],
 		"farm:2": [
 			"buildings.png",
-			100,
-			491,
+			1,
+			706,
 			98,
 			64
 		],
 		"farm:3": [
 			"buildings.png",
-			1,
-			559,
+			100,
+			638,
 			98,
 			64
 		],
@@ -1259,14 +1266,14 @@
 		"house": [
 			"buildings.png",
 			68,
-			355,
+			502,
 			66,
 			67
 		],
 		"hut": [
 			"buildings.png",
 			100,
-			624,
+			771,
 			34,
 			48
 		],
@@ -1511,7 +1518,7 @@
 		"regia": [
 			"buildings.png",
 			100,
-			95,
+			242,
 			98,
 			88
 		],
@@ -2554,7 +2561,7 @@
 		"stabulum": [
 			"buildings.png",
 			1,
-			187,
+			334,
 			98,
 			84
 		],
@@ -2575,21 +2582,21 @@
 		"storehouse": [
 			"buildings.png",
 			1,
-			355,
+			502,
 			66,
 			67
 		],
 		"temple": [
 			"buildings.png",
 			84,
-			272,
+			419,
 			66,
 			72
 		],
 		"town_center": [
 			"buildings.png",
 			1,
-			1,
+			148,
 			98,
 			93
 		],
@@ -3611,28 +3618,28 @@
 		"vineyard:0": [
 			"buildings.png",
 			135,
-			355,
+			502,
 			98,
 			67
 		],
 		"vineyard:1": [
 			"buildings.png",
 			1,
-			423,
+			570,
 			98,
 			67
 		],
 		"vineyard:2": [
 			"buildings.png",
 			100,
-			423,
+			570,
 			98,
 			67
 		],
 		"vineyard:3": [
 			"buildings.png",
 			1,
-			491,
+			638,
 			98,
 			67
 		],

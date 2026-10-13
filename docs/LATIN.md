@@ -36,6 +36,7 @@ Some buildings change name and picture between eras (`"early"` entry in `Defs.BU
 | Arx → Castra | Citadel → Barracks | a stockaded hilltop fortress, then the palisaded legionary camp. Trains Miles Gravis. *Arx* is a real term for Rome's citadel; using it for the Kingdom-era barracks is the game's choice |
 | Stabulum | Stable | trains Eques. *Stabulum* is the ordinary Latin word; as a military building it is a gameplay invention |
 | Aedes (Vestae) → Templum | Shrine of Vesta → Temple | Vesta's shrine was a round thatched hut with an eternal fire. Prestige only for now |
+| Circus Maximus | The Great Circus | the chariot racecourse, a landmark that stands from the start (not built by the player). *Circus* is a ring or circle; *maximus* is "greatest" |
 | Domus | House | stone house, Era II |
 | Vinea | Vineyard | Era II; wine is sold for gold |
 | Curia | Senate house | Era II; prestige only for now |

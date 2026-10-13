@@ -350,6 +350,44 @@ func biome_at(p: Vector2i) -> int:
 	return biomes[p.y * w + p.x] if in_bounds(p) else Biome.NONE
 
 
+## Woodland or marsh with nothing else on it, which a landmark may clear or drain.
+func is_clearable(p: Vector2i) -> bool:
+	if not in_bounds(p) or astar.is_point_solid(p):
+		return false
+	var t := tile(p.x, p.y)
+	return t == Terrain.MARSH or (t == Terrain.FOREST and deposits.has(p) and deposits[p].kind == Defs.Res.WOOD)
+
+
+## Fells the woodland and drains the marsh under a rectangle, leaving grass.
+func clear_ground(rect: Rect2i) -> void:
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			var p := Vector2i(x, y)
+			if tile(x, y) == Terrain.FOREST:
+				remove_deposit(p)
+			elif tile(x, y) == Terrain.MARSH:
+				tiles[y * w + x] = Terrain.GRASS
+				astar.set_point_weight_scale(p, MOVE_COST[Terrain.GRASS] * slope_factor[y * w + x])
+
+
+## Puts the whole rectangle on one terrace (the commonest one under it): ground levelled for a landmark.
+func level_ground(rect: Rect2i) -> void:
+	var counts := {}
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			var l := levels[y * w + x]
+			counts[l] = counts.get(l, 0) + 1
+	var best := 0
+	var best_n := -1
+	for l: int in counts:
+		if counts[l] > best_n:
+			best_n = counts[l]
+			best = l
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			levels[y * w + x] = best
+
+
 ## Terrace of the tile under a position in tile coordinates.
 func level_at(pos: Vector2) -> int:
 	var p := Vector2i(pos.floor())
@@ -570,18 +608,18 @@ func _start_tiles(start: Vector2i) -> Array[Vector2i]:
 ## Closest spot to `near` (between min_r and max_r tiles away) where a building of `size` fits
 ## on clear grass, with a walkable ring around it and none of the `avoid` tiles inside it.
 ## Returns (-1, -1) if there is none.
-func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Array[Vector2i], avoid_rects: Array = []) -> Vector2i:
+func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Array[Vector2i], avoid_rects: Array = [], loose := false) -> Vector2i:
 	for r in range(min_r, max_r + 1):
 		for y in range(near.y - r, near.y + r + 1):
 			for x in range(near.x - r, near.x + r + 1):
 				if maxi(absi(x - near.x), absi(y - near.y)) != r:
 					continue
 				var rect := Rect2i(Vector2i(x, y), size)
-				var ok := is_level(rect)
+				var ok := loose or is_level(rect)  # a loose search will clear woods and level the ground itself
 				for yy in range(rect.position.y - 1, rect.end.y + 1):
 					for xx in range(rect.position.x - 1, rect.end.x + 1):
 						var p := Vector2i(xx, yy)
-						if not (is_free_land(p) if rect.has_point(p) else is_walkable(p)):
+						if not ((is_free_land(p) or (loose and is_clearable(p))) if rect.has_point(p) else is_walkable(p)):
 							ok = false
 				for p in avoid:
 					if rect.has_point(p):

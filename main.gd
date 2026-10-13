@@ -112,6 +112,7 @@ func _ready() -> void:
 	if site.x >= 0:
 		_add_building("town_center", site, true)
 	map.place_resources(start)  # after the Town Center, so berries and mines go around it
+	_place_circus(start)
 
 	_world = World.new()
 	add_child(_world)
@@ -960,6 +961,25 @@ func _building_rects() -> Array:
 	for b in buildings:
 		out.append(b.rect())
 	return out
+
+
+## The Circus Maximus stands in the valley near the city from the start: the nearest level patch of
+## open ground big enough for it that doesn't crowd the Forum.
+func _place_circus(start: Vector2i) -> void:
+	var avoid: Array[Vector2i] = []
+	for off in GameMap.START_OFFSETS:
+		avoid.append(start + off)
+	var rects: Array = []
+	for b in buildings:
+		rects.append(b.rect().grow(2))
+	var size: Vector2i = Defs.BUILDINGS["circus"]["size"]
+	var site := map.find_site(size, start, 6, 40, avoid, rects, true)  # woods in the way are felled, marsh drained and the ground levelled
+	if site.x >= 0:
+		map.clear_ground(Rect2i(site, size))  # the valley floor: woods felled, marsh drained, ground levelled
+		map.level_ground(Rect2i(site, size))
+		Iso.set_terrain(map.w, map.h, map.levels)
+		var circus := _add_building("circus", site, true)
+		circus.work = 1.0
 
 
 ## Fighting men standing near the start, just to look at (they take no population): the kinds an early
