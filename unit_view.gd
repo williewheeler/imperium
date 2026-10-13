@@ -17,6 +17,10 @@ func _ready() -> void:
 	add_child(_body)
 
 
+func body() -> Sprite2D:
+	return _body
+
+
 func update_view() -> void:
 	position = Iso.to_screen(unit.pos).round()
 	var anim := "idle"

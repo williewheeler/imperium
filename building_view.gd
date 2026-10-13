@@ -45,6 +45,11 @@ func _ready() -> void:
 		_sprites.append(sprite)
 
 
+## The depth-sorted nodes standing buildings are drawn with (empty for fields).
+func halves() -> Array[Node2D]:
+	return _halves
+
+
 ## The building was demolished.
 func remove() -> void:
 	for node in _halves:
