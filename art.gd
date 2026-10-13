@@ -1421,12 +1421,16 @@ static func _lupa() -> Image:
 		return func(x: int, y: int) -> Color:
 			var v := 0.62 - ((y + 0.5 - cy) / ry) * 0.3 - ((x + 0.5 - cx) / rx) * 0.2 + (Pixel.hash2(x, y, 45) - 0.5) * 0.1
 			return Pixel.ramp([Color("f0b894"), Color("d98f6c"), Color("b06a4c"), Color("7a4632")], v, x, y, 0.2)
-	for baby: Vector2 in [Vector2(46, 49), Vector2(57, 49)]:
+	for baby: Vector2 in [Vector2(46, 52), Vector2(57, 52)]:  # lying on the base
 		Pixel.ellipse(img, baby.x, baby.y, 6.0, 3.4, skin.call(baby.x, baby.y, 6, 3.4))
-		Pixel.ellipse(img, baby.x + 1, baby.y - 4, 3.0, 3.0, skin.call(baby.x + 1, baby.y - 4, 3, 3))  # head, up at the belly
-		Pixel.line(img, Vector2i(int(baby.x) + 4, int(baby.y) - 2), Vector2i(int(baby.x) + 5, int(baby.y) - 7), Color("d98f6c"))  # reaching arm
-		Pixel.line(img, Vector2i(int(baby.x) - 4, int(baby.y) - 1), Vector2i(int(baby.x) - 4, int(baby.y) - 6), Color("b06a4c"))
+		Pixel.ellipse(img, baby.x + 1, baby.y - 4, 3.0, 3.0, skin.call(baby.x + 1, baby.y - 4, 3, 3))  # head, tilted up to the teat
+		Pixel.line(img, Vector2i(int(baby.x) + 4, int(baby.y) - 2), Vector2i(int(baby.x) + 5, int(baby.y) - 8), Color("d98f6c"))  # reaching arm
+		Pixel.line(img, Vector2i(int(baby.x) - 4, int(baby.y) - 1), Vector2i(int(baby.x) - 4, int(baby.y) - 7), Color("b06a4c"))
 		Pixel.put(img, int(baby.x) + 2, int(baby.y) - 4, Color("3a2416"))  # an eye
+	for tx in [44, 49, 54, 59]:  # the wolf's teats, hanging from the belly
+		Pixel.rect(img, tx, 41, 3, 4, STATUE[1])
+		Pixel.rect(img, tx, 41, 1, 3, STATUE[0])
+		Pixel.rect(img, tx + 2, 42, 1, 3, STATUE[2])
 	# a green patina where the bronze has weathered
 	for i in 40:
 		var px := int(Pixel.hash2(i, 5, 43) * 90.0) + 6
