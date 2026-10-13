@@ -973,10 +973,11 @@ func _place_circus(start: Vector2i) -> void:
 	for b in buildings:
 		rects.append(b.rect().grow(2))
 	var size: Vector2i = Defs.BUILDINGS["circus"]["size"]
-	var site := map.find_site(size, start, 6, 40, avoid, rects, true)  # woods in the way are felled, marsh drained and the ground levelled
+	var site := map.find_site(size, start, 6, 40, avoid, rects, true)  # woods in the way are felled, marsh drained, the ground levelled and raised
 	if site.x >= 0:
-		map.clear_ground(Rect2i(site, size))  # the valley floor: woods felled, marsh drained, ground levelled
-		map.level_ground(Rect2i(site, size))
+		var apron := Rect2i(site, size).grow(1)  # a tile of cleared ground all round it
+		map.clear_ground(apron)  # the valley floor: woods felled, marsh drained, no scrub left growing
+		map.level_ground(apron, 2)  # and raised on a platform of its own, two terraces up
 		Iso.set_terrain(map.w, map.h, map.levels)
 		var circus := _add_building("circus", site, true)
 		circus.work = 1.0

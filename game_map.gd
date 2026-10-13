@@ -358,23 +358,31 @@ func is_clearable(p: Vector2i) -> bool:
 	return t == Terrain.MARSH or (t == Terrain.FOREST and deposits.has(p) and deposits[p].kind == Defs.Res.WOOD)
 
 
-## Fells the woodland and drains the marsh under a rectangle, leaving grass.
+## Fells the woodland and drains the marsh under a rectangle, leaving bare grass: the hidden biome
+## becomes plain meadow too, so no scrub or reeds grow back there.
 func clear_ground(rect: Rect2i) -> void:
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var p := Vector2i(x, y)
+			if not in_bounds(p):
+				continue
 			if tile(x, y) == Terrain.FOREST:
 				remove_deposit(p)
 			elif tile(x, y) == Terrain.MARSH:
 				tiles[y * w + x] = Terrain.GRASS
 				astar.set_point_weight_scale(p, MOVE_COST[Terrain.GRASS] * slope_factor[y * w + x])
+			if tile(x, y) == Terrain.GRASS:
+				biomes[y * w + x] = Biome.MEADOW
 
 
-## Puts the whole rectangle on one terrace (the commonest one under it): ground levelled for a landmark.
-func level_ground(rect: Rect2i) -> void:
+## Puts the whole rectangle on one terrace (the commonest one under it, plus `raise` more levels, so
+## a landmark can stand on a platform of its own).
+func level_ground(rect: Rect2i, raise := 0) -> void:
 	var counts := {}
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
+			if not in_bounds(Vector2i(x, y)):
+				continue
 			var l := levels[y * w + x]
 			counts[l] = counts.get(l, 0) + 1
 	var best := 0
@@ -385,7 +393,8 @@ func level_ground(rect: Rect2i) -> void:
 			best = l
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
-			levels[y * w + x] = best
+			if in_bounds(Vector2i(x, y)):
+				levels[y * w + x] = mini(best + raise, MAX_LEVEL)
 
 
 ## Terrace of the tile under a position in tile coordinates.
