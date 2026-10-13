@@ -7,7 +7,7 @@ extends ColorRect
 const MARGIN_TILES := 14
 
 var fog: Fog
-var map_size := Vector2i(80, 80)
+var map_size := Vector2i(240, 240)
 var levels: PackedByteArray
 
 

@@ -88,12 +88,16 @@ func _ready() -> void:
 		var kv := a.lstrip("-").split("=", true, 1)
 		args[kv[0]] = kv[1] if kv.size() > 1 else true
 
+	Perf.on = args.has("perf")
 	_record_dir = String(args.get("record", ""))
 	if args.has("windowed") or args.has("showcase") or args.has("shot"):
 		_window_ready = false
 		_setup_window(String(args.get("size", "1280x720")))  # the project starts fullscreen; recordings and screenshots want a window
 
+	var _t_a := Time.get_ticks_msec()
 	map = GameMap.new(int(args.get("seed", randi() % 65536)))
+	if Perf.on:
+		print("PERF startup: map generated in ", Time.get_ticks_msec() - _t_a, " ms (engine up for ", Time.get_ticks_msec(), " ms)")
 	Iso.set_terrain(map.w, map.h, map.levels)
 	var start := map.find_start()
 	fog = Fog.new(map.w, map.h)
@@ -142,6 +146,8 @@ func _ready() -> void:
 	hud.flash("Elige colonos et iube eos laborare.")
 
 	_update_fog()
+	if Perf.on:
+		print("PERF startup: ready at ", Time.get_ticks_msec(), " ms")
 	if args.has("demo"):
 		_run_demo(start)
 	if args.has("select"):
@@ -197,6 +203,9 @@ func _ready() -> void:
 		_place_display_army(start)
 	_screenshot_path = args.get("shot", "")
 	_report = args.has("report")
+	if args.has("pan"):
+		var v := String(args["pan"]).split(",")
+		_auto_pan = Vector2(float(v[0]), float(v[1]))
 	_shot_frame = int(args.get("shot-frame", 20))
 	var scripted := _screenshot_path != "" or _report or _show_on or _record_dir != "" or args.has("demo") or args.has("nosplash")
 	if args.has("splash") or (not scripted and DisplayServer.get_name() != "headless"):
@@ -544,10 +553,10 @@ func _explore_next(u: Unit) -> bool:
 		if o != u and o.state == Unit.State.EXPLORE:
 			taken.append(o.explore_goal)
 	var cands: Array = []
-	for y in map.h:
-		for x in map.w:
+	for y in range(0, map.h, 3):  # every third tile is plenty to find the nearest unseen ground
+		for x in range(0, map.w, 3):
 			var p := Vector2i(x, y)
-			if fog.is_explored(p) or not map.is_walkable(p) or u.explore_skip.has(p):
+			if fog.state[y * map.w + x] != Fog.HIDDEN or not map.is_walkable(p) or u.explore_skip.has(p):
 				continue
 			var crowded := false
 			for t in taken:
@@ -870,11 +879,7 @@ func _remove_building(b: Building) -> void:
 
 
 func _reveal_around(center: Vector2, radius: float) -> void:
-	for y in range(maxi(0, int(center.y - radius)), mini(map.h, int(center.y + radius) + 1)):
-		for x in range(maxi(0, int(center.x - radius)), mini(map.w, int(center.x + radius) + 1)):
-			if Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius and fog.state[y * map.w + x] == Fog.HIDDEN:
-				fog.state[y * map.w + x] = Fog.EXPLORED
-	fog.update([])  # redraw the fog texture
+	fog.reveal(center, radius)
 
 
 ## Could a building go here? Open grass or woodland that the growing town can clear.
@@ -1314,13 +1319,46 @@ func _finish_road_tile(u: Unit) -> void:
 
 # ---------- Simulation ----------
 
+var _auto_pan := Vector2.ZERO  # --pan=x,y: keep scrolling that way, to test streaming under motion
+var _perf_frames := 0
+var _perf_worst := 0.0
+var _perf_total := 0.0
+var _perf_slow := 0
+var _perf_last := 0
+
+
+## --perf: after 400 frames print where the time went, then quit.
+func _perf_tick() -> void:
+	if not Perf.on or not _window_ready:
+		return
+	var now := Time.get_ticks_usec()
+	_perf_frames += 1
+	if _perf_frames > 40 and _perf_last > 0:  # let the first chunk loads and warm-up pass
+		var took := (now - _perf_last) / 1000.0
+		_perf_worst = maxf(_perf_worst, took)
+		_perf_total += took
+		if took > 33.0:
+			_perf_slow += 1
+	_perf_last = now
+	if _perf_frames == 400:
+		print("PERF ms per frame by part: ", Perf.report(400))
+		print("PERF frame time: average ", snappedf(_perf_total / 359.0, 0.1), " ms, worst ", snappedf(_perf_worst, 0.1), " ms, ", _perf_slow, " frames over 33 ms; ", Performance.get_monitor(Performance.OBJECT_NODE_COUNT), " nodes")
+		get_tree().quit()
+
+
 func _process(delta: float) -> void:
 	if _report:
 		delta = 1.0 / 30.0  # fixed step so headless runs are deterministic
+	var t0 := Perf.start()
 	_pan_camera(delta)
+	Perf.stop("pan", t0)
+	t0 = Perf.start()
 	for u in units:
 		_update_unit(u, delta)
+	Perf.stop("unit logic", t0)
+	t0 = Perf.start()
 	_separate_units()
+	Perf.stop("separate units", t0)
 	for b in buildings:
 		_update_building(b, delta)
 	for i in range(markers.size() - 1, -1, -1):
@@ -1341,13 +1379,20 @@ func _process(delta: float) -> void:
 		_showcase_update(delta)
 	if selected_deposit.x >= 0 and not map.deposits.has(selected_deposit):
 		selected_deposit = Vector2i(-1, -1)  # used up
+	t0 = Perf.start()
 	_update_world_tip()
+	Perf.stop("world tip", t0)
 
 	_fog_timer += delta
 	if _fog_timer >= FOG_INTERVAL:
 		_fog_timer = 0.0
+		t0 = Perf.start()
 		_update_fog()
+		Perf.stop("fog", t0)
+	t0 = Perf.start()
 	hud.refresh()
+	Perf.stop("hud", t0)
+	_perf_tick()
 
 	if (_screenshot_path != "" or _report) and _window_ready:
 		_frame += 1
@@ -1391,6 +1436,8 @@ func _pan_camera(delta: float) -> void:
 			dir.y -= 1
 		elif mouse.y >= view.y - EDGE_PAN_MARGIN_BOTTOM:
 			dir.y += 1
+	if _auto_pan != Vector2.ZERO:
+		dir = _auto_pan
 	dir = dir.clamp(Vector2(-1, -1), Vector2(1, 1))
 	_apply_zoom()
 	cam_pos += dir * PAN_SPEED / camera.zoom.x * delta

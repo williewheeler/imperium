@@ -13,6 +13,13 @@ enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN, MARSH }
 const MOVE_COST := [INF, INF, 1.1, 1.0, 1.6, 2.2, INF, 2.0]
 const ROAD_SPEED := 1.3  # dirt roads are this much faster to walk
 const PAVED_SPEED := 1.7  # paved Roman roads even more
+## The world is WORLD_BLOCKS x WORLD_BLOCKS blocks of BLOCK tiles. The middle block is the Tiber
+## lowland where Rome begins (a basin of water and marsh); the eight around it differ in character.
+const BLOCK := 80
+const WORLD_BLOCKS := 3
+## Per block, row by row from the north-west: how much higher the land stands, and how much wetter.
+const BLOCK_ELEVATION := [[0.05, 0.10, 0.04], [0.0, 0.0, 0.02], [0.03, 0.0, 0.05]]
+const BLOCK_MOISTURE := [[-0.05, -0.08, 0.10], [-0.12, 0.08, 0.06], [-0.10, -0.14, 0.12]]
 const MARSH_TOP := 0.50  # land below this elevation, if wet enough, is marsh
 const MARSH_MOISTURE := 0.42
 const SEA_LEVEL := 0.40  # elevation of all water; the land rises from here
@@ -46,7 +53,7 @@ var wear := PackedFloat32Array()  # distance walked over each tile so far
 var astar := AStarGrid2D.new()
 
 
-func _init(p_seed: int, p_w := 80, p_h := 80) -> void:
+func _init(p_seed: int, p_w := WORLD_BLOCKS * BLOCK, p_h := WORLD_BLOCKS * BLOCK) -> void:
 	seed_value = p_seed
 	w = p_w
 	h = p_h
@@ -76,6 +83,26 @@ func _make_noise(noise_seed: int, frequency: float) -> FastNoiseLite:
 	return n
 
 
+## How wet the ground must be to turn to marsh here: easy in the Tiber lowland at the middle of the
+## world, much harder farther out, so the outer regions have the odd fen but are not marshy.
+func _marsh_moisture(x: int, y: int) -> float:
+	var d2 := (x - w / 2.0) * (x - w / 2.0) + (y - h / 2.0) * (y - h / 2.0)
+	return MARSH_MOISTURE + 0.2 * (1.0 - exp(-d2 / (2.0 * 40.0 * 40.0)))
+
+
+## A per-block value, blended smoothly between the centres of neighbouring blocks.
+func _block_value(grid: Array, x: int, y: int) -> float:
+	var fx := clampf(float(x) / BLOCK - 0.5, 0.0, WORLD_BLOCKS - 1.0)
+	var fy := clampf(float(y) / BLOCK - 0.5, 0.0, WORLD_BLOCKS - 1.0)
+	var x0 := mini(int(fx), WORLD_BLOCKS - 2)
+	var y0 := mini(int(fy), WORLD_BLOCKS - 2)
+	var tx := smoothstep(0.0, 1.0, fx - x0)
+	var ty := smoothstep(0.0, 1.0, fy - y0)
+	var top: float = lerpf(grid[y0][x0], grid[y0][x0 + 1], tx)
+	var bottom: float = lerpf(grid[y0 + 1][x0], grid[y0 + 1][x0 + 1], tx)
+	return lerpf(top, bottom, ty)
+
+
 func _generate() -> void:
 	var elev := _make_noise(seed_value, 1.0 / 16.0)
 	var moist := _make_noise(seed_value + 7, 1.0 / 11.0)
@@ -86,8 +113,9 @@ func _generate() -> void:
 		for x in w:
 			var dx := (x - w / 2.0) / (w / 2.0)
 			var dy := (y - h / 2.0) / (h / 2.0)
-			var e := elev.get_noise_2d(x, y) * 0.5 + 0.5 - (dx * dx + dy * dy) * 0.45 + 0.12
-			var m := moist.get_noise_2d(x, y) * 0.5 + 0.5
+			var basin := exp(-((x - w / 2.0) * (x - w / 2.0) + (y - h / 2.0) * (y - h / 2.0)) / (2.0 * 15.0 * 15.0))
+			var e := elev.get_noise_2d(x, y) * 0.5 + 0.5 - (dx * dx + dy * dy) * 0.32 + 0.12 + _block_value(BLOCK_ELEVATION, x, y) - basin * 0.17
+			var m := clampf(moist.get_noise_2d(x, y) * 0.5 + 0.5 + _block_value(BLOCK_MOISTURE, x, y), 0.0, 1.0)
 			var t: Terrain
 			if e < 0.28:
 				t = Terrain.DEEP
@@ -96,7 +124,7 @@ func _generate() -> void:
 			elif e < 0.44:
 				t = Terrain.BEACH
 			elif e < 0.66:
-				if e < MARSH_TOP and m > MARSH_MOISTURE:
+				if e < MARSH_TOP and m > _marsh_moisture(x, y):
 					t = Terrain.MARSH  # low, wet ground just above the shore
 				else:
 					t = Terrain.FOREST if m > 0.55 else Terrain.GRASS
@@ -126,18 +154,7 @@ static func _height_of(e: float) -> float:
 ## Lights the land from the top-left and works out how steep each tile is. The elevation is
 ## blurred a little first so the light follows hills rather than the noise on top of them.
 func _compute_relief() -> void:
-	var smooth := PackedFloat32Array()
-	smooth.resize(w * h)
-	for y in h:
-		for x in w:
-			var sum := 0.0
-			var n := 0
-			for oy in range(-1, 2):
-				for ox in range(-1, 2):
-					var q := Vector2i(clampi(x + ox, 0, w - 1), clampi(y + oy, 0, h - 1))
-					sum += elevation[q.y * w + q.x]
-					n += 1
-			smooth[y * w + x] = sum / n
+	var smooth := _box_blur(elevation, 1)
 	_compute_levels(smooth)
 	relief.resize(w * h)
 	slope_factor.resize(w * h)
@@ -159,17 +176,7 @@ func _compute_relief() -> void:
 ## that disagree with all their neighbours are folded into them so the cliffs form sensible lines.
 func _compute_levels(smooth: PackedFloat32Array) -> void:
 	levels.resize(w * h)
-	var wide := PackedFloat32Array()
-	wide.resize(w * h)
-	for y in h:
-		for x in w:
-			var sum := 0.0
-			var n := 0
-			for oy in range(-2, 3):
-				for ox in range(-2, 3):
-					sum += smooth[clampi(y + oy, 0, h - 1) * w + clampi(x + ox, 0, w - 1)]
-					n += 1
-			wide[y * w + x] = sum / n
+	var wide := _box_blur(smooth, 2)
 	for i in w * h:
 		var land := tiles[i] >= Terrain.BEACH
 		var level := 0
@@ -178,31 +185,64 @@ func _compute_levels(smooth: PackedFloat32Array) -> void:
 				if wide[i] - SEA_LEVEL >= start:
 					level += 1
 		levels[i] = level
+	var counts := PackedInt32Array()
+	counts.resize(MAX_LEVEL + 1)
 	for _pass in 2:  # a majority filter straightens ragged terrace edges into longer ledges
 		var smoothed := levels.duplicate()
 		for y in range(1, h - 1):
 			for x in range(1, w - 1):
-				var counts := {}
+				var i := y * w + x
+				var here := levels[i]
+				if levels[i - 1] == here and levels[i + 1] == here and levels[i - w] == here and levels[i + w] == here:
+					continue  # already in the majority
+				counts.fill(0)
 				for oy in range(-1, 2):
 					for ox in range(-1, 2):
-						var l := levels[(y + oy) * w + x + ox]
-						counts[l] = counts.get(l, 0) + 1
-				for l: int in counts:
+						counts[levels[i + oy * w + ox]] += 1
+				for l in counts.size():
 					if counts[l] >= 5:
-						smoothed[y * w + x] = l
+						smoothed[i] = l
 		levels = smoothed
 	_merge_small_terraces()
 	for _pass in 2:  # fold in single-tile bumps and pits
 		for y in range(1, h - 1):
 			for x in range(1, w - 1):
-				var here := levels[y * w + x]
-				var ring := [levels[y * w + x - 1], levels[y * w + x + 1], levels[(y - 1) * w + x], levels[(y + 1) * w + x]]
-				var same := 0
-				for r in ring:
-					if r == here:
-						same += 1
-				if same == 0 and ring.count(ring[0]) >= 3:
-					levels[y * w + x] = ring[0]
+				var i := y * w + x
+				var here := levels[i]
+				var west := levels[i - 1]
+				var east := levels[i + 1]
+				var north := levels[i - w]
+				var south := levels[i + w]
+				if west == here or east == here or north == here or south == here:
+					continue
+				var common := (1 if east == west else 0) + (1 if north == west else 0) + (1 if south == west else 0)
+				if common >= 2:  # three of the four neighbours agree with the first
+					levels[i] = west
+
+
+## Averages each tile with its neighbours within `radius` (edges repeat): a fast separable box blur.
+func _box_blur(src: PackedFloat32Array, radius: int) -> PackedFloat32Array:
+	var tmp := PackedFloat32Array()
+	tmp.resize(w * h)
+	var out := PackedFloat32Array()
+	out.resize(w * h)
+	var span := float(radius * 2 + 1)
+	for y in h:  # along x
+		var row := y * w
+		var sum := 0.0
+		for k in range(-radius, radius + 1):
+			sum += src[row + clampi(k, 0, w - 1)]
+		for x in w:
+			tmp[row + x] = sum / span
+			sum += src[row + mini(x + radius + 1, w - 1)] - src[row + maxi(x - radius, 0)]
+	for x in w:  # along y
+		var sum := 0.0
+		for k in range(-radius, radius + 1):
+			sum += tmp[clampi(k, 0, h - 1) * w + x]
+		for y in h:
+			out[y * w + x] = sum / span
+			sum += tmp[mini(y + radius + 1, h - 1) * w + x] - tmp[maxi(y - radius, 0) * w + x]
+	return out
 
 
 ## Folds terraces smaller than MIN_TERRACE tiles into the neighbouring terrace they share the
@@ -294,15 +334,15 @@ func _distance_to(terrain: int, limit: int) -> PackedInt32Array:
 	out.fill(limit + 1)
 	for y in h:
 		for x in w:
-			if tile(x, y) != terrain:
+			if tiles[y * w + x] != terrain:
 				continue
-			for oy in range(-limit, limit + 1):
-				for ox in range(-limit, limit + 1):
-					var q := Vector2i(x + ox, y + oy)
-					if in_bounds(q):
-						var d := maxi(absi(ox), absi(oy))
-						if d < out[q.y * w + q.x]:
-							out[q.y * w + q.x] = d
+			for qy in range(maxi(0, y - limit), mini(h, y + limit + 1)):
+				var dy := absi(qy - y)
+				var row := qy * w
+				for qx in range(maxi(0, x - limit), mini(w, x + limit + 1)):
+					var d := maxi(absi(qx - x), dy)
+					if d < out[row + qx]:
+						out[row + qx] = d
 	return out
 
 
@@ -562,10 +602,16 @@ func place_resources(start: Vector2i) -> void:
 		_place_cluster(rng, start, 5.0, 11.0, Defs.Res.FOOD, 5, 2)
 	_place_cluster(rng, start, 9.0, 15.0, Defs.Res.STONE, 3, 1)
 	_place_cluster(rng, start, 12.0, 20.0, Defs.Res.GOLD, 3, 1)
-	for i in 8:
+	var blocks := WORLD_BLOCKS * WORLD_BLOCKS
+	for i in 8 * blocks:  # mines scattered over the whole world, for exploring armies and villagers to find
 		for attempt in 20:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
 			if _place_cluster(rng, c, 0.0, 0.0, Defs.Res.STONE if i % 2 == 0 else Defs.Res.GOLD, 3, 1):
+				break
+	for i in 4 * blocks:  # and berry patches
+		for attempt in 20:
+			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
+			if _place_cluster(rng, c, 0.0, 0.0, Defs.Res.FOOD, 5, 2):
 				break
 
 

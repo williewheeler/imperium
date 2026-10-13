@@ -9,11 +9,26 @@ var ground: GroundView
 var decals := Node2D.new()  # flat things drawn on the ground but under the villagers (fields)
 var objects := Node2D.new()
 
+## The scenery (trees, hills, reeds, mines) is built in square chunks of tiles, only for the chunks
+## near the screen, and torn down again once they are well away: a large map costs nothing for the
+## parts nobody can see.
+const CHUNK := 12  # tiles per side
+const LOAD_MARGIN := 96.0  # world pixels beyond the screen in which chunks are loaded (trees stand tall)
+const KEEP_MARGIN := 300.0  # chunks stay loaded until they are this far off, so panning doesn't thrash
+const CHUNKS_PER_CHECK := 4  # how many chunks to build in one go (the first load builds everything needed)
+
+var _chunks := {}  # Vector2i -> {"nodes": Array, "trees": Array}
+var _building: Dictionary = {}  # the chunk being built right now
+var _boxes := {}  # Vector2i -> Rect2: each chunk's screen box, worked out once
+var _stream_clock := 0.0
+var _streamed := false
+
 var _tile_objects := {}  # Vector2i -> Array[Node2D]: a tile's trees / hill / mountain sprites
 var _deposit_nodes := {}  # Vector2i -> Sprite2D: berries, stone and gold
 var _unit_views := {}  # Unit -> UnitView
 var _building_views := {}  # Building -> BuildingView
 var _ghosts := {}  # Unit -> Sprite2D: a see-through copy drawn over whatever hides the unit
+var _ghost_state := {}  # Unit -> {"wait", "ghost", "ring"}: the last occlusion result and when to redo it
 var _rings := {}  # Unit -> SelectionRing: shown over scenery that hides a selected unit's ring
 var _ghost_layer := Node2D.new()
 var _ghost_material: ShaderMaterial
@@ -21,6 +36,7 @@ var _alpha_images := {}  # Texture2D -> Image, for pixel-accurate "is something 
 
 ## How much of a villager must be covered before the see-through silhouette appears.
 const HIDDEN_SHARE := 0.6
+const GHOST_CHECK_EVERY := 0.15  # seconds between occlusion tests per unit
 const GHOST_TINT := Color(1.0, 0.93, 0.55, 0.8)
 
 
@@ -35,7 +51,6 @@ func setup(p_game) -> void:
 	add_child(decals)
 	objects.y_sort_enabled = true
 	add_child(objects)
-	_populate_terrain()
 
 	var shader := Shader.new()
 	shader.code = "shader_type canvas_item;\nuniform vec4 tint : source_color;\nvoid fragment() { COLOR = vec4(tint.rgb, texture(TEXTURE, UV).a * tint.a); }"
@@ -67,6 +82,7 @@ func road_changed(p: Vector2i) -> void:
 
 ## A tile's terrain changed (forest felled): update the ground and drop its trees.
 func tile_changed(p: Vector2i) -> void:
+	game.hud.minimap.tile_changed(p)
 	ground.set_tile(p, game.map.tile(p.x, p.y))
 	remove_tile_objects(p)
 
@@ -84,6 +100,8 @@ func _sprite(key: String, foot: Vector2) -> Sprite2D:
 	s.offset = Vector2(-s.texture.get_width() / 2.0, -(s.texture.get_height() - 1.0))
 	s.position = foot.round()
 	objects.add_child(s)
+	if not _building.is_empty():
+		_building["nodes"].append(s)
 	return s
 
 
@@ -94,17 +112,14 @@ const GUST := 0.35  # how strong the wind must blow to tip a tree over
 const WIND_STEP := 0.25  # seconds between checks
 const WIND_SPEED := 0.22  # radians per second: one gust every half minute or so
 
-var _trees: Array[Sprite2D] = []
-var _tree_frames: Array = []  # parallel to _trees: [upright, leaning] textures
-var _tree_leaning := PackedByteArray()
 var _wind_clock := 0.0
 
 
 func _tree(key: String, foot: Vector2) -> Sprite2D:
 	var s := _sprite(key, foot)
-	_trees.append(s)
-	_tree_frames.append([s.texture, Art.tex(key + ":1")])
-	_tree_leaning.append(0)
+	s.set_meta("frames", [s.texture, Art.tex(key + ":1")])  # upright, leaning
+	s.set_meta("lean", 0)
+	_building["trees"].append(s)
 	return s
 
 
@@ -114,14 +129,14 @@ func _sway_trees(delta: float) -> void:
 		return
 	_wind_clock = 0.0
 	var t := Time.get_ticks_msec() / 1000.0
-	for i in _trees.size():
-		var s := _trees[i]
-		if not is_instance_valid(s):
-			continue
-		var lean := 1 if sin(t * WIND_SPEED - s.position.x * 0.006 - s.position.y * 0.01) > GUST else 0
-		if lean != _tree_leaning[i]:
-			_tree_leaning[i] = lean
-			s.texture = _tree_frames[i][lean]
+	for chunk: Dictionary in _chunks.values():  # only the trees that are loaded, i.e. near the screen
+		for s: Sprite2D in chunk["trees"]:
+			if not is_instance_valid(s):
+				continue
+			var lean := 1 if sin(t * WIND_SPEED - s.position.x * 0.006 - s.position.y * 0.01) > GUST else 0
+			if lean != s.get_meta("lean"):
+				s.set_meta("lean", lean)
+				s.texture = s.get_meta("frames")[lean]
 
 
 ## Which tree stands at spot `i` of a forest tile, by the tile's biome: oaks in the lowland woods, pines
@@ -162,10 +177,70 @@ func _meadow_scenery(biome: int, x: int, y: int) -> String:
 	return ""
 
 
-func _populate_terrain() -> void:
+## The screen's rectangle in world pixels.
+func view_rect() -> Rect2:
+	var half: Vector2 = game.get_viewport_rect().size / game.camera.zoom.x / 2.0
+	return Rect2(game.cam_pos - half, half * 2.0)
+
+
+## World-pixel box of a chunk, with room above for terraces and tall sprites.
+func _chunk_box(c: Vector2i) -> Rect2:
+	if _boxes.has(c):
+		return _boxes[c]
+	var a := Vector2(c * CHUNK)
+	var b := a + Vector2(CHUNK, CHUNK)
+	var left := Iso.to_screen_flat(Vector2(a.x, b.y)).x
+	var right := Iso.to_screen_flat(Vector2(b.x, a.y)).x
+	var top := Iso.to_screen_flat(a).y - 60.0
+	var bottom := Iso.to_screen_flat(b).y + 12.0
+	_boxes[c] = Rect2(left, top, right - left, bottom - top)
+	return _boxes[c]
+
+
+## Builds the chunks that have come near the screen and drops the ones that have gone far.
+func _stream_terrain(delta: float) -> void:
+	_stream_clock -= delta
+	if _stream_clock > 0.0 and _streamed:
+		return
+	_stream_clock = 0.15
+	var near := view_rect().grow(LOAD_MARGIN)
+	var far := view_rect().grow(KEEP_MARGIN)
 	var map: GameMap = game.map
-	for y in map.h:
-		for x in map.w:
+	var wanted: Array = []
+	for cy in ceili(float(map.h) / CHUNK):
+		for cx in ceili(float(map.w) / CHUNK):
+			var c := Vector2i(cx, cy)
+			var box := _chunk_box(c)
+			if _chunks.has(c):
+				if not box.intersects(far):
+					_unload_chunk(c)
+			elif box.intersects(near):
+				wanted.append([box.get_center().distance_squared_to(game.cam_pos), c])
+	wanted.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])  # nearest the middle first
+	var budget := wanted.size() if not _streamed else CHUNKS_PER_CHECK
+	for i in mini(budget, wanted.size()):
+		_build_chunk(wanted[i][1])
+	_streamed = true
+
+
+func _unload_chunk(c: Vector2i) -> void:
+	var chunk: Dictionary = _chunks[c]
+	for n: Node in chunk["nodes"]:
+		if is_instance_valid(n):
+			n.queue_free()
+	var map: GameMap = game.map
+	for y in range(c.y * CHUNK, mini(map.h, (c.y + 1) * CHUNK)):
+		for x in range(c.x * CHUNK, mini(map.w, (c.x + 1) * CHUNK)):
+			_tile_objects.erase(Vector2i(x, y))
+			_deposit_nodes.erase(Vector2i(x, y))
+	_chunks.erase(c)
+
+
+func _build_chunk(c: Vector2i) -> void:
+	var map: GameMap = game.map
+	_building = {"nodes": [], "trees": []}
+	for y in range(c.y * CHUNK, mini(map.h, (c.y + 1) * CHUNK)):
+		for x in range(c.x * CHUNK, mini(map.w, (c.x + 1) * CHUNK)):
 			var p := Vector2i(x, y)
 			var list: Array[Node2D] = []
 			match map.tile(x, y):
@@ -201,19 +276,37 @@ func _populate_terrain() -> void:
 				_deposit_nodes[p] = _sprite(key, Iso.to_screen_on(Vector2(x + 0.5, y + 0.5), Iso.level_of(p)) + Vector2(0, 4))
 			if not list.is_empty():
 				_tile_objects[p] = list
+	_chunks[c] = _building
+	_building = {}
 
 
 func _process(delta: float) -> void:
+	var t0 := Perf.start()
+	_stream_terrain(delta)
+	Perf.stop("scenery streaming", t0)
+	t0 = Perf.start()
 	_sway_trees(delta)
+	Perf.stop("tree sway", t0)
+	t0 = Perf.start()
 	ground.set_rain(game.weather.rain)
+	var screen := view_rect().grow(48.0)  # things off the screen aren't animated or even redrawn
 	for u: Unit in game.units:
 		if not _unit_views.has(u):
 			var v := UnitView.new()
 			v.unit = u
 			objects.add_child(v)
 			_unit_views[u] = v
-		_unit_views[u].update_view()
-		_update_ghost(u, _unit_views[u])
+		var view: UnitView = _unit_views[u]
+		var on_screen := screen.has_point(Iso.to_screen(u.pos))
+		view.visible = on_screen
+		if on_screen:
+			view.update_view()
+			_update_ghost(u, view, delta)
+		elif _ghosts.has(u):
+			_ghosts[u].visible = false
+			_rings[u].visible = false
+	Perf.stop("unit views", t0)
+	var wide := view_rect().grow(200.0)  # buildings are big
 	for b: Building in game.buildings:
 		if not _building_views.has(b):
 			var v := BuildingView.new()
@@ -221,7 +314,10 @@ func _process(delta: float) -> void:
 			v.objects = objects
 			decals.add_child(v)
 			_building_views[b] = v
-		_building_views[b].update_view()
+		if wide.has_point(Iso.to_screen_flat(b.center())):
+			_building_views[b].update_view()
+		else:
+			_building_views[b].go_quiet()
 	for u: Unit in _unit_views.keys():  # things that no longer exist
 		if not game.units.has(u):
 			_unit_views[u].queue_free()
@@ -231,6 +327,7 @@ func _process(delta: float) -> void:
 			if _rings.has(u):
 				_rings[u].queue_free()
 				_rings.erase(u)
+			_ghost_state.erase(u)
 			_unit_views.erase(u)
 	for b: Building in _building_views.keys():
 		if not game.buildings.has(b):
@@ -244,41 +341,48 @@ func _process(delta: float) -> void:
 
 ## Trees, buildings and mountains can hide a villager. When most of them is covered, draw a flat
 ## tinted copy on top so they can still be found.
-func _update_ghost(u: Unit, view: UnitView) -> void:
+func _update_ghost(u: Unit, view: UnitView, delta: float) -> void:
 	if not _ghosts.has(u):
 		var g := Sprite2D.new()
 		g.centered = false
 		g.material = _ghost_material
 		_ghost_layer.add_child(g)
 		_ghosts[u] = g
-	var ghost: Sprite2D = _ghosts[u]
-	var body := view.body()
-	if not _rings.has(u):
 		var r := SelectionRing.new()
 		_ghost_layer.add_child(r)
 		_rings[u] = r
+		_ghost_state[u] = {"wait": randf() * GHOST_CHECK_EVERY, "ghost": false, "ring": false}
+	var ghost: Sprite2D = _ghosts[u]
 	var ring: SelectionRing = _rings[u]
+	var body := view.body()
 	var feet := view.position
+	# the expensive part, the pixel test against everything in front, runs only a few times a second
+	var st: Dictionary = _ghost_state[u]
+	st["wait"] -= delta
+	if st["wait"] <= 0.0:
+		st["wait"] = GHOST_CHECK_EVERY
+		st["ring"] = false
+		if u.selected:
+			var ring_area := Rect2(feet + Vector2(-10, -5), Vector2(20, 10))
+			var ring_blockers := _occluders(feet.y, ring_area)
+			if not ring_blockers.is_empty():
+				for bp: Vector2 in SelectionRing.POINTS:
+					if _any_solid(ring_blockers, feet + bp):
+						st["ring"] = true
+						break
+		st["ghost"] = false
+		if body.texture != null:
+			var area := Rect2(feet + body.offset, body.texture.get_size())
+			var blockers := _occluders(feet.y, area)
+			st["ghost"] = not blockers.is_empty() and _covered_share(body, area, blockers) >= HIDDEN_SHARE
 	ring.position = feet
-	ring.visible = false
-	if u.selected:
-		var ring_area := Rect2(feet + Vector2(-10, -5), Vector2(20, 10))
-		var blockers := _occluders(feet.y, ring_area)
-		for bp: Vector2 in SelectionRing.POINTS:
-			if _any_solid(blockers, feet + bp):
-				ring.visible = true
-				break
-	ghost.visible = false
-	if body.texture != null:
-		var size := body.texture.get_size()
-		var area := Rect2(feet + body.offset, size)
-		var blockers := _occluders(feet.y, area)
-		if not blockers.is_empty() and _covered_share(body, area, blockers) >= HIDDEN_SHARE:
-			ghost.visible = true
-			ghost.texture = body.texture
-			ghost.flip_h = body.flip_h
-			ghost.offset = body.offset
-			ghost.position = feet
+	ring.visible = st["ring"] and u.selected
+	ghost.visible = st["ghost"]
+	if ghost.visible:  # follow the unit's own picture every frame
+		ghost.texture = body.texture
+		ghost.flip_h = body.flip_h
+		ghost.offset = body.offset
+		ghost.position = feet
 
 
 ## The fraction of a villager's drawn pixels (sampled every other pixel) that sit under `blockers`.

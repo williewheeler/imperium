@@ -58,6 +58,12 @@ func _ready() -> void:
 		objects.add_child(_fire)
 
 
+## Off the screen: nothing to animate, so the hearth fire stops until it is seen again.
+func go_quiet() -> void:
+	if _fire != null:
+		_fire.visible = false
+
+
 ## The depth-sorted nodes standing buildings are drawn with (empty for fields).
 func halves() -> Array[Node2D]:
 	return _halves
