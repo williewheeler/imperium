@@ -12,6 +12,7 @@ const FILL := {
 var icon_kind := ""  # "town_center", "house", "storehouse" or "villager"
 var caption := ""  # already in Roman lettering (see Latin.t)
 var cost: Array = []
+var hotkey := ""  # shown as a small badge in the corner
 var compact := false:  # a smaller button, so the bar can hold ten of them in two rows
 	set(v):
 		compact = v
@@ -55,6 +56,8 @@ func _draw() -> void:
 			state = "disabled"
 	draw_style_box(_styles[state], Rect2(Vector2.ZERO, size))
 	_draw_icon(Vector2(size.x / 2.0, 22 if compact else 36))
+	if hotkey != "":
+		draw_string(Latin.FONT, Vector2(6, 15), hotkey, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(GOLD, 0.6 if disabled else 1.0))
 	if lock_numeral != "":  # locked: dimmed, with the era that unlocks it
 		draw_rect(Rect2(Vector2(3, 3), size - Vector2(6, 6)), Color(0.05, 0.03, 0.03, 0.45))
 		draw_string(Latin.FONT, Vector2(size.x - 30, 17), lock_numeral, HORIZONTAL_ALIGNMENT_RIGHT, 24, 12, GOLD)
@@ -89,8 +92,26 @@ func _draw_cost(y: float, text_color: Color) -> void:
 
 
 func _draw_icon(c: Vector2) -> void:
+	if icon_kind in ["explore", "stop"]:
+		_draw_action_icon(c + Vector2(0, 2))
+		return
 	var key := icon_kind + ":idle:f:0" if icon_kind in ["villager", "soldier"] else icon_kind
 	var t: Texture2D = Art.tex(key) if icon_kind in ["villager", "soldier"] else Art.icon(Building.look_key(key), 17 if compact else 30)
 	var scale := 2.0
 	var sz := t.get_size() * scale
 	draw_texture_rect(t, Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz), false, Color(0.45, 0.45, 0.45, 0.7) if disabled else Color.WHITE)
+
+
+## Simple drawn pictures for the order buttons: a compass for exploring, an octagonal sign for stop.
+func _draw_action_icon(c: Vector2) -> void:
+	if icon_kind == "explore":
+		draw_arc(c, 11.0, 0.0, TAU, 28, _t(GOLD), 2.0)
+		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -9), c + Vector2(3.5, 0), c + Vector2(-3.5, 0)]), _t(Color("e0604c")))
+		draw_colored_polygon(PackedVector2Array([c + Vector2(0, 9), c + Vector2(3.5, 0), c + Vector2(-3.5, 0)]), _t(CREAM))
+		draw_circle(c, 1.5, _t(Color("3e2a16")))
+	else:
+		var pts := PackedVector2Array()
+		for i in 8:
+			pts.append(c + Vector2.from_angle(TAU * (i + 0.5) / 8.0) * 11.0)
+		draw_colored_polygon(pts, _t(CREAM))
+		draw_rect(Rect2(c - Vector2(5, 5), Vector2(10, 10)), _t(Color("7a1a1a")))

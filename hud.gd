@@ -6,6 +6,7 @@ signal build_requested(kind: String)
 signal train_requested
 signal road_requested
 signal advance_requested
+signal action_requested(action: String)
 
 const GOLD := Color("e8c766")
 const CREAM := Color("f3e6c4")
@@ -45,6 +46,7 @@ var _pop_label: Label
 var _sel_name: Label
 var _sel_info: Label
 var _btn_box: HFlowContainer
+var _action_box: HBoxContainer  # the order buttons (explore, stop), under the selection's name
 var _bar: ProgressBar
 var _bar_fill: StyleBoxFlat
 var _buttons: Array[Button] = []
@@ -124,6 +126,9 @@ func setup(game) -> void:
 	_sel_info = _label("", 12)
 	left.add_child(_sel_name)
 	left.add_child(_sel_info)
+	_action_box = HBoxContainer.new()
+	_action_box.add_theme_constant_override("separation", 6)
+	left.add_child(_action_box)
 	_bar = ProgressBar.new()  # how much is left in a selected resource
 	_bar.show_percentage = false
 	_bar.custom_minimum_size = Vector2(240, 12)
@@ -325,8 +330,12 @@ func refresh() -> void:
 func _rebuild_buttons(mode: String) -> void:
 	for c in _btn_box.get_children():
 		c.queue_free()
+	for c in _action_box.get_children():
+		c.queue_free()
 	_buttons.clear()
 	var parts := mode.split(":")
+	if parts[0] in ["villagers", "soldiers"]:
+		_add_actions()
 	match parts[0]:
 		"villagers":
 			for kind: String in Defs.BUILDINGS:
@@ -349,6 +358,22 @@ func _rebuild_buttons(mode: String) -> void:
 				var adv: Variant = _game.advance_data()
 				_add_button("advance", "Progredere", "", adv["cost"] if adv != null else [0, 0, 0, 0], func() -> void: advance_requested.emit())
 				_buttons[-1].set_meta("advance", true)
+
+
+## The orders any selected unit can be given, ahead of the buildings. The captions are Latin
+## imperatives; the hotkey badge and tooltip say what they do.
+func _add_actions() -> void:
+	for a: Array in [
+			["explore", "Explora", "Explore: walk the unit toward unseen land until none is left (X)", "X"],
+			["stop", "Siste", "Stop: drop the current order and stand still (S)", "S"]]:
+		var action: String = a[0]
+		_add_button(action, a[1], a[2], [0, 0, 0, 0], func() -> void: action_requested.emit(action))
+		var b: CommandButton = _buttons[-1]
+		b.hotkey = a[3]
+		b.compact = true
+		b.custom_minimum_size = Vector2(64, 56)  # short enough to sit under the selection's name
+		_btn_box.remove_child(b)
+		_action_box.add_child(b)
 
 
 ## An icon button: `icon` picks the picture, `caption` is the short Latin label, and `english`

@@ -15,6 +15,7 @@ const DETOUR_SKIP := 1.3  # waypoints this close to a finished detour are skippe
 const STALL_TIME := 2.5  # no progress for this long near the goal: settle where you are
 const WAYPOINT_REACH := 0.3  # how close counts as "at" an intermediate waypoint
 const STUCK_TIME := 1.2  # a walker blocked this long is allowed to push through
+const EXPLORE_SPREAD := 10.0  # tiles: explorers pick targets at least this far apart
 const PAN_SPEED := 700.0  # screen pixels per second
 const EDGE_PAN_MARGIN := 8.0  # screen pixels from the edge that trigger scrolling
 const EDGE_PAN_MARGIN_BOTTOM := 28.0  # wider at the bottom: macOS pops up the Dock when the pointer touches that edge, which steals the mouse
@@ -121,6 +122,7 @@ func _ready() -> void:
 		_cancel_road_mode())
 	hud.road_requested.connect(start_road_mode)
 	hud.advance_requested.connect(start_advance)
+	hud.action_requested.connect(command_selected)
 	hud.train_requested.connect(_train_unit)
 	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: cam_pos = Iso.to_screen(tile_pos))
 	hud.flash("Elige colonos et iube eos laborare.")
@@ -279,6 +281,10 @@ func placement_error(kind: String, tile: Vector2i) -> String:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		get_tree().quit()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_X:
+		command_selected("explore")
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_S and not event.ctrl_pressed and not event.meta_pressed:
+		command_selected("stop")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		_cycle_era(-1 if event.shift_pressed else 1)  # temporary: jump through the eras
 	elif event is InputEventMouseButton and event.pressed:
@@ -413,6 +419,67 @@ func selected_workers() -> Array[Unit]:
 		if u.kind == "villager":
 			out.append(u)
 	return out
+
+
+## A command-bar action ("explore", "stop") for everyone selected.
+func command_selected(action: String) -> void:
+	for u in selected_units():
+		match action:
+			"explore":
+				_order_explore(u)
+			"stop":
+				_order_stop(u)
+
+
+func _order_stop(u: Unit) -> void:
+	u.dropoff_only = false
+	_release_road(u)
+	u.path.clear()
+	u.detour = Vector2.INF
+	u.target_building = null
+	u.state = Unit.State.IDLE
+
+
+func _order_explore(u: Unit) -> void:
+	u.dropoff_only = false
+	_release_road(u)
+	u.explore_skip.clear()
+	u.target_building = null
+	if _explore_next(u):
+		u.state = Unit.State.EXPLORE
+	else:
+		u.state = Unit.State.IDLE
+		hud.flash("Nihil ultra explorandum.", "Nothing reachable is left to explore.")
+
+
+## Heads for the nearest unseen, walkable tile that no other explorer is already going to.
+## Tiles with no route (across water, say) are remembered and skipped.
+func _explore_next(u: Unit) -> bool:
+	var taken: Array[Vector2i] = []
+	for o in units:
+		if o != u and o.state == Unit.State.EXPLORE:
+			taken.append(o.explore_goal)
+	var cands: Array = []
+	for y in map.h:
+		for x in map.w:
+			var p := Vector2i(x, y)
+			if fog.is_explored(p) or not map.is_walkable(p) or u.explore_skip.has(p):
+				continue
+			var crowded := false
+			for t in taken:
+				if Vector2(t - p).length() < EXPLORE_SPREAD:
+					crowded = true
+					break
+			if not crowded:
+				cands.append([(Vector2(p) + Vector2(0.5, 0.5)).distance_squared_to(u.pos), p])
+	cands.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	for i in mini(cands.size(), 8):
+		var p: Vector2i = cands[i][1]
+		if _set_path(u, p):
+			u.explore_goal = p
+			return true
+		u.explore_skip[p] = true
+	return false
 
 
 func _command_at(mp: Vector2) -> void:
@@ -1358,6 +1425,11 @@ func _update_unit(u: Unit, delta: float) -> void:
 		Unit.State.MOVE:
 			if _follow(u, delta):
 				u.state = Unit.State.IDLE
+		Unit.State.EXPLORE:
+			if _follow(u, delta) or fog.is_explored(u.explore_goal):
+				if not _explore_next(u):
+					u.path.clear()
+					u.state = Unit.State.IDLE
 		Unit.State.GATHER_GO:
 			if _follow(u, delta):
 				if map.deposits.has(u.target_tile):

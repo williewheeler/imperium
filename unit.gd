@@ -1,7 +1,7 @@
 class_name Unit
 extends RefCounted
 
-enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING }
+enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING, EXPLORE }
 
 ## Position in tile coordinates (tile centres are at +0.5).
 var kind := "villager"  # "villager" or "soldier"
@@ -12,6 +12,8 @@ var detour_cooldown := 0.0  # seconds before another detour may be planned
 var detour := Vector2.INF  # temporary waypoint that steers around someone in the way
 var selected := false
 var state := State.IDLE
+var explore_goal := Vector2i(-1, -1)  # the unseen tile an explorer is heading for
+var explore_skip := {}  # unseen tiles this explorer found no route to
 
 var target_tile := Vector2i(-1, -1)  # deposit being worked
 var gather_kind := -1  # Defs.Res being gathered
