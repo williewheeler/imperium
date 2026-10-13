@@ -154,6 +154,8 @@ static func image(key: String) -> Image:
 			return _horseman(parts[1], int(parts[3]), int(parts[4]) if parts.size() > 4 else 0)
 		"stabulum":
 			return _stabulum()
+		"lupa":
+			return _lupa()
 		"hut":
 			return _hut()
 		"regia":
@@ -767,6 +769,7 @@ static func scenery_keys() -> Array[String]:
 		for l in 3:
 			k.append("pack:%d:%d" % [r, l])
 	k.append("via")
+	k.append("lupa")
 	k.append("advance")
 	for n in ["wood", "food", "stone", "gold", "pop"]:
 		k.append("icon:" + n)
@@ -1369,6 +1372,68 @@ static func _horse_leg(img: Image, hip_x: float, hip_y: float, ph: float, offset
 	Pixel.line(img, Vector2i(roundi(hip_x), roundi(hip_y)), foot, col)
 	Pixel.line(img, Vector2i(roundi(hip_x) + 1, roundi(hip_y)), foot + Vector2i(1, 0), col)
 	Pixel.put(img, foot.x, foot.y, Color("2c1c12"))  # the hoof
+
+
+# ---------------------------------------------------------------- splash
+
+const STATUE := [Color("dcae62"), Color("b0803f"), Color("80542a"), Color("4e3018")]  # bronze, lit from the top-left
+const PATINA := Color("4f7a62")
+
+
+## The Lupa Capitolina: the she-wolf suckling Romulus and Remus, as a bronze statue on a low base.
+## Shown on the title screen. 104x64.
+static func _lupa() -> Image:
+	var img := Pixel.blank(104, 64)
+	var lit := func(cx: float, cy: float, rx: float, ry: float, bias := 0.0) -> Callable:
+		return func(x: int, y: int) -> Color:
+			var v := 0.62 - ((y + 0.5 - cy) / ry) * 0.38 - ((x + 0.5 - cx) / rx) * 0.2 + bias + (Pixel.hash2(x, y, 41) - 0.5) * 0.12
+			return Pixel.ramp(STATUE, v, x, y, 0.22)
+	# the base: a slab of travertine
+	Pixel.poly(img, [Vector2(6, 56), Vector2(98, 56), Vector2(102, 62), Vector2(2, 62)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(TRAV, 0.55 + (Pixel.hash2(x, y, 42) - 0.5) * 0.3 - (y - 56) * 0.04, x, y, 0.25))
+	Pixel.rect(img, 6, 55, 92, 1, TRAV[0])
+	# far legs, then the tail, body, near legs
+	for x0: float in [37.0, 70.0]:
+		Pixel.poly(img, [Vector2(x0, 36), Vector2(x0 + 5, 36), Vector2(x0 + 4, 55), Vector2(x0, 55)], lit.call(x0 + 2, 46, 4, 10, -0.25))
+	Pixel.poly(img, [Vector2(26, 27), Vector2(32, 28), Vector2(24, 40), Vector2(15, 47), Vector2(17, 38), Vector2(21, 31)], lit.call(22, 36, 7, 10, -0.05))  # the brush of a tail
+	Pixel.ellipse(img, 52, 31, 27, 10.5, lit.call(52, 31, 27, 10.5))  # the lean body
+	for k in 9:  # ribs showing along the flank
+		var rx := 42 + k * 3
+		Pixel.line(img, Vector2i(rx, 28), Vector2i(rx + 1, 35), STATUE[3])
+	Pixel.poly(img, [Vector2(66, 24), Vector2(76, 17), Vector2(80, 26), Vector2(72, 38), Vector2(66, 36)], lit.call(72, 28, 8, 11, 0.04))  # chest and neck
+	for i in 4:  # shaggy ruff, a few tufts hanging off the neck
+		var tx := 67.0 + i * 3.0
+		Pixel.poly(img, [Vector2(tx, 33 + i), Vector2(tx + 3, 33 + i), Vector2(tx + 1, 39 + i)], lit.call(tx, 36, 3, 4, -0.15))
+	# the head, turned back and down toward the twins: skull, long muzzle, ears
+	Pixel.ellipse(img, 80, 17, 6.5, 5, lit.call(80, 17, 6.5, 5, 0.08))
+	Pixel.poly(img, [Vector2(83, 15), Vector2(95, 20), Vector2(95, 24), Vector2(84, 23)], lit.call(89, 20, 7, 4, 0.0))
+	Pixel.put(img, 95, 20, STATUE[3])  # the nose
+	Pixel.line(img, Vector2i(86, 23), Vector2i(94, 23), STATUE[3])  # the mouth
+	Pixel.poly(img, [Vector2(76, 13), Vector2(77, 6), Vector2(81, 12)], lit.call(78, 10, 3, 4, 0.1))
+	Pixel.poly(img, [Vector2(81, 12), Vector2(85, 6), Vector2(86, 13)], lit.call(84, 10, 3, 4, -0.1))
+	Pixel.rect(img, 84, 15, 2, 1, STATUE[3])  # a fierce eye
+	Pixel.poly(img, [Vector2(27, 30), Vector2(40, 30), Vector2(41, 40), Vector2(36, 45), Vector2(35, 55), Vector2(30, 55), Vector2(30, 45), Vector2(26, 40)], lit.call(33, 42, 7, 13, 0.0))  # the haunch of the near hind leg
+	Pixel.poly(img, [Vector2(62, 32), Vector2(69, 32), Vector2(69, 44), Vector2(68, 55), Vector2(63, 55), Vector2(63, 44)], lit.call(66, 44, 4, 12, 0.0))  # the near foreleg
+	for x0: float in [30.0, 63.0]:
+		Pixel.rect(img, int(x0) - 1, 54, 7, 2, STATUE[2])  # the paws
+	# the twins, under the belly, reaching up to suckle: pinker than the wolf so they read at a glance
+	var skin := func(cx: float, cy: float, rx: float, ry: float) -> Callable:
+		return func(x: int, y: int) -> Color:
+			var v := 0.62 - ((y + 0.5 - cy) / ry) * 0.3 - ((x + 0.5 - cx) / rx) * 0.2 + (Pixel.hash2(x, y, 45) - 0.5) * 0.1
+			return Pixel.ramp([Color("f0b894"), Color("d98f6c"), Color("b06a4c"), Color("7a4632")], v, x, y, 0.2)
+	for baby: Vector2 in [Vector2(46, 49), Vector2(57, 49)]:
+		Pixel.ellipse(img, baby.x, baby.y, 6.0, 3.4, skin.call(baby.x, baby.y, 6, 3.4))
+		Pixel.ellipse(img, baby.x + 1, baby.y - 4, 3.0, 3.0, skin.call(baby.x + 1, baby.y - 4, 3, 3))  # head, up at the belly
+		Pixel.line(img, Vector2i(int(baby.x) + 4, int(baby.y) - 2), Vector2i(int(baby.x) + 5, int(baby.y) - 7), Color("d98f6c"))  # reaching arm
+		Pixel.line(img, Vector2i(int(baby.x) - 4, int(baby.y) - 1), Vector2i(int(baby.x) - 4, int(baby.y) - 6), Color("b06a4c"))
+		Pixel.put(img, int(baby.x) + 2, int(baby.y) - 4, Color("3a2416"))  # an eye
+	# a green patina where the bronze has weathered
+	for i in 40:
+		var px := int(Pixel.hash2(i, 5, 43) * 90.0) + 6
+		var py := int(Pixel.hash2(i, 6, 43) * 50.0) + 4
+		if img.get_pixel(px, py).a > 0.5 and Pixel.hash2(px, py, 44) < 0.5 and py > 30:
+			Pixel.put(img, px, py, PATINA)
+	return Pixel.outlined(img, OUT_WARM)
 
 
 # ---------------------------------------------------------------- Era II buildings

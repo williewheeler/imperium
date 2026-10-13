@@ -114,6 +114,13 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Paratum / Parata / Paratus | Ready (agrees with the building's gender) |
 | *Building* perfectum est | *Building* is complete |
 
+## Title screen
+
+| Latin | English |
+|---|---|
+| Imperivm | The Empire (the game's title) |
+| Ab urbe condita | From the founding of the city: the Romans' own way of dating years, counted from the traditional founding of Rome in 753 BC |
+
 ## The eras
 
 | Numeral | Latin | English | Dates |
