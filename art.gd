@@ -1405,9 +1405,11 @@ static func _arx() -> Image:
 		var sx := int(rack.x) - 4 + i * 2
 		Pixel.rect(img, sx, int(rack.y) - 13, 1, 12, WOOD[0])
 		Pixel.put(img, sx, int(rack.y) - 14, ROCK[1])
-	var sh := f.p(2.3, 1.6, 0)
-	Pixel.ellipse(img, sh.x, sh.y - 5, 4.0, 4.0, TUNIC[1])
-	Pixel.ellipse(img, sh.x, sh.y - 5, 1.6, 1.6, GOLD[1])
+	var sh := f.p(2.3, 1.6, 0)  # a round shield hung on a post
+	Pixel.rect(img, int(sh.x), int(sh.y) - 12, 2, 12, WOOD[2])
+	Pixel.ellipse(img, sh.x + 1.0, sh.y - 12, 5.0, 5.0, GOLD[2])  # bronze rim
+	Pixel.ellipse(img, sh.x + 1.0, sh.y - 12, 4.0, 4.0, TUNIC[1])
+	Pixel.ellipse(img, sh.x + 1.0, sh.y - 12, 1.6, 1.6, GOLD[0])  # boss
 	_stakes(img, f, Vector2(0, n), Vector2(n, n), 13.0, true)  # then the front two sides
 	_stakes(img, f, Vector2(n, 0), Vector2(n, n), 13.0, false, Vector2(0.4, 0.6))  # with a gate gap
 	for t in [0.4, 0.6]:  # gate posts and lintel
