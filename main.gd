@@ -17,6 +17,7 @@ const WAYPOINT_REACH := 0.3  # how close counts as "at" an intermediate waypoint
 const STUCK_TIME := 1.2  # a walker blocked this long is allowed to push through
 const PAN_SPEED := 700.0  # screen pixels per second
 const EDGE_PAN_MARGIN := 8.0  # screen pixels from the edge that trigger scrolling
+const EDGE_PAN_MARGIN_BOTTOM := 28.0  # wider at the bottom: macOS pops up the Dock when the pointer touches that edge, which steals the mouse
 const ZOOM_LOGICAL_MIN := 1.0  # zoom range in on-screen pixels per art pixel
 const ZOOM_LOGICAL_MAX := 4.0
 const ZOOM_LOGICAL_START := 2.5
@@ -1123,7 +1124,7 @@ func _pan_camera(delta: float) -> void:
 			dir.x += 1
 		if mouse.y <= EDGE_PAN_MARGIN:
 			dir.y -= 1
-		elif mouse.y >= view.y - EDGE_PAN_MARGIN:
+		elif mouse.y >= view.y - EDGE_PAN_MARGIN_BOTTOM:
 			dir.y += 1
 	dir = dir.clamp(Vector2(-1, -1), Vector2(1, 1))
 	_apply_zoom()
