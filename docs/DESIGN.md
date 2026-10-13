@@ -131,6 +131,7 @@ era gating of buildings comes first.
   **paved roads** can be laid by dragging, paid for in stone and built tile by tile by villagers.
 - **Eras:** the banner, the Forum's Advance button (Era I → II), era-gated buildings (Domus, paved roads,
   Vinea, Curia, Aquaeductus and Castra unlock in Era II), per-era HUD chrome, and an E-key era jump for testing.
+- **Height map:** every tile has an elevation (`GameMap.elevation`; plains gentle, hills steeper, mountains steepest). It shows as light on the ground, lit from the top-left like everything else (the `relief` texture in `ground.gdshader`). It also drives play: steep ground costs more to walk (`slope_factor`), high ground sees farther (about +1 tile of sight per 0.1 of height), and houses need level ground (`FLAT_LIMIT`; fields may lie on slopes). The ground stays flat on screen: no cliffs or lifted sprites yet.
 - **Interface:** Latin text with English tooltips; icon command bar; resource panel for a clicked
   deposit; era banner. Every panel shares a gilded Greek-key (meander) frame (`FramedPanel`), and the
   resource bar uses pixel-art icons (logs, wheat, stone, gold ingots, a villager) instead of words.

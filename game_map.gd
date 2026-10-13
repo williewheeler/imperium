@@ -8,6 +8,12 @@ enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN }
 const MOVE_COST := [INF, INF, 1.1, 1.0, 1.6, 2.2, INF]
 const ROAD_SPEED := 1.3  # dirt roads are this much faster to walk
 const PAVED_SPEED := 1.7  # paved Roman roads even more
+const SEA_LEVEL := 0.40  # elevation of all water; the land rises from here
+const RELIEF_SCALE := 10.0  # how strongly a slope shows as light or shade
+const SLOPE_COST := 5.0  # extra walking cost per unit of steepness (elevation change per tile)
+const FLAT_LIMIT := 0.09  # a building site's tiles may differ in elevation by no more than this
+## Direction the light comes from, as a unit vector in tile space: the top-left of the screen.
+const LIGHT := Vector2(-0.95, -0.32)
 const ROAD_WEAR := 7.0  # tiles of walking before a path becomes a road
 const TILE_COLORS := [
 	Color("12406b"), Color("1f6f9c"), Color("e0cf94"), Color("5f9a3e"),
@@ -18,6 +24,9 @@ var w: int
 var h: int
 var seed_value: int
 var tiles := PackedByteArray()
+var elevation := PackedFloat32Array()  # per tile, 0.40 (sea level) up to about 1.0 (mountain tops)
+var relief := PackedByteArray()  # per tile light on the ground from the top-left: 128 flat, brighter when facing the light
+var slope_factor := PackedFloat32Array()  # per tile walking-cost multiplier from steepness (1.0 = flat)
 var deposits := {}  # Vector2i -> Deposit
 var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 2 paved road
 var wear := PackedFloat32Array()  # distance walked over each tile so far
@@ -29,6 +38,7 @@ func _init(p_seed: int, p_w := 80, p_h := 80) -> void:
 	w = p_w
 	h = p_h
 	_generate()
+	_compute_relief()
 	road.resize(w * h)
 	wear.resize(w * h)
 	_build_nav()
@@ -56,6 +66,7 @@ func _generate() -> void:
 	var elev := _make_noise(seed_value, 1.0 / 16.0)
 	var moist := _make_noise(seed_value + 7, 1.0 / 11.0)
 	tiles.resize(w * h)
+	elevation.resize(w * h)
 	for y in h:
 		for x in w:
 			var dx := (x - w / 2.0) / (w / 2.0)
@@ -76,8 +87,70 @@ func _generate() -> void:
 			else:
 				t = Terrain.MOUNTAIN
 			tiles[y * w + x] = t
+			elevation[y * w + x] = _height_of(e)
 			if t == Terrain.FOREST:
 				deposits[Vector2i(x, y)] = Deposit.new(Defs.Res.WOOD, Defs.DEPOSIT_AMOUNT[Defs.Res.WOOD])
+
+
+## Terrain height for the generator's raw elevation `e`: the plains are gentle, the hills rise
+## faster and the mountains faster still, so steepness tells terrain apart.
+static func _height_of(e: float) -> float:
+	if e <= SEA_LEVEL:
+		return SEA_LEVEL
+	if e < 0.66:
+		return SEA_LEVEL + (e - SEA_LEVEL) * 0.5
+	if e < 0.76:
+		return SEA_LEVEL + 0.13 + (e - 0.66) * 2.5
+	return SEA_LEVEL + 0.38 + (e - 0.76) * 3.0
+
+
+## Lights the land from the top-left and works out how steep each tile is. The elevation is
+## blurred a little first so the light follows hills rather than the noise on top of them.
+func _compute_relief() -> void:
+	var smooth := PackedFloat32Array()
+	smooth.resize(w * h)
+	for y in h:
+		for x in w:
+			var sum := 0.0
+			var n := 0
+			for oy in range(-1, 2):
+				for ox in range(-1, 2):
+					var q := Vector2i(clampi(x + ox, 0, w - 1), clampi(y + oy, 0, h - 1))
+					sum += elevation[q.y * w + q.x]
+					n += 1
+			smooth[y * w + x] = sum / n
+	relief.resize(w * h)
+	slope_factor.resize(w * h)
+	for y in h:
+		for x in w:
+			var x0 := clampi(x - 1, 0, w - 1)
+			var x1 := clampi(x + 1, 0, w - 1)
+			var y0 := clampi(y - 1, 0, h - 1)
+			var y1 := clampi(y + 1, 0, h - 1)
+			var gx := (smooth[y * w + x1] - smooth[y * w + x0]) / maxf(1.0, float(x1 - x0))
+			var gy := (smooth[y1 * w + x] - smooth[y0 * w + x]) / maxf(1.0, float(y1 - y0))
+			var lit := -(gx * LIGHT.x + gy * LIGHT.y)  # positive on slopes that face the light
+			relief[y * w + x] = int(clampf(0.5 + lit * RELIEF_SCALE, 0.0, 1.0) * 255.0)
+			var on_land := tile(x, y) >= Terrain.BEACH
+			slope_factor[y * w + x] = 1.0 + SLOPE_COST * sqrt(gx * gx + gy * gy) if on_land else 1.0
+
+
+## Terrain height at a position in tile coordinates.
+func elevation_at(pos: Vector2) -> float:
+	var p := Vector2i(pos.floor())
+	return elevation[clampi(p.y, 0, h - 1) * w + clampi(p.x, 0, w - 1)] if in_bounds(p) else SEA_LEVEL
+
+
+## Is the ground under this rectangle level enough to build on?
+func is_flat(rect: Rect2i) -> bool:
+	var lo := INF
+	var hi := -INF
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			if in_bounds(Vector2i(x, y)):
+				lo = minf(lo, elevation[y * w + x])
+				hi = maxf(hi, elevation[y * w + x])
+	return hi - lo <= FLAT_LIMIT
 
 
 func _build_nav() -> void:
@@ -93,7 +166,7 @@ func _build_nav() -> void:
 			if is_inf(cost):
 				astar.set_point_solid(Vector2i(x, y), true)
 			else:
-				astar.set_point_weight_scale(Vector2i(x, y), cost)
+				astar.set_point_weight_scale(Vector2i(x, y), cost * slope_factor[y * w + x])
 
 
 func tile(x: int, y: int) -> int:
@@ -112,7 +185,7 @@ func is_walkable(p: Vector2i) -> bool:
 func move_cost(p: Vector2i) -> float:
 	if not in_bounds(p):
 		return 1.0
-	var c: float = MOVE_COST[tile(p.x, p.y)]
+	var c: float = MOVE_COST[tile(p.x, p.y)] * slope_factor[p.y * w + p.x]
 	match road[p.y * w + p.x]:
 		1:
 			return c / ROAD_SPEED
@@ -194,7 +267,7 @@ func remove_deposit(p: Vector2i) -> bool:
 	deposits.erase(p)
 	if tile(p.x, p.y) == Terrain.FOREST:
 		tiles[p.y * w + p.x] = Terrain.GRASS
-		astar.set_point_weight_scale(p, MOVE_COST[Terrain.GRASS])
+		astar.set_point_weight_scale(p, MOVE_COST[Terrain.GRASS] * slope_factor[p.y * w + p.x])
 		return true
 	astar.set_point_solid(p, MOVE_COST[tile(p.x, p.y)] == INF)
 	return false
@@ -262,7 +335,7 @@ func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Ar
 				if maxi(absi(x - near.x), absi(y - near.y)) != r:
 					continue
 				var rect := Rect2i(Vector2i(x, y), size)
-				var ok := true
+				var ok := is_flat(rect)
 				for yy in range(rect.position.y - 1, rect.end.y + 1):
 					for xx in range(rect.position.x - 1, rect.end.x + 1):
 						var p := Vector2i(xx, yy)

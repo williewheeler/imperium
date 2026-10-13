@@ -7,6 +7,7 @@ shader_type canvas_item;
 uniform sampler2D terrain : filter_nearest, repeat_disable;
 uniform sampler2D road_mask : filter_linear, repeat_disable; // dirt roads, 8 pixels per tile
 uniform sampler2D paved_mask : filter_linear, repeat_disable; // paved Roman roads
+uniform sampler2D relief : filter_linear, repeat_disable; // light on each tile's slope, 0.5 = flat
 uniform vec2 map_size = vec2(80.0, 80.0);
 uniform vec2 origin = vec2(0.0); // world position of this rect's top-left corner
 
@@ -81,6 +82,10 @@ void fragment() {
 	float n = fbm(wp * 0.06);
 	float fine = hash(wp);
 	float d = (bd - 0.5) * 0.3;
+	if (id >= 2) { // the land is lit from the top-left: slopes that face the light brighten, the others darken
+		vec2 rg = to_tile(sp);
+		d += (texture(relief, rg / map_size).r - 0.5) * 1.4;
+	}
 	float t = floor(TIME * 1.4);
 	vec3 col;
 

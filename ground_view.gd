@@ -14,6 +14,7 @@ var _dirt_image: Image
 var _dirt_texture: ImageTexture
 var _paved_image: Image
 var _paved_texture: ImageTexture
+var _relief_texture: ImageTexture
 
 
 func setup(map: GameMap) -> void:
@@ -37,6 +38,7 @@ func setup(map: GameMap) -> void:
 			_stroke_tile(Vector2i(x, y))
 	_dirt_texture = ImageTexture.create_from_image(_dirt_image)
 	_paved_texture = ImageTexture.create_from_image(_paved_image)
+	_relief_texture = ImageTexture.create_from_image(Image.create_from_data(map.w, map.h, false, Image.FORMAT_R8, map.relief))
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://ground.gdshader")
 	mat.set_shader_parameter("terrain", _texture)
@@ -44,6 +46,7 @@ func setup(map: GameMap) -> void:
 	mat.set_shader_parameter("origin", position)
 	mat.set_shader_parameter("road_mask", _dirt_texture)
 	mat.set_shader_parameter("paved_mask", _paved_texture)
+	mat.set_shader_parameter("relief", _relief_texture)
 	material = mat
 
 

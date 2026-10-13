@@ -272,6 +272,8 @@ func placement_error(kind: String, tile: Vector2i) -> String:
 				return "Terra incognita."
 			if not map.is_free_land(p):
 				return "Locus liber et planus requiritur."
+	if not def.get("walkable", false) and not map.is_flat(rect):  # fields lie on slopes, but houses don't
+		return "Locus liber et planus requiritur."
 	if not def.get("walkable", false):
 		for u in units:
 			if rect.has_point(Vector2i(u.pos)):
@@ -1311,12 +1313,18 @@ func _pan_camera(delta: float) -> void:
 	camera.position = cam_pos.round()  # whole world pixels, so sprites don't shimmer
 
 
+## High ground sees farther and low ground less far: about a tile of sight per 0.1 of height
+## above (or below) the plains.
+func _height_sight(pos: Vector2) -> float:
+	return clampf((map.elevation_at(pos) - GameMap.SEA_LEVEL - 0.05) * 10.0, -1.0, 3.0)
+
+
 func _update_fog() -> void:
 	var sources := []
 	for u in units:
-		sources.append([u.pos, VILLAGER_SIGHT])
+		sources.append([u.pos, VILLAGER_SIGHT + _height_sight(u.pos)])
 	for b in buildings:
-		sources.append([b.center(), b.def()["sight"] if b.complete else FOUNDATION_SIGHT])
+		sources.append([b.center(), (b.def()["sight"] if b.complete else FOUNDATION_SIGHT) + _height_sight(b.center())])
 	fog.update(sources)
 
 
