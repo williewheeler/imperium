@@ -8,6 +8,7 @@ shader_type canvas_item;
 uniform sampler2D terrain : filter_nearest, repeat_disable;
 uniform sampler2D road_mask : filter_linear, repeat_disable; // dirt roads, 8 pixels per tile
 uniform sampler2D paved_mask : filter_linear, repeat_disable; // paved Roman roads
+uniform float rain = 0.0; // 0 dry .. 1 storm: rain ripples the water and a storm roughens it
 uniform sampler2D relief : filter_linear, repeat_disable; // light on each tile's slope, 0.5 = flat
 uniform vec2 origin = vec2(0.0); // world position of this rect's top-left corner
 
@@ -69,6 +70,30 @@ int terrain_at(vec2 g) {
 	return int(texelFetch(terrain, t, 0).r * 255.0 + 0.5);
 }
 
+// Raindrops landing on water: a little splash, then a ring spreading out (squashed, as the water
+// is seen at a slant), fading as it grows. Returns how much to lighten the water at this pixel.
+float raindrop(vec2 wp, float amount, float time) {
+	if (amount < 0.01) return 0.0;
+	float cell = 18.0;
+	vec2 c = floor(wp / cell);
+	float lit = 0.0;
+	for (int oy = -1; oy <= 1; oy++) {
+		for (int ox = -1; ox <= 1; ox++) { // a ring can spill over into the next cell
+			vec2 k = c + vec2(float(ox), float(oy));
+			if (hash(k + 11.0) > amount * 0.7) continue; // heavier rain: more drops
+			float period = 1.1 + hash(k + 3.0) * 1.2;
+			float age = fract(time / period + hash(k + 7.0));
+			vec2 centre = (k + vec2(0.2 + 0.6 * hash(k + 1.0), 0.2 + 0.6 * hash(k + 2.0))) * cell;
+			vec2 d = (wp - centre) * vec2(1.0, 2.0);
+			float dist = length(d);
+			float radius = age * 11.0;
+			if (age < 0.12 && dist < 1.6) lit = max(lit, 1.0); // the splash
+			else if (abs(dist - radius) < 0.9 && age < 0.9) lit = max(lit, 1.0 - age * 0.7);
+		}
+	}
+	return lit;
+}
+
 // A cliff face between two terraces: earth with strata, a grassy lip on top and a shaded foot.
 vec3 cliff_colour(vec2 wp, int kind, int top_id, float v) {
 	float bd = bayer(wp);
@@ -110,13 +135,15 @@ vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 	vec3 col;
 
 	if (id == 0) { // deep water
-		float ripple = vnoise(vec2(wp.x * 0.2 + t * 0.6, wp.y * 0.65 + t * 0.15));
-		col = ramp4(hx(0x3a8fc0), hx(0x2c7db2), hx(0x206b9f), hx(0x185a88), 0.45 + (ripple - 0.5) * 0.7 + d);
-		if (hash(wp * 0.77 + t) > 0.988) col = hx(0x8cc8e8);
+		float ripple = vnoise(vec2(wp.x * 0.2 + t * 0.6 * (0.8 + rain * 1.2), wp.y * 0.65 + t * 0.15 * (0.8 + rain * 1.2)));  // faster in rough weather
+		col = ramp4(hx(0x3a8fc0), hx(0x2c7db2), hx(0x206b9f), hx(0x185a88), 0.45 + (ripple - 0.5) * (0.7 + rain * 0.5) + d - rain * 0.12);
+		if (hash(wp * 0.77 + t) > 0.988 - rain * 0.022) col = hx(0x8cc8e8); // whitecaps multiply in a storm
+		col = mix(col, hx(0xd2ebf7), raindrop(wp, rain, floor(time * 8.0) / 8.0) * 0.85);
 	} else if (id == 1) { // shallows
-		float ripple = vnoise(vec2(wp.x * 0.25 + t * 0.5, wp.y * 0.8 - t * 0.2));
-		col = ramp4(hx(0x9ae0f0), hx(0x78cbe6), hx(0x5db7d8), hx(0x46a1c4), 0.5 + (ripple - 0.5) * 0.6 + d);
-		if (hash(wp * 0.91 + t) > 0.985) col = hx(0xe8fbff);
+		float ripple = vnoise(vec2(wp.x * 0.25 + t * 0.5 * (0.8 + rain * 1.2), wp.y * 0.8 - t * 0.2 * (0.8 + rain * 1.2)));
+		col = ramp4(hx(0x9ae0f0), hx(0x78cbe6), hx(0x5db7d8), hx(0x46a1c4), 0.5 + (ripple - 0.5) * (0.6 + rain * 0.5) + d - rain * 0.1);
+		if (hash(wp * 0.91 + t) > 0.985 - rain * 0.015) col = hx(0xe8fbff);
+		col = mix(col, hx(0xf2fbff), raindrop(wp, rain, floor(time * 8.0) / 8.0) * 0.85);
 	} else if (id == 2) { // beach
 		col = ramp4(hx(0xf4e7b0), hx(0xebdc9e), hx(0xddca8a), hx(0xcdb678), 0.55 + (n - 0.5) * 0.7 + d);
 		if (fine > 0.97) col = hx(0xc2ac6c);
@@ -136,6 +163,7 @@ vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 			float ripple = vnoise(vec2(wp.x * 0.3 + t * 0.4, wp.y * 0.9));
 			col = ramp4(hx(0x8fbcb2), hx(0x74a7a0), hx(0x5d9190), hx(0x4a7d7e), 0.45 + (ripple - 0.5) * 0.6 + d);
 			if (hash(wp * 0.83 + t) > 0.99) col = hx(0xd6efe8);
+			col = mix(col, hx(0xe4f4ef), raindrop(wp, rain, floor(time * 8.0) / 8.0) * 0.8);
 		} else if (pools > 0.5) {
 			col = hx(0x5a6a38); // the muddy rim
 		} else if (fine > 0.955) {

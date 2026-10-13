@@ -205,6 +205,7 @@ func _populate_terrain() -> void:
 
 func _process(delta: float) -> void:
 	_sway_trees(delta)
+	ground.set_rain(game.weather.rain)
 	for u: Unit in game.units:
 		if not _unit_views.has(u):
 			var v := UnitView.new()

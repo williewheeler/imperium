@@ -55,6 +55,11 @@ func setup(map: GameMap) -> void:
 	material = mat
 
 
+## How hard it is raining (0 to 1): rain ripples the water, and a storm roughens it.
+func set_rain(amount: float) -> void:
+	(material as ShaderMaterial).set_shader_parameter("rain", amount)
+
+
 ## A tile changed terrain (a felled forest becomes grass).
 func set_tile(p: Vector2i, terrain: int) -> void:
 	_image.set_pixel(p.x, p.y, Color8(terrain, 0, 0))
