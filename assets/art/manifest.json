@@ -163,6 +163,106 @@
 					"villager:build:b:5"
 				],
 				[
+					"villagerf:idle:f:0",
+					"villagerf:idle:f:1"
+				],
+				[
+					"villagerf:idle:b:0",
+					"villagerf:idle:b:1"
+				],
+				[
+					"villagerf:walk:f:0",
+					"villagerf:walk:f:1",
+					"villagerf:walk:f:2",
+					"villagerf:walk:f:3",
+					"villagerf:walk:f:4",
+					"villagerf:walk:f:5"
+				],
+				[
+					"villagerf:walk:b:0",
+					"villagerf:walk:b:1",
+					"villagerf:walk:b:2",
+					"villagerf:walk:b:3",
+					"villagerf:walk:b:4",
+					"villagerf:walk:b:5"
+				],
+				[
+					"villagerf:chop:f:0",
+					"villagerf:chop:f:1",
+					"villagerf:chop:f:2",
+					"villagerf:chop:f:3",
+					"villagerf:chop:f:4",
+					"villagerf:chop:f:5"
+				],
+				[
+					"villagerf:chop:b:0",
+					"villagerf:chop:b:1",
+					"villagerf:chop:b:2",
+					"villagerf:chop:b:3",
+					"villagerf:chop:b:4",
+					"villagerf:chop:b:5"
+				],
+				[
+					"villagerf:mine:f:0",
+					"villagerf:mine:f:1",
+					"villagerf:mine:f:2",
+					"villagerf:mine:f:3",
+					"villagerf:mine:f:4",
+					"villagerf:mine:f:5"
+				],
+				[
+					"villagerf:mine:b:0",
+					"villagerf:mine:b:1",
+					"villagerf:mine:b:2",
+					"villagerf:mine:b:3",
+					"villagerf:mine:b:4",
+					"villagerf:mine:b:5"
+				],
+				[
+					"villagerf:forage:f:0",
+					"villagerf:forage:f:1",
+					"villagerf:forage:f:2",
+					"villagerf:forage:f:3"
+				],
+				[
+					"villagerf:forage:b:0",
+					"villagerf:forage:b:1",
+					"villagerf:forage:b:2",
+					"villagerf:forage:b:3"
+				],
+				[
+					"villagerf:till:f:0",
+					"villagerf:till:f:1",
+					"villagerf:till:f:2",
+					"villagerf:till:f:3",
+					"villagerf:till:f:4",
+					"villagerf:till:f:5"
+				],
+				[
+					"villagerf:till:b:0",
+					"villagerf:till:b:1",
+					"villagerf:till:b:2",
+					"villagerf:till:b:3",
+					"villagerf:till:b:4",
+					"villagerf:till:b:5"
+				],
+				[
+					"villagerf:build:f:0",
+					"villagerf:build:f:1",
+					"villagerf:build:f:2",
+					"villagerf:build:f:3",
+					"villagerf:build:f:4",
+					"villagerf:build:f:5"
+				],
+				[
+					"villagerf:build:b:0",
+					"villagerf:build:b:1",
+					"villagerf:build:b:2",
+					"villagerf:build:b:3",
+					"villagerf:build:b:4",
+					"villagerf:build:b:5"
+				],
+				[
 					"soldier:idle:f:0",
 					"soldier:idle:f:1"
 				],
@@ -206,8 +306,8 @@
 		],
 		"berries": [
 			"scenery.png",
-			63,
-			75,
+			1,
+			95,
 			19,
 			15
 		],
@@ -227,8 +327,15 @@
 		],
 		"cypress:0": [
 			"scenery.png",
-			25,
+			49,
 			48,
+			11,
+			26
+		],
+		"cypress:0:1": [
+			"scenery.png",
+			228,
+			1,
 			11,
 			26
 		],
@@ -276,15 +383,15 @@
 		],
 		"gold:0": [
 			"scenery.png",
-			184,
-			48,
+			28,
+			75,
 			26,
 			19
 		],
 		"gold:1": [
 			"scenery.png",
-			141,
-			48,
+			1,
+			75,
 			26,
 			19
 		],
@@ -486,14 +593,14 @@
 		],
 		"hill:0": [
 			"scenery.png",
-			37,
+			109,
 			48,
 			32,
 			25
 		],
 		"hill:1": [
 			"scenery.png",
-			70,
+			142,
 			48,
 			32,
 			25
@@ -514,42 +621,42 @@
 		],
 		"icon:food": [
 			"scenery.png",
-			131,
+			224,
 			75,
 			15,
 			15
 		],
 		"icon:gold": [
 			"scenery.png",
-			99,
+			192,
 			75,
 			15,
 			15
 		],
 		"icon:pop": [
 			"scenery.png",
-			83,
+			176,
 			75,
 			15,
 			15
 		],
 		"icon:stone": [
 			"scenery.png",
-			115,
+			208,
 			75,
 			15,
 			15
 		],
 		"icon:wood": [
 			"scenery.png",
-			147,
+			240,
 			75,
 			15,
 			15
 		],
 		"mountain:0": [
 			"scenery.png",
-			71,
+			106,
 			1,
 			34,
 			38
@@ -570,124 +677,159 @@
 		],
 		"mountain:3": [
 			"scenery.png",
-			106,
+			71,
 			1,
 			34,
 			38
 		],
 		"oak:0": [
 			"scenery.png",
-			168,
-			48,
+			55,
+			75,
+			15,
+			19
+		],
+		"oak:0:1": [
+			"scenery.png",
+			71,
+			75,
 			15,
 			19
 		],
 		"oak:1": [
 			"scenery.png",
-			123,
+			233,
+			48,
+			17,
+			21
+		],
+		"oak:1:1": [
+			"scenery.png",
+			215,
 			48,
 			17,
 			21
 		],
 		"oak:2": [
 			"scenery.png",
-			103,
+			195,
+			48,
+			19,
+			23
+		],
+		"oak:2:1": [
+			"scenery.png",
+			175,
 			48,
 			19,
 			23
 		],
 		"pack:0:0": [
 			"scenery.png",
-			235,
-			75,
+			93,
+			95,
 			7,
 			6
 		],
 		"pack:0:1": [
 			"scenery.png",
-			203,
-			75,
+			77,
+			95,
 			7,
 			8
 		],
 		"pack:0:2": [
 			"scenery.png",
-			187,
-			75,
+			45,
+			95,
 			7,
 			10
 		],
 		"pack:1:0": [
 			"scenery.png",
-			1,
-			94,
+			109,
+			95,
 			7,
 			6
 		],
 		"pack:1:1": [
 			"scenery.png",
-			219,
-			75,
+			69,
+			95,
 			7,
 			8
 		],
 		"pack:1:2": [
 			"scenery.png",
-			179,
-			75,
+			37,
+			95,
 			7,
 			10
 		],
 		"pack:2:0": [
 			"scenery.png",
-			243,
-			75,
+			101,
+			95,
 			7,
 			6
 		],
 		"pack:2:1": [
 			"scenery.png",
-			211,
-			75,
+			61,
+			95,
 			7,
 			8
 		],
 		"pack:2:2": [
 			"scenery.png",
-			171,
-			75,
+			29,
+			95,
 			7,
 			10
 		],
 		"pack:3:0": [
 			"scenery.png",
-			227,
-			75,
+			85,
+			95,
 			7,
 			6
 		],
 		"pack:3:1": [
 			"scenery.png",
-			195,
-			75,
+			53,
+			95,
 			7,
 			8
 		],
 		"pack:3:2": [
 			"scenery.png",
-			163,
-			75,
+			21,
+			95,
 			7,
 			10
 		],
 		"pine:0": [
 			"scenery.png",
-			228,
-			1,
+			85,
+			48,
+			23,
+			26
+		],
+		"pine:0:1": [
+			"scenery.png",
+			25,
+			48,
 			23,
 			26
 		],
 		"pine:1": [
+			"scenery.png",
+			61,
+			48,
+			23,
+			26
+		],
+		"pine:1:1": [
 			"scenery.png",
 			1,
 			48,
@@ -704,125 +846,125 @@
 		"soldier:idle:b:0": [
 			"villagers.png",
 			0,
-			360,
+			696,
 			22,
 			24
 		],
 		"soldier:idle:b:1": [
 			"villagers.png",
 			22,
-			360,
+			696,
 			22,
 			24
 		],
 		"soldier:idle:f:0": [
 			"villagers.png",
 			0,
-			336,
+			672,
 			22,
 			24
 		],
 		"soldier:idle:f:1": [
 			"villagers.png",
 			22,
-			336,
+			672,
 			22,
 			24
 		],
 		"soldier:walk:b:0": [
 			"villagers.png",
 			0,
-			408,
+			744,
 			22,
 			24
 		],
 		"soldier:walk:b:1": [
 			"villagers.png",
 			22,
-			408,
+			744,
 			22,
 			24
 		],
 		"soldier:walk:b:2": [
 			"villagers.png",
 			44,
-			408,
+			744,
 			22,
 			24
 		],
 		"soldier:walk:b:3": [
 			"villagers.png",
 			66,
-			408,
+			744,
 			22,
 			24
 		],
 		"soldier:walk:b:4": [
 			"villagers.png",
 			88,
-			408,
+			744,
 			22,
 			24
 		],
 		"soldier:walk:b:5": [
 			"villagers.png",
 			110,
-			408,
+			744,
 			22,
 			24
 		],
 		"soldier:walk:f:0": [
 			"villagers.png",
 			0,
-			384,
+			720,
 			22,
 			24
 		],
 		"soldier:walk:f:1": [
 			"villagers.png",
 			22,
-			384,
+			720,
 			22,
 			24
 		],
 		"soldier:walk:f:2": [
 			"villagers.png",
 			44,
-			384,
+			720,
 			22,
 			24
 		],
 		"soldier:walk:f:3": [
 			"villagers.png",
 			66,
-			384,
+			720,
 			22,
 			24
 		],
 		"soldier:walk:f:4": [
 			"villagers.png",
 			88,
-			384,
+			720,
 			22,
 			24
 		],
 		"soldier:walk:f:5": [
 			"villagers.png",
 			110,
-			384,
+			720,
 			22,
 			24
 		],
 		"stone:0": [
 			"scenery.png",
-			211,
-			48,
+			149,
+			75,
 			26,
 			18
 		],
 		"stone:1": [
 			"scenery.png",
-			36,
+			122,
 			75,
 			26,
 			18
@@ -843,7 +985,7 @@
 		],
 		"via": [
 			"scenery.png",
-			1,
+			87,
 			75,
 			34,
 			18
@@ -1349,6 +1491,510 @@
 			"villagers.png",
 			110,
 			48,
+			22,
+			24
+		],
+		"villagerf:build:b:0": [
+			"villagers.png",
+			0,
+			648,
+			22,
+			24
+		],
+		"villagerf:build:b:1": [
+			"villagers.png",
+			22,
+			648,
+			22,
+			24
+		],
+		"villagerf:build:b:2": [
+			"villagers.png",
+			44,
+			648,
+			22,
+			24
+		],
+		"villagerf:build:b:3": [
+			"villagers.png",
+			66,
+			648,
+			22,
+			24
+		],
+		"villagerf:build:b:4": [
+			"villagers.png",
+			88,
+			648,
+			22,
+			24
+		],
+		"villagerf:build:b:5": [
+			"villagers.png",
+			110,
+			648,
+			22,
+			24
+		],
+		"villagerf:build:f:0": [
+			"villagers.png",
+			0,
+			624,
+			22,
+			24
+		],
+		"villagerf:build:f:1": [
+			"villagers.png",
+			22,
+			624,
+			22,
+			24
+		],
+		"villagerf:build:f:2": [
+			"villagers.png",
+			44,
+			624,
+			22,
+			24
+		],
+		"villagerf:build:f:3": [
+			"villagers.png",
+			66,
+			624,
+			22,
+			24
+		],
+		"villagerf:build:f:4": [
+			"villagers.png",
+			88,
+			624,
+			22,
+			24
+		],
+		"villagerf:build:f:5": [
+			"villagers.png",
+			110,
+			624,
+			22,
+			24
+		],
+		"villagerf:chop:b:0": [
+			"villagers.png",
+			0,
+			456,
+			22,
+			24
+		],
+		"villagerf:chop:b:1": [
+			"villagers.png",
+			22,
+			456,
+			22,
+			24
+		],
+		"villagerf:chop:b:2": [
+			"villagers.png",
+			44,
+			456,
+			22,
+			24
+		],
+		"villagerf:chop:b:3": [
+			"villagers.png",
+			66,
+			456,
+			22,
+			24
+		],
+		"villagerf:chop:b:4": [
+			"villagers.png",
+			88,
+			456,
+			22,
+			24
+		],
+		"villagerf:chop:b:5": [
+			"villagers.png",
+			110,
+			456,
+			22,
+			24
+		],
+		"villagerf:chop:f:0": [
+			"villagers.png",
+			0,
+			432,
+			22,
+			24
+		],
+		"villagerf:chop:f:1": [
+			"villagers.png",
+			22,
+			432,
+			22,
+			24
+		],
+		"villagerf:chop:f:2": [
+			"villagers.png",
+			44,
+			432,
+			22,
+			24
+		],
+		"villagerf:chop:f:3": [
+			"villagers.png",
+			66,
+			432,
+			22,
+			24
+		],
+		"villagerf:chop:f:4": [
+			"villagers.png",
+			88,
+			432,
+			22,
+			24
+		],
+		"villagerf:chop:f:5": [
+			"villagers.png",
+			110,
+			432,
+			22,
+			24
+		],
+		"villagerf:forage:b:0": [
+			"villagers.png",
+			0,
+			552,
+			22,
+			24
+		],
+		"villagerf:forage:b:1": [
+			"villagers.png",
+			22,
+			552,
+			22,
+			24
+		],
+		"villagerf:forage:b:2": [
+			"villagers.png",
+			44,
+			552,
+			22,
+			24
+		],
+		"villagerf:forage:b:3": [
+			"villagers.png",
+			66,
+			552,
+			22,
+			24
+		],
+		"villagerf:forage:f:0": [
+			"villagers.png",
+			0,
+			528,
+			22,
+			24
+		],
+		"villagerf:forage:f:1": [
+			"villagers.png",
+			22,
+			528,
+			22,
+			24
+		],
+		"villagerf:forage:f:2": [
+			"villagers.png",
+			44,
+			528,
+			22,
+			24
+		],
+		"villagerf:forage:f:3": [
+			"villagers.png",
+			66,
+			528,
+			22,
+			24
+		],
+		"villagerf:idle:b:0": [
+			"villagers.png",
+			0,
+			360,
+			22,
+			24
+		],
+		"villagerf:idle:b:1": [
+			"villagers.png",
+			22,
+			360,
+			22,
+			24
+		],
+		"villagerf:idle:f:0": [
+			"villagers.png",
+			0,
+			336,
+			22,
+			24
+		],
+		"villagerf:idle:f:1": [
+			"villagers.png",
+			22,
+			336,
+			22,
+			24
+		],
+		"villagerf:mine:b:0": [
+			"villagers.png",
+			0,
+			504,
+			22,
+			24
+		],
+		"villagerf:mine:b:1": [
+			"villagers.png",
+			22,
+			504,
+			22,
+			24
+		],
+		"villagerf:mine:b:2": [
+			"villagers.png",
+			44,
+			504,
+			22,
+			24
+		],
+		"villagerf:mine:b:3": [
+			"villagers.png",
+			66,
+			504,
+			22,
+			24
+		],
+		"villagerf:mine:b:4": [
+			"villagers.png",
+			88,
+			504,
+			22,
+			24
+		],
+		"villagerf:mine:b:5": [
+			"villagers.png",
+			110,
+			504,
+			22,
+			24
+		],
+		"villagerf:mine:f:0": [
+			"villagers.png",
+			0,
+			480,
+			22,
+			24
+		],
+		"villagerf:mine:f:1": [
+			"villagers.png",
+			22,
+			480,
+			22,
+			24
+		],
+		"villagerf:mine:f:2": [
+			"villagers.png",
+			44,
+			480,
+			22,
+			24
+		],
+		"villagerf:mine:f:3": [
+			"villagers.png",
+			66,
+			480,
+			22,
+			24
+		],
+		"villagerf:mine:f:4": [
+			"villagers.png",
+			88,
+			480,
+			22,
+			24
+		],
+		"villagerf:mine:f:5": [
+			"villagers.png",
+			110,
+			480,
+			22,
+			24
+		],
+		"villagerf:till:b:0": [
+			"villagers.png",
+			0,
+			600,
+			22,
+			24
+		],
+		"villagerf:till:b:1": [
+			"villagers.png",
+			22,
+			600,
+			22,
+			24
+		],
+		"villagerf:till:b:2": [
+			"villagers.png",
+			44,
+			600,
+			22,
+			24
+		],
+		"villagerf:till:b:3": [
+			"villagers.png",
+			66,
+			600,
+			22,
+			24
+		],
+		"villagerf:till:b:4": [
+			"villagers.png",
+			88,
+			600,
+			22,
+			24
+		],
+		"villagerf:till:b:5": [
+			"villagers.png",
+			110,
+			600,
+			22,
+			24
+		],
+		"villagerf:till:f:0": [
+			"villagers.png",
+			0,
+			576,
+			22,
+			24
+		],
+		"villagerf:till:f:1": [
+			"villagers.png",
+			22,
+			576,
+			22,
+			24
+		],
+		"villagerf:till:f:2": [
+			"villagers.png",
+			44,
+			576,
+			22,
+			24
+		],
+		"villagerf:till:f:3": [
+			"villagers.png",
+			66,
+			576,
+			22,
+			24
+		],
+		"villagerf:till:f:4": [
+			"villagers.png",
+			88,
+			576,
+			22,
+			24
+		],
+		"villagerf:till:f:5": [
+			"villagers.png",
+			110,
+			576,
+			22,
+			24
+		],
+		"villagerf:walk:b:0": [
+			"villagers.png",
+			0,
+			408,
+			22,
+			24
+		],
+		"villagerf:walk:b:1": [
+			"villagers.png",
+			22,
+			408,
+			22,
+			24
+		],
+		"villagerf:walk:b:2": [
+			"villagers.png",
+			44,
+			408,
+			22,
+			24
+		],
+		"villagerf:walk:b:3": [
+			"villagers.png",
+			66,
+			408,
+			22,
+			24
+		],
+		"villagerf:walk:b:4": [
+			"villagers.png",
+			88,
+			408,
+			22,
+			24
+		],
+		"villagerf:walk:b:5": [
+			"villagers.png",
+			110,
+			408,
+			22,
+			24
+		],
+		"villagerf:walk:f:0": [
+			"villagers.png",
+			0,
+			384,
+			22,
+			24
+		],
+		"villagerf:walk:f:1": [
+			"villagers.png",
+			22,
+			384,
+			22,
+			24
+		],
+		"villagerf:walk:f:2": [
+			"villagers.png",
+			44,
+			384,
+			22,
+			24
+		],
+		"villagerf:walk:f:3": [
+			"villagers.png",
+			66,
+			384,
+			22,
+			24
+		],
+		"villagerf:walk:f:4": [
+			"villagers.png",
+			88,
+			384,
+			22,
+			24
+		],
+		"villagerf:walk:f:5": [
+			"villagers.png",
+			110,
+			384,
 			22,
 			24
 		],
