@@ -901,8 +901,7 @@ static func _regia() -> Image:
 		var a := TAU * k / 10.0
 		Pixel.rect(img, int(h.x + cos(a) * 5.5), int(h.y + sin(a) * 2.8) - 1, 2, 2, ROCK[1 + (k % 3)])
 	Pixel.rect(img, int(h.x) - 2, int(h.y) - 1, 4, 2, Color("3a2418"))
-	Pixel.poly(img, [Vector2(h.x - 2, h.y - 1), Vector2(h.x + 2, h.y - 1), Vector2(h.x + 1, h.y - 6), Vector2(h.x, h.y - 9), Vector2(h.x - 1, h.y - 6)], Color("e8552b"))
-	Pixel.poly(img, [Vector2(h.x - 1, h.y - 1), Vector2(h.x + 1, h.y - 1), Vector2(h.x, h.y - 6)], Color("ffd24a"))
+	# (the flames and smoke are animated in code: see hearth_fire.gd)
 	return Pixel.outlined(img, OUT_WARM)
 
 

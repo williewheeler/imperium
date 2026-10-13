@@ -17,6 +17,7 @@ var _key := ""
 var _flat: Sprite2D  # fields
 var _halves: Array[Node2D] = []  # standing buildings: [left, right]
 var _sprites: Array[Sprite2D] = []
+var _fire: HearthFire  # the Regia's animated hearth
 
 
 func _ready() -> void:
@@ -43,6 +44,10 @@ func _ready() -> void:
 		objects.add_child(node)
 		_halves.append(node)
 		_sprites.append(sprite)
+	if building.kind == "town_center":
+		_fire = HearthFire.new()
+		_fire.position = position + Vector2(0, -13.6).round()  # the hearth is at tile (2.15, 2.15) of the 3x3 yard
+		objects.add_child(_fire)
 
 
 ## The depth-sorted nodes standing buildings are drawn with (empty for fields).
@@ -54,11 +59,15 @@ func halves() -> Array[Node2D]:
 func remove() -> void:
 	for node in _halves:
 		node.queue_free()
+	if _fire != null:
+		_fire.queue_free()
 	queue_free()
 
 
 func update_view() -> void:
 	var anchor := Art.building_anchor(building.sprite_key())
+	if _fire != null:
+		_fire.visible = building.sprite_key() == "regia" and building.complete
 	if building.sprite_key() != _key:
 		_key = building.sprite_key()
 		var tex := Art.tex(_key)
