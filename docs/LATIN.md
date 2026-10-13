@@ -97,6 +97,7 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Nihil electum | Nothing selected |
 | Iter nullum est. | There is no route there |
 | Nihil ultra explorandum. | Nothing reachable is left to explore |
+| Milites laborare non possunt. | Fighting men can't work: only villagers gather and build |
 | Nondum licet. | Not yet allowed: it unlocks in a later era |
 | Copiae non sufficiunt. | Not enough resources |
 | Domus plures requiruntur. | Population limit reached: build more houses |

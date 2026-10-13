@@ -515,6 +515,8 @@ func _command_at(mp: Vector2) -> void:
 	var res := deposit_near(mp)
 	var b := building_under(mp)
 	var movers := us  # who just walks there
+	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.is_field()))):
+		hud.flash("Milites laborare non possunt.")  # they can only march to the spot
 	if b != null and b.complete and res.x < 0:  # laden villagers go and unload at a depot they click
 		var carriers: Array[Unit] = []
 		for u in workers:
