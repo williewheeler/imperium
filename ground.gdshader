@@ -1,4 +1,5 @@
 shader_type canvas_item;
+#include "res://terrace.gdshaderinc"
 // Pixel-art isometric ground. The terrain type of every tile is stored in a small texture; each
 // screen pixel looks up which tile it is over (after a noise warp, so coastlines and forest
 // edges wobble organically instead of following the diamond grid) and picks a colour from that
@@ -8,7 +9,6 @@ uniform sampler2D terrain : filter_nearest, repeat_disable;
 uniform sampler2D road_mask : filter_linear, repeat_disable; // dirt roads, 8 pixels per tile
 uniform sampler2D paved_mask : filter_linear, repeat_disable; // paved Roman roads
 uniform sampler2D relief : filter_linear, repeat_disable; // light on each tile's slope, 0.5 = flat
-uniform vec2 map_size = vec2(80.0, 80.0);
 uniform vec2 origin = vec2(0.0); // world position of this rect's top-left corner
 
 varying vec2 world;
@@ -69,13 +69,32 @@ int terrain_at(vec2 g) {
 	return int(texelFetch(terrain, t, 0).r * 255.0 + 0.5);
 }
 
-void fragment() {
-	vec2 wp = floor(world);
+// A cliff face between two terraces: earth with strata, a grassy lip on top and a shaded foot.
+vec3 cliff_colour(vec2 wp, int kind, int top_id, float v) {
+	float bd = bayer(wp);
+	float strata = vnoise(vec2(wp.x * 0.35, floor(wp.y / 2.0) * 1.7)) - 0.5;
+	bool rocky = top_id == 5 || top_id == 6;
+	float base = kind == 1 ? 0.62 : 0.3; // walls facing the light are lit, the others shaded
+	float t = base + strata * 0.35 + (bd - 0.5) * 0.2 - v * 0.18;
+	vec3 col;
+	if (rocky) {
+		col = ramp4(hx(0xc4bfae), hx(0xa29d8c), hx(0x84806f), hx(0x66624f), t);
+	} else {
+		col = ramp4(hx(0xcba66b), hx(0xb28c58), hx(0x987344), hx(0x7a5a33), t);
+		if (v < 0.22 && hash(wp + 5.0) < 0.85) { // grass overhanging the lip
+			col = kind == 1 ? hx(0x8ec142) : hx(0x628e31);
+		}
+	}
+	if (v > 0.9) col = col * 0.82; // the dark foot of the wall
+	return col;
+}
+
+vec3 ground_colour(vec2 wp, vec2 g, float time) {
 	float bd = bayer(wp);
 	vec2 warp = (vec2(vnoise(wp * 0.11), vnoise(wp * 0.11 + vec2(17.3, 5.1))) - 0.5) * 10.0;
-	vec2 sp = wp + warp;
-	int id = terrain_at(to_tile(sp));
-	int id2 = terrain_at(to_tile(sp + vec2(5.0, 3.0)));
+	vec2 gw = g + to_tile(warp); // the tile this pixel is "in", after the coastline wobble
+	int id = terrain_at(gw);
+	int id2 = terrain_at(gw + to_tile(vec2(5.0, 3.0)));
 	if (id != id2 && bd < 0.5 && hash(wp + 3.0) < 0.6) {
 		id = id2; // dithered border between two terrains
 	}
@@ -83,10 +102,9 @@ void fragment() {
 	float fine = hash(wp);
 	float d = (bd - 0.5) * 0.3;
 	if (id >= 2) { // the land is lit from the top-left: slopes that face the light brighten, the others darken
-		vec2 rg = to_tile(sp);
-		d += (texture(relief, rg / map_size).r - 0.5) * 1.4;
+		d += (texture(relief, gw / map_size).r - 0.5) * 1.4;
 	}
-	float t = floor(TIME * 1.4);
+	float t = floor(time * 1.4);
 	vec3 col;
 
 	if (id == 0) { // deep water
@@ -118,7 +136,7 @@ void fragment() {
 	// Dirt roads worn by walking, over open ground only. The mask is smoothed by filtering and
 	// cut with noise, so the edges are ragged and pixelly.
 	if (id == 2 || id == 3) {
-		vec2 gp = to_tile(wp + (vec2(vnoise(wp * 0.31), vnoise(wp * 0.31 + vec2(9.7, 3.3))) - 0.5) * 3.0);
+		vec2 gp = g + to_tile((vec2(vnoise(wp * 0.31), vnoise(wp * 0.31 + vec2(9.7, 3.3))) - 0.5) * 3.0);
 		if (gp.x > 0.0 && gp.y > 0.0 && gp.x < map_size.x && gp.y < map_size.y) {
 			float e = texture(road_mask, gp / map_size).r + (vnoise(wp * 0.45) - 0.5) * 0.4;
 			if (e > 0.5) {
@@ -130,7 +148,7 @@ void fragment() {
 	}
 	// Paved Roman roads: dark polygonal basalt blocks laid in the iso grid, with lighter curb stones.
 	if (id == 2 || id == 3) {
-		vec2 gt = to_tile(wp);
+		vec2 gt = g;
 		if (gt.x > 0.0 && gt.y > 0.0 && gt.x < map_size.x && gt.y < map_size.y) {
 			float pe = texture(paved_mask, gt / map_size).r + (vnoise(wp * 0.45) - 0.5) * 0.15;
 			if (pe > 0.5) {
@@ -145,5 +163,17 @@ void fragment() {
 			}
 		}
 	}
-	COLOR = vec4(col, 1.0);
+	return col;
+}
+
+void fragment() {
+	vec2 wp = floor(world);
+	int cliff;
+	float wall_v;
+	vec2 g = surface(wp, cliff, wall_v);
+	if (cliff > 0) {
+		COLOR = vec4(cliff_colour(wp, cliff, terrain_at(g), wall_v), 1.0);
+	} else {
+		COLOR = vec4(ground_colour(wp, g, TIME), 1.0);
+	}
 }

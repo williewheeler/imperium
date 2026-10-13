@@ -1020,7 +1020,7 @@ static func _via_tile() -> Image:
 			var dyn := absf(y + 0.5 - 8.0) / 8.0
 			if dxn + dyn > 1.0:
 				continue
-			var gt := Iso.to_tile(Vector2(x + 0.5 - 16.0, y + 0.5)) * 6.0
+			var gt := Iso.to_tile_flat(Vector2(x + 0.5 - 16.0, y + 0.5)) * 6.0
 			var f := Vector2(gt.x - floorf(gt.x), gt.y - floorf(gt.y))
 			var tone := Pixel.hash2(int(floorf(gt.x)), int(floorf(gt.y)), 17)
 			var c := Pixel.ramp(stone, 0.25 + tone * 0.6, x, y, 0.2)

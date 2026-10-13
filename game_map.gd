@@ -11,7 +11,9 @@ const PAVED_SPEED := 1.7  # paved Roman roads even more
 const SEA_LEVEL := 0.40  # elevation of all water; the land rises from here
 const RELIEF_SCALE := 10.0  # how strongly a slope shows as light or shade
 const SLOPE_COST := 5.0  # extra walking cost per unit of steepness (elevation change per tile)
-const FLAT_LIMIT := 0.09  # a building site's tiles may differ in elevation by no more than this
+## Height above the sea at which each terrace starts: finer on the plains, coarser up the hills.
+const LEVEL_STARTS := [0.05, 0.10, 0.18, 0.28, 0.40]
+const MAX_LEVEL := 5  # = LEVEL_STARTS.size()
 ## Direction the light comes from, as a unit vector in tile space: the top-left of the screen.
 const LIGHT := Vector2(-0.95, -0.32)
 const ROAD_WEAR := 7.0  # tiles of walking before a path becomes a road
@@ -25,6 +27,7 @@ var h: int
 var seed_value: int
 var tiles := PackedByteArray()
 var elevation := PackedFloat32Array()  # per tile, 0.40 (sea level) up to about 1.0 (mountain tops)
+var levels := PackedByteArray()  # per tile terrace: 0 (shore and plains) up to MAX_LEVEL; the ground is drawn in these steps
 var relief := PackedByteArray()  # per tile light on the ground from the top-left: 128 flat, brighter when facing the light
 var slope_factor := PackedFloat32Array()  # per tile walking-cost multiplier from steepness (1.0 = flat)
 var deposits := {}  # Vector2i -> Deposit
@@ -119,6 +122,7 @@ func _compute_relief() -> void:
 					sum += elevation[q.y * w + q.x]
 					n += 1
 			smooth[y * w + x] = sum / n
+	_compute_levels(smooth)
 	relief.resize(w * h)
 	slope_factor.resize(w * h)
 	for y in h:
@@ -135,22 +139,67 @@ func _compute_relief() -> void:
 			slope_factor[y * w + x] = 1.0 + SLOPE_COST * sqrt(gx * gx + gy * gy) if on_land else 1.0
 
 
+## Cuts the (blurred) elevation into terraces. Water and beaches stay at level 0, and lone tiles
+## that disagree with all their neighbours are folded into them so the cliffs form sensible lines.
+func _compute_levels(smooth: PackedFloat32Array) -> void:
+	levels.resize(w * h)
+	var wide := PackedFloat32Array()
+	wide.resize(w * h)
+	for y in h:
+		for x in w:
+			var sum := 0.0
+			var n := 0
+			for oy in range(-2, 3):
+				for ox in range(-2, 3):
+					sum += smooth[clampi(y + oy, 0, h - 1) * w + clampi(x + ox, 0, w - 1)]
+					n += 1
+			wide[y * w + x] = sum / n
+	for i in w * h:
+		var land := tiles[i] >= Terrain.BEACH
+		var level := 0
+		if land and tiles[i] != Terrain.BEACH:
+			for start: float in LEVEL_STARTS:
+				if wide[i] - SEA_LEVEL >= start:
+					level += 1
+		levels[i] = level
+	for _pass in 2:  # fold in single-tile bumps and pits
+		for y in range(1, h - 1):
+			for x in range(1, w - 1):
+				var here := levels[y * w + x]
+				var ring := [levels[y * w + x - 1], levels[y * w + x + 1], levels[(y - 1) * w + x], levels[(y + 1) * w + x]]
+				var same := 0
+				for r in ring:
+					if r == here:
+						same += 1
+				if same == 0 and ring.count(ring[0]) >= 3:
+					levels[y * w + x] = ring[0]
+
+
+## Terrace of the tile under a position in tile coordinates.
+func level_at(pos: Vector2) -> int:
+	var p := Vector2i(pos.floor())
+	return levels[p.y * w + p.x] if in_bounds(p) else 0
+
+
+## Does the whole rectangle sit on one terrace? Buildings need it; so do fields (flat pictures).
+func is_level(rect: Rect2i) -> bool:
+	var first := -1
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			if not in_bounds(Vector2i(x, y)):
+				return false
+			var l := levels[y * w + x]
+			if first < 0:
+				first = l
+			elif l != first:
+				return false
+	return true
+
+
 ## Terrain height at a position in tile coordinates.
 func elevation_at(pos: Vector2) -> float:
 	var p := Vector2i(pos.floor())
 	return elevation[clampi(p.y, 0, h - 1) * w + clampi(p.x, 0, w - 1)] if in_bounds(p) else SEA_LEVEL
-
-
-## Is the ground under this rectangle level enough to build on?
-func is_flat(rect: Rect2i) -> bool:
-	var lo := INF
-	var hi := -INF
-	for y in range(rect.position.y, rect.end.y):
-		for x in range(rect.position.x, rect.end.x):
-			if in_bounds(Vector2i(x, y)):
-				lo = minf(lo, elevation[y * w + x])
-				hi = maxf(hi, elevation[y * w + x])
-	return hi - lo <= FLAT_LIMIT
 
 
 func _build_nav() -> void:
@@ -335,7 +384,7 @@ func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Ar
 				if maxi(absi(x - near.x), absi(y - near.y)) != r:
 					continue
 				var rect := Rect2i(Vector2i(x, y), size)
-				var ok := is_flat(rect)
+				var ok := is_level(rect)
 				for yy in range(rect.position.y - 1, rect.end.y + 1):
 					for xx in range(rect.position.x - 1, rect.end.x + 1):
 						var p := Vector2i(xx, yy)

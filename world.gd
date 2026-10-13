@@ -47,6 +47,7 @@ func setup(p_game) -> void:
 	var fog_view := FogView.new()
 	fog_view.fog = game.fog
 	fog_view.map_size = Vector2i(game.map.w, game.map.h)
+	fog_view.levels = game.map.levels
 	add_child(fog_view)
 
 	var overlay := OverlayView.new()
@@ -132,7 +133,7 @@ func _populate_terrain() -> void:
 			match map.tile(x, y):
 				GameMap.Terrain.FOREST:
 					for i in 3:
-						var foot := Iso.to_screen(Vector2(x + 0.2 + 0.6 * Pixel.hash2(x, y, 10 + i), y + 0.2 + 0.6 * Pixel.hash2(x, y, 20 + i)))
+						var foot := Iso.to_screen_on(Vector2(x + 0.2 + 0.6 * Pixel.hash2(x, y, 10 + i), y + 0.2 + 0.6 * Pixel.hash2(x, y, 20 + i)), Iso.level_of(p))
 						var pick := Pixel.hash2(x, y, 30 + i)
 						var key := "oak:%d" % int(Pixel.hash2(x, y, 40 + i) * 3.0)
 						if pick > 0.85:
@@ -141,9 +142,9 @@ func _populate_terrain() -> void:
 							key = "pine:%d" % int(Pixel.hash2(x, y, 50 + i) * 2.0)
 						list.append(_tree(key, foot))
 				GameMap.Terrain.HILLS:
-					list.append(_sprite("hill:%d" % int(Pixel.hash2(x, y, 60) * 2.0), Iso.to_screen(Vector2(x + 1, y + 1))))
+					list.append(_sprite("hill:%d" % int(Pixel.hash2(x, y, 60) * 2.0), Iso.to_screen_on(Vector2(x + 1, y + 1), Iso.level_of(p))))
 				GameMap.Terrain.MOUNTAIN:
-					list.append(_sprite("mountain:%d" % int(Pixel.hash2(x, y, 70) * 4.0), Iso.to_screen(Vector2(x + 1, y + 1))))
+					list.append(_sprite("mountain:%d" % int(Pixel.hash2(x, y, 70) * 4.0), Iso.to_screen_on(Vector2(x + 1, y + 1), Iso.level_of(p))))
 			var d: Deposit = map.deposits.get(p)
 			if d != null and d.kind != Defs.Res.WOOD:  # trees are the forest tile's own sprites
 				var key := "berries"
@@ -151,7 +152,7 @@ func _populate_terrain() -> void:
 					key = "stone:%d" % int(Pixel.hash2(x, y, 80) * 2.0)
 				elif d.kind == Defs.Res.GOLD:
 					key = "gold:%d" % int(Pixel.hash2(x, y, 81) * 2.0)
-				_deposit_nodes[p] = _sprite(key, Iso.to_screen(Vector2(x + 0.5, y + 0.5)) + Vector2(0, 4))
+				_deposit_nodes[p] = _sprite(key, Iso.to_screen_on(Vector2(x + 0.5, y + 0.5), Iso.level_of(p)) + Vector2(0, 4))
 			if not list.is_empty():
 				_tile_objects[p] = list
 

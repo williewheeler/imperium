@@ -15,9 +15,10 @@ func _process(_delta: float) -> void:
 
 
 func _diamond(tile: Vector2, size: Vector2) -> PackedVector2Array:
+	var lvl := Iso.level_of(Vector2i(tile))
 	return PackedVector2Array([
-		Iso.to_screen(tile), Iso.to_screen(tile + Vector2(size.x, 0)),
-		Iso.to_screen(tile + size), Iso.to_screen(tile + Vector2(0, size.y)),
+		Iso.to_screen_on(tile, lvl), Iso.to_screen_on(tile + Vector2(size.x, 0), lvl),
+		Iso.to_screen_on(tile + size, lvl), Iso.to_screen_on(tile + Vector2(0, size.y), lvl),
 	])
 
 
@@ -51,7 +52,7 @@ func _draw() -> void:
 	if game.placing_road:
 		_draw_road_ghost()
 	for b: Building in game.buildings:
-		var origin := Iso.to_screen(Vector2(b.tile + b.size)).round()
+		var origin := Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round()
 		var w := float(b.size.x * Iso.TILE_W)
 		if not b.complete:
 			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.build_fraction(), Color("7dff7d"))
@@ -104,5 +105,5 @@ func _draw_ghost() -> void:
 	draw_colored_polygon(pts, Color(tint, 0.35))
 	pts.append(pts[0])
 	draw_polyline(pts, Color(tint, 0.95), 1.0)
-	var origin := Iso.to_screen(Vector2(tile + def["size"])).round()
+	var origin := Iso.to_screen_on(Vector2(tile + def["size"]), Iso.level_of(tile)).round()
 	draw_texture(Art.tex(Building.look_key(game.placing)), origin - Art.building_anchor(Building.look_key(game.placing)), Color(1, 1, 1, 0.6))

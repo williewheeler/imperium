@@ -93,6 +93,7 @@ func _ready() -> void:
 		_setup_window(String(args.get("size", "1280x720")))  # the project starts fullscreen; recordings and screenshots want a window
 
 	map = GameMap.new(int(args.get("seed", randi() % 65536)))
+	Iso.set_terrain(map.w, map.h, map.levels)
 	var start := map.find_start()
 	fog = Fog.new(map.w, map.h)
 	stock.assign(Defs.START_STOCK)
@@ -272,7 +273,7 @@ func placement_error(kind: String, tile: Vector2i) -> String:
 				return "Terra incognita."
 			if not map.is_free_land(p):
 				return "Locus liber et planus requiritur."
-	if not def.get("walkable", false) and not map.is_flat(rect):  # fields lie on slopes, but houses don't
+	if not map.is_level(rect):  # everything stands on one terrace
 		return "Locus liber et planus requiritur."
 	if not def.get("walkable", false):
 		for u in units:
@@ -370,7 +371,7 @@ func _finish_select(rect: Rect2, additive: bool) -> void:
 func building_under(mp: Vector2) -> Building:
 	var hit: Building = null
 	for b in buildings:
-		var origin := Iso.to_screen(Vector2(b.tile + b.size)).round() - Art.building_anchor(b.sprite_key())
+		var origin := Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round() - Art.building_anchor(b.sprite_key())
 		if Art.solid_at(b.sprite_key(), Vector2i((mp - origin).floor())) and (hit == null or b.tile.y > hit.tile.y):
 			hit = b
 	return hit

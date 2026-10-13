@@ -24,8 +24,13 @@ var _sprites: Array[Sprite2D] = []
 var _fire: HearthFire  # the Regia's animated hearth
 
 
+## Screen position of a corner of the footprint, at the height of the terrace the building stands on.
+func _corner(p: Vector2) -> Vector2:
+	return Iso.to_screen_on(p, Iso.level_of(building.tile))
+
+
 func _ready() -> void:
-	position = Iso.to_screen(Vector2(building.tile + building.size)).round()
+	position = _corner(Vector2(building.tile + building.size)).round()
 	_key = building.sprite_key()
 	var tex := Art.tex(_key)
 	if building.is_field():
@@ -36,7 +41,7 @@ func _ready() -> void:
 		return
 	var t := Vector2(building.tile)
 	var s := Vector2(building.size)
-	var corners := [Iso.to_screen(t + Vector2(0, s.y)), Iso.to_screen(t + Vector2(s.x, 0))]  # left, right
+	var corners := [_corner(t + Vector2(0, s.y)), _corner(t + Vector2(s.x, 0))]  # left, right
 	for i in 2:
 		var node := Node2D.new()
 		node.position = corners[i].round()
@@ -107,10 +112,10 @@ func _draw() -> void:
 	# Footprint outline on the ground, drawn beneath everything.
 	var t := Vector2(building.tile)
 	var s := Vector2(building.size)
-	var origin := Iso.to_screen(t + s)
+	var origin := Iso.to_screen_flat(t + s)
 	var pts := PackedVector2Array([
-		Iso.to_screen(t) - origin, Iso.to_screen(t + Vector2(s.x, 0)) - origin,
-		Iso.to_screen(t + s) - origin, Iso.to_screen(t + Vector2(0, s.y)) - origin,
+		Iso.to_screen_flat(t) - origin, Iso.to_screen_flat(t + Vector2(s.x, 0)) - origin,
+		Iso.to_screen_flat(t + s) - origin, Iso.to_screen_flat(t + Vector2(0, s.y)) - origin,
 	])
 	if not building.complete:
 		draw_colored_polygon(pts, Color(0.45, 0.36, 0.22, 0.55))
