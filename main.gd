@@ -316,8 +316,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				elif placing != "":
 					_try_place()
 				else:
-					dragging = true
-					_drag_start = get_global_mouse_position()
+					var hit := _unit_at(get_global_mouse_position()) if event.double_click else null
+					if hit != null:
+						_select_same_kind(hit, Input.is_key_pressed(KEY_SHIFT))
+						dragging = false
+					else:
+						dragging = true
+						_drag_start = get_global_mouse_position()
 			MOUSE_BUTTON_RIGHT:
 				if placing_road:
 					_cancel_road_mode()
@@ -345,23 +350,42 @@ func _clear_selection() -> void:
 	selected_deposit = Vector2i(-1, -1)
 
 
+## The unit whose body is under world position `mp` (a click picks someone only if it lands on their
+## body, not just near it), or null.
+func _unit_at(mp: Vector2) -> Unit:
+	var best: Unit = null
+	var best_d := INF
+	for u in units:
+		var feet := Iso.to_screen(u.pos)
+		var half_w := 9.0 if u.kind == "horseman" else 5.0
+		var height := 22.0 if u.kind == "horseman" else 16.0
+		if absf(mp.x - feet.x) > half_w or mp.y < feet.y - height or mp.y > feet.y + 2.0:
+			continue
+		var d := (feet + Vector2(0, -6)).distance_to(mp)
+		if d < best_d:
+			best_d = d
+			best = u
+	return best
+
+
+## Double click: select every unit of the same kind that is on the screen now. Villagers count
+## together whatever their sex; fighting men only with their own kind (looks don't matter).
+func _select_same_kind(of: Unit, additive: bool) -> void:
+	if not additive:
+		_clear_selection()
+	var half := get_viewport_rect().size / camera.zoom.x / 2.0
+	var view := Rect2(cam_pos - half, half * 2.0)
+	for u in units:
+		if u.kind == of.kind and view.has_point(Iso.to_screen(u.pos)):
+			u.selected = true
+
+
 func _finish_select(rect: Rect2, additive: bool) -> void:
 	if not additive:
 		_clear_selection()
 	if rect.size.length() * camera.zoom.x < 6.0:  # a click, not a drag
 		var mp := rect.position
-		var best: Unit = null
-		var best_d := INF
-		for u in units:  # a click picks someone only if it lands on their body, not just near it
-			var feet := Iso.to_screen(u.pos)
-			var half_w := 9.0 if u.kind == "horseman" else 5.0
-			var height := 22.0 if u.kind == "horseman" else 16.0
-			if absf(mp.x - feet.x) > half_w or mp.y < feet.y - height or mp.y > feet.y + 2.0:
-				continue
-			var d := (feet + Vector2(0, -6)).distance_to(mp)
-			if d < best_d:
-				best_d = d
-				best = u
+		var best := _unit_at(mp)
 		if best != null:
 			best.selected = true
 			return

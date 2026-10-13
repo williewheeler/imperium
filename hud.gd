@@ -24,7 +24,7 @@ const STATES := {  # unit state -> [Latin, English]
 	Unit.State.EXPLORE: ["Explorat", "Exploring"],
 }
 const HELP := [  # [Latin, English]
-	["Sinistra  elige", "Left click: select a unit, building or resource (see how much is left). Drag a box: select a group. Click empty ground: deselect."],
+	["Sinistra  elige", "Left click: select a unit, building or resource (see how much is left). Drag a box: select a group. Double click a unit: select all of that kind on the screen. Click empty ground: deselect."],
 	["Dextra  iube", "Right click: give an order (move, gather or build)."],
 	["Margo  circumspice", "Move the mouse to a screen edge (or use the arrow keys): pan the camera."],
 	["Rota  auge", "Mouse wheel: zoom."],
