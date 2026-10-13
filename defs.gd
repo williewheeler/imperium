@@ -35,6 +35,13 @@ const UNITS := {
 const ROAD_COST := [0, 0, 2, 0]
 const ROAD_BUILD_TIME := 2.5
 
+# What colour marks each player's buildings: a pennant and a tint round the footprint, drawn over and
+# under the building (never baked into its art), so every player can have their own. Player 0 is purple.
+const PLAYER_COLORS := [
+	Color("8a3fb0"), Color("c8453c"), Color("3f6fc0"), Color("3f9a55"),
+	Color("e0922e"), Color("2fa6a6"), Color("d6c13a"), Color("e8e8e8"),
+]
+
 # The eras of Roman history, as the game's progression. Years are the traditional dates.
 const ERAS := [
 	{"numeral": "I", "latin": "Regnum", "english": "The Kingdom", "years": "753–509 BC"},

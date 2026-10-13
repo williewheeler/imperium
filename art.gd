@@ -157,6 +157,10 @@ static func image(key: String) -> Image:
 			return _stabulum()
 		"circus":
 			return _circus()
+		"pole":
+			return _pole()
+		"pennant":
+			return _pennant(variant)
 		"lupa":
 			return _lupa()
 		"reeds":
@@ -783,6 +787,9 @@ static func scenery_keys() -> Array[String]:
 			k.append("pack:%d:%d" % [r, l])
 	k.append("via")
 	k.append("lupa")
+	k.append("pole")
+	for i in 3:
+		k.append("pennant:%d" % i)
 	for i in 2:
 		k.append("reeds:%d" % i)
 	for i in 2:
@@ -1498,6 +1505,34 @@ static func _scrub(variant: int) -> Image:
 	Pixel.ellipse(img, 6, 4.5, 5, 3, func(x: int, y: int) -> Color:
 		return Pixel.ramp(pal, 0.6 - (y - 2.0) / 7.0 - (x - 6.0) / 16.0 + (Pixel.hash2(x, y, 64) - 0.5) * 0.3, x, y, 0.3))
 	return Pixel.outlined(img, OUT_GREEN)
+
+
+# ---------------------------------------------------------------- team colours
+
+## The pole of a building's pennant: bare wood with a gold tip. Not tinted.
+static func _pole() -> Image:
+	var img := Pixel.blank(3, 17)
+	Pixel.rect(img, 1, 3, 1, 14, WOOD[1])
+	Pixel.put(img, 1, 2, GOLD[1])
+	Pixel.put(img, 1, 1, GOLD[0])
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## The cloth of a pennant, in three frames of fluttering. It is drawn in pale greys so the game can tint
+## it with any player's colour (see Defs.PLAYER_COLORS). Anchor = the top-left, where it meets the pole.
+static func _pennant(frame: int) -> Image:
+	var img := Pixel.blank(11, 9)
+	for x in 11:
+		var top := int(sin(x * 0.7 + frame * 2.1) * 1.4) + 1
+		var taper := int(x * 0.45)  # narrows toward the free end, to a swallow tail
+		for y in range(top + (taper / 2), top + 6 - (taper / 2) - 0):
+			if y < 0 or y >= 9:
+				continue
+			if x >= 8 and y == top + 3:
+				continue  # the notch in the tail
+			var v := 0.75 - float(y - top) * 0.1 - x * 0.015
+			Pixel.put(img, x, y, Pixel.ramp([Color("ffffff"), Color("e2e2e2"), Color("bdbdbd")], v, x, y, 0.1))
+	return Pixel.outlined(img, Color("3a2a2a"))
 
 
 # ---------------------------------------------------------------- splash

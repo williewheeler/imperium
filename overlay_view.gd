@@ -53,6 +53,10 @@ func _draw() -> void:
 		_draw_road_ghost()
 	for b: Building in game.buildings:
 		var origin := Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round()
+		if b.owner >= 0:  # the owner's colour, as an edge round the footprint
+			var edge := _diamond(Vector2(b.tile), Vector2(b.size))
+			edge.append(edge[0])
+			draw_polyline(edge, Color(b.team_color(), 0.85), 1.0)
 		var w := float(b.size.x * Iso.TILE_W)
 		if not b.complete:
 			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.build_fraction(), Color("7dff7d"))
@@ -62,6 +66,8 @@ func _draw() -> void:
 			var anchor := Art.building_anchor(b.sprite_key())
 			var label := Latin.t(b.building_name)
 			var pos := origin + Vector2(-100, -anchor.y + 6)
+			if b.owner >= 0:
+				pos.y -= 22.0  # above the owner's pennant
 			if b.kind == "circus":  # over the middle of the long track, not the empty top of the picture
 				pos = origin + Vector2(-100 + (b.size.y - b.size.x) * 8.0, -anchor.y + 52)
 			draw_string_outline(Latin.FONT, pos, label, HORIZONTAL_ALIGNMENT_CENTER, 200, 9, 4, Color(0, 0, 0, 0.75))

@@ -6,6 +6,7 @@ static var era := 0
 static var _early_defs := {}  # kind -> its Era I definition (name and picture differ)
 
 var kind: String
+var owner := 0  # which player's: an index into Defs.PLAYER_COLORS, or -1 for a landmark nobody owns
 var building_name := ""
 var tile := Vector2i.ZERO  # top-left footprint tile
 var size := Vector2i.ONE
@@ -20,6 +21,11 @@ var regrow := 0.0  # fields: seconds since they were emptied
 
 func def() -> Dictionary:
 	return def_for(kind)
+
+
+## The owner's colour (white for a landmark).
+func team_color() -> Color:
+	return Defs.PLAYER_COLORS[owner % Defs.PLAYER_COLORS.size()] if owner >= 0 else Color.WHITE
 
 
 ## Building data. Some buildings look and read differently in Era I: the town centre is the

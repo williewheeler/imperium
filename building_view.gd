@@ -22,6 +22,10 @@ var _flat: Sprite2D  # fields
 var _halves: Array[Node2D] = []  # standing buildings: [left, right]
 var _sprites: Array[Sprite2D] = []
 var _fire: HearthFire  # the Casa Romuli's animated hearth
+var _banner: Node2D  # the owner's pennant, on the roof (child of the right half, so it sorts with the building)
+var _cloth: Sprite2D
+var _banner_key := ""  # which picture the banner was placed for (the roof changes with the era)
+static var _peaks := {}  # sprite key -> Vector2: where the roof peaks in the picture, found once
 
 
 ## Screen position of a corner of the footprint, at the height of the terrace the building stands on.
@@ -56,6 +60,21 @@ func _ready() -> void:
 	if building.kind in ["town_center", "temple"]:
 		_fire = HearthFire.new()
 		objects.add_child(_fire)
+	if building.owner >= 0:
+		_banner = Node2D.new()
+		_halves[1].add_child(_banner)
+		var pole := Sprite2D.new()
+		pole.centered = false
+		pole.texture = Art.tex("pole")
+		pole.offset = Vector2(-1.0, -16.0)  # its foot at the banner's origin
+		_banner.add_child(pole)
+		_cloth = Sprite2D.new()
+		_cloth.centered = false
+		_cloth.texture = Art.tex("pennant:0")
+		_cloth.offset = Vector2(1.0, -15.0)  # hangs from the top of the pole, flying to the right
+		_cloth.modulate = building.team_color()
+		_banner.add_child(_cloth)
+		_banner.visible = false
 
 
 ## Off the screen: nothing to animate, so the hearth fire stops until it is seen again.
@@ -78,8 +97,42 @@ func remove() -> void:
 	queue_free()
 
 
+## Where the roof of sprite `key` peaks, in the picture's own pixels: the topmost solid pixel near the
+## middle. The pennant is planted there.
+static func _roof_peak(key: String) -> Vector2:
+	if _peaks.has(key):
+		return _peaks[key]
+	var size := Art.tex(key).get_size()
+	var best := Vector2(size.x / 2.0, size.y / 2.0)
+	var found := false
+	for x in range(int(size.x * 0.34), int(size.x * 0.66)):
+		for y in int(size.y):
+			if Art.solid_at(key, Vector2i(x, y)):
+				if not found or y < best.y:
+					best = Vector2(x, y)
+					found = true
+				break
+	_peaks[key] = best
+	return best
+
+
+func _update_banner(anchor: Vector2) -> void:
+	_banner.visible = building.complete
+	if not building.complete:
+		return
+	var key := building.sprite_key()
+	if key != _banner_key:  # first time, or the era changed the roof: plant it again
+		_banner_key = key
+		var world := position - anchor + _roof_peak(key)  # in the objects layer's coordinates
+		_banner.position = world - _halves[1].position + Vector2(0, 2)
+	var frame := int(Time.get_ticks_msec() / 220.0 + float(building.tile.x * 3 + building.tile.y)) % 3  # a gentle flutter
+	_cloth.texture = Art.tex("pennant:%d" % frame)
+
+
 func update_view() -> void:
 	var anchor := Art.building_anchor(building.sprite_key())
+	if _banner != null:
+		_update_banner(anchor)
 	if _fire != null:
 		var spot: Variant = FIRE_SPOTS.get(building.sprite_key())
 		_fire.visible = spot != null and building.complete
@@ -125,6 +178,11 @@ func _draw() -> void:
 	])
 	if not building.complete:
 		draw_colored_polygon(pts, Color(0.45, 0.36, 0.22, 0.55))
+	var closed := pts.duplicate()
+	closed.append(pts[0])
+	if building.owner >= 0:  # the owner's colour as an underlay: a tint over the footprint and a thin edge
+		var team := building.team_color()
+		draw_colored_polygon(pts, Color(team, 0.14))
+		draw_polyline(closed, Color(team, 0.75), 1.0)
 	if building.selected:
-		pts.append(pts[0])
-		draw_polyline(pts, Color("e8c766"), 2.0)
+		draw_polyline(closed, Color("e8c766"), 2.0)
