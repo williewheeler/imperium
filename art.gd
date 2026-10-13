@@ -33,6 +33,7 @@ const VILLAGER_FEET := Vector2(11, 20)
 const SKIN := [Color("f4cfa6"), Color("dba97e")]
 const HAIR := Color("4a3220")
 const TUNIC := [Color("e0604c"), Color("c4352e"), Color("8f2420")]
+const DRESS := [Color("f0c460"), Color("d99a3a"), Color("a86a22")]  # a woman's ochre stola
 const BELT := Color("3e2a16")
 const OUT_VILLAGER := Color("3a2018")
 
@@ -125,6 +126,8 @@ static func image(key: String) -> Image:
 			return _castra()
 		"vineyard":  # vineyard:<stage> 0 laden .. 3 newly pruned
 			return _vineyard(variant)
+		"villagerf":  # villagerf:<anim>:<f|b>:<frame>, the women
+			return _villager(parts[1], parts[2] == "b", int(parts[3]), "female")
 		"soldier":  # soldier:<anim>:<f|b>:<frame>
 			return _villager(parts[1], parts[2] == "b", int(parts[3]), "soldier")
 		"hut":
@@ -553,11 +556,12 @@ static func _villager(anim: String, back: bool, frame: int, kit := "") -> Image:
 		var half := 2 if row < 5 else 3
 		var shift := lean if row < 3 else 0
 		for x in range(fx - half + shift, fx + half + 1 + shift):
-			var c: Color = TUNIC[1]
+			var cloth: Array = DRESS if kit == "female" else TUNIC
+			var c: Color = cloth[1]
 			if x == fx - half + shift:
-				c = TUNIC[0]
+				c = cloth[0]
 			elif x == fx + half + shift:
-				c = TUNIC[2]
+				c = cloth[2]
 			if row == 3:
 				c = BELT
 			Pixel.put(img, x, y, c)
@@ -565,8 +569,12 @@ static func _villager(anim: String, back: bool, frame: int, kit := "") -> Image:
 	var hx := fx + lean
 	var hy := fy - 14 + bob + lean
 	Pixel.rect(img, hx - 1, hy, 3, 1, HAIR)
+	if kit == "female":
+		Pixel.rect(img, hx - 2, hy - 1, 2, 2, HAIR)  # a bun at the back of the head
 	if back:
 		Pixel.rect(img, hx - 1, hy + 1, 3, 2, HAIR)
+		if kit == "female":
+			Pixel.rect(img, hx - 1, hy + 3, 3, 2, HAIR)  # hair falling down the back
 	else:
 		Pixel.rect(img, hx - 1, hy + 1, 3, 2, SKIN[0])
 		Pixel.put(img, hx - 1, hy + 2, SKIN[1])
@@ -574,6 +582,14 @@ static func _villager(anim: String, back: bool, frame: int, kit := "") -> Image:
 		Pixel.put(img, hx, hy + 2, Color("3a2416"))  # eyes read as a dark dot
 	Pixel.line(img, Vector2i(fx + 1, hip_y), Vector2i(fx + 1 + ff.x, fy - ff.y), SKIN[0])
 	Pixel.put(img, fx + 1 + ff.x, fy - ff.y, BELT)
+	if kit == "female":  # a long skirt hides the legs; only the feet peek out below it
+		for row in 5:
+			var y := hip_y + row
+			var half := 3 + (1 if row >= 3 else 0)
+			for x in range(fx - half, fx + half + 1):
+				Pixel.put(img, x, y, DRESS[0] if x == fx - half else (DRESS[2] if x == fx + half else DRESS[1]))
+		Pixel.put(img, fx - 1 + fb.x, fy - fb.y, BELT)
+		Pixel.put(img, fx + 1 + ff.x, fy - ff.y, BELT)
 	var hf: Vector2i = pose.hand_f
 	var shoulder := Vector2i(fx + 2 + lean, sh_y)
 	var hand := shoulder + hf
@@ -721,6 +737,12 @@ static func villager_rows() -> Array:
 			var row: Array[String] = []
 			for i in VILLAGER_FRAMES[anim]:
 				row.append("villager:%s:%s:%d" % [anim, dir, i])
+			rows.append(row)
+	for anim: String in VILLAGER_FRAMES:
+		for dir in ["f", "b"]:
+			var row: Array[String] = []
+			for i in VILLAGER_FRAMES[anim]:
+				row.append("villagerf:%s:%s:%d" % [anim, dir, i])
 			rows.append(row)
 	for anim in ["idle", "walk"]:  # soldiers only stand and march
 		for dir in ["f", "b"]:

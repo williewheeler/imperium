@@ -68,6 +68,7 @@ var _show_events: Array = []  # [seconds, Callable], fired in order
 var _show_farm: Building
 var _show_newcomer_jobs: Array = []  # jobs for the villagers the Forum trains, in order
 var _cities := 0
+var _villagers_made := 0  # alternates the sexes of new villagers
 var _screenshot_path := ""
 var _report := false
 var _shot_frame := 20
@@ -94,6 +95,7 @@ func _ready() -> void:
 	for off in GameMap.START_OFFSETS:
 		var u := Unit.new()
 		u.pos = Vector2(start + off) + Vector2(0.5, 0.5)
+		_assign_sex(u)
 		units.append(u)
 	var site := _find_building_site("town_center", start, 3)
 	if site.x >= 0:
@@ -742,9 +744,17 @@ func _free_spot(at: Vector2) -> Vector2:
 	return at
 
 
+## Villagers alternate between men and women; soldiers are all men.
+func _assign_sex(u: Unit) -> void:
+	if u.kind == "villager":
+		u.female = _villagers_made % 2 == 1
+		_villagers_made += 1
+
+
 func _dress_unit(kind: String, at: Vector2) -> Unit:
 	var u := Unit.new()
 	u.kind = kind
+	_assign_sex(u)
 	u.pos = _free_spot(at)
 	units.append(u)
 	_dressed_units.append(u)
@@ -1442,6 +1452,7 @@ func _update_building(b: Building, delta: float) -> void:
 		b.queue -= 1
 		var u := Unit.new()
 		u.kind = trains
+		_assign_sex(u)
 		var spawn := map.stand_tile(b.rect(), b.center())
 		u.pos = Vector2(spawn) + Vector2(0.5, 0.5)
 		units.append(u)
