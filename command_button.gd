@@ -14,6 +14,8 @@ var icon_kind := ""  # "town_center", "house", "storehouse" or "villager"
 var caption := ""  # already in Roman lettering (see Latin.t)
 var cost: Array = []
 var hotkey := ""  # shown as a small badge in the corner
+var icon_scale := 1.0  # size of the drawn order icons
+var caption_px := 0  # caption size; 0 picks one from the button size
 var compact := false:  # a smaller button, so the bar can hold ten of them in two rows
 	set(v):
 		compact = v
@@ -64,7 +66,7 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(3, 3), size - Vector2(6, 6)), Color(0.05, 0.03, 0.03, 0.45))
 		draw_string(Latin.FONT, Vector2(size.x - 30, 17), lock_numeral, HORIZONTAL_ALIGNMENT_RIGHT, 24, 12, GOLD)
 	var text_color := Color(CREAM, 0.45) if disabled else CREAM
-	var font_px := 11 if compact else 13
+	var font_px := caption_px if caption_px > 0 else (11 if compact else 13)
 	while font_px > 7 and Latin.FONT.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_px).x > size.x - 4.0:
 		font_px -= 1  # long Latin names (AQVAEDVCTVS) shrink to fit
 	var base := size.y - (16 if compact else 25) if priced else size.y - 9.0  # unpriced orders sit their caption on the bottom edge
@@ -95,7 +97,7 @@ func _draw_cost(y: float, text_color: Color) -> void:
 
 
 func _draw_icon(c: Vector2) -> void:
-	if icon_kind in ["explore", "stop"]:
+	if icon_kind in ["explore", "stop", "start", "quit"]:
 		_draw_action_icon(c)
 		return
 	var key := icon_kind + ":idle:f:0" if icon_kind in UNIT_ICONS else icon_kind
@@ -105,16 +107,29 @@ func _draw_icon(c: Vector2) -> void:
 	draw_texture_rect(t, Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz), false, Color(0.45, 0.45, 0.45, 0.7) if disabled else Color.WHITE)
 
 
-## Simple drawn pictures for the order buttons: a compass for exploring, an octagonal sign for stop.
+## Simple drawn pictures for the order buttons: a compass for exploring, an octagonal sign for
+## stop, a play triangle to begin and a door with an arrow to quit. Drawn around the origin and
+## scaled by icon_scale.
 func _draw_action_icon(c: Vector2) -> void:
-	if icon_kind == "explore":
-		draw_arc(c, 9.0, 0.0, TAU, 28, _t(GOLD), 2.0)
-		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -7), c + Vector2(3, 0), c + Vector2(-3, 0)]), _t(Color("e0604c")))
-		draw_colored_polygon(PackedVector2Array([c + Vector2(0, 7), c + Vector2(3, 0), c + Vector2(-3, 0)]), _t(CREAM))
-		draw_circle(c, 1.5, _t(Color("3e2a16")))
-	else:
-		var pts := PackedVector2Array()
-		for i in 8:
-			pts.append(c + Vector2.from_angle(TAU * (i + 0.5) / 8.0) * 9.0)
-		draw_colored_polygon(pts, _t(CREAM))
-		draw_rect(Rect2(c - Vector2(4, 4), Vector2(8, 8)), _t(Color("7a1a1a")))
+	draw_set_transform(c, 0.0, Vector2.ONE * icon_scale)
+	match icon_kind:
+		"explore":
+			draw_arc(Vector2.ZERO, 9.0, 0.0, TAU, 28, _t(GOLD), 2.0)
+			draw_colored_polygon(PackedVector2Array([Vector2(0, -7), Vector2(3, 0), Vector2(-3, 0)]), _t(Color("e0604c")))
+			draw_colored_polygon(PackedVector2Array([Vector2(0, 7), Vector2(3, 0), Vector2(-3, 0)]), _t(CREAM))
+			draw_circle(Vector2.ZERO, 1.5, _t(Color("3e2a16")))
+		"stop":
+			var pts := PackedVector2Array()
+			for i in 8:
+				pts.append(Vector2.from_angle(TAU * (i + 0.5) / 8.0) * 9.0)
+			draw_colored_polygon(pts, _t(CREAM))
+			draw_rect(Rect2(Vector2(-4, -4), Vector2(8, 8)), _t(Color("7a1a1a")))
+		"start":
+			draw_arc(Vector2.ZERO, 11.0, 0.0, TAU, 32, _t(GOLD), 2.0)
+			draw_colored_polygon(PackedVector2Array([Vector2(-4, -6.5), Vector2(7, 0), Vector2(-4, 6.5)]), _t(CREAM))
+		"quit":
+			draw_rect(Rect2(Vector2(-10, -10), Vector2(11, 20)), _t(Color("2c1410")))  # the doorway
+			draw_rect(Rect2(Vector2(-10, -10), Vector2(11, 20)), _t(GOLD), false, 1.5)
+			draw_line(Vector2(-2, 0), Vector2(10, 0), _t(CREAM), 2.0)  # the arrow, going out
+			draw_colored_polygon(PackedVector2Array([Vector2(6, -4), Vector2(11, 0), Vector2(6, 4)]), _t(CREAM))
+	draw_set_transform(Vector2.ZERO)

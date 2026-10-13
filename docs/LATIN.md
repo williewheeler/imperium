@@ -70,7 +70,7 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Trahe | Drag (to lay a road) | left click and drag |
 | Circumspice | Look around (pan the camera) | screen edge, arrow keys |
 | Auge | Enlarge (zoom) | mouse wheel |
-| Exi | Exit | Q |
+| Exi | Exit | Q (Esc on the title screen) |
 
 ## Unit states (shown when a unit is selected)
 
@@ -119,6 +119,8 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Latin | English |
 |---|---|
 | Imperivm | The Empire (the game's title) |
+| Incipe | Begin: start the game (Enter or Space; the button has a play icon) |
+| Exi | Leave: quit the game (Q or Esc; the button has a door-and-arrow icon) |
 | Ab urbe condita | From the founding of the city: the Romans' own way of dating years, counted from the traditional founding of Rome in 753 BC |
 
 ## The eras

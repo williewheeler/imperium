@@ -150,7 +150,7 @@ era gating of buildings comes first.
 
 - **Latin lettering:** capitals only, V for U (IMPERIVM). Text goes through `Latin.t()`; English
   glosses live next to the Latin (see `latin.gd`, `hud.gd`).
-- **Title screen:** the Capitoline she-wolf (`Art` key `lupa`, a bronze statue with Romulus and Remus) over IMPERIVM, shown for about two and a half seconds at start (`splash.gd`); any key or click skips it. `--nosplash` hides it, and runs with `--shot`, `--report`, `--record`, `--demo` or `--showcase` skip it by themselves (`--splash` or `--splash=SECONDS` forces it, to look at it).
+- **Title screen:** the Capitoline she-wolf (`Art` key `lupa`, a bronze statue with Romulus and Remus, on a warm glow) over IMPERIVM, with two buttons in the game's usual style: *Incipe* (play icon; Enter or Space) and *Exi* (door-and-arrow icon; Q or Esc). The game is paused behind it until you press Incipe (`splash.gd`). `--nosplash` skips it, and runs with `--shot`, `--report`, `--record`, `--demo` or `--showcase` skip it by themselves (`--splash` forces it, to look at it).
 - **Glossary:** every Latin term in the game, with its English, is listed in [`LATIN.md`](LATIN.md). Update it when you add text.
 - **Names:** Latin buildings have an accusative form for verbs ("Aedifica Domum").
 - **Era data** lives in `Defs.ERAS`; `Main.era` is the current era.

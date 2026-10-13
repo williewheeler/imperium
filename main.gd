@@ -182,10 +182,9 @@ func _ready() -> void:
 	_shot_frame = int(args.get("shot-frame", 20))
 	var scripted := _screenshot_path != "" or _report or _show_on or _record_dir != "" or args.has("demo") or args.has("nosplash")
 	if args.has("splash") or (not scripted and DisplayServer.get_name() != "headless"):
-		var splash := Splash.new()
-		if args.has("splash"):
-			splash.hold = float(args["splash"]) if str(args["splash"]) != "true" else 20.0  # --splash=SECONDS: linger, to look at it
-		add_child(splash)
+		add_child(Splash.new())  # pauses the game until you press Incipe
+		if _screenshot_path != "":
+			process_mode = Node.PROCESS_MODE_ALWAYS  # so a debug screenshot of the title still gets taken
 
 
 ## Debug/recording: leave the project's fullscreen mode for a real window of the given size.
