@@ -293,12 +293,25 @@ static func _berries() -> Image:
 
 
 static func _boulder(img: Image, cx: float, cy: float, rx: float, ry: float, ramp: Array, seed_v: int) -> void:
-	for y in range(int(cy - ry) - 1, int(cy + ry) + 2):
-		for x in range(int(cx - rx) - 1, int(cx + rx) + 2):
-			var n := Vector2((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry)
-			if n.length() + (Pixel.hash2(x, y, seed_v) - 0.5) * 0.25 <= 1.0:
-				var v := 0.55 - n.x * 0.25 - n.y * 0.4 + (Pixel.hash2(x / 2, y / 2, seed_v + 1) - 0.5) * 0.2
-				Pixel.put(img, x, y, Pixel.ramp(ramp, v, x, y, 0.3))
+	# A chunky, angular rock: a lumpy polygon cut into flat facets (lit top and left, shaded
+	# right and bottom), light from the top-left. No dithering, so it reads as hard stone.
+	var pts := PackedVector2Array()
+	var count := 7
+	for k in count:
+		var a := TAU * (k + 0.5) / count + PI / 2.0
+		var r := 0.88 + 0.14 * Pixel.hash2(k, seed_v, 5)
+		pts.append(Vector2(cx + cos(a) * rx * r, cy + sin(a) * ry * r * (0.8 if sin(a) > 0.0 else 1.0)))
+	var top_x := cx - rx * 0.2 + (Pixel.hash2(seed_v, 1, 6) - 0.5) * rx * 0.3
+	Pixel.poly(img, Array(pts), func(x: int, y: int) -> Color:
+		var u := (x + 0.5 - cx) / rx
+		var v := (y + 0.5 - cy) / ry
+		if v < -0.25:  # the top plane, tilted toward the light
+			return ramp[0] if x + 0.5 < top_x + (v + 1.0) * rx * 0.5 else ramp[1]
+		if v > 0.45 and u > -0.2:  # the foot, in shadow
+			return ramp[3]
+		if x + 0.5 < top_x + v * rx * 0.35:  # the lit left face
+			return ramp[1]
+		return ramp[2])  # the shaded right face
 
 
 static func _stone_deposit(seed_v: int) -> Image:
