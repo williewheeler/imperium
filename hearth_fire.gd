@@ -1,6 +1,6 @@
 class_name HearthFire
 extends Node2D
-## The Regia's sacred hearth: flickering flames and a thin curl of smoke. Drawn in code (a pixel
+## The Casa Romuli's sacred hearth: flickering flames and a thin curl of smoke. Drawn in code (a pixel
 ## at a time, so it matches the art) and sits in the depth-sorted layer so villagers pass in front
 ## of and behind it correctly. The origin is the centre of the hearth on the ground.
 

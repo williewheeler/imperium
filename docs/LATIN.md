@@ -29,7 +29,7 @@ Some buildings change name and picture between eras (`"early"` entry in `Defs.BU
 
 | Latin (Era I → Era II) | English | Notes |
 |---|---|---|
-| Regia → Forum | King's House → Town Center | the Regia is the royal hall of early Rome; the marble Forum replaces it in Era II. Trains villagers, takes every resource |
+| Casa Romuli → Forum | Hut of Romulus → Town Center | the thatched hut said to be Romulus's home on the Palatine (a real monument, kept up for centuries); the marble Forum replaces it in Era II. Trains villagers, takes every resource |
 | Casa | Hut | the Era I house. `Casae` is the plural |
 | Ager | Wheat field | a renewable crop |
 | Horreum | Storehouse | a granary; takes wood, stone and gold |

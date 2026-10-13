@@ -11,7 +11,7 @@ extends Node2D
 ## While under construction only the bottom of the sprite shows, rising as the work progresses.
 
 ## Where a building's animated fire burns, relative to its front corner, for the sprites that have one:
-## the Regia's hearth (tile 2.15, 2.15 of its 3x3 yard) and the Aedes' sacred fire (1.55, 1.55 of 2x2).
+## the Casa Romuli's hearth (tile 2.15, 2.15 of its 3x3 yard) and the Aedes' sacred fire (1.55, 1.55 of 2x2).
 const FIRE_SPOTS := {"regia": Vector2(0, -13.6), "aedes": Vector2(0, -7.2)}
 
 var building: Building
@@ -21,7 +21,7 @@ var _key := ""
 var _flat: Sprite2D  # fields
 var _halves: Array[Node2D] = []  # standing buildings: [left, right]
 var _sprites: Array[Sprite2D] = []
-var _fire: HearthFire  # the Regia's animated hearth
+var _fire: HearthFire  # the Casa Romuli's animated hearth
 
 
 ## Screen position of a corner of the footprint, at the height of the terrace the building stands on.

@@ -952,7 +952,7 @@ static func _round_hut(img: Image, cx: float, base_y: float, s: float) -> void:
 	Pixel.put(img, int(cx), int(apex_y) - 1, THATCH[3])  # the tied-off peak
 
 
-## Regia: the Era I town centre, the king's house. A great round hall and two lesser huts around
+## The Era I town centre (art key "regia"), the Casa Romuli: the hut of Romulus. A great round hall and two lesser huts around
 ## a trodden yard with the sacred hearth. (Early Rome was a cluster of thatched huts; the Forum
 ## itself was a drained marsh until about 600 BC.) 3x3 tiles.
 static func _regia() -> Image:

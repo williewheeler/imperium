@@ -64,7 +64,7 @@ const BUILDINGS := {
 		"name": "Forum", "acc": "Forum", "english": "Town Center", "done": "perfectum est", "ready": "Paratum",
 		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": "villager",
 		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3], "pop": 10,
-		"early": {"name": "Regia", "acc": "Regiam", "english": "King's House (Town Center)", "look": "regia"},
+		"early": {"name": "Casa Romuli", "acc": "Casam Romuli", "english": "Hut of Romulus (Town Center)", "look": "regia", "done": "perfecta est", "ready": "Parata"},
 	},
 	"hut": {
 		"name": "Casa", "acc": "Casam", "english": "Hut", "done": "perfecta est", "ready": "Parata",
