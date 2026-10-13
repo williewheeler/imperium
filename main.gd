@@ -428,6 +428,21 @@ func _command_at(mp: Vector2) -> void:
 	var res := deposit_near(mp)
 	var b := building_under(mp)
 	var movers := us  # who just walks there
+	if b != null and b.complete and res.x < 0:  # laden villagers go and unload at a depot they click
+		var carriers: Array[Unit] = []
+		for u in workers:
+			if u.carry > 0 and u.carry_kind in b.def()["accepts"]:
+				carriers.append(u)
+		if not carriers.is_empty():
+			for u in carriers:
+				_order_dropoff(u, b)
+			movers = []
+			for u in us:
+				if not carriers.has(u):
+					movers.append(u)
+			if movers.is_empty():
+				return
+			workers = []
 	if not workers.is_empty():
 		var handled := true
 		if res.x >= 0:
@@ -477,6 +492,7 @@ func _set_path(u: Unit, goal: Vector2i) -> bool:
 
 
 func _order_move(u: Unit, goal: Vector2i) -> void:
+	u.dropoff_only = false
 	_release_road(u)
 	if _set_path(u, goal):
 		u.state = Unit.State.MOVE
@@ -485,7 +501,22 @@ func _order_move(u: Unit, goal: Vector2i) -> void:
 		hud.flash("Iter nullum est.")
 
 
+## Walk to `b` and hand over what the villager carries. If they were working, they then go back
+## to it; otherwise they stand idle by the depot.
+func _order_dropoff(u: Unit, b: Building) -> void:
+	_release_road(u)
+	var was_working := u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]
+	var stand := map.stand_tile(b.rect(), u.pos)
+	if stand.x < 0 or not _set_path(u, stand):
+		hud.flash("Iter nullum est.")
+		return
+	u.state = Unit.State.RETURN
+	u.target_building = null
+	u.dropoff_only = not was_working
+
+
 func _order_gather(u: Unit, tile: Vector2i) -> bool:
+	u.dropoff_only = false
 	_release_road(u)
 	var d: Deposit = map.deposits.get(tile)
 	if d == null:
@@ -507,6 +538,7 @@ func _order_gather(u: Unit, tile: Vector2i) -> bool:
 
 
 func _order_build(u: Unit, b: Building) -> void:
+	u.dropoff_only = false
 	_release_road(u)
 	var stand := map.stand_tile(b.rect(), u.pos)
 	if stand.x < 0 or not _set_path(u, stand):
@@ -1339,7 +1371,10 @@ func _update_unit(u: Unit, delta: float) -> void:
 				if u.carry > 0:
 					stock[u.carry_kind] += u.carry
 					u.carry = 0
-				if not (map.deposits.has(u.target_tile) and _order_gather(u, u.target_tile)) and not _retarget(u):
+				if u.dropoff_only:
+					u.dropoff_only = false
+					u.state = Unit.State.IDLE
+				elif not (map.deposits.has(u.target_tile) and _order_gather(u, u.target_tile)) and not _retarget(u):
 					u.state = Unit.State.IDLE
 		Unit.State.ROAD_GO:
 			if _follow(u, delta):
