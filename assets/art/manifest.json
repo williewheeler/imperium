@@ -3,6 +3,7 @@
 		"scenery.png",
 		"buildings.png",
 		"villagers.png",
+		"troops.png",
 		"ground_tiles.png"
 	],
 	"grids": {
@@ -53,6 +54,302 @@
 					"ground:6:1",
 					"ground:6:2",
 					"ground:6:3"
+				]
+			]
+		},
+		"troops.png": {
+			"cell": [
+				38,
+				36
+			],
+			"rows": [
+				[
+					"soldier:idle:f:0",
+					"soldier:idle:f:1"
+				],
+				[
+					"soldier:idle:b:0",
+					"soldier:idle:b:1"
+				],
+				[
+					"soldier:walk:f:0",
+					"soldier:walk:f:1",
+					"soldier:walk:f:2",
+					"soldier:walk:f:3",
+					"soldier:walk:f:4",
+					"soldier:walk:f:5"
+				],
+				[
+					"soldier:walk:b:0",
+					"soldier:walk:b:1",
+					"soldier:walk:b:2",
+					"soldier:walk:b:3",
+					"soldier:walk:b:4",
+					"soldier:walk:b:5"
+				],
+				[
+					"soldier:idle:f:0:1",
+					"soldier:idle:f:1:1"
+				],
+				[
+					"soldier:idle:b:0:1",
+					"soldier:idle:b:1:1"
+				],
+				[
+					"soldier:walk:f:0:1",
+					"soldier:walk:f:1:1",
+					"soldier:walk:f:2:1",
+					"soldier:walk:f:3:1",
+					"soldier:walk:f:4:1",
+					"soldier:walk:f:5:1"
+				],
+				[
+					"soldier:walk:b:0:1",
+					"soldier:walk:b:1:1",
+					"soldier:walk:b:2:1",
+					"soldier:walk:b:3:1",
+					"soldier:walk:b:4:1",
+					"soldier:walk:b:5:1"
+				],
+				[
+					"soldier:idle:f:0:2",
+					"soldier:idle:f:1:2"
+				],
+				[
+					"soldier:idle:b:0:2",
+					"soldier:idle:b:1:2"
+				],
+				[
+					"soldier:walk:f:0:2",
+					"soldier:walk:f:1:2",
+					"soldier:walk:f:2:2",
+					"soldier:walk:f:3:2",
+					"soldier:walk:f:4:2",
+					"soldier:walk:f:5:2"
+				],
+				[
+					"soldier:walk:b:0:2",
+					"soldier:walk:b:1:2",
+					"soldier:walk:b:2:2",
+					"soldier:walk:b:3:2",
+					"soldier:walk:b:4:2",
+					"soldier:walk:b:5:2"
+				],
+				[
+					"spearman:idle:f:0",
+					"spearman:idle:f:1"
+				],
+				[
+					"spearman:idle:b:0",
+					"spearman:idle:b:1"
+				],
+				[
+					"spearman:walk:f:0",
+					"spearman:walk:f:1",
+					"spearman:walk:f:2",
+					"spearman:walk:f:3",
+					"spearman:walk:f:4",
+					"spearman:walk:f:5"
+				],
+				[
+					"spearman:walk:b:0",
+					"spearman:walk:b:1",
+					"spearman:walk:b:2",
+					"spearman:walk:b:3",
+					"spearman:walk:b:4",
+					"spearman:walk:b:5"
+				],
+				[
+					"spearman:idle:f:0:1",
+					"spearman:idle:f:1:1"
+				],
+				[
+					"spearman:idle:b:0:1",
+					"spearman:idle:b:1:1"
+				],
+				[
+					"spearman:walk:f:0:1",
+					"spearman:walk:f:1:1",
+					"spearman:walk:f:2:1",
+					"spearman:walk:f:3:1",
+					"spearman:walk:f:4:1",
+					"spearman:walk:f:5:1"
+				],
+				[
+					"spearman:walk:b:0:1",
+					"spearman:walk:b:1:1",
+					"spearman:walk:b:2:1",
+					"spearman:walk:b:3:1",
+					"spearman:walk:b:4:1",
+					"spearman:walk:b:5:1"
+				],
+				[
+					"spearman:idle:f:0:2",
+					"spearman:idle:f:1:2"
+				],
+				[
+					"spearman:idle:b:0:2",
+					"spearman:idle:b:1:2"
+				],
+				[
+					"spearman:walk:f:0:2",
+					"spearman:walk:f:1:2",
+					"spearman:walk:f:2:2",
+					"spearman:walk:f:3:2",
+					"spearman:walk:f:4:2",
+					"spearman:walk:f:5:2"
+				],
+				[
+					"spearman:walk:b:0:2",
+					"spearman:walk:b:1:2",
+					"spearman:walk:b:2:2",
+					"spearman:walk:b:3:2",
+					"spearman:walk:b:4:2",
+					"spearman:walk:b:5:2"
+				],
+				[
+					"slinger:idle:f:0",
+					"slinger:idle:f:1"
+				],
+				[
+					"slinger:idle:b:0",
+					"slinger:idle:b:1"
+				],
+				[
+					"slinger:walk:f:0",
+					"slinger:walk:f:1",
+					"slinger:walk:f:2",
+					"slinger:walk:f:3",
+					"slinger:walk:f:4",
+					"slinger:walk:f:5"
+				],
+				[
+					"slinger:walk:b:0",
+					"slinger:walk:b:1",
+					"slinger:walk:b:2",
+					"slinger:walk:b:3",
+					"slinger:walk:b:4",
+					"slinger:walk:b:5"
+				],
+				[
+					"slinger:idle:f:0:1",
+					"slinger:idle:f:1:1"
+				],
+				[
+					"slinger:idle:b:0:1",
+					"slinger:idle:b:1:1"
+				],
+				[
+					"slinger:walk:f:0:1",
+					"slinger:walk:f:1:1",
+					"slinger:walk:f:2:1",
+					"slinger:walk:f:3:1",
+					"slinger:walk:f:4:1",
+					"slinger:walk:f:5:1"
+				],
+				[
+					"slinger:walk:b:0:1",
+					"slinger:walk:b:1:1",
+					"slinger:walk:b:2:1",
+					"slinger:walk:b:3:1",
+					"slinger:walk:b:4:1",
+					"slinger:walk:b:5:1"
+				],
+				[
+					"slinger:idle:f:0:2",
+					"slinger:idle:f:1:2"
+				],
+				[
+					"slinger:idle:b:0:2",
+					"slinger:idle:b:1:2"
+				],
+				[
+					"slinger:walk:f:0:2",
+					"slinger:walk:f:1:2",
+					"slinger:walk:f:2:2",
+					"slinger:walk:f:3:2",
+					"slinger:walk:f:4:2",
+					"slinger:walk:f:5:2"
+				],
+				[
+					"slinger:walk:b:0:2",
+					"slinger:walk:b:1:2",
+					"slinger:walk:b:2:2",
+					"slinger:walk:b:3:2",
+					"slinger:walk:b:4:2",
+					"slinger:walk:b:5:2"
+				],
+				[
+					"horseman:idle:f:0",
+					"horseman:idle:f:1"
+				],
+				[
+					"horseman:idle:b:0",
+					"horseman:idle:b:1"
+				],
+				[
+					"horseman:walk:f:0",
+					"horseman:walk:f:1",
+					"horseman:walk:f:2",
+					"horseman:walk:f:3",
+					"horseman:walk:f:4",
+					"horseman:walk:f:5"
+				],
+				[
+					"horseman:walk:b:0",
+					"horseman:walk:b:1",
+					"horseman:walk:b:2",
+					"horseman:walk:b:3",
+					"horseman:walk:b:4",
+					"horseman:walk:b:5"
+				],
+				[
+					"horseman:idle:f:0:1",
+					"horseman:idle:f:1:1"
+				],
+				[
+					"horseman:idle:b:0:1",
+					"horseman:idle:b:1:1"
+				],
+				[
+					"horseman:walk:f:0:1",
+					"horseman:walk:f:1:1",
+					"horseman:walk:f:2:1",
+					"horseman:walk:f:3:1",
+					"horseman:walk:f:4:1",
+					"horseman:walk:f:5:1"
+				],
+				[
+					"horseman:walk:b:0:1",
+					"horseman:walk:b:1:1",
+					"horseman:walk:b:2:1",
+					"horseman:walk:b:3:1",
+					"horseman:walk:b:4:1",
+					"horseman:walk:b:5:1"
+				],
+				[
+					"horseman:idle:f:0:2",
+					"horseman:idle:f:1:2"
+				],
+				[
+					"horseman:idle:b:0:2",
+					"horseman:idle:b:1:2"
+				],
+				[
+					"horseman:walk:f:0:2",
+					"horseman:walk:f:1:2",
+					"horseman:walk:f:2:2",
+					"horseman:walk:f:3:2",
+					"horseman:walk:f:4:2",
+					"horseman:walk:f:5:2"
+				],
+				[
+					"horseman:walk:b:0:2",
+					"horseman:walk:b:1:2",
+					"horseman:walk:b:2:2",
+					"horseman:walk:b:3:2",
+					"horseman:walk:b:4:2",
+					"horseman:walk:b:5:2"
 				]
 			]
 		},
@@ -261,30 +558,6 @@
 					"villagerf:build:b:3",
 					"villagerf:build:b:4",
 					"villagerf:build:b:5"
-				],
-				[
-					"soldier:idle:f:0",
-					"soldier:idle:f:1"
-				],
-				[
-					"soldier:idle:b:0",
-					"soldier:idle:b:1"
-				],
-				[
-					"soldier:walk:f:0",
-					"soldier:walk:f:1",
-					"soldier:walk:f:2",
-					"soldier:walk:f:3",
-					"soldier:walk:f:4",
-					"soldier:walk:f:5"
-				],
-				[
-					"soldier:walk:b:0",
-					"soldier:walk:b:1",
-					"soldier:walk:b:2",
-					"soldier:walk:b:3",
-					"soldier:walk:b:4",
-					"soldier:walk:b:5"
 				]
 			]
 		}
@@ -299,15 +572,15 @@
 		],
 		"aedes": [
 			"buildings.png",
-			1,
+			151,
 			272,
 			66,
 			70
 		],
 		"aqueduct": [
 			"buildings.png",
-			100,
-			187,
+			1,
+			272,
 			82,
 			82
 		],
@@ -327,7 +600,7 @@
 		],
 		"castra": [
 			"buildings.png",
-			1,
+			100,
 			187,
 			98,
 			84
@@ -356,28 +629,28 @@
 		"farm:0": [
 			"buildings.png",
 			1,
-			479,
+			624,
 			98,
 			64
 		],
 		"farm:1": [
 			"buildings.png",
 			100,
-			479,
+			559,
 			98,
 			64
 		],
 		"farm:2": [
 			"buildings.png",
-			1,
-			544,
+			100,
+			491,
 			98,
 			64
 		],
 		"farm:3": [
 			"buildings.png",
-			100,
-			544,
+			1,
+			559,
 			98,
 			64
 		],
@@ -619,17 +892,353 @@
 			32,
 			25
 		],
+		"horseman:idle:b:0": [
+			"troops.png",
+			0,
+			1332,
+			38,
+			36
+		],
+		"horseman:idle:b:0:1": [
+			"troops.png",
+			0,
+			1476,
+			38,
+			36
+		],
+		"horseman:idle:b:0:2": [
+			"troops.png",
+			0,
+			1620,
+			38,
+			36
+		],
+		"horseman:idle:b:1": [
+			"troops.png",
+			38,
+			1332,
+			38,
+			36
+		],
+		"horseman:idle:b:1:1": [
+			"troops.png",
+			38,
+			1476,
+			38,
+			36
+		],
+		"horseman:idle:b:1:2": [
+			"troops.png",
+			38,
+			1620,
+			38,
+			36
+		],
+		"horseman:idle:f:0": [
+			"troops.png",
+			0,
+			1296,
+			38,
+			36
+		],
+		"horseman:idle:f:0:1": [
+			"troops.png",
+			0,
+			1440,
+			38,
+			36
+		],
+		"horseman:idle:f:0:2": [
+			"troops.png",
+			0,
+			1584,
+			38,
+			36
+		],
+		"horseman:idle:f:1": [
+			"troops.png",
+			38,
+			1296,
+			38,
+			36
+		],
+		"horseman:idle:f:1:1": [
+			"troops.png",
+			38,
+			1440,
+			38,
+			36
+		],
+		"horseman:idle:f:1:2": [
+			"troops.png",
+			38,
+			1584,
+			38,
+			36
+		],
+		"horseman:walk:b:0": [
+			"troops.png",
+			0,
+			1404,
+			38,
+			36
+		],
+		"horseman:walk:b:0:1": [
+			"troops.png",
+			0,
+			1548,
+			38,
+			36
+		],
+		"horseman:walk:b:0:2": [
+			"troops.png",
+			0,
+			1692,
+			38,
+			36
+		],
+		"horseman:walk:b:1": [
+			"troops.png",
+			38,
+			1404,
+			38,
+			36
+		],
+		"horseman:walk:b:1:1": [
+			"troops.png",
+			38,
+			1548,
+			38,
+			36
+		],
+		"horseman:walk:b:1:2": [
+			"troops.png",
+			38,
+			1692,
+			38,
+			36
+		],
+		"horseman:walk:b:2": [
+			"troops.png",
+			76,
+			1404,
+			38,
+			36
+		],
+		"horseman:walk:b:2:1": [
+			"troops.png",
+			76,
+			1548,
+			38,
+			36
+		],
+		"horseman:walk:b:2:2": [
+			"troops.png",
+			76,
+			1692,
+			38,
+			36
+		],
+		"horseman:walk:b:3": [
+			"troops.png",
+			114,
+			1404,
+			38,
+			36
+		],
+		"horseman:walk:b:3:1": [
+			"troops.png",
+			114,
+			1548,
+			38,
+			36
+		],
+		"horseman:walk:b:3:2": [
+			"troops.png",
+			114,
+			1692,
+			38,
+			36
+		],
+		"horseman:walk:b:4": [
+			"troops.png",
+			152,
+			1404,
+			38,
+			36
+		],
+		"horseman:walk:b:4:1": [
+			"troops.png",
+			152,
+			1548,
+			38,
+			36
+		],
+		"horseman:walk:b:4:2": [
+			"troops.png",
+			152,
+			1692,
+			38,
+			36
+		],
+		"horseman:walk:b:5": [
+			"troops.png",
+			190,
+			1404,
+			38,
+			36
+		],
+		"horseman:walk:b:5:1": [
+			"troops.png",
+			190,
+			1548,
+			38,
+			36
+		],
+		"horseman:walk:b:5:2": [
+			"troops.png",
+			190,
+			1692,
+			38,
+			36
+		],
+		"horseman:walk:f:0": [
+			"troops.png",
+			0,
+			1368,
+			38,
+			36
+		],
+		"horseman:walk:f:0:1": [
+			"troops.png",
+			0,
+			1512,
+			38,
+			36
+		],
+		"horseman:walk:f:0:2": [
+			"troops.png",
+			0,
+			1656,
+			38,
+			36
+		],
+		"horseman:walk:f:1": [
+			"troops.png",
+			38,
+			1368,
+			38,
+			36
+		],
+		"horseman:walk:f:1:1": [
+			"troops.png",
+			38,
+			1512,
+			38,
+			36
+		],
+		"horseman:walk:f:1:2": [
+			"troops.png",
+			38,
+			1656,
+			38,
+			36
+		],
+		"horseman:walk:f:2": [
+			"troops.png",
+			76,
+			1368,
+			38,
+			36
+		],
+		"horseman:walk:f:2:1": [
+			"troops.png",
+			76,
+			1512,
+			38,
+			36
+		],
+		"horseman:walk:f:2:2": [
+			"troops.png",
+			76,
+			1656,
+			38,
+			36
+		],
+		"horseman:walk:f:3": [
+			"troops.png",
+			114,
+			1368,
+			38,
+			36
+		],
+		"horseman:walk:f:3:1": [
+			"troops.png",
+			114,
+			1512,
+			38,
+			36
+		],
+		"horseman:walk:f:3:2": [
+			"troops.png",
+			114,
+			1656,
+			38,
+			36
+		],
+		"horseman:walk:f:4": [
+			"troops.png",
+			152,
+			1368,
+			38,
+			36
+		],
+		"horseman:walk:f:4:1": [
+			"troops.png",
+			152,
+			1512,
+			38,
+			36
+		],
+		"horseman:walk:f:4:2": [
+			"troops.png",
+			152,
+			1656,
+			38,
+			36
+		],
+		"horseman:walk:f:5": [
+			"troops.png",
+			190,
+			1368,
+			38,
+			36
+		],
+		"horseman:walk:f:5:1": [
+			"troops.png",
+			190,
+			1512,
+			38,
+			36
+		],
+		"horseman:walk:f:5:2": [
+			"troops.png",
+			190,
+			1656,
+			38,
+			36
+		],
 		"house": [
 			"buildings.png",
-			135,
-			272,
+			68,
+			355,
 			66,
 			67
 		],
 		"hut": [
 			"buildings.png",
-			199,
-			544,
+			100,
+			624,
 			34,
 			48
 		],
@@ -857,117 +1466,1020 @@
 			98,
 			88
 		],
+		"slinger:idle:b:0": [
+			"troops.png",
+			8,
+			912,
+			22,
+			24
+		],
+		"slinger:idle:b:0:1": [
+			"troops.png",
+			8,
+			1056,
+			22,
+			24
+		],
+		"slinger:idle:b:0:2": [
+			"troops.png",
+			8,
+			1200,
+			22,
+			24
+		],
+		"slinger:idle:b:1": [
+			"troops.png",
+			46,
+			912,
+			22,
+			24
+		],
+		"slinger:idle:b:1:1": [
+			"troops.png",
+			46,
+			1056,
+			22,
+			24
+		],
+		"slinger:idle:b:1:2": [
+			"troops.png",
+			46,
+			1200,
+			22,
+			24
+		],
+		"slinger:idle:f:0": [
+			"troops.png",
+			8,
+			876,
+			22,
+			24
+		],
+		"slinger:idle:f:0:1": [
+			"troops.png",
+			8,
+			1020,
+			22,
+			24
+		],
+		"slinger:idle:f:0:2": [
+			"troops.png",
+			8,
+			1164,
+			22,
+			24
+		],
+		"slinger:idle:f:1": [
+			"troops.png",
+			46,
+			876,
+			22,
+			24
+		],
+		"slinger:idle:f:1:1": [
+			"troops.png",
+			46,
+			1020,
+			22,
+			24
+		],
+		"slinger:idle:f:1:2": [
+			"troops.png",
+			46,
+			1164,
+			22,
+			24
+		],
+		"slinger:walk:b:0": [
+			"troops.png",
+			8,
+			984,
+			22,
+			24
+		],
+		"slinger:walk:b:0:1": [
+			"troops.png",
+			8,
+			1128,
+			22,
+			24
+		],
+		"slinger:walk:b:0:2": [
+			"troops.png",
+			8,
+			1272,
+			22,
+			24
+		],
+		"slinger:walk:b:1": [
+			"troops.png",
+			46,
+			984,
+			22,
+			24
+		],
+		"slinger:walk:b:1:1": [
+			"troops.png",
+			46,
+			1128,
+			22,
+			24
+		],
+		"slinger:walk:b:1:2": [
+			"troops.png",
+			46,
+			1272,
+			22,
+			24
+		],
+		"slinger:walk:b:2": [
+			"troops.png",
+			84,
+			984,
+			22,
+			24
+		],
+		"slinger:walk:b:2:1": [
+			"troops.png",
+			84,
+			1128,
+			22,
+			24
+		],
+		"slinger:walk:b:2:2": [
+			"troops.png",
+			84,
+			1272,
+			22,
+			24
+		],
+		"slinger:walk:b:3": [
+			"troops.png",
+			122,
+			984,
+			22,
+			24
+		],
+		"slinger:walk:b:3:1": [
+			"troops.png",
+			122,
+			1128,
+			22,
+			24
+		],
+		"slinger:walk:b:3:2": [
+			"troops.png",
+			122,
+			1272,
+			22,
+			24
+		],
+		"slinger:walk:b:4": [
+			"troops.png",
+			160,
+			984,
+			22,
+			24
+		],
+		"slinger:walk:b:4:1": [
+			"troops.png",
+			160,
+			1128,
+			22,
+			24
+		],
+		"slinger:walk:b:4:2": [
+			"troops.png",
+			160,
+			1272,
+			22,
+			24
+		],
+		"slinger:walk:b:5": [
+			"troops.png",
+			198,
+			984,
+			22,
+			24
+		],
+		"slinger:walk:b:5:1": [
+			"troops.png",
+			198,
+			1128,
+			22,
+			24
+		],
+		"slinger:walk:b:5:2": [
+			"troops.png",
+			198,
+			1272,
+			22,
+			24
+		],
+		"slinger:walk:f:0": [
+			"troops.png",
+			8,
+			948,
+			22,
+			24
+		],
+		"slinger:walk:f:0:1": [
+			"troops.png",
+			8,
+			1092,
+			22,
+			24
+		],
+		"slinger:walk:f:0:2": [
+			"troops.png",
+			8,
+			1236,
+			22,
+			24
+		],
+		"slinger:walk:f:1": [
+			"troops.png",
+			46,
+			948,
+			22,
+			24
+		],
+		"slinger:walk:f:1:1": [
+			"troops.png",
+			46,
+			1092,
+			22,
+			24
+		],
+		"slinger:walk:f:1:2": [
+			"troops.png",
+			46,
+			1236,
+			22,
+			24
+		],
+		"slinger:walk:f:2": [
+			"troops.png",
+			84,
+			948,
+			22,
+			24
+		],
+		"slinger:walk:f:2:1": [
+			"troops.png",
+			84,
+			1092,
+			22,
+			24
+		],
+		"slinger:walk:f:2:2": [
+			"troops.png",
+			84,
+			1236,
+			22,
+			24
+		],
+		"slinger:walk:f:3": [
+			"troops.png",
+			122,
+			948,
+			22,
+			24
+		],
+		"slinger:walk:f:3:1": [
+			"troops.png",
+			122,
+			1092,
+			22,
+			24
+		],
+		"slinger:walk:f:3:2": [
+			"troops.png",
+			122,
+			1236,
+			22,
+			24
+		],
+		"slinger:walk:f:4": [
+			"troops.png",
+			160,
+			948,
+			22,
+			24
+		],
+		"slinger:walk:f:4:1": [
+			"troops.png",
+			160,
+			1092,
+			22,
+			24
+		],
+		"slinger:walk:f:4:2": [
+			"troops.png",
+			160,
+			1236,
+			22,
+			24
+		],
+		"slinger:walk:f:5": [
+			"troops.png",
+			198,
+			948,
+			22,
+			24
+		],
+		"slinger:walk:f:5:1": [
+			"troops.png",
+			198,
+			1092,
+			22,
+			24
+		],
+		"slinger:walk:f:5:2": [
+			"troops.png",
+			198,
+			1236,
+			22,
+			24
+		],
 		"soldier:idle:b:0": [
-			"villagers.png",
-			0,
-			696,
+			"troops.png",
+			8,
+			48,
+			22,
+			24
+		],
+		"soldier:idle:b:0:1": [
+			"troops.png",
+			8,
+			192,
+			22,
+			24
+		],
+		"soldier:idle:b:0:2": [
+			"troops.png",
+			8,
+			336,
 			22,
 			24
 		],
 		"soldier:idle:b:1": [
-			"villagers.png",
+			"troops.png",
+			46,
+			48,
 			22,
-			696,
+			24
+		],
+		"soldier:idle:b:1:1": [
+			"troops.png",
+			46,
+			192,
+			22,
+			24
+		],
+		"soldier:idle:b:1:2": [
+			"troops.png",
+			46,
+			336,
 			22,
 			24
 		],
 		"soldier:idle:f:0": [
-			"villagers.png",
-			0,
-			672,
+			"troops.png",
+			8,
+			12,
+			22,
+			24
+		],
+		"soldier:idle:f:0:1": [
+			"troops.png",
+			8,
+			156,
+			22,
+			24
+		],
+		"soldier:idle:f:0:2": [
+			"troops.png",
+			8,
+			300,
 			22,
 			24
 		],
 		"soldier:idle:f:1": [
-			"villagers.png",
+			"troops.png",
+			46,
+			12,
 			22,
-			672,
+			24
+		],
+		"soldier:idle:f:1:1": [
+			"troops.png",
+			46,
+			156,
+			22,
+			24
+		],
+		"soldier:idle:f:1:2": [
+			"troops.png",
+			46,
+			300,
 			22,
 			24
 		],
 		"soldier:walk:b:0": [
-			"villagers.png",
-			0,
-			744,
+			"troops.png",
+			8,
+			120,
+			22,
+			24
+		],
+		"soldier:walk:b:0:1": [
+			"troops.png",
+			8,
+			264,
+			22,
+			24
+		],
+		"soldier:walk:b:0:2": [
+			"troops.png",
+			8,
+			408,
 			22,
 			24
 		],
 		"soldier:walk:b:1": [
-			"villagers.png",
+			"troops.png",
+			46,
+			120,
 			22,
-			744,
+			24
+		],
+		"soldier:walk:b:1:1": [
+			"troops.png",
+			46,
+			264,
+			22,
+			24
+		],
+		"soldier:walk:b:1:2": [
+			"troops.png",
+			46,
+			408,
 			22,
 			24
 		],
 		"soldier:walk:b:2": [
-			"villagers.png",
-			44,
-			744,
+			"troops.png",
+			84,
+			120,
+			22,
+			24
+		],
+		"soldier:walk:b:2:1": [
+			"troops.png",
+			84,
+			264,
+			22,
+			24
+		],
+		"soldier:walk:b:2:2": [
+			"troops.png",
+			84,
+			408,
 			22,
 			24
 		],
 		"soldier:walk:b:3": [
-			"villagers.png",
-			66,
-			744,
+			"troops.png",
+			122,
+			120,
+			22,
+			24
+		],
+		"soldier:walk:b:3:1": [
+			"troops.png",
+			122,
+			264,
+			22,
+			24
+		],
+		"soldier:walk:b:3:2": [
+			"troops.png",
+			122,
+			408,
 			22,
 			24
 		],
 		"soldier:walk:b:4": [
-			"villagers.png",
-			88,
-			744,
+			"troops.png",
+			160,
+			120,
+			22,
+			24
+		],
+		"soldier:walk:b:4:1": [
+			"troops.png",
+			160,
+			264,
+			22,
+			24
+		],
+		"soldier:walk:b:4:2": [
+			"troops.png",
+			160,
+			408,
 			22,
 			24
 		],
 		"soldier:walk:b:5": [
-			"villagers.png",
-			110,
-			744,
+			"troops.png",
+			198,
+			120,
+			22,
+			24
+		],
+		"soldier:walk:b:5:1": [
+			"troops.png",
+			198,
+			264,
+			22,
+			24
+		],
+		"soldier:walk:b:5:2": [
+			"troops.png",
+			198,
+			408,
 			22,
 			24
 		],
 		"soldier:walk:f:0": [
-			"villagers.png",
-			0,
-			720,
+			"troops.png",
+			8,
+			84,
+			22,
+			24
+		],
+		"soldier:walk:f:0:1": [
+			"troops.png",
+			8,
+			228,
+			22,
+			24
+		],
+		"soldier:walk:f:0:2": [
+			"troops.png",
+			8,
+			372,
 			22,
 			24
 		],
 		"soldier:walk:f:1": [
-			"villagers.png",
+			"troops.png",
+			46,
+			84,
 			22,
-			720,
+			24
+		],
+		"soldier:walk:f:1:1": [
+			"troops.png",
+			46,
+			228,
+			22,
+			24
+		],
+		"soldier:walk:f:1:2": [
+			"troops.png",
+			46,
+			372,
 			22,
 			24
 		],
 		"soldier:walk:f:2": [
-			"villagers.png",
-			44,
-			720,
+			"troops.png",
+			84,
+			84,
+			22,
+			24
+		],
+		"soldier:walk:f:2:1": [
+			"troops.png",
+			84,
+			228,
+			22,
+			24
+		],
+		"soldier:walk:f:2:2": [
+			"troops.png",
+			84,
+			372,
 			22,
 			24
 		],
 		"soldier:walk:f:3": [
-			"villagers.png",
-			66,
-			720,
+			"troops.png",
+			122,
+			84,
+			22,
+			24
+		],
+		"soldier:walk:f:3:1": [
+			"troops.png",
+			122,
+			228,
+			22,
+			24
+		],
+		"soldier:walk:f:3:2": [
+			"troops.png",
+			122,
+			372,
 			22,
 			24
 		],
 		"soldier:walk:f:4": [
-			"villagers.png",
-			88,
-			720,
+			"troops.png",
+			160,
+			84,
+			22,
+			24
+		],
+		"soldier:walk:f:4:1": [
+			"troops.png",
+			160,
+			228,
+			22,
+			24
+		],
+		"soldier:walk:f:4:2": [
+			"troops.png",
+			160,
+			372,
 			22,
 			24
 		],
 		"soldier:walk:f:5": [
-			"villagers.png",
-			110,
-			720,
+			"troops.png",
+			198,
+			84,
 			22,
 			24
+		],
+		"soldier:walk:f:5:1": [
+			"troops.png",
+			198,
+			228,
+			22,
+			24
+		],
+		"soldier:walk:f:5:2": [
+			"troops.png",
+			198,
+			372,
+			22,
+			24
+		],
+		"spearman:idle:b:0": [
+			"troops.png",
+			8,
+			480,
+			22,
+			24
+		],
+		"spearman:idle:b:0:1": [
+			"troops.png",
+			8,
+			624,
+			22,
+			24
+		],
+		"spearman:idle:b:0:2": [
+			"troops.png",
+			8,
+			768,
+			22,
+			24
+		],
+		"spearman:idle:b:1": [
+			"troops.png",
+			46,
+			480,
+			22,
+			24
+		],
+		"spearman:idle:b:1:1": [
+			"troops.png",
+			46,
+			624,
+			22,
+			24
+		],
+		"spearman:idle:b:1:2": [
+			"troops.png",
+			46,
+			768,
+			22,
+			24
+		],
+		"spearman:idle:f:0": [
+			"troops.png",
+			8,
+			444,
+			22,
+			24
+		],
+		"spearman:idle:f:0:1": [
+			"troops.png",
+			8,
+			588,
+			22,
+			24
+		],
+		"spearman:idle:f:0:2": [
+			"troops.png",
+			8,
+			732,
+			22,
+			24
+		],
+		"spearman:idle:f:1": [
+			"troops.png",
+			46,
+			444,
+			22,
+			24
+		],
+		"spearman:idle:f:1:1": [
+			"troops.png",
+			46,
+			588,
+			22,
+			24
+		],
+		"spearman:idle:f:1:2": [
+			"troops.png",
+			46,
+			732,
+			22,
+			24
+		],
+		"spearman:walk:b:0": [
+			"troops.png",
+			8,
+			552,
+			22,
+			24
+		],
+		"spearman:walk:b:0:1": [
+			"troops.png",
+			8,
+			696,
+			22,
+			24
+		],
+		"spearman:walk:b:0:2": [
+			"troops.png",
+			8,
+			840,
+			22,
+			24
+		],
+		"spearman:walk:b:1": [
+			"troops.png",
+			46,
+			552,
+			22,
+			24
+		],
+		"spearman:walk:b:1:1": [
+			"troops.png",
+			46,
+			696,
+			22,
+			24
+		],
+		"spearman:walk:b:1:2": [
+			"troops.png",
+			46,
+			840,
+			22,
+			24
+		],
+		"spearman:walk:b:2": [
+			"troops.png",
+			84,
+			552,
+			22,
+			24
+		],
+		"spearman:walk:b:2:1": [
+			"troops.png",
+			84,
+			696,
+			22,
+			24
+		],
+		"spearman:walk:b:2:2": [
+			"troops.png",
+			84,
+			840,
+			22,
+			24
+		],
+		"spearman:walk:b:3": [
+			"troops.png",
+			122,
+			552,
+			22,
+			24
+		],
+		"spearman:walk:b:3:1": [
+			"troops.png",
+			122,
+			696,
+			22,
+			24
+		],
+		"spearman:walk:b:3:2": [
+			"troops.png",
+			122,
+			840,
+			22,
+			24
+		],
+		"spearman:walk:b:4": [
+			"troops.png",
+			160,
+			552,
+			22,
+			24
+		],
+		"spearman:walk:b:4:1": [
+			"troops.png",
+			160,
+			696,
+			22,
+			24
+		],
+		"spearman:walk:b:4:2": [
+			"troops.png",
+			160,
+			840,
+			22,
+			24
+		],
+		"spearman:walk:b:5": [
+			"troops.png",
+			198,
+			552,
+			22,
+			24
+		],
+		"spearman:walk:b:5:1": [
+			"troops.png",
+			198,
+			696,
+			22,
+			24
+		],
+		"spearman:walk:b:5:2": [
+			"troops.png",
+			198,
+			840,
+			22,
+			24
+		],
+		"spearman:walk:f:0": [
+			"troops.png",
+			8,
+			516,
+			22,
+			24
+		],
+		"spearman:walk:f:0:1": [
+			"troops.png",
+			8,
+			660,
+			22,
+			24
+		],
+		"spearman:walk:f:0:2": [
+			"troops.png",
+			8,
+			804,
+			22,
+			24
+		],
+		"spearman:walk:f:1": [
+			"troops.png",
+			46,
+			516,
+			22,
+			24
+		],
+		"spearman:walk:f:1:1": [
+			"troops.png",
+			46,
+			660,
+			22,
+			24
+		],
+		"spearman:walk:f:1:2": [
+			"troops.png",
+			46,
+			804,
+			22,
+			24
+		],
+		"spearman:walk:f:2": [
+			"troops.png",
+			84,
+			516,
+			22,
+			24
+		],
+		"spearman:walk:f:2:1": [
+			"troops.png",
+			84,
+			660,
+			22,
+			24
+		],
+		"spearman:walk:f:2:2": [
+			"troops.png",
+			84,
+			804,
+			22,
+			24
+		],
+		"spearman:walk:f:3": [
+			"troops.png",
+			122,
+			516,
+			22,
+			24
+		],
+		"spearman:walk:f:3:1": [
+			"troops.png",
+			122,
+			660,
+			22,
+			24
+		],
+		"spearman:walk:f:3:2": [
+			"troops.png",
+			122,
+			804,
+			22,
+			24
+		],
+		"spearman:walk:f:4": [
+			"troops.png",
+			160,
+			516,
+			22,
+			24
+		],
+		"spearman:walk:f:4:1": [
+			"troops.png",
+			160,
+			660,
+			22,
+			24
+		],
+		"spearman:walk:f:4:2": [
+			"troops.png",
+			160,
+			804,
+			22,
+			24
+		],
+		"spearman:walk:f:5": [
+			"troops.png",
+			198,
+			516,
+			22,
+			24
+		],
+		"spearman:walk:f:5:1": [
+			"troops.png",
+			198,
+			660,
+			22,
+			24
+		],
+		"spearman:walk:f:5:2": [
+			"troops.png",
+			198,
+			804,
+			22,
+			24
+		],
+		"stabulum": [
+			"buildings.png",
+			1,
+			187,
+			98,
+			84
 		],
 		"stone:0": [
 			"scenery.png",
@@ -985,15 +2497,15 @@
 		],
 		"storehouse": [
 			"buildings.png",
-			68,
-			272,
+			1,
+			355,
 			66,
 			67
 		],
 		"temple": [
 			"buildings.png",
-			183,
-			187,
+			84,
+			272,
 			66,
 			72
 		],
@@ -2021,29 +3533,29 @@
 		],
 		"vineyard:0": [
 			"buildings.png",
-			1,
-			343,
+			135,
+			355,
 			98,
 			67
 		],
 		"vineyard:1": [
 			"buildings.png",
-			100,
-			343,
+			1,
+			423,
 			98,
 			67
 		],
 		"vineyard:2": [
 			"buildings.png",
-			1,
-			411,
+			100,
+			423,
 			98,
 			67
 		],
 		"vineyard:3": [
 			"buildings.png",
-			100,
-			411,
+			1,
+			491,
 			98,
 			67
 		]

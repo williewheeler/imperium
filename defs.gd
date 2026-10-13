@@ -20,9 +20,15 @@ const SOLDIER_COST := [30, 50, 0, 0]
 const SOLDIER_TRAIN_TIME := 12.0
 
 # What a building's "trains" entry produces.
+const SPEARMAN_COST := [20, 30, 0, 0]
+const SLINGER_COST := [0, 20, 10, 0]
+const HORSEMAN_COST := [0, 70, 0, 40]
 const UNITS := {
 	"villager": {"name": "Colonus", "english": "Villager", "cost": VILLAGER_COST, "time": VILLAGER_TRAIN_TIME},
-	"soldier": {"name": "Miles", "english": "Soldier", "cost": SOLDIER_COST, "time": SOLDIER_TRAIN_TIME},
+	"soldier": {"name": "Miles Gravis", "english": "Heavy Infantry", "cost": SOLDIER_COST, "time": SOLDIER_TRAIN_TIME},
+	"spearman": {"name": "Pedes", "english": "Spearman", "cost": SPEARMAN_COST, "time": SOLDIER_TRAIN_TIME},
+	"slinger": {"name": "Funditor", "english": "Slinger", "cost": SLINGER_COST, "time": SOLDIER_TRAIN_TIME},
+	"horseman": {"name": "Eques", "english": "Horseman", "cost": HORSEMAN_COST, "time": 16.0},
 }
 
 # Paved Roman road ("via"): cost per tile and the time one villager needs to lay a tile.
@@ -103,6 +109,11 @@ const BUILDINGS := {
 		"build_time": 35.0, "sight": 8.0, "accepts": [], "pop": 0,
 		# in the Kingdom the soldiers' base was the stockaded hilltop fortress
 		"early": {"name": "Arx", "acc": "Arcem", "english": "Citadel (Barracks)", "look": "arx", "done": "perfecta est", "ready": "Parata"},
+	},
+	"stabulum": {
+		"name": "Stabulum", "acc": "Stabulum", "english": "Stable", "done": "perfectum est", "ready": "Paratum",
+		"size": Vector2i(3, 3), "cost": [100, 0, 0, 0], "trains": "horseman",  # the Celeres, the wealthy citizens' horsemen
+		"build_time": 30.0, "sight": 6.0, "accepts": [], "pop": 0,
 	},
 	"temple": {
 		"name": "Templum", "acc": "Templum", "english": "Temple", "done": "perfectum est", "ready": "Paratum",

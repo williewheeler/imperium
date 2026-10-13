@@ -4,9 +4,11 @@ extends RefCounted
 enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING, EXPLORE }
 
 ## Position in tile coordinates (tile centres are at +0.5).
-var kind := "villager"  # "villager" or "soldier"
+var kind := "villager"  # "villager", or a fighting man: "soldier", "spearman", "slinger", "horseman"
 var pos := Vector2.ZERO
 var female := false  # villagers only: picks the sprite
+var look := 0  # fighting men: which of the kind's looks (tunic, armour) they wear
+var display := false  # a unit there for show: it takes no population
 var path: Array[Vector2] = []
 var detour_cooldown := 0.0  # seconds before another detour may be planned
 var detour := Vector2.INF  # temporary waypoint that steers around someone in the way

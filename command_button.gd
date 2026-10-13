@@ -2,6 +2,7 @@ class_name CommandButton
 extends Button
 ## A square command icon with a short Latin caption and its cost. Hover for the English tooltip.
 
+const UNIT_ICONS := ["villager", "soldier", "spearman", "slinger", "horseman"]
 const GOLD := Color("e8c766")
 const CREAM := Color("f3e6c4")
 const FILL := {
@@ -97,8 +98,8 @@ func _draw_icon(c: Vector2) -> void:
 	if icon_kind in ["explore", "stop"]:
 		_draw_action_icon(c)
 		return
-	var key := icon_kind + ":idle:f:0" if icon_kind in ["villager", "soldier"] else icon_kind
-	var t: Texture2D = Art.tex(key) if icon_kind in ["villager", "soldier"] else Art.icon(Building.look_key(key), 17 if compact else 30)
+	var key := icon_kind + ":idle:f:0" if icon_kind in UNIT_ICONS else icon_kind
+	var t: Texture2D = Art.tex(key) if icon_kind in UNIT_ICONS else Art.icon(Building.look_key(key), 17 if compact else 30)
 	var scale := 2.0
 	var sz := t.get_size() * scale
 	draw_texture_rect(t, Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz), false, Color(0.45, 0.45, 0.45, 0.7) if disabled else Color.WHITE)

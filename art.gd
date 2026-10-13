@@ -27,6 +27,11 @@ const BERRY := Color("d8403c")
 
 ## Frames per villager animation.
 const VILLAGER_FRAMES := {"idle": 2, "walk": 6, "chop": 6, "mine": 6, "forage": 4, "till": 6, "build": 6}
+## The fighting units, and how many different looks each has. Early Roman soldiers armed
+## themselves and wore no uniform, so no two neighbours need look alike: tunic colour and how
+## much armour they could afford vary from look to look.
+const UNIT_LOOKS := {"soldier": 3, "spearman": 3, "slinger": 3, "horseman": 3}
+const HORSE_FEET := Vector2(18, 31)
 ## Where the villager's feet are inside each villager image (for anchoring).
 const VILLAGER_FEET := Vector2(11, 20)
 
@@ -34,6 +39,9 @@ const SKIN := [Color("f4cfa6"), Color("dba97e")]
 const HAIR := Color("4a3220")
 const TUNIC := [Color("e0604c"), Color("c4352e"), Color("8f2420")]
 const DRESS := [Color("f0c460"), Color("d99a3a"), Color("a86a22")]  # a woman's ochre stola
+const LINEN := [Color("f2e8cc"), Color("d9cba4"), Color("a99c78")]  # undyed tunics
+const WOOL := [Color("b88a58"), Color("94683c"), Color("6a4624")]
+const DYED := [Color("8aa5cc"), Color("5a78a8"), Color("3f5a86")]  # a faded blue
 const BELT := Color("3e2a16")
 const OUT_VILLAGER := Color("3a2018")
 
@@ -53,6 +61,7 @@ const BUILDING_GEOM := {
 	"aqueduct": {"a": 4, "b": 1, "ridge": 32.0},
 	"castra": {"a": 3, "b": 3, "ridge": 26.0},
 	"arx": {"a": 3, "b": 3, "ridge": 34.0},
+	"stabulum": {"a": 3, "b": 3, "ridge": 26.0},
 	"aedes": {"a": 2, "b": 2, "ridge": 28.0},
 	"temple": {"a": 2, "b": 2, "ridge": 30.0},
 }
@@ -139,8 +148,12 @@ static func image(key: String) -> Image:
 			return _vineyard(variant)
 		"villagerf":  # villagerf:<anim>:<f|b>:<frame>, the women
 			return _villager(parts[1], parts[2] == "b", int(parts[3]), "female")
-		"soldier":  # soldier:<anim>:<f|b>:<frame>
-			return _villager(parts[1], parts[2] == "b", int(parts[3]), "soldier")
+		"soldier", "spearman", "slinger":  # <kind>:<anim>:<f|b>:<frame>[:<look>]
+			return _villager(parts[1], parts[2] == "b", int(parts[3]), parts[0], int(parts[4]) if parts.size() > 4 else 0)
+		"horseman":  # horseman:<anim>:<f|b>:<frame>[:<look>]; the horse always faces right
+			return _horseman(parts[1], int(parts[3]), int(parts[4]) if parts.size() > 4 else 0)
+		"stabulum":
+			return _stabulum()
 		"hut":
 			return _hut()
 		"regia":
@@ -519,7 +532,7 @@ static func _swing(phase: float, raised: float, strike: float) -> float:
 
 ## One frame of a Roman villager in a red tunic. `back` shows them from behind (walking away
 ## from the camera). They always face to the right; the game mirrors the sprite for left.
-static func _villager(anim: String, back: bool, frame: int, kit := "") -> Image:
+static func _villager(anim: String, back: bool, frame: int, kit := "", look := 0) -> Image:
 	var n: int = VILLAGER_FRAMES[anim]
 	var ph := float(frame) / n
 	var pose := {"bob": 0, "foot_f": Vector2i(2, 0), "foot_b": Vector2i(-2, 0), "hand_f": Vector2i(1, 4), "hand_b": Vector2i(-1, 4), "tool": "", "angle": 0.0, "lean": 0}
@@ -579,7 +592,7 @@ static func _villager(anim: String, back: bool, frame: int, kit := "") -> Image:
 		var half := 2 if row < 5 else 3
 		var shift := lean if row < 3 else 0
 		for x in range(fx - half + shift, fx + half + 1 + shift):
-			var cloth: Array = DRESS if kit == "female" else TUNIC
+			var cloth: Array = DRESS if kit == "female" else _cloth(kit, look)
 			var c: Color = cloth[1]
 			if x == fx - half + shift:
 				c = cloth[0]
@@ -633,8 +646,8 @@ static func _villager(anim: String, back: bool, frame: int, kit := "") -> Image:
 			"hoe":
 				Pixel.line(img, Vector2i(tip), Vector2i(tip + perp * 2.5 + dir * 1.0), ROCK[2])
 				Pixel.put(img, int(tip.x + perp.x * 2.5 + dir.x * 1.0), int(tip.y + perp.y * 2.5 + dir.y * 1.0), ROCK[1])
-	if kit == "soldier":
-		_soldier_gear(img, fx, hx, hy, sh_y, hand, bob, back)
+	if kit in ["soldier", "spearman", "slinger"]:
+		_infantry_gear(img, kit, look, fx, hx, hy, sh_y, hand, bob, back)
 	return Pixel.outlined(img, OUT_VILLAGER)
 
 
@@ -764,7 +777,7 @@ static func scenery_keys() -> Array[String]:
 
 static func building_keys() -> Array[String]:
 	return ["town_center", "regia", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
-		"curia", "aqueduct", "castra", "arx", "aedes", "temple", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
+		"curia", "aqueduct", "castra", "arx", "stabulum", "aedes", "temple", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
 
 
 ## Villager frames, one row per animation and direction (f = facing the camera, b = away).
@@ -782,12 +795,20 @@ static func villager_rows() -> Array:
 			for i in VILLAGER_FRAMES[anim]:
 				row.append("villagerf:%s:%s:%d" % [anim, dir, i])
 			rows.append(row)
-	for anim in ["idle", "walk"]:  # soldiers only stand and march
-		for dir in ["f", "b"]:
-			var row: Array[String] = []
-			for i in VILLAGER_FRAMES[anim]:
-				row.append("soldier:%s:%s:%d" % [anim, dir, i])
-			rows.append(row)
+	return rows
+
+
+## Fighting men get their own sheet (the horses make its cells bigger than the villagers').
+static func military_rows() -> Array:
+	var rows := []
+	for kind: String in UNIT_LOOKS:  # fighting men only stand and march
+		for look in UNIT_LOOKS[kind]:
+			for anim in ["idle", "walk"]:
+				for dir in ["f", "b"]:
+					var row: Array[String] = []
+					for i in VILLAGER_FRAMES[anim]:
+						row.append("%s:%s:%s:%d%s" % [kind, anim, dir, i, ":%d" % look if look > 0 else ""])
+					rows.append(row)
 	return rows
 
 
@@ -1205,31 +1226,149 @@ static func frame_style(era := 0) -> StyleBoxTexture:
 const BRONZE := [Color("f0c878"), Color("c8963e"), Color("94682a")]
 
 
-## Early-Republic citizen soldier kit over the villager rig: bronze helmet with a red crest,
-## a bronze breastplate, a round shield and a spear.
-static func _soldier_gear(img: Image, fx: int, hx: int, hy: int, sh_y: int, hand: Vector2i, bob: int, back: bool) -> void:
-	Pixel.rect(img, fx - 2, sh_y + 1, 5, 3, BRONZE[1])  # breastplate over the top of the tunic
-	Pixel.rect(img, fx - 2, sh_y + 1, 5, 1, BRONZE[0])
-	Pixel.put(img, fx + 2, sh_y + 2, BRONZE[2])
-	Pixel.rect(img, hx - 1, hy, 3, 2, BRONZE[1])  # helmet
-	Pixel.rect(img, hx - 1, hy, 3, 1, BRONZE[0])
-	Pixel.put(img, hx, hy - 1, TUNIC[1])  # crest
-	Pixel.put(img, hx - 1 if back else hx + 1, hy - 1, TUNIC[2])
-	if back:  # the back of the head under the helmet
-		Pixel.rect(img, hx - 1, hy + 2, 3, 1, BRONZE[2])
-	# round shield on the far arm, drawn over the torso edge
-	var sc := Vector2(fx - 3.5, sh_y + 4.0 + bob * 0.0)
-	for y in range(int(sc.y) - 3, int(sc.y) + 4):
-		for x in range(int(sc.x) - 3, int(sc.x) + 4):
-			var d := Vector2(x + 0.5 - sc.x, y + 0.5 - sc.y).length()
+## Tunic colours of the fighting men: each look wears something different.
+static func _cloth(kit: String, look: int) -> Array:
+	match kit:
+		"soldier":
+			return [TUNIC, LINEN, WOOL][look % 3]
+		"spearman":
+			return [WOOL, LINEN, DYED][look % 3]
+		"slinger":
+			return [LINEN, WOOL, TUNIC][look % 3]
+	return TUNIC
+
+
+## What a fighting man carries over the villager rig, by how much he could afford:
+## - soldier (a rich citizen): bronze helmet, breastplate (look 2 has only the helmet), round shield, spear
+## - spearman (a middling farmer): a wooden shield and a spear, no armour
+## - slinger (the poorest): a sling in the hand and a pouch of stones at the belt
+static func _infantry_gear(img: Image, kit: String, look: int, fx: int, hx: int, hy: int, sh_y: int, hand: Vector2i, bob: int, back: bool) -> void:
+	match kit:
+		"soldier":
+			if look != 2:
+				Pixel.rect(img, fx - 2, sh_y + 1, 5, 3, BRONZE[1])  # breastplate over the top of the tunic
+				Pixel.rect(img, fx - 2, sh_y + 1, 5, 1, BRONZE[0])
+				Pixel.put(img, fx + 2, sh_y + 2, BRONZE[2])
+			Pixel.rect(img, hx - 1, hy, 3, 2, BRONZE[1])  # helmet
+			Pixel.rect(img, hx - 1, hy, 3, 1, BRONZE[0])
+			if look != 1:  # a crest: red, or white for look 2
+				var crest: Array = TUNIC if look == 0 else LINEN
+				Pixel.put(img, hx, hy - 1, crest[1])
+				Pixel.put(img, hx - 1 if back else hx + 1, hy - 1, crest[2])
+			if back:  # the back of the head under the helmet
+				Pixel.rect(img, hx - 1, hy + 2, 3, 1, BRONZE[2])
+			_round_shield(img, fx - 3.5, sh_y + 4.0, BRONZE[1], [Color("b0382e"), Color("e8e0c8"), Color("3f5a86")][look % 3], BRONZE[0])
+			_spear(img, hand, hy, ROCK)
+		"spearman":
+			if look == 1:  # a leather cap
+				Pixel.rect(img, hx - 1, hy - 1, 3, 2, WOOD[1])
+				Pixel.rect(img, hx - 1, hy - 1, 3, 1, WOOD[0])
+			elif look == 2:  # a plain headband
+				Pixel.rect(img, hx - 1, hy, 3, 1, LINEN[0])
+			_round_shield(img, fx - 3.5, sh_y + 4.0, WOOD[2], [WOOD[0], Color("b0382e"), Color("5a78a8")][look % 3], WOOD[1])
+			_spear(img, hand, hy, WOOD)
+		"slinger":
+			Pixel.rect(img, hx - 1, hy, 3, 1, [LINEN[1], BELT, TUNIC[1]][look % 3])  # a headband
+			Pixel.rect(img, fx + 2, sh_y + 6, 3, 3, WOOD[1])  # the pouch of stones at the hip
+			Pixel.put(img, fx + 3, sh_y + 6, ROCK[1])
+			Pixel.line(img, Vector2i(hand.x + fx + 2, hand.y + sh_y), Vector2i(hand.x + fx + 2, hand.y + sh_y + 4), WOOD[0])  # the sling hanging from the hand
+			Pixel.put(img, hand.x + fx + 2, hand.y + sh_y + 4, ROCK[2])
+
+
+## A round shield seen face-on: rim colour, painted face colour and a bright boss.
+static func _round_shield(img: Image, cx: float, cy: float, rim: Color, face: Color, boss: Color) -> void:
+	for y in range(int(cy) - 3, int(cy) + 4):
+		for x in range(int(cx) - 3, int(cx) + 4):
+			var d := Vector2(x + 0.5 - cx, y + 0.5 - cy).length()
 			if d <= 3.3:
-				Pixel.put(img, x, y, BRONZE[1] if d > 2.3 else Color("b0382e"))
-	Pixel.put(img, int(sc.x), int(sc.y), BRONZE[0])  # the boss
-	# spear held upright in the front hand
+				Pixel.put(img, x, y, rim if d > 2.3 else face)
+	Pixel.put(img, int(cx), int(cy), boss)
+
+
+## A spear held upright in the front hand.
+static func _spear(img: Image, hand: Vector2i, hy: int, head: Array) -> void:
 	var sx := hand.x + 1
 	Pixel.line(img, Vector2i(sx, hand.y + 3), Vector2i(sx, hy - 3), WOOD[1])
-	Pixel.put(img, sx, hy - 4, ROCK[0])
-	Pixel.put(img, sx, hy - 5, ROCK[1])
+	Pixel.put(img, sx, hy - 4, head[0])
+	Pixel.put(img, sx, hy - 5, head[1])
+
+
+const HORSE_COATS := [
+	[Color("b07848"), Color("8a5a30"), Color("5e3c1e")],  # bay
+	[Color("d88a48"), Color("b2642a"), Color("84441c")],  # chestnut
+	[Color("e8e4dc"), Color("c4bfb4"), Color("98927f")],  # grey
+]
+
+
+## A horseman (an eques: the wealthiest citizens fought mounted, on their own horses). The horse
+## is drawn side-on, always facing right; the game mirrors it for left. 36x34, hooves on the bottom.
+static func _horseman(anim: String, frame: int, look: int) -> Image:
+	var coat: Array = HORSE_COATS[look % 3]
+	var mane := WOOD[2] if look != 2 else Color("6a6458")
+	var img := Pixel.blank(36, 34)
+	var walking := anim == "walk"
+	var ph := float(frame) / VILLAGER_FRAMES["walk"] if walking else 0.0
+	var bob := (-1 if frame % 2 == 1 else 0) if not walking else (-1 if absf(sin(ph * TAU * 2.0)) < 0.4 else 0)
+	var cx := 18.0
+	var cy := 20.0 + bob
+	# far legs first, then the tail, the body, the near legs, neck and head
+	for pair in [[24.0, 0.0, true], [13.0, 0.5, true], [22.0, 0.5, false], [11.0, 0.0, false]]:
+		if pair[2]:
+			_horse_leg(img, pair[0], cy + 3.0, ph, pair[1], walking, coat[2], 30 - bob * 0)
+	Pixel.line(img, Vector2i(8, int(cy) - 2), Vector2i(5, int(cy) + 3 + (1 if frame % 2 == 1 and not walking else 0)), mane)  # tail
+	Pixel.line(img, Vector2i(8, int(cy) - 1), Vector2i(6, int(cy) + 5), mane)
+	Pixel.poly(img, [Vector2(8.0, cy - 5.0), Vector2(27.0, cy - 5.0), Vector2(28.0, cy + 1.0), Vector2(24.0, cy + 4.0), Vector2(11.0, cy + 4.0), Vector2(7.0, cy)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(coat, 0.7 - (y - (cy - 5.0)) / 12.0 - (x - 8.0) / 80.0 + (Pixel.hash2(x, y, 5) - 0.5) * 0.12, x, y, 0.2))
+	for pair in [[24.0, 0.0, true], [13.0, 0.5, true], [22.0, 0.5, false], [11.0, 0.0, false]]:
+		if not pair[2]:
+			_horse_leg(img, pair[0], cy + 3.0, ph, pair[1], walking, coat[1], 30 - bob * 0)
+	var hb := bob + (1 if frame % 2 == 1 and not walking else 0)
+	Pixel.poly(img, [Vector2(23.0, cy - 5.0), Vector2(28.0, cy - 11.0 + hb), Vector2(31.0, cy - 10.0 + hb), Vector2(27.0, cy - 1.0)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(coat, 0.6 - (x - 23.0) / 30.0, x, y, 0.2))  # the neck
+	Pixel.poly(img, [Vector2(28.0, cy - 12.0 + hb), Vector2(30.0, cy - 13.0 + hb), Vector2(34.0, cy - 8.0 + hb), Vector2(33.0, cy - 6.0 + hb), Vector2(29.0, cy - 8.0 + hb)], coat[1])  # the head
+	Pixel.put(img, 29, int(cy) - 13 + hb, coat[2])  # an ear
+	Pixel.put(img, 32, int(cy) - 8 + hb, Color("3a2416"))  # the nostril
+	Pixel.line(img, Vector2i(26, int(cy) - 11 + hb), Vector2i(23, int(cy) - 5), mane)  # the mane
+	Pixel.line(img, Vector2i(27, int(cy) - 11 + hb), Vector2i(24, int(cy) - 5), mane)
+	# the rider: wealthy enough for a bronze helmet and breastplate, a round shield and a spear
+	var rx := 17
+	var ry := int(cy) - 6
+	Pixel.line(img, Vector2i(rx, ry + 4), Vector2i(rx + 1, ry + 9), SKIN[1])  # a leg hanging down the flank
+	var cloth: Array = [TUNIC, LINEN, WOOL][look % 3]
+	for row in 6:
+		var half := 2 if row < 5 else 3
+		for x in range(rx - half, rx + half + 1):
+			var c: Color = cloth[1]
+			if x == rx - half:
+				c = cloth[0]
+			elif x == rx + half:
+				c = cloth[2]
+			Pixel.put(img, x, ry - 6 + row, c)
+	Pixel.rect(img, rx - 2, ry - 5, 5, 3, BRONZE[1])
+	Pixel.rect(img, rx - 2, ry - 5, 5, 1, BRONZE[0])
+	Pixel.rect(img, rx - 1, ry - 10, 3, 4, SKIN[0])  # the head
+	Pixel.rect(img, rx - 1, ry - 11, 3, 2, BRONZE[1])  # helmet
+	Pixel.rect(img, rx - 1, ry - 11, 3, 1, BRONZE[0])
+	Pixel.put(img, rx, ry - 12, [TUNIC[1], LINEN[0], Color("3f5a86")][look % 3])  # crest
+	Pixel.put(img, rx + 1, ry - 8, Color("3a2416"))
+	_round_shield(img, rx - 4.0, ry, BRONZE[1], [Color("b0382e"), Color("e8e0c8"), Color("3f5a86")][look % 3], BRONZE[0])
+	Pixel.line(img, Vector2i(rx + 3, ry + 4), Vector2i(rx + 3, ry - 22), WOOD[1])  # a long spear
+	Pixel.put(img, rx + 3, ry - 23, ROCK[0])
+	Pixel.put(img, rx + 3, ry - 24, ROCK[1])
+	return Pixel.outlined(img, OUT_VILLAGER)
+
+
+static func _horse_leg(img: Image, hip_x: float, hip_y: float, ph: float, offset: float, walking: bool, col: Color, ground: int) -> void:
+	var dx := 0.0
+	var lift := 0.0
+	if walking:
+		var a := (ph + offset) * TAU
+		dx = sin(a) * 4.0
+		lift = maxf(0.0, cos(a)) * 3.0
+	var foot := Vector2i(roundi(hip_x + dx), ground - roundi(lift))
+	Pixel.line(img, Vector2i(roundi(hip_x), roundi(hip_y)), foot, col)
+	Pixel.line(img, Vector2i(roundi(hip_x) + 1, roundi(hip_y)), foot + Vector2i(1, 0), col)
+	Pixel.put(img, foot.x, foot.y, Color("2c1c12"))  # the hoof
 
 
 # ---------------------------------------------------------------- Era II buildings
@@ -1420,6 +1559,64 @@ static func _arx() -> Image:
 	Pixel.line(img, Vector2i(g0), Vector2i(g1), WOOD[1])
 	Pixel.line(img, Vector2i(g0) + Vector2i(0, 1), Vector2i(g1) + Vector2i(0, 1), WOOD[2])
 	return Pixel.outlined(img, OUT_WARM)
+
+## Stabulum: the Era I stable, a thatched open shed at the back of a paddock fenced with post-and-rail,
+## with a hay stack and a water trough. 3x3.
+static func _stabulum() -> Image:
+	var n := 3.0
+	var hs := int(n * 16 + 26.0 + 8.0)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	Pixel.poly(img, [f.p(0, 0, 0), f.p(n, 0, 0), f.p(n, n, 0), f.p(0, n, 0)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(DIRT, 0.4 + (Pixel.hash2(x, y, 94) - 0.5) * 0.4, x, y, 0.3))
+	_rails(img, f, Vector2(0, 0), Vector2(0, n), false)  # the back fences first
+	_rails(img, f, Vector2(0, 0), Vector2(n, 0), true)
+	# the shed: plank back wall, four posts and a thatched roof, open to the front
+	_box(img, f, 0.2, 1.4, 0.2, 1.4, 0, 14, func(x: int, y: int) -> Color: return Pixel.ramp(WOOD, 0.6 + (Pixel.hash2(x, y, 95) - 0.5) * 0.2 - (0.2 if posmod(x, 3) == 0 else 0.0), x, y, 0.1), func(x: int, y: int) -> Color: return Pixel.ramp(WOOD, 0.3 + (Pixel.hash2(x, y, 96) - 0.5) * 0.2 - (0.2 if posmod(x, 3) == 0 else 0.0), x, y, 0.1), WOOD[1])
+	Pixel.poly(img, [f.p(0.35, 1.4, 0), f.p(1.25, 1.4, 0), f.p(1.25, 1.4, 11), f.p(0.35, 1.4, 11)], Color("2c1c12"))  # the dark stall inside
+	_thatch_roof(img, f, 0.05, 1.55, 0.05, 1.55, 14.0, 24.0)
+	# a hay stack and a trough in the paddock
+	var hay := f.p(2.1, 0.7, 0)
+	Pixel.ellipse(img, hay.x, hay.y - 5, 6.0, 6.0, THATCH[1])
+	Pixel.ellipse(img, hay.x - 1, hay.y - 6, 4.0, 4.0, THATCH[0])
+	Pixel.rect(img, int(hay.x) - 5, int(hay.y) - 1, 11, 2, THATCH[3])
+	var tr := f.p(1.0, 2.3, 0)
+	Pixel.rect(img, int(tr.x) - 6, int(tr.y) - 4, 12, 4, WOOD[1])
+	Pixel.rect(img, int(tr.x) - 5, int(tr.y) - 4, 10, 1, AQUA[1])  # water
+	Pixel.rect(img, int(tr.x) - 6, int(tr.y) - 1, 12, 1, WOOD[2])
+	_rails(img, f, Vector2(0, n), Vector2(n, n), true)  # then the front fences
+	_rails(img, f, Vector2(n, 0), Vector2(n, n), false, Vector2(0.42, 0.62))  # with a gate gap
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## A post-and-rail fence along a footprint edge (a to b, in tile units), optionally with a gap.
+static func _rails(img: Image, f: Frame, a: Vector2, b: Vector2, lit: bool, gap: Vector2 = Vector2(-1, -1)) -> void:
+	var steps := maxi(2, int(a.distance_to(b) * 3.0))
+	var prev := [Vector2(), Vector2()]
+	for i in steps + 1:
+		var t := float(i) / steps
+		if t > gap.x and t < gap.y:
+			prev = [Vector2(), Vector2()]
+			continue
+		var base := f.p(lerpf(a.x, b.x, t), lerpf(a.y, b.y, t), 0)
+		var c: Color = WOOD[0] if lit else WOOD[1]
+		Pixel.rect(img, int(base.x) - 1, int(base.y) - 8, 2, 9, c)
+		for k in 2:  # two rails
+			var top := Vector2(base.x, base.y - 3.0 - 3.5 * k)
+			if prev[k] != Vector2():
+				Pixel.line(img, Vector2i(prev[k]), Vector2i(top), WOOD[2] if lit else WOOD[2].darkened(0.1))
+			prev[k] = top
+
+
+## A thatched gable roof (like _gable_roof but straw-coloured): ridge along x.
+static func _thatch_roof(img: Image, f: Frame, x0: float, x1: float, y0: float, y1: float, wall_h: float, ridge_h: float) -> void:
+	var ym := (y0 + y1) / 2.0
+	Pixel.poly(img, [f.p(x0, y0, wall_h), f.p(x1, y0, wall_h), f.p(x1, ym, ridge_h), f.p(x0, ym, ridge_h)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(THATCH, 0.4 + (Pixel.hash2(x, y, 97) - 0.5) * 0.25 - (0.2 if posmod(y, 3) == 0 else 0.0), x, y, 0.15))
+	Pixel.poly(img, [f.p(x1, y1, wall_h), f.p(x1, y0, wall_h), f.p(x1, ym, ridge_h)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(THATCH, 0.3 + (Pixel.hash2(x, y, 98) - 0.5) * 0.2, x, y, 0.15))
+	Pixel.poly(img, [f.p(x0, y1, wall_h), f.p(x1, y1, wall_h), f.p(x1, ym, ridge_h), f.p(x0, ym, ridge_h)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(THATCH, 0.68 + (Pixel.hash2(x, y, 99) - 0.5) * 0.25 - (0.2 if posmod(y, 3) == 0 else 0.0), x, y, 0.15))
 
 
 ## Aedes Vestae: the Era I temple. Vesta's shrine was a round thatched hut, not a marble building,

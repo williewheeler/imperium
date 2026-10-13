@@ -3,6 +3,7 @@ extends SceneTree
 ##   scenery.png       trees, mountains, hills, berries, stone, gold, carried packs (packed)
 ##   buildings.png     forum, domus, horreum (packed)
 ##   villagers.png     animation grid: one row per animation+direction, one column per frame
+##   troops.png        the same for the fighting men: one row per look, animation and direction
 ##   ground_tiles.png  32x16 diamond tiles, one row per terrain, 4 variants each
 ## Run via tools/export_art.sh (which also builds the Godot TileSet).
 
@@ -18,6 +19,7 @@ func _init() -> void:
 	_pack("scenery.png", Art.scenery_keys(), 256)
 	_pack("buildings.png", Art.building_keys(), 256)
 	_grid("villagers.png", Art.villager_rows())
+	_grid("troops.png", Art.military_rows())
 	_grid("ground_tiles.png", Art.ground_rows())
 	var f := FileAccess.open(OUT + "manifest.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify(manifest, "\t"))

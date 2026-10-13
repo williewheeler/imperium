@@ -205,7 +205,7 @@ func refresh() -> void:
 		var tip := "%s (%s): %d" % [Defs.RES_NAMES[i], Defs.RES_ENGLISH[i].to_lower(), stock[i]]
 		_say(_res_labels[i], "%d" % stock[i], tip)
 		_res_icons[i].tooltip_text = tip
-	var pop: int = _game.units.size()
+	var pop: int = _game.pop_used()
 	var cap: int = _game.pop_cap()
 	var pop_tip := "Populus (population): %d of %d villagers (build Casae and Domus to raise the limit)" % [pop, cap]
 	_say(_pop_label, "%d/%d" % [pop, cap], pop_tip)
@@ -284,7 +284,7 @@ func refresh() -> void:
 		for u in us:
 			if u.state == Unit.State.IDLE:
 				idle += 1
-			if u.kind == "soldier":
+			if u.kind != "villager":
 				soldiers += 1
 		var workers := us.size() - soldiers
 		var latin_parts: Array[String] = []
@@ -294,7 +294,7 @@ func refresh() -> void:
 			english_parts.append("%d villagers" % workers)
 		if soldiers > 0:
 			latin_parts.append("%d milites" % soldiers)
-			english_parts.append("%d soldiers" % soldiers)
+			english_parts.append("%d fighting men" % soldiers)
 		_say(_sel_name, "  ·  ".join(latin_parts), ", ".join(english_parts))
 		_say(_sel_info, "%d otiosi" % idle, "%d idle" % idle)
 	elif b != null:

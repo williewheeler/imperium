@@ -71,6 +71,7 @@ var _show_farm: Building
 var _show_newcomer_jobs: Array = []  # jobs for the villagers the Forum trains, in order
 var _cities := 0
 var _villagers_made := 0  # alternates the sexes of new villagers
+var _looks_made := {}  # unit kind -> how many have been made, to hand out the looks in turn
 var _screenshot_path := ""
 var _report := false
 var _shot_frame := 20
@@ -171,6 +172,8 @@ func _ready() -> void:
 		DirAccess.make_dir_recursive_absolute(_record_dir)
 		RenderingServer.frame_post_draw.connect(_save_recorded_frame)
 	Engine.time_scale = float(args.get("speed", 1.0))
+	if not (args.has("demo") or args.has("showcase") or args.has("ring")):
+		_place_display_army(start)
 	_screenshot_path = args.get("shot", "")
 	_report = args.has("report")
 	_shot_frame = int(args.get("shot-frame", 20))
@@ -681,11 +684,20 @@ func pop_cap() -> int:
 	return cap
 
 
+## Population in use: everyone except units that are only there for show.
+func pop_used() -> int:
+	var n := 0
+	for u in units:
+		if not u.display:
+			n += 1
+	return n
+
+
 func has_pop_room() -> bool:
 	var queued := 0
 	for b in buildings:
 		queued += b.queue
-	return units.size() + queued < pop_cap()
+	return pop_used() + queued < pop_cap()
 
 
 ## Train whatever the selected building trains: villagers at the Forum, soldiers at the Castra.
@@ -844,11 +856,70 @@ func _free_spot(at: Vector2) -> Vector2:
 	return at
 
 
-## Villagers alternate between men and women; soldiers are all men.
+func _building_rects() -> Array:
+	var out := []
+	for b in buildings:
+		out.append(b.rect())
+	return out
+
+
+## Fighting men standing near the start, just to look at (they take no population): the kinds an early
+## Roman army was made of, each in a mix of looks, since citizens armed themselves.
+func _place_display_army(start: Vector2i) -> void:
+	var kinds := ["horseman", "horseman", "horseman", "soldier", "soldier", "soldier", "spearman", "spearman", "spearman", "spearman",
+		"slinger", "slinger", "slinger"]
+	var forum := buildings[0]
+	var open: Array[Vector2i] = []  # clear grass near the Forum
+	for y in range(start.y - 10, start.y + 11):
+		for x in range(start.x - 10, start.x + 11):
+			var p := Vector2i(x, y)
+			if map.in_bounds(p) and map.is_walkable(p) and map.tile(x, y) == GameMap.Terrain.GRASS and not map.deposits.has(p) \
+					and Vector2(p).distance_to(forum.center()) > 3.5:
+				open.append(p)
+	var best := Vector2i(-1, -1)
+	var best_n := 0
+	for p in open:  # the middle of the biggest stretch of open ground
+		var n := 0
+		for q in open:
+			if absi(p.x - q.x) <= 3 and absi(p.y - q.y) <= 3:
+				n += 1
+		if n > best_n:
+			best_n = n
+			best = p
+	if best.x < 0:
+		return
+	open.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(Vector2(best)) < Vector2(b).distance_squared_to(Vector2(best)))
+	# spaced out so the big horses don't sit on top of the men on foot
+	var spots: Array[Vector2] = []
+	for p in open:
+		var at := Vector2(p) + Vector2(0.5, 0.5)
+		var clear := true
+		for o in spots:
+			if o.distance_to(at) < 1.9:
+				clear = false
+				break
+		if clear:
+			spots.append(at)
+		if spots.size() >= kinds.size():
+			break
+	for i in spots.size():
+		var u := Unit.new()
+		u.kind = kinds[i]
+		u.display = true
+		_assign_sex(u)
+		u.pos = spots[i]
+		units.append(u)
+
+
+## Villagers alternate between men and women; fighting men take the kind's looks in turn.
 func _assign_sex(u: Unit) -> void:
 	if u.kind == "villager":
 		u.female = _villagers_made % 2 == 1
 		_villagers_made += 1
+	elif Art.UNIT_LOOKS.has(u.kind):  # fighting men go in turn through the kind's looks
+		var n: int = _looks_made.get(u.kind, 0)
+		u.look = n % int(Art.UNIT_LOOKS[u.kind])
+		_looks_made[u.kind] = n + 1
 
 
 func _dress_unit(kind: String, at: Vector2) -> Unit:
@@ -979,7 +1050,7 @@ func advance_requirements() -> Array:
 	for need: Array in data["needs"]:
 		var want: int = need[1]
 		if need[0] == "pop":
-			out.append(["Population %d (you have %d)" % [want, units.size()], units.size() >= want])
+			out.append(["Population %d (you have %d)" % [want, pop_used()], pop_used() >= want])
 		else:
 			var have := _count_built(need[0])
 			out.append(["%d x %s (you have %d)" % [want, Defs.BUILDINGS[need[0]]["english"], have], have >= want])

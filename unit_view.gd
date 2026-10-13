@@ -38,10 +38,14 @@ func update_view() -> void:
 			frame = int(fposmod(unit.anim * WORK_RATE[work], 1.0) * frames)
 	var back := unit.sdir.y < 0.0
 	var flip := unit.sdir.x < 0.0
-	_body.texture = Art.tex("%s:%s:%s:%d" % ["villagerf" if unit.female else unit.kind, anim, "b" if back else "f", frame])
+	var key := "%s:%s:%s:%d" % ["villagerf" if unit.female else unit.kind, anim, "b" if back else "f", frame]
+	if unit.look > 0:
+		key += ":%d" % unit.look
+	_body.texture = Art.tex(key)
 	_body.flip_h = flip
 	var w := _body.texture.get_width()
-	_body.offset = Vector2(-(w - Art.VILLAGER_FEET.x) if flip else -Art.VILLAGER_FEET.x, -Art.VILLAGER_FEET.y)
+	var feet := Art.HORSE_FEET if unit.kind == "horseman" else Art.VILLAGER_FEET
+	_body.offset = Vector2(-(w - feet.x) if flip else -feet.x, -feet.y)
 
 	_pack.visible = unit.carry > 0
 	if unit.carry > 0:
@@ -72,9 +76,10 @@ func _work_anim() -> String:
 
 
 func _draw() -> void:
-	_ellipse(Vector2(0, 0), 6.5, 3.0, Color(0, 0, 0, 0.28), true)  # shadow
+	var big := unit.kind == "horseman"
+	_ellipse(Vector2(0, 0), 11.0 if big else 6.5, 4.0 if big else 3.0, Color(0, 0, 0, 0.28), true)  # shadow
 	if unit.selected:
-		_ellipse(Vector2(0, 0), 9.5, 4.8, Color("7dff7d"), false)
+		_ellipse(Vector2(0, 0), 15.0 if big else 9.5, 6.2 if big else 4.8, Color("7dff7d"), false)
 
 
 func _ellipse(c: Vector2, rx: float, ry: float, color: Color, filled: bool) -> void:
