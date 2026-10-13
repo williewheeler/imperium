@@ -242,6 +242,7 @@ func refresh() -> void:
 		var base: String = btn.get_meta("tip")
 		var need_era: int = btn.get_meta("era", 0)
 		var locked: bool = need_era > _game.era
+		btn.visible = not locked  # later eras' buildings stay out of sight until they unlock
 		var poor: bool = not _game.can_afford(btn.get_meta("cost"))
 		var full: bool = btn.get_meta("train", false) and not _game.has_pop_room()
 		btn.lock_numeral = Defs.ERAS[need_era]["numeral"] if locked else ""
