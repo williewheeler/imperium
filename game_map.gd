@@ -2,25 +2,27 @@ class_name GameMap
 extends RefCounted
 ## Terrain grid, resource deposits and pathfinding.
 
-enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN }
+enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN, MARSH }
 
 # Movement cost per terrain; INF = impassable.
-const MOVE_COST := [INF, INF, 1.1, 1.0, 1.6, 2.2, INF]
+const MOVE_COST := [INF, INF, 1.1, 1.0, 1.6, 2.2, INF, 2.0]
 const ROAD_SPEED := 1.3  # dirt roads are this much faster to walk
 const PAVED_SPEED := 1.7  # paved Roman roads even more
+const MARSH_TOP := 0.50  # land below this elevation, if wet enough, is marsh
+const MARSH_MOISTURE := 0.42
 const SEA_LEVEL := 0.40  # elevation of all water; the land rises from here
 const RELIEF_SCALE := 10.0  # how strongly a slope shows as light or shade
 const SLOPE_COST := 5.0  # extra walking cost per unit of steepness (elevation change per tile)
 ## Height above the sea at which each terrace starts: finer on the plains, coarser up the hills.
 const LEVEL_STARTS := [0.075, 0.15, 0.24, 0.33, 0.42]
-const MIN_TERRACE := 14  # tiles: a smaller patch of one level is folded into its neighbour
+const MIN_TERRACE := 26  # tiles: a smaller patch of one level is folded into its neighbour
 const MAX_LEVEL := 5  # = LEVEL_STARTS.size()
 ## Direction the light comes from, as a unit vector in tile space: the top-left of the screen.
 const LIGHT := Vector2(-0.95, -0.32)
 const ROAD_WEAR := 7.0  # tiles of walking before a path becomes a road
 const TILE_COLORS := [
 	Color("12406b"), Color("1f6f9c"), Color("e0cf94"), Color("5f9a3e"),
-	Color("4a8a36"), Color("8f9a58"), Color("8a8580"),
+	Color("4a8a36"), Color("8f9a58"), Color("8a8580"), Color("5c7a48"),
 ]
 
 var w: int
@@ -85,7 +87,10 @@ func _generate() -> void:
 			elif e < 0.44:
 				t = Terrain.BEACH
 			elif e < 0.66:
-				t = Terrain.FOREST if m > 0.55 else Terrain.GRASS
+				if e < MARSH_TOP and m > MARSH_MOISTURE:
+					t = Terrain.MARSH  # low, wet ground just above the shore
+				else:
+					t = Terrain.FOREST if m > 0.55 else Terrain.GRASS
 			elif e < 0.76:
 				t = Terrain.HILLS
 			else:
@@ -158,7 +163,7 @@ func _compute_levels(smooth: PackedFloat32Array) -> void:
 	for i in w * h:
 		var land := tiles[i] >= Terrain.BEACH
 		var level := 0
-		if land and tiles[i] != Terrain.BEACH:
+		if land and tiles[i] != Terrain.BEACH and tiles[i] != Terrain.MARSH:
 			for start: float in LEVEL_STARTS:
 				if wide[i] - SEA_LEVEL >= start:
 					level += 1
@@ -390,12 +395,28 @@ func _grass_block(p: Vector2i, r: int) -> bool:
 
 
 func _forest_count(p: Vector2i, r: int) -> int:
+	return _count_of(p, r, Terrain.FOREST)
+
+
+func _count_of(p: Vector2i, r: int, terrain: int) -> int:
 	var n := 0
 	for y in range(maxi(0, p.y - r), mini(h, p.y + r + 1)):
 		for x in range(maxi(0, p.x - r), mini(w, p.x + r + 1)):
-			if tile(x, y) == Terrain.FOREST:
+			if tile(x, y) == terrain:
 				n += 1
 	return n
+
+
+## The marsh around `center` is drained (the Cloaca Maxima): it becomes grass. Returns the tiles that changed.
+func drain_marsh(center: Vector2, radius: float) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for y in range(maxi(0, int(center.y - radius)), mini(h, int(center.y + radius) + 1)):
+		for x in range(maxi(0, int(center.x - radius)), mini(w, int(center.x + radius) + 1)):
+			if tile(x, y) == Terrain.MARSH and Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius:
+				tiles[y * w + x] = Terrain.GRASS
+				astar.set_point_weight_scale(Vector2i(x, y), MOVE_COST[Terrain.GRASS] * slope_factor[y * w + x])
+				out.append(Vector2i(x, y))
+	return out
 
 
 ## Starting villagers stand at these offsets from the start tile.
@@ -406,7 +427,7 @@ const START_OFFSETS: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(1, 0), Vector2
 ## Town Center within a few tiles. Falls back to just "grass with a forest", then "grass".
 func find_start() -> Vector2i:
 	var c := Vector2i(w / 2, h / 2)
-	for level in 3:
+	for level in 4:  # 0 wants marsh close by (Rome began on the edge of a marsh); the rest relax in turn
 		for r in maxi(w, h):
 			for y in range(c.y - r, c.y + r + 1):
 				for x in range(c.x - r, c.x + r + 1):
@@ -415,11 +436,13 @@ func find_start() -> Vector2i:
 					var p := Vector2i(x, y)
 					if not _grass_block(p, 1):
 						continue
-					if level == 2:
+					if level == 3:
 						return p
 					if _forest_count(p, 10) < 12:
 						continue
-					if level == 1 or find_site(Vector2i(3, 3), p, 3, 5, _start_tiles(p)).x >= 0:
+					if level == 0 and _count_of(p, 9, Terrain.MARSH) < 10:
+						continue
+					if level == 2 or find_site(Vector2i(3, 3), p, 3, 5, _start_tiles(p)).x >= 0:
 						return p
 	return c
 

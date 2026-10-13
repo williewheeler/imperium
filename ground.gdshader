@@ -129,6 +129,18 @@ vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 		if (fine > 0.96) col = hx(0x7a8a3c);
 	} else if (id == 6) { // rock under the mountains
 		col = ramp4(hx(0xb0ab9b), hx(0x9c9786), hx(0x888372), hx(0x736f5e), 0.5 + (n - 0.5) * 0.9 + d);
+	} else if (id == 7) { // marsh: waterlogged ground with pools of standing water and tufts of reed
+		float pools = fbm(wp * 0.085 + vec2(5.0, 2.0));
+		col = ramp4(hx(0x86a058), hx(0x728c4a), hx(0x5e783c), hx(0x4a6230), 0.5 + (n - 0.5) * 0.8 + d);
+		if (pools > 0.56) {
+			float ripple = vnoise(vec2(wp.x * 0.3 + t * 0.4, wp.y * 0.9));
+			col = ramp4(hx(0x8fbcb2), hx(0x74a7a0), hx(0x5d9190), hx(0x4a7d7e), 0.45 + (ripple - 0.5) * 0.6 + d);
+			if (hash(wp * 0.83 + t) > 0.99) col = hx(0xd6efe8);
+		} else if (pools > 0.5) {
+			col = hx(0x5a6a38); // the muddy rim
+		} else if (fine > 0.955) {
+			col = hx(0x41562a);
+		}
 	} else { // grass
 		col = ramp4(hx(0xb7de5a), hx(0xa2d04c), hx(0x8ec142), hx(0x7ab039), 0.5 + (n - 0.5) * 1.0 + d);
 		if (fine > 0.972) col = hx(0x629931);

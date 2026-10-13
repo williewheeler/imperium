@@ -156,6 +156,8 @@ static func image(key: String) -> Image:
 			return _stabulum()
 		"lupa":
 			return _lupa()
+		"reeds":
+			return _reeds(variant)
 		"hut":
 			return _hut()
 		"regia":
@@ -770,6 +772,8 @@ static func scenery_keys() -> Array[String]:
 			k.append("pack:%d:%d" % [r, l])
 	k.append("via")
 	k.append("lupa")
+	for i in 2:
+		k.append("reeds:%d" % i)
 	k.append("advance")
 	for n in ["wood", "food", "stone", "gold", "pop"]:
 		k.append("icon:" + n)
@@ -1372,6 +1376,28 @@ static func _horse_leg(img: Image, hip_x: float, hip_y: float, ph: float, offset
 	Pixel.line(img, Vector2i(roundi(hip_x), roundi(hip_y)), foot, col)
 	Pixel.line(img, Vector2i(roundi(hip_x) + 1, roundi(hip_y)), foot + Vector2i(1, 0), col)
 	Pixel.put(img, foot.x, foot.y, Color("2c1c12"))  # the hoof
+
+
+# ---------------------------------------------------------------- marsh
+
+## A clump of reeds and cattails standing in the marsh. Anchor = bottom centre.
+static func _reeds(seed_v: int) -> Image:
+	var img := Pixel.blank(15, 14)
+	var reed := [Color("d2de7a"), Color("a8c05a"), Color("7f9c42")]  # pale, yellowish marsh grass
+	var stems := [[3, 8], [6, 11], [8, 9], [11, 7], [13, 5]] if seed_v == 0 else [[2, 6], [5, 10], [7, 12], [10, 8], [12, 6]]
+	for st: Array in stems:
+		var x: int = st[0]
+		var top: int = 13 - st[1]
+		var lean := 1 if x < 7 else -1
+		Pixel.line(img, Vector2i(x, 13), Vector2i(x + lean, top), reed[1])
+		Pixel.put(img, x + lean, top, reed[0])
+		Pixel.put(img, x, 13, reed[2])
+	for st: Array in [stems[1], stems[3]]:  # two with brown cattail heads
+		var cx: int = st[0] + (1 if st[0] < 7 else -1)
+		var top: int = 13 - st[1]
+		Pixel.rect(img, cx, top - 2, 2, 3, WOOD[1])
+		Pixel.put(img, cx, top - 2, WOOD[0])
+	return Pixel.outlined(img, OUT_GREEN)
 
 
 # ---------------------------------------------------------------- splash

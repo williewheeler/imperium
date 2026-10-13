@@ -21,6 +21,7 @@ const GLOSS := {
 	"Elige colonos et iube eos laborare.": "Select villagers and order them to work: right-click a tree, berry bush or mine.",
 	"Domus plures requiruntur.": "Population limit reached: build more Houses.",
 	"Milites laborare non possunt.": "Fighting men can't work: only villagers gather and build. They just walk to the spot.",
+	"Palus siccatur.": "The marsh around the city is drained (the Cloaca Maxima).",
 	"Aedifica forum vel horreum.": "Build a Town Center or Storehouse to drop off resources.",
 }
 

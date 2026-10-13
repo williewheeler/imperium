@@ -593,7 +593,7 @@
 		],
 		"berries": [
 			"scenery.png",
-			116,
+			152,
 			127,
 			19,
 			15
@@ -1244,35 +1244,35 @@
 		],
 		"icon:food": [
 			"scenery.png",
-			84,
+			120,
 			127,
 			15,
 			15
 		],
 		"icon:gold": [
 			"scenery.png",
-			52,
+			88,
 			127,
 			15,
 			15
 		],
 		"icon:pop": [
 			"scenery.png",
-			36,
+			72,
 			127,
 			15,
 			15
 		],
 		"icon:stone": [
 			"scenery.png",
-			68,
+			104,
 			127,
 			15,
 			15
 		],
 		"icon:wood": [
 			"scenery.png",
-			100,
+			136,
 			127,
 			15,
 			15
@@ -1356,84 +1356,84 @@
 		],
 		"pack:0:0": [
 			"scenery.png",
-			224,
-			127,
+			9,
+			146,
 			7,
 			6
 		],
 		"pack:0:1": [
 			"scenery.png",
-			192,
+			204,
 			127,
 			7,
 			8
 		],
 		"pack:0:2": [
 			"scenery.png",
-			160,
+			196,
 			127,
 			7,
 			10
 		],
 		"pack:1:0": [
 			"scenery.png",
-			216,
+			236,
 			127,
 			7,
 			6
 		],
 		"pack:1:1": [
 			"scenery.png",
-			184,
+			228,
 			127,
 			7,
 			8
 		],
 		"pack:1:2": [
 			"scenery.png",
-			152,
+			172,
 			127,
 			7,
 			10
 		],
 		"pack:2:0": [
 			"scenery.png",
-			208,
-			127,
+			1,
+			146,
 			7,
 			6
 		],
 		"pack:2:1": [
 			"scenery.png",
-			176,
+			220,
 			127,
 			7,
 			8
 		],
 		"pack:2:2": [
 			"scenery.png",
-			144,
+			180,
 			127,
 			7,
 			10
 		],
 		"pack:3:0": [
 			"scenery.png",
-			200,
+			244,
 			127,
 			7,
 			6
 		],
 		"pack:3:1": [
 			"scenery.png",
-			168,
+			212,
 			127,
 			7,
 			8
 		],
 		"pack:3:2": [
 			"scenery.png",
-			136,
+			188,
 			127,
 			7,
 			10
@@ -1465,6 +1465,20 @@
 			68,
 			23,
 			26
+		],
+		"reeds:0": [
+			"scenery.png",
+			36,
+			127,
+			17,
+			16
+		],
+		"reeds:1": [
+			"scenery.png",
+			54,
+			127,
+			17,
+			16
 		],
 		"regia": [
 			"buildings.png",

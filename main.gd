@@ -25,7 +25,7 @@ const ZOOM_LOGICAL_MIN := 1.0  # zoom range in on-screen pixels per art pixel
 const ZOOM_LOGICAL_MAX := 4.0
 const ZOOM_LOGICAL_START := 2.5
 const CITY_NAMES := [
-	"Antium", "Ostia", "Veii", "Tibur", "Praeneste", "Alba Longa",
+	"Roma", "Ostia", "Veii", "Tibur", "Praeneste", "Alba Longa",
 	"Ardea", "Lanuvium", "Cora", "Signia", "Fidenae", "Gabii",
 ]
 
@@ -757,8 +757,19 @@ var _dressed_units: Array[Unit] = []
 var _dressed_road: Array[Vector2i] = []
 
 
+## The marsh around the city is drained, as Rome's was by the Cloaca Maxima: it becomes grass.
+func _drain_marshes() -> void:
+	var changed := map.drain_marsh(buildings[0].center(), 14.0)
+	for p in changed:
+		_world.tile_changed(p)
+	if not changed.is_empty():
+		hud.flash("Palus siccatur.", "The marsh around the city is drained (the Cloaca Maxima).")
+
+
 func _cycle_era(step: int) -> void:
 	era = posmod(era + step, Defs.ERAS.size())
+	if era >= 1:
+		_drain_marshes()
 	advancing = false
 	_clear_selection()
 	placing = ""
@@ -1126,6 +1137,7 @@ func _update_advance(delta: float) -> void:
 	if advance_progress >= float(advance_data()["time"]):
 		advancing = false
 		era += 1
+		_drain_marshes()
 		var e: Dictionary = Defs.ERAS[era]
 		hud.flash("Aetas %s: %s" % [e["numeral"], e["latin"]], "Era %s begins: %s (%s)" % [e["numeral"], e["english"], e["years"]])
 

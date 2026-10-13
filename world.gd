@@ -141,6 +141,10 @@ func _populate_terrain() -> void:
 						elif pick > 0.55:
 							key = "pine:%d" % int(Pixel.hash2(x, y, 50 + i) * 2.0)
 						list.append(_tree(key, foot))
+				GameMap.Terrain.MARSH:
+					for i in 2:
+						var foot := Iso.to_screen_on(Vector2(x + 0.25 + 0.5 * Pixel.hash2(x, y, 90 + i), y + 0.25 + 0.5 * Pixel.hash2(x, y, 95 + i)), Iso.level_of(p))
+						list.append(_sprite("reeds:%d" % int(Pixel.hash2(x, y, 99 + i) * 2.0), foot))
 				GameMap.Terrain.HILLS:
 					list.append(_sprite("hill:%d" % int(Pixel.hash2(x, y, 60) * 2.0), Iso.to_screen_on(Vector2(x + 1, y + 1), Iso.level_of(p))))
 				GameMap.Terrain.MOUNTAIN:

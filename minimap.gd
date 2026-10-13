@@ -16,7 +16,7 @@ func setup(p_game) -> void:
 	game = p_game
 	var map: GameMap = game.map
 	var img := Image.create(map.w, map.h, false, Image.FORMAT_RGBA8)
-	var colors := [Color("2c7db2"), Color("78cbe6"), Color("ebdc9e"), Color("8ec142"), Color("5e8b30"), Color("9cab4c"), Color("c8c4b4")]
+	var colors := [Color("2c7db2"), Color("78cbe6"), Color("ebdc9e"), Color("8ec142"), Color("5e8b30"), Color("9cab4c"), Color("c8c4b4"), Color("6e8a52")]
 	for y in map.h:
 		for x in map.w:
 			img.set_pixel(x, y, colors[map.tile(x, y)])

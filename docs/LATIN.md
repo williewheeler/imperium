@@ -20,6 +20,7 @@ verbs ("Aedifica **Domum**"), and `done` / `ready` agree with its gender ("Forum
 | Lapis | Stone | |
 | Aurum | Gold | |
 | Silva | Trees | a stand of woods you can fell |
+| Palus | Marsh | low wet ground (not a resource; slow to cross, nothing can be built on it) |
 | Baccae | Berry bushes | |
 
 ## Buildings
@@ -100,6 +101,7 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Milites laborare non possunt. | Fighting men can't work: only villagers gather and build |
 | Nondum licet. | Not yet allowed: it unlocks in a later era |
 | Copiae non sufficiunt. | Not enough resources |
+| Palus siccatur. | The marsh around the city is drained (the Cloaca Maxima) |
 | Domus plures requiruntur. | Population limit reached: build more houses |
 | Aedifica forum vel horreum. | Build a Town Center or Storehouse to drop off resources |
 | Locus occupatus. | That spot is already taken |
