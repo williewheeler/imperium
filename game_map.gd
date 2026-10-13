@@ -2,6 +2,11 @@ class_name GameMap
 extends RefCounted
 ## Terrain grid, resource deposits and pathfinding.
 
+## Hidden ground character that decides what grows where (the player never sees these names).
+## Each is a pocket of terrain with its own kinds of trees and scrub; the ecotones (MEADOW_EDGE,
+## WET_EDGE) are the in-between ground where one biome fades into the next.
+enum Biome { NONE, MEADOW, MEADOW_EDGE, OAK_WOOD, PINE_WOOD, WET_WOOD, WET_EDGE, BOG, COAST, HIGHLAND, CRAG }
+
 enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN, MARSH }
 
 # Movement cost per terrain; INF = impassable.
@@ -29,6 +34,8 @@ var w: int
 var h: int
 var seed_value: int
 var tiles := PackedByteArray()
+var moisture := PackedFloat32Array()  # per tile, 0 (dry) to 1 (wet), from the generator
+var biomes := PackedByteArray()  # per tile Biome: invisible, but decides which scenery grows there
 var elevation := PackedFloat32Array()  # per tile, 0.40 (sea level) up to about 1.0 (mountain tops)
 var levels := PackedByteArray()  # per tile terrace: 0 (shore and plains) up to MAX_LEVEL; the ground is drawn in these steps
 var relief := PackedByteArray()  # per tile light on the ground from the top-left: 128 flat, brighter when facing the light
@@ -45,6 +52,7 @@ func _init(p_seed: int, p_w := 80, p_h := 80) -> void:
 	h = p_h
 	_generate()
 	_compute_relief()
+	_compute_biomes()
 	road.resize(w * h)
 	wear.resize(w * h)
 	_build_nav()
@@ -72,6 +80,7 @@ func _generate() -> void:
 	var elev := _make_noise(seed_value, 1.0 / 16.0)
 	var moist := _make_noise(seed_value + 7, 1.0 / 11.0)
 	tiles.resize(w * h)
+	moisture.resize(w * h)
 	elevation.resize(w * h)
 	for y in h:
 		for x in w:
@@ -97,6 +106,7 @@ func _generate() -> void:
 				t = Terrain.MOUNTAIN
 			tiles[y * w + x] = t
 			elevation[y * w + x] = _height_of(e)
+			moisture[y * w + x] = m
 			if t == Terrain.FOREST:
 				deposits[Vector2i(x, y)] = Deposit.new(Defs.Res.WOOD, Defs.DEPOSIT_AMOUNT[Defs.Res.WOOD])
 
@@ -235,6 +245,69 @@ func _merge_small_terraces() -> void:
 						best = l
 				for i in region:
 					levels[i] = best
+
+
+## Sorts every tile into a biome, the standard way: from elevation and moisture (a Whittaker-style
+## lookup: wet and low is marsh, dry and high is pine and scrub), then softens the borders so one
+## biome fades into the next through an ecotone instead of meeting it at a hard line. Which
+## biomes may touch is therefore decided by the fields themselves, not by stored rules.
+func _compute_biomes() -> void:
+	biomes.resize(w * h)
+	# how far each tile is from marsh and from woodland, for the transitions
+	var near_marsh := _distance_to(Terrain.MARSH, 4)
+	var near_wood := _distance_to(Terrain.FOREST, 3)
+	for y in h:
+		for x in w:
+			var i := y * w + x
+			var b := Biome.NONE
+			match tiles[i]:
+				Terrain.BEACH:
+					b = Biome.COAST
+				Terrain.MARSH:
+					b = Biome.BOG
+				Terrain.HILLS:
+					b = Biome.HIGHLAND
+				Terrain.MOUNTAIN:
+					b = Biome.CRAG
+				Terrain.FOREST:
+					var wobble := tile_hash(x, y, 3) * 0.08  # ragged borders, not ruled lines
+					if near_marsh[i] <= 3 or moisture[i] + wobble > 0.70:
+						b = Biome.WET_WOOD  # alders and willows where the ground is wet
+					elif levels[i] >= 1 or moisture[i] + wobble < 0.60:
+						b = Biome.PINE_WOOD  # pines and cypress on the drier, higher ground
+					else:
+						b = Biome.OAK_WOOD
+				Terrain.GRASS:
+					if near_marsh[i] <= 2:
+						b = Biome.WET_EDGE
+					elif near_wood[i] <= 2:
+						b = Biome.MEADOW_EDGE
+					else:
+						b = Biome.MEADOW
+			biomes[i] = b
+
+
+## Per tile, the distance (in tiles, up to `limit`; limit + 1 beyond that) to the nearest tile of `terrain`.
+func _distance_to(terrain: int, limit: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(w * h)
+	out.fill(limit + 1)
+	for y in h:
+		for x in w:
+			if tile(x, y) != terrain:
+				continue
+			for oy in range(-limit, limit + 1):
+				for ox in range(-limit, limit + 1):
+					var q := Vector2i(x + ox, y + oy)
+					if in_bounds(q):
+						var d := maxi(absi(ox), absi(oy))
+						if d < out[q.y * w + q.x]:
+							out[q.y * w + q.x] = d
+	return out
+
+
+func biome_at(p: Vector2i) -> int:
+	return biomes[p.y * w + p.x] if in_bounds(p) else Biome.NONE
 
 
 ## Terrace of the tile under a position in tile coordinates.

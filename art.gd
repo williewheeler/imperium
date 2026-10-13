@@ -99,7 +99,7 @@ static func solid_at(key: String, p: Vector2i) -> bool:
 static func image(key: String) -> Image:
 	var parts := key.split(":")
 	var variant := int(parts[1]) if parts.size() > 1 else 0
-	if parts.size() == 3 and parts[0] in ["oak", "pine", "cypress"]:  # <tree>:<variant>:<lean>
+	if parts.size() == 3 and parts[0] in ["oak", "pine", "cypress", "alder", "willow"]:  # <tree>:<variant>:<lean>
 		return _leaning(image("%s:%s" % [parts[0], parts[1]]), int(parts[2]))
 	match parts[0]:
 		"oak":
@@ -158,6 +158,14 @@ static func image(key: String) -> Image:
 			return _lupa()
 		"reeds":
 			return _reeds(variant)
+		"alder":
+			return _alder(variant)
+		"willow":
+			return _willow(variant)
+		"snag":
+			return _snag(variant)
+		"scrub":
+			return _scrub(variant)
 		"hut":
 			return _hut()
 		"regia":
@@ -737,7 +745,7 @@ static func sprite(key: String) -> Image:
 
 
 static func tree_keys() -> Array[String]:
-	return ["oak:0", "oak:1", "oak:2", "pine:0", "pine:1", "cypress:0"]
+	return ["oak:0", "oak:1", "oak:2", "pine:0", "pine:1", "cypress:0", "alder:0", "alder:1", "willow:0", "willow:1"]
 
 
 ## A tree in the wind: everything above the trunk moves `lean` pixels to the right.
@@ -774,6 +782,11 @@ static func scenery_keys() -> Array[String]:
 	k.append("lupa")
 	for i in 2:
 		k.append("reeds:%d" % i)
+	for i in 2:
+		k.append("alder:%d" % i)
+		k.append("willow:%d" % i)
+		k.append("snag:%d" % i)
+		k.append("scrub:%d" % i)
 	k.append("advance")
 	for n in ["wood", "food", "stone", "gold", "pop"]:
 		k.append("icon:" + n)
@@ -1397,6 +1410,90 @@ static func _reeds(seed_v: int) -> Image:
 		var top: int = 13 - st[1]
 		Pixel.rect(img, cx, top - 2, 2, 3, WOOD[1])
 		Pixel.put(img, cx, top - 2, WOOD[0])
+	return Pixel.outlined(img, OUT_GREEN)
+
+
+# ---------------------------------------------------------------- bog and wet-wood trees
+
+const ALDER := [Color("a4b86a"), Color("7e9a4e"), Color("5c7a3a"), Color("445f2c")]  # olive: wet-ground foliage
+const WILLOW := [Color("d6e28a"), Color("b0c76c"), Color("86a450"), Color("66823c")]  # pale, silvery green
+const SNAG := [Color("a89c86"), Color("7f745f"), Color("584f40")]  # grey, weathered dead wood
+
+
+## Alder, the tree of wet ground: slim, with a narrow dark crown on a pale trunk. Variant 1 is the
+## stunted, mossy bog alder, smaller and darker.
+static func _alder(variant: int) -> Image:
+	var bog := variant == 1
+	var w := 13
+	var h := 17 if bog else 23
+	var img := Pixel.blank(w, h)
+	var cx := 6.0
+	var crown_h := 9.0 if bog else 14.0
+	var trunk_top := int(crown_h * 0.6)
+	Pixel.rect(img, 5, trunk_top, 2, h - trunk_top, SNAG[1])
+	Pixel.rect(img, 6, trunk_top, 1, h - trunk_top, SNAG[2])
+	if bog:
+		Pixel.line(img, Vector2i(5, h - 5), Vector2i(2, h - 8), SNAG[2])  # a leaning side limb
+	Pixel.ellipse(img, cx, crown_h / 2.0 + 1.0, 5.2, crown_h / 2.0 + 0.5, func(x: int, y: int) -> Color:
+		var v := 0.6 - (y - 1.0) / crown_h * 0.45 - (x - cx) / 14.0 + (Pixel.hash2(x, y, 61) - 0.5) * 0.3
+		return Pixel.ramp(ALDER, v - (0.15 if bog else 0.0), x, y, 0.3))
+	if bog:  # hanging moss
+		for mx in [3, 6, 9]:
+			Pixel.line(img, Vector2i(mx, 8), Vector2i(mx, 11 + mx % 3), ALDER[0])
+	return Pixel.outlined(img, OUT_GREEN)
+
+
+## Willow: a low dome of pale leaves with long strands hanging down all round it. Variant 1 is a
+## little smaller.
+static func _willow(variant: int) -> Image:
+	var r := 7.0 if variant == 0 else 5.5
+	var w := int(r * 2.0) + 5
+	var h := int(r * 2.0) + 12
+	var img := Pixel.blank(w, h)
+	var cx := w / 2.0
+	var top := 2.0
+	Pixel.rect(img, int(cx) - 1, int(top + r), 2, h - int(top + r), BARK[1])  # a short thick trunk
+	Pixel.rect(img, int(cx), int(top + r), 1, h - int(top + r), BARK[2])
+	Pixel.ellipse(img, cx, top + r * 0.8, r, r * 0.8, func(x: int, y: int) -> Color:
+		var v := 0.62 - (y - top) / (r * 1.6) * 0.4 - (x - cx) / (r * 3.0) + (Pixel.hash2(x, y, 62) - 0.5) * 0.25
+		return Pixel.ramp(WILLOW, v, x, y, 0.25))
+	for x in range(int(cx - r), int(cx + r) + 1):  # the weeping curtain
+		var edge := (x - cx) / r
+		if absf(edge) > 0.98:
+			continue
+		var y0 := int(top + r * 0.8 + r * 0.8 * sqrt(maxf(0.0, 1.0 - edge * edge)))
+		var len := 6 + int(Pixel.hash2(x, 7, 63) * 6.0)
+		for y in range(y0, mini(h - 2, y0 + len)):
+			Pixel.put(img, x, y, WILLOW[1 + (x + y) % 2] if (x % 2 == 0 or y == y0) else WILLOW[2])
+	return Pixel.outlined(img, OUT_GREEN)
+
+
+## A dead tree standing in the bog: a bare, crooked grey trunk with a couple of broken limbs.
+static func _snag(variant: int) -> Image:
+	var img := Pixel.blank(13, 22)
+	var lean := 1 if variant == 0 else -1
+	var x := 6
+	var y := 21
+	for i in 16:  # a trunk that wanders
+		Pixel.put(img, x, y, SNAG[1])
+		Pixel.put(img, x + 1, y, SNAG[2])
+		y -= 1
+		if i % 5 == 3:
+			x += lean
+	var top := y + 1
+	Pixel.line(img, Vector2i(x, top + 6), Vector2i(x - 4 * lean, top + 1), SNAG[1])  # limbs
+	Pixel.line(img, Vector2i(x + 1, top + 9), Vector2i(x + 4 * lean, top + 5), SNAG[2])
+	Pixel.put(img, x - 4 * lean, top, SNAG[0])
+	Pixel.put(img, x, top - 1, SNAG[0])  # the broken top
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## Low scrub: a small round bush for open ground.
+static func _scrub(variant: int) -> Image:
+	var img := Pixel.blank(12, 8)
+	var pal: Array = LEAF if variant == 0 else [Color("a8b562"), Color("8a9a48"), Color("6a7a38")]
+	Pixel.ellipse(img, 6, 4.5, 5, 3, func(x: int, y: int) -> Color:
+		return Pixel.ramp(pal, 0.6 - (y - 2.0) / 7.0 - (x - 6.0) / 16.0 + (Pixel.hash2(x, y, 64) - 0.5) * 0.3, x, y, 0.3))
 	return Pixel.outlined(img, OUT_GREEN)
 
 

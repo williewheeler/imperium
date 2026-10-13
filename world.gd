@@ -124,6 +124,44 @@ func _sway_trees(delta: float) -> void:
 			s.texture = _tree_frames[i][lean]
 
 
+## Which tree stands at spot `i` of a forest tile, by the tile's biome: oaks in the lowland woods, pines
+## and cypress on the dry high ground, alders and willows where it is wet.
+func _forest_tree(biome: int, x: int, y: int, i: int) -> String:
+	var pick := Pixel.hash2(x, y, 30 + i)
+	var variant := Pixel.hash2(x, y, 40 + i)
+	match biome:
+		GameMap.Biome.WET_WOOD:
+			if pick > 0.72:
+				return "oak:%d" % int(variant * 3.0)
+			return "willow:%d" % int(variant * 2.0) if pick > 0.4 else "alder:0"
+		GameMap.Biome.PINE_WOOD:
+			if pick > 0.8:
+				return "oak:%d" % int(variant * 3.0)
+			return "cypress:0" if pick > 0.55 else "pine:%d" % int(variant * 2.0)
+	if pick > 0.88:  # oak woods: mostly oaks, with the odd pine and cypress
+		return "cypress:0"
+	return "pine:%d" % int(variant * 2.0) if pick > 0.74 else "oak:%d" % int(variant * 3.0)
+
+
+## Scenery on an open grass tile: scrub round the edge of the woods, alders and willows by the marsh.
+## "" for nothing.
+func _meadow_scenery(biome: int, x: int, y: int) -> String:
+	var roll := Pixel.hash2(x, y, 130)
+	match biome:
+		GameMap.Biome.MEADOW_EDGE:
+			if roll < 0.22:
+				return "scrub:%d" % int(Pixel.hash2(x, y, 131) * 2.0)
+		GameMap.Biome.WET_EDGE:
+			if roll < 0.18:
+				return "willow:1" if Pixel.hash2(x, y, 131) < 0.5 else "alder:0"
+			if roll < 0.3:
+				return "scrub:1"
+		GameMap.Biome.MEADOW:
+			if roll < 0.03:
+				return "scrub:0"
+	return ""
+
+
 func _populate_terrain() -> void:
 	var map: GameMap = game.map
 	for y in map.h:
@@ -134,17 +172,21 @@ func _populate_terrain() -> void:
 				GameMap.Terrain.FOREST:
 					for i in 3:
 						var foot := Iso.to_screen_on(Vector2(x + 0.2 + 0.6 * Pixel.hash2(x, y, 10 + i), y + 0.2 + 0.6 * Pixel.hash2(x, y, 20 + i)), Iso.level_of(p))
-						var pick := Pixel.hash2(x, y, 30 + i)
-						var key := "oak:%d" % int(Pixel.hash2(x, y, 40 + i) * 3.0)
-						if pick > 0.85:
-							key = "cypress:0"
-						elif pick > 0.55:
-							key = "pine:%d" % int(Pixel.hash2(x, y, 50 + i) * 2.0)
-						list.append(_tree(key, foot))
+						list.append(_tree(_forest_tree(map.biome_at(p), x, y, i), foot))
 				GameMap.Terrain.MARSH:
-					for i in 2:
+					for i in 2:  # reeds in every tile...
 						var foot := Iso.to_screen_on(Vector2(x + 0.25 + 0.5 * Pixel.hash2(x, y, 90 + i), y + 0.25 + 0.5 * Pixel.hash2(x, y, 95 + i)), Iso.level_of(p))
 						list.append(_sprite("reeds:%d" % int(Pixel.hash2(x, y, 99 + i) * 2.0), foot))
+					var bog := Pixel.hash2(x, y, 110)  # ...and here and there a dead snag or a stunted bog alder (scenery only)
+					if bog < 0.16:
+						list.append(_sprite("snag:%d" % int(Pixel.hash2(x, y, 111) * 2.0), Iso.to_screen_on(Vector2(x + 0.3 + 0.4 * Pixel.hash2(x, y, 112), y + 0.3 + 0.4 * Pixel.hash2(x, y, 113)), Iso.level_of(p))))
+					elif bog < 0.26:
+						list.append(_tree("alder:1", Iso.to_screen_on(Vector2(x + 0.3 + 0.4 * Pixel.hash2(x, y, 112), y + 0.3 + 0.4 * Pixel.hash2(x, y, 113)), Iso.level_of(p))))
+				GameMap.Terrain.GRASS:
+					var scenery := _meadow_scenery(map.biome_at(p), x, y)
+					if scenery != "":  # a bush or two, scenery only; and wet edges get the odd willow or alder
+						var at := Iso.to_screen_on(Vector2(x + 0.25 + 0.5 * Pixel.hash2(x, y, 120), y + 0.25 + 0.5 * Pixel.hash2(x, y, 121)), Iso.level_of(p))
+						list.append(_tree(scenery, at) if scenery.begins_with("willow") or scenery.begins_with("alder") else _sprite(scenery, at))
 				GameMap.Terrain.HILLS:
 					list.append(_sprite("hill:%d" % int(Pixel.hash2(x, y, 60) * 2.0), Iso.to_screen_on(Vector2(x + 1, y + 1), Iso.level_of(p))))
 				GameMap.Terrain.MOUNTAIN:
