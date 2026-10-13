@@ -53,7 +53,9 @@ var _bar: ProgressBar
 var _bar_fill: StyleBoxFlat
 var _buttons: Array[Button] = []
 var _mode := ""
-var _msg: Label
+var _msg: VBoxContainer  # the flashed message: Latin with its English underneath
+var _msg_latin: Label
+var _msg_english: Label
 var _msg_tween: Tween
 var _world_tip: PanelContainer
 var _world_tip_label: Label
@@ -157,16 +159,30 @@ func setup(game) -> void:
 	minimap.setup(game)
 	map_frame.add_child(minimap)
 
-	_msg = _label("", 18)
+	_msg = VBoxContainer.new()
 	_msg.theme = _theme
-	_msg.add_theme_constant_override("outline_size", 6)
-	_msg.add_theme_color_override("font_outline_color", Color.BLACK)
-	_msg.mouse_filter = Control.MOUSE_FILTER_PASS
+	_msg.add_theme_constant_override("separation", 2)
+	_msg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_msg.modulate.a = 0.0
 	_msg.anchor_left = 0.5
 	_msg.anchor_right = 0.5
 	_msg.offset_top = 90
 	_msg.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_msg_latin = _label("", 18)
+	_msg_latin.theme = _theme
+	_msg_latin.add_theme_constant_override("outline_size", 6)
+	_msg_latin.add_theme_color_override("font_outline_color", Color.BLACK)
+	_msg_latin.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_msg_latin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_msg.add_child(_msg_latin)
+	_msg_english = _label("", 12)
+	_msg_english.theme = _theme
+	_msg_english.add_theme_constant_override("outline_size", 7)
+	_msg_english.add_theme_color_override("font_outline_color", Color.BLACK)
+	_msg_english.add_theme_color_override("font_color", CREAM)
+	_msg_english.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_msg_english.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_msg.add_child(_msg_english)
 	add_child(_msg)
 
 	_world_tip = PanelContainer.new()
@@ -182,12 +198,15 @@ func setup(game) -> void:
 
 ## Latin text with its English meaning as a hover tooltip.
 func flash(latin: String, english := "") -> void:
-	_say(_msg, latin, english if english != "" else Latin.gloss(latin))
+	var translation := english if english != "" else Latin.gloss(latin)
+	_msg_latin.text = Latin.t(latin)
+	_msg_english.text = translation  # in small letters below, since the message is gone before a tooltip could be read
+	_msg_english.visible = translation != ""
 	if _msg_tween:
 		_msg_tween.kill()
 	_msg.modulate.a = 1.0
 	_msg_tween = create_tween()
-	_msg_tween.tween_interval(2.5)
+	_msg_tween.tween_interval(3.5 if translation != "" else 2.5)
 	_msg_tween.tween_property(_msg, "modulate:a", 0.0, 0.6)
 
 
