@@ -149,5 +149,6 @@ era gating of buildings comes first.
 
 - **Latin lettering:** capitals only, V for U (IMPERIVM). Text goes through `Latin.t()`; English
   glosses live next to the Latin (see `latin.gd`, `hud.gd`).
+- **Glossary:** every Latin term in the game, with its English, is listed in [`LATIN.md`](LATIN.md). Update it when you add text.
 - **Names:** Latin buildings have an accusative form for verbs ("Aedifica Domum").
 - **Era data** lives in `Defs.ERAS`; `Main.era` is the current era.
