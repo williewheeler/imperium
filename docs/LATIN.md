@@ -66,11 +66,11 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Pone *(building)* | Place *(building)* | |
 | Elige | Select | left click |
 | Iube | Order | right click |
-| Abroga | Cancel | right click |
+| Abroga | Cancel | right click, Esc |
 | Trahe | Drag (to lay a road) | left click and drag |
 | Circumspice | Look around (pan the camera) | screen edge, arrow keys |
 | Auge | Enlarge (zoom) | mouse wheel |
-| Exi | Exit | Esc |
+| Exi | Exit | Q |
 
 ## Unit states (shown when a unit is selected)
 

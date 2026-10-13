@@ -287,8 +287,15 @@ func placement_error(kind: String, tile: Vector2i) -> String:
 # ---------- Input ----------
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_Q:
 		get_tree().quit()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		if placing_road:  # Esc backs out of whatever is being placed, or else clears the selection
+			_cancel_road_mode()
+		elif placing != "":
+			placing = ""
+		else:
+			_clear_selection()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_X:
 		command_selected("explore")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_S and not event.ctrl_pressed and not event.meta_pressed:

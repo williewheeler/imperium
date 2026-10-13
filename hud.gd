@@ -28,7 +28,8 @@ const HELP := [  # [Latin, English]
 	["Dextra  iube", "Right click: give an order (move, gather or build)."],
 	["Margo  circumspice", "Move the mouse to a screen edge (or use the arrow keys): pan the camera."],
 	["Rota  auge", "Mouse wheel: zoom."],
-	["Esc  exi", "Esc: quit the game."],
+	["Esc  abroga", "Esc: cancel placing a building or road, or clear the selection."],
+	["Q  exi", "Q: quit the game."],
 ]
 
 var minimap: Minimap
