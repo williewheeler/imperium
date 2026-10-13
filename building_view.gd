@@ -10,6 +10,10 @@ extends Node2D
 ## over that half of the building, and one behind the building stays hidden by it.
 ## While under construction only the bottom of the sprite shows, rising as the work progresses.
 
+## Where a building's animated fire burns, relative to its front corner, for the sprites that have one:
+## the Regia's hearth (tile 2.15, 2.15 of its 3x3 yard) and the Aedes' sacred fire (1.55, 1.55 of 2x2).
+const FIRE_SPOTS := {"regia": Vector2(0, -13.6), "aedes": Vector2(0, -7.2)}
+
 var building: Building
 var objects: Node2D  # the depth-sorted layer the halves live in
 
@@ -44,9 +48,8 @@ func _ready() -> void:
 		objects.add_child(node)
 		_halves.append(node)
 		_sprites.append(sprite)
-	if building.kind == "town_center":
+	if building.kind in ["town_center", "temple"]:
 		_fire = HearthFire.new()
-		_fire.position = position + Vector2(0, -13.6).round()  # the hearth is at tile (2.15, 2.15) of the 3x3 yard
 		objects.add_child(_fire)
 
 
@@ -67,7 +70,10 @@ func remove() -> void:
 func update_view() -> void:
 	var anchor := Art.building_anchor(building.sprite_key())
 	if _fire != null:
-		_fire.visible = building.sprite_key() == "regia" and building.complete
+		var spot: Variant = FIRE_SPOTS.get(building.sprite_key())
+		_fire.visible = spot != null and building.complete
+		if spot != null:
+			_fire.position = position + (spot as Vector2).round()
 	if building.sprite_key() != _key:
 		_key = building.sprite_key()
 		var tex := Art.tex(_key)

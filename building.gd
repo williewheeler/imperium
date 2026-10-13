@@ -3,7 +3,7 @@ extends RefCounted
 
 ## The era the game is in. The town centre changes from the Regia to the marble Forum in Era II.
 static var era := 0
-static var _regia_def := {}
+static var _early_defs := {}  # kind -> its Era I definition (name and picture differ)
 
 var kind: String
 var building_name := ""
@@ -22,18 +22,21 @@ func def() -> Dictionary:
 	return def_for(kind)
 
 
-## Building data, with the town centre named for the era (Regia before Era II, Forum after).
+## Building data. Some buildings look and read differently in Era I: the town centre is the
+## Regia (then the Forum), the barracks the Arx (then the Castra), the temple the Aedes (then the Templum).
 static func def_for(k: String) -> Dictionary:
-	if k == "town_center" and era < 1:
-		if _regia_def.is_empty():
-			_regia_def = Defs.BUILDINGS[k].merged({"name": "Regia", "acc": "Regiam", "english": "King's House (Town Center)"}, true)
-		return _regia_def
-	return Defs.BUILDINGS[k]
+	var d: Dictionary = Defs.BUILDINGS[k]
+	if era < 1 and d.has("early"):
+		if not _early_defs.has(k):
+			_early_defs[k] = d.merged(d["early"], true)
+		return _early_defs[k]
+	return d
 
 
 ## Sprite key for a building kind in the current era.
 static func look_key(k: String) -> String:
-	return "regia" if k == "town_center" and era < 1 else k
+	var d: Dictionary = Defs.BUILDINGS[k] if Defs.BUILDINGS.has(k) else {}
+	return d["early"]["look"] if era < 1 and d.has("early") else k
 
 
 ## Fields (wheat, vines) are flat, renewable crops that villagers work.

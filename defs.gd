@@ -58,6 +58,7 @@ const BUILDINGS := {
 		"name": "Forum", "acc": "Forum", "english": "Town Center", "done": "perfectum est", "ready": "Paratum",
 		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": "villager",
 		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3], "pop": 10,
+		"early": {"name": "Regia", "acc": "Regiam", "english": "King's House (Town Center)", "look": "regia"},
 	},
 	"hut": {
 		"name": "Casa", "acc": "Casam", "english": "Hut", "done": "perfecta est", "ready": "Parata",
@@ -97,8 +98,17 @@ const BUILDINGS := {
 		"build_time": 40.0, "sight": 4.0, "accepts": [], "pop": 8,  # fresh water lets a bigger town live here
 	},
 	"castra": {
-		"name": "Castra", "acc": "Castra", "english": "Barracks", "done": "perfecta sunt", "ready": "Parata", "era": 1,
+		"name": "Castra", "acc": "Castra", "english": "Barracks", "done": "perfecta sunt", "ready": "Parata",
 		"size": Vector2i(3, 3), "cost": [100, 0, 50, 0], "trains": "soldier",
 		"build_time": 35.0, "sight": 8.0, "accepts": [], "pop": 0,
+		# in the Kingdom the soldiers' base was the stockaded hilltop fortress
+		"early": {"name": "Arx", "acc": "Arcem", "english": "Citadel (Barracks)", "look": "arx", "done": "perfecta est", "ready": "Parata"},
+	},
+	"temple": {
+		"name": "Templum", "acc": "Templum", "english": "Temple", "done": "perfectum est", "ready": "Paratum",
+		"size": Vector2i(2, 2), "cost": [80, 0, 100, 0],  # no powers yet: a place of worship and prestige
+		"build_time": 40.0, "sight": 6.0, "accepts": [], "pop": 0,
+		# early Rome's holiest shrine was Vesta's round thatched hut, with its eternal fire
+		"early": {"name": "Aedes", "acc": "Aedem", "english": "Shrine of Vesta (Temple)", "look": "aedes", "done": "perfecta est", "ready": "Parata"},
 	},
 }

@@ -43,8 +43,8 @@ name and dates on hover, and a progress readout while an advance is under way. *
 
 | Era | Feel | Content (planned) |
 |---|---|---|
-| I Regnum | A hut village finding its feet | Villagers; Casa (hut); Ager (wheat field); Horreum; Forum; dirt roads that wear into the ground |
-| II Res Publica | Citizens, civic life, first conquests | Stone Domus; **paved roads (Via)**; **Vinea** (vineyards); **Curia** (Senate house); **Aquaeductus**; **Castra** and citizen soldiers (**Milites**). All built (see below) |
+| I Regnum | A hut village finding its feet | Villagers; Casa (hut); Ager (wheat field); Horreum; Regia; **Arx** (stockaded citadel, trains soldiers); **Aedes Vestae** (round thatched shrine with a sacred fire); dirt roads that wear into the ground |
+| II Res Publica | Citizens, civic life, first conquests | Stone Domus; **paved roads (Via)**; **Vinea** (vineyards); **Curia** (Senate house); **Aquaeductus**; **Castra** and citizen soldiers (**Milites**); **Templum**. All built (see below) |
 | III Imperium Populi Romani | Legions and expansion | Legions, barracks, ships and harbours, provinces, bigger aqueducts |
 | IV Principatus | Peak: monuments, baths, amphitheatres | Baths, amphitheatre, triumphal arches, roads and aqueducts at scale |
 | V Dominatus | Holding on | Walls and fortifications, barbarian pressure, economic strain; the "fall" gameplay |
@@ -67,7 +67,8 @@ vs `town_center`) depend on the era (`Building.era`).
 | Paved road | *Via* | dragged out and paved by villagers; 1.7x speed |
 | Senate house | *Curia* | brick hall with marble pilasters and bronze doors. Pure prestige for now: its powers (the Senate) come later |
 | Aqueduct | *Aquaeductus* | a 4x1 run of arches carrying a water channel; +8 population (fresh water lets a bigger town live here). People walk under the arches |
-| Barracks | *Castra* | a palisaded camp; trains soldiers |
+| Barracks | *Castra* | a palisaded camp; trains soldiers. In Era I the same building is the *Arx*, a stockaded hilltop fortress with a watchtower (`Defs` "early" entry), and it can already be built |
+| Temple | *Templum* | a small marble temple on a high podium with four front columns. In Era I the same building is the *Aedes* (Vesta's round thatched shrine with an animated sacred fire). Pure prestige for now, like the Curia |
 | Soldier | *Miles* | an early-Republic citizen soldier: bronze helmet with a crest, breastplate, round shield, spear. Can march but not work, and there is no combat yet |
 | Vineyard | *Vinea* | a renewable field like the Ager, but its crop is wine, sold for **gold** (200 per crop, ripens again in 30 s) |
 

@@ -52,6 +52,9 @@ const BUILDING_GEOM := {
 	"curia": {"a": 3, "b": 3, "ridge": 33.0},
 	"aqueduct": {"a": 4, "b": 1, "ridge": 32.0},
 	"castra": {"a": 3, "b": 3, "ridge": 26.0},
+	"arx": {"a": 3, "b": 3, "ridge": 34.0},
+	"aedes": {"a": 2, "b": 2, "ridge": 28.0},
+	"temple": {"a": 2, "b": 2, "ridge": 30.0},
 }
 
 static var _cache := {}
@@ -126,6 +129,12 @@ static func image(key: String) -> Image:
 			return _aqueduct()
 		"castra":
 			return _castra()
+		"arx":
+			return _arx()
+		"aedes":
+			return _aedes()
+		"temple":
+			return _temple()
 		"vineyard":  # vineyard:<stage> 0 laden .. 3 newly pruned
 			return _vineyard(variant)
 		"villagerf":  # villagerf:<anim>:<f|b>:<frame>, the women
@@ -755,7 +764,7 @@ static func scenery_keys() -> Array[String]:
 
 static func building_keys() -> Array[String]:
 	return ["town_center", "regia", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
-		"curia", "aqueduct", "castra", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
+		"curia", "aqueduct", "castra", "arx", "aedes", "temple", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
 
 
 ## Villager frames, one row per animation and direction (f = facing the camera, b = away).
@@ -1366,6 +1375,101 @@ static func _castra() -> Image:
 	var g1 := f.p(n, n * 0.6, 12)
 	Pixel.line(img, Vector2i(g0), Vector2i(g1), WOOD[1])
 	Pixel.line(img, Vector2i(g0) + Vector2i(0, 1), Vector2i(g1) + Vector2i(0, 1), WOOD[2])
+	return Pixel.outlined(img, OUT_WARM)
+
+## Arx: the Era I fortress, a stockaded hilltop with a timber watchtower, a rack of spears and a
+## gate. (Rome began as a fortified hill, and the Arx was the citadel.) 3x3.
+static func _arx() -> Image:
+	var n := 3.0
+	var hs := int(n * 16 + 34.0 + 8.0)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	Pixel.poly(img, [f.p(0, 0, 0), f.p(n, 0, 0), f.p(n, n, 0), f.p(0, n, 0)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(DIRT, 0.32 + (Pixel.hash2(x, y, 92) - 0.5) * 0.4, x, y, 0.3))
+	_stakes(img, f, Vector2(0, 0), Vector2(0, n), 13.0, false)  # the back two sides first
+	_stakes(img, f, Vector2(0, 0), Vector2(n, 0), 13.0, true)
+	# the watchtower in the back corner: four posts, a plank cabin and a little thatched roof
+	var base := f.p(0.7, 0.7, 0)
+	for d: Vector2 in [Vector2(-5, 0), Vector2(5, 0), Vector2(-5, 4), Vector2(5, 4)]:
+		Pixel.rect(img, int(base.x + d.x) - 1, int(base.y + d.y) - 20, 2, 21, WOOD[1])
+	Pixel.rect(img, int(base.x) - 6, int(base.y) - 20, 13, 2, WOOD[2])  # the platform
+	Pixel.rect(img, int(base.x) - 5, int(base.y) - 27, 11, 7, WOOD[0])  # the cabin
+	Pixel.rect(img, int(base.x) + 1, int(base.y) - 27, 5, 7, WOOD[1])
+	Pixel.rect(img, int(base.x) - 2, int(base.y) - 25, 4, 3, Color("2c1c12"))  # the lookout slit
+	Pixel.poly(img, [Vector2(base.x - 8, base.y - 27), Vector2(base.x + 8, base.y - 27), Vector2(base.x, base.y - 35)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(THATCH, 0.62 - (float(x) - base.x) / 24.0 + (Pixel.hash2(x, y, 93) - 0.5) * 0.2, x, y, 0.2))
+	# a rack of spears and a round shield by the gate
+	var rack := f.p(1.6, 0.6, 0)
+	Pixel.rect(img, int(rack.x) - 5, int(rack.y) - 3, 11, 1, WOOD[2])
+	for i in 5:
+		var sx := int(rack.x) - 4 + i * 2
+		Pixel.rect(img, sx, int(rack.y) - 13, 1, 12, WOOD[0])
+		Pixel.put(img, sx, int(rack.y) - 14, ROCK[1])
+	var sh := f.p(2.3, 1.6, 0)
+	Pixel.ellipse(img, sh.x, sh.y - 5, 4.0, 4.0, TUNIC[1])
+	Pixel.ellipse(img, sh.x, sh.y - 5, 1.6, 1.6, GOLD[1])
+	_stakes(img, f, Vector2(0, n), Vector2(n, n), 13.0, true)  # then the front two sides
+	_stakes(img, f, Vector2(n, 0), Vector2(n, n), 13.0, false, Vector2(0.4, 0.6))  # with a gate gap
+	for t in [0.4, 0.6]:  # gate posts and lintel
+		var gp := f.p(n, n * t, 0)
+		Pixel.rect(img, int(gp.x) - 1, int(gp.y) - 17, 3, 18, WOOD[2])
+	var g0 := f.p(n, n * 0.4, 15)
+	var g1 := f.p(n, n * 0.6, 15)
+	Pixel.line(img, Vector2i(g0), Vector2i(g1), WOOD[1])
+	Pixel.line(img, Vector2i(g0) + Vector2i(0, 1), Vector2i(g1) + Vector2i(0, 1), WOOD[2])
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## Aedes Vestae: the Era I temple. Vesta's shrine was a round thatched hut, not a marble building,
+## with the sacred fire (drawn in code: see hearth_fire.gd) burning in a stone ring before it. 2x2.
+static func _aedes() -> Image:
+	var n := 2.0
+	var hs := int(n * 16 + 28.0 + 8.0)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	_dirt_patch(img, f, n, 0.0)
+	var hut := f.p(0.95, 0.95, 0.0)
+	_round_hut(img, hut.x, hut.y, 1.1)
+	var h := f.p(1.55, 1.55, 0.0)  # the hearth ring
+	for k in 10:
+		var a := TAU * k / 10.0
+		Pixel.rect(img, int(h.x + cos(a) * 5.5), int(h.y + sin(a) * 2.8) - 1, 2, 2, MARBLE[1 + (k % 2)])
+	Pixel.rect(img, int(h.x) - 2, int(h.y) - 1, 4, 2, Color("3a2418"))
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## Templum: the Era II temple, a small Etruscan-Roman temple on a high podium with four columns
+## across the front and a terracotta roof. 2x2.
+static func _temple() -> Image:
+	var n := 2.0
+	var podium_h := 6.0
+	var col_h := 15.0
+	var wall_top := podium_h + col_h + 2.0
+	var ridge_h := wall_top + 7.0
+	var hs := int(n * 16 + ridge_h + 8.0)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	var m_lit := func(x: int, y: int) -> Color: return Pixel.ramp(MARBLE, 0.7 + (Pixel.hash2(x, y, 8) - 0.5) * 0.2, x, y, 0.15)
+	var m_shade := func(x: int, y: int) -> Color: return Pixel.ramp(MARBLE, 0.38 + (Pixel.hash2(x, y, 9) - 0.5) * 0.2, x, y, 0.15)
+	_box(img, f, 0.0, n, 0.0, n, 0, 3.0, m_lit, m_shade, func(x: int, y: int) -> Color: return Pixel.ramp(MARBLE, 0.42 + (Pixel.hash2(x, y, 3) - 0.5) * 0.3, x, y, 0.3))
+	_box(img, f, 0.2, n - 0.2, 0.2, n - 0.2, 3.0, podium_h, m_lit, m_shade, func(x: int, y: int) -> Color: return Pixel.ramp(MARBLE, 0.5 + (Pixel.hash2(x, y, 4) - 0.5) * 0.3, x, y, 0.3))
+	var c0 := 0.4
+	var c1 := n - 0.4
+	_box(img, f, c0, c1, c0, c1, podium_h, wall_top,
+		func(x: int, y: int) -> Color: return _plaster(x, y, true, 21),
+		func(x: int, y: int) -> Color: return _plaster(x, y, false, 22), PLASTER[1])
+	Pixel.poly(img, [f.p(c1, 0.8, podium_h), f.p(c1, 1.2, podium_h), f.p(c1, 1.2, podium_h + 8), f.p(c1, 0.8, podium_h + 8)], WOOD[2])  # the door
+	for i in 4:  # the front porch: four columns on the right-hand face
+		var t := 0.3 + (n - 0.6) * i / 3.0
+		var a := f.p(n - 0.25, t, podium_h)
+		Pixel.rect(img, int(a.x) - 1, int(a.y - col_h), 2, int(col_h), MARBLE[0])
+		Pixel.rect(img, int(a.x) + 1, int(a.y - col_h), 1, int(col_h), MARBLE[2])
+		Pixel.rect(img, int(a.x) - 2, int(a.y - col_h) - 1, 4, 1, MARBLE[1])
+	_box(img, f, 0.25, n - 0.15, 0.25, n - 0.15, wall_top - 2.0, wall_top, m_lit, m_shade, MARBLE[0])  # entablature
+	_gable_roof(img, f, 0.2, n - 0.1, 0.2, n - 0.2, wall_top, ridge_h,
+		func(x: int, y: int) -> Color: return _plaster(x, y, false, 23))
+	var e := f.p(n - 0.1, n / 2.0, wall_top + 3)  # a gilded roundel in the pediment
+	Pixel.ellipse(img, e.x, e.y, 1.6, 1.6, GOLD[1])
 	return Pixel.outlined(img, OUT_WARM)
 
 
