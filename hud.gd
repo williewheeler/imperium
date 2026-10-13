@@ -53,7 +53,7 @@ var _bar: ProgressBar
 var _bar_fill: StyleBoxFlat
 var _buttons: Array[Button] = []
 var _mode := ""
-var _msg: VBoxContainer  # the flashed message: Latin with its English underneath
+var _msg: PanelContainer  # the flashed message: Latin with its English underneath, on a dim backing
 var _msg_latin: Label
 var _msg_english: Label
 var _msg_tween: Tween
@@ -159,30 +159,41 @@ func setup(game) -> void:
 	minimap.setup(game)
 	map_frame.add_child(minimap)
 
-	_msg = VBoxContainer.new()
+	_msg = PanelContainer.new()
 	_msg.theme = _theme
-	_msg.add_theme_constant_override("separation", 2)
+	var backing := StyleBoxFlat.new()  # a soft dark plate so the words read over any ground
+	backing.bg_color = Color(0.07, 0.03, 0.03, 0.62)
+	backing.set_corner_radius_all(8)
+	backing.content_margin_left = 16
+	backing.content_margin_right = 16
+	backing.content_margin_top = 6
+	backing.content_margin_bottom = 7
+	_msg.add_theme_stylebox_override("panel", backing)
+	var lines := VBoxContainer.new()
+	lines.add_theme_constant_override("separation", 2)
+	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_msg.add_child(lines)
 	_msg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_msg.modulate.a = 0.0
 	_msg.anchor_left = 0.5
 	_msg.anchor_right = 0.5
-	_msg.offset_top = 90
+	_msg.offset_top = 106
 	_msg.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_msg_latin = _label("", 18)
 	_msg_latin.theme = _theme
-	_msg_latin.add_theme_constant_override("outline_size", 6)
+	_msg_latin.add_theme_constant_override("outline_size", 4)
 	_msg_latin.add_theme_color_override("font_outline_color", Color.BLACK)
 	_msg_latin.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_msg_latin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_msg.add_child(_msg_latin)
+	lines.add_child(_msg_latin)
 	_msg_english = _label("", 12)
 	_msg_english.theme = _theme
-	_msg_english.add_theme_constant_override("outline_size", 7)
+	_msg_english.add_theme_constant_override("outline_size", 4)
 	_msg_english.add_theme_color_override("font_outline_color", Color.BLACK)
 	_msg_english.add_theme_color_override("font_color", CREAM)
 	_msg_english.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_msg_english.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_msg.add_child(_msg_english)
+	lines.add_child(_msg_english)
 	add_child(_msg)
 
 	_world_tip = PanelContainer.new()
@@ -206,7 +217,7 @@ func flash(latin: String, english := "") -> void:
 		_msg_tween.kill()
 	_msg.modulate.a = 1.0
 	_msg_tween = create_tween()
-	_msg_tween.tween_interval(3.5 if translation != "" else 2.5)
+	_msg_tween.tween_interval(5.25 if translation != "" else 3.75)  # long enough to read both lines
 	_msg_tween.tween_property(_msg, "modulate:a", 0.0, 0.6)
 
 
