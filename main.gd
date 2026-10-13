@@ -3,6 +3,8 @@ extends Node2D
 
 const MARKER_LIFE := 0.7
 const VILLAGER_SPEED := 1.5  # tiles/sec on grass
+const HORSE_SPEED_FACTOR := 2.0  # a horse covers open ground this many times faster than a man
+const HORSE_MAX_SPEED := 4.0  # tiles/sec, even on a paved road
 const VILLAGER_SIGHT := 7.0
 const FOUNDATION_SIGHT := 4.0
 const FOG_INTERVAL := 0.1
@@ -1344,7 +1346,7 @@ func _follow(u: Unit, delta: float) -> bool:
 		var last := u.path.size() == 1
 		var to_wp := wp - u.pos
 		var dist := to_wp.length()
-		var speed := VILLAGER_SPEED / map.move_cost(Vector2i(u.pos))
+		var speed := _walk_speed(u, map.move_cost(Vector2i(u.pos)))
 		var step := speed * budget
 		if u.detour == Vector2.INF and u.detour_cooldown <= 0.0 and dist > WAYPOINT_REACH:
 			var around := _detour_around(u, to_wp / dist)
@@ -1492,6 +1494,15 @@ func _move_unit(u: Unit, p: Vector2) -> void:
 
 func _nudge(u: Unit, v: Vector2) -> void:
 	_move_unit(u, u.pos + v)
+
+
+## Tiles per second for `u` over ground with the given move cost (1.0 = open grass). Horses are much
+## faster than a man on open ground, but rough ground (forest, hills) slows them more, so there
+## the gap closes.
+func _walk_speed(u: Unit, cost: float) -> float:
+	if u.kind == "horseman":
+		return minf(VILLAGER_SPEED * HORSE_SPEED_FACTOR / (cost * cost), HORSE_MAX_SPEED)
+	return VILLAGER_SPEED / cost
 
 
 func _update_unit(u: Unit, delta: float) -> void:
