@@ -162,7 +162,7 @@ func setup(game) -> void:
 	_msg = PanelContainer.new()
 	_msg.theme = _theme
 	var backing := StyleBoxFlat.new()  # a soft dark plate so the words read over any ground
-	backing.bg_color = Color(0.07, 0.03, 0.03, 0.62)
+	backing.bg_color = Color(0.05, 0.02, 0.02, 0.85)
 	backing.set_corner_radius_all(8)
 	backing.content_margin_left = 16
 	backing.content_margin_right = 16
