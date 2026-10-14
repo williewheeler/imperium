@@ -53,6 +53,11 @@ func _draw() -> void:
 		_draw_road_ghost()
 	for b: Building in game.buildings:
 		var origin := Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round()
+		if b.selected:  # a green highlight round the footprint, like a selected villager's ring
+			var ring := _diamond(Vector2(b.tile), Vector2(b.size))
+			draw_colored_polygon(ring, Color(SelectionRing.COLOR, 0.12))
+			ring.append(ring[0])
+			draw_polyline(ring, SelectionRing.COLOR, 1.0)
 		var w := float(b.size.x * Iso.TILE_W)
 		if not b.complete:
 			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.build_fraction(), Color("7dff7d"))

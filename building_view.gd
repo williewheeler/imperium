@@ -217,7 +217,3 @@ func _draw() -> void:
 	])
 	if not building.complete:
 		draw_colored_polygon(pts, Color(0.45, 0.36, 0.22, 0.55))
-	var closed := pts.duplicate()
-	closed.append(pts[0])
-	if building.selected:
-		draw_polyline(closed, Color("e8c766"), 2.0)
