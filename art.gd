@@ -1864,73 +1864,111 @@ static func _thatch_roof(img: Image, f: Frame, x0: float, x1: float, y0: float, 
 		return Pixel.ramp(THATCH, 0.68 + (Pixel.hash2(x, y, 99) - 0.5) * 0.25 - (0.2 if posmod(y, 3) == 0 else 0.0), x, y, 0.15))
 
 ## Circus Maximus: the great racecourse in the valley between the Palatine and the Aventine, traditionally
-## laid out by Tarquinius Priscus (the fifth king, c. 600 BC) with wooden stands. A sand track with a low
-## central spine and turning posts, tiered timber seating down both long sides and the starting gates at
-## the far end. 10x4 tiles.
+## laid out by Tarquinius Priscus (the fifth king, c. 600 BC) with wooden stands. It is drawn as a rounded
+## stadium (a capsule: a straight run with a half circle at each end): a sand track round a low spine, tiered
+## timber seating all the way round it, the starting gates at the far end. The crowd and the flags are not
+## in this picture: the game animates them (see circus_crowd.gd). 10x4 tiles.
+const CIRCUS_C0 := Vector2(2.0, 2.0)  # the ends of the capsule's centre line, in tiles
+const CIRCUS_C1 := Vector2(8.0, 2.0)
+const CIRCUS_TRACK := 1.05  # radius where the track ends and the seating begins
+const CIRCUS_RIM := 1.95  # radius of the outer wall
+const CIRCUS_TIERS := 4
+const CIRCUS_TIER_H := 3.0  # each tier is this much higher (pixels)
+const CIRCUS_TOP := 12.0
+
+
+## How far a point is from the capsule's centre line.
+static func circus_radius(g: Vector2) -> float:
+	var seg := CIRCUS_C1 - CIRCUS_C0
+	var t := clampf((g - CIRCUS_C0).dot(seg) / seg.length_squared(), 0.0, 1.0)
+	return g.distance_to(CIRCUS_C0 + seg * t)
+
+
+## Height (pixels) of the circus at a point of its footprint: sand at 0, the spine, the starting gates,
+## then four tiers of seating rising to the outer wall.
+static func circus_height(g: Vector2) -> float:
+	var r := circus_radius(g)
+	if r >= CIRCUS_RIM:
+		return 0.0
+	if r < CIRCUS_TRACK:
+		if absf(g.y - 2.0) < 0.07 and g.x > 3.0 and g.x < 7.0:
+			return 3.0  # the spine
+		if g.x > 1.3 and g.x < 1.6 and g.y > 1.1 and g.y < 2.9:
+			return 6.0  # the starting gates
+		return 0.0
+	var tier := mini(int((r - CIRCUS_TRACK) / ((CIRCUS_RIM - CIRCUS_TRACK) / CIRCUS_TIERS)), CIRCUS_TIERS - 1)
+	return CIRCUS_TIER_H * (tier + 1)
+
+
+## What is drawn at a picture pixel: the front-most surface, found by marching along the line of sight
+## from the highest point down (as the ground shader does for terraces). Returns {} for empty space, else
+## {g: tile point, h: height there, wall: bool (a vertical face), n: outward direction of the face}.
+static func circus_surface(px: int, py: int) -> Dictionary:
+	var a := 10.0
+	var b := 4.0
+	var hs := int((a + b) * 8 + 24.0 + 8.0)
+	var top := Vector2(b * 16, hs - 1 - (a + b) * 8)
+	var diff := (px + 0.5 - top.x) / 16.0  # gx - gy
+	var s_lo := (py + 0.5 - top.y) / 8.0
+	var s_hi := s_lo + (CIRCUS_TOP + 1.0) / 8.0
+	var prev_h := -1.0
+	var s := s_hi
+	while s >= s_lo - 0.04:
+		var g := Vector2((s + diff) * 0.5, (s - diff) * 0.5)
+		if g.x >= 0.0 and g.y >= 0.0 and g.x <= a and g.y <= b:
+			var h := circus_height(g)
+			if top.y + s * 8.0 - h <= py + 0.5 and (h > 0.0 or circus_radius(g) < CIRCUS_RIM):
+				var wall := prev_h >= 0.0 and h > prev_h + 0.5
+				var n := Vector2.ZERO
+				if wall:
+					var e := 0.05
+					n = -Vector2(circus_height(g + Vector2(e, 0)) - circus_height(g - Vector2(e, 0)), circus_height(g + Vector2(0, e)) - circus_height(g - Vector2(0, e)))
+					n = n.normalized()
+				return {"g": g, "h": h, "wall": wall, "n": n, "y": top.y + s * 8.0}
+		prev_h = circus_height(g) if g.x >= 0.0 and g.y >= 0.0 and g.x <= a and g.y <= b else -1.0
+		s -= 0.05
+	return {}
+
+
 static func _circus() -> Image:
 	var a := 10.0
 	var b := 4.0
 	var hs := int((a + b) * 8 + 24.0 + 8.0)
 	var img := Pixel.blank(int((a + b) * 16), hs)
-	var f := Frame.new(Vector2(b * 16, hs - 1 - (a + b) * 8))
 	var sand := [Color("f2e2ae"), Color("e4cd90"), Color("d0b476"), Color("b99a5e")]
-	var plank_lit := func(x: int, y: int) -> Color:
-		var v := 0.62 + (Pixel.hash2(x, y, 141) - 0.5) * 0.2 - (0.22 if posmod(x, 5) == 0 else 0.0)
-		return Pixel.ramp(WOOD, v, x, y, 0.12)
-	var plank_shade := func(x: int, y: int) -> Color:
-		var v := 0.32 + (Pixel.hash2(x, y, 142) - 0.5) * 0.2 - (0.2 if posmod(x, 5) == 0 else 0.0)
-		return Pixel.ramp(WOOD, v, x, y, 0.12)
-	var bench := func(x: int, y: int) -> Color:
-		return Pixel.ramp(WOOD, 0.78 + (Pixel.hash2(x, y, 143) - 0.5) * 0.25 - (0.18 if posmod(y, 3) == 0 else 0.0), x, y, 0.1)
-	# the track
-	Pixel.poly(img, [f.p(0, 0, 0), f.p(a, 0, 0), f.p(a, b, 0), f.p(0, b, 0)], func(x: int, y: int) -> Color:
-		return Pixel.ramp(sand, 0.6 + (Pixel.hash2(x, y, 144) - 0.5) * 0.35, x, y, 0.25))
-	# the far wall with the starting gates (its inner face is the one we see)
-	Pixel.poly(img, [f.p(0, 0.9, 0), f.p(0, 3.1, 0), f.p(0, 3.1, 8), f.p(0, 0.9, 8)], plank_shade)
-	for i in 6:
-		var gy := 1.05 + i * 0.34
-		Pixel.poly(img, [f.p(0, gy, 0), f.p(0, gy + 0.24, 0), f.p(0, gy + 0.24, 5), f.p(0, gy, 5)], Color("2a1a10"))
-	# the stands behind the track: tiers rising away from it, back one first so the lower ones overlap
-	var crowd := [TUNIC[1], LINEN[1], WOOL[0], DYED[1], GOLD[1], Color("f4f1e8"), TUNIC[0]]
-	for i in 4:
-		var y0 := 0.0 + i * 0.25
-		var h := 12.0 - i * 3.0
-		_box(img, f, 0.0, a, y0, y0 + 0.25, 0, h, plank_lit, plank_shade, bench)
-		for k in 34:  # people on the bench
-			var cx := Pixel.hash2(k, i, 145) * (a - 0.4) + 0.2
-			var at := f.p(cx, y0 + 0.12, h)
-			Pixel.put(img, int(at.x), int(at.y) - 1, crowd[int(Pixel.hash2(k, i, 146) * crowd.size())])
-			Pixel.put(img, int(at.x), int(at.y), SKIN[0] if Pixel.hash2(k, i, 147) < 0.7 else HAIR)
-	# the spine down the middle, with a turning post at each end
-	_box(img, f, 1.4, 8.6, 1.92, 2.08, 0, 3, plank_lit, plank_shade, bench)
-	for px: float in [1.0, 9.0]:
+	for py in hs:
+		for px in img.get_width():
+			var hit := circus_surface(px, py)
+			if hit.is_empty():
+				continue
+			var g: Vector2 = hit["g"]
+			var h: float = hit["h"]
+			var c: Color
+			if hit["wall"]:
+				var n: Vector2 = hit["n"]
+				var lit := 0.5 + 0.55 * (n.y - 0.6 * n.x)  # faces toward the lower left catch the light
+				var v := clampf(lit, 0.0, 1.0) * 0.55 + 0.2 + (Pixel.hash2(px, py, 141) - 0.5) * 0.12 - (0.2 if posmod(px, 4) == 0 else 0.0)
+				c = Pixel.ramp(WOOD, v, px, py, 0.12)
+				if g.x > 1.25 and g.x < 1.65 and g.y > 1.05 and g.y < 2.95 and absf(n.x) > 0.5:  # the starting gates: dark openings between posts
+					if posmod(int(g.y * 3.6), 2) == 0:
+						c = Color("2a1a10")
+				var along: float = hit["y"] - (py + 0.5)  # how high up the wall this pixel is, in pixels
+				if circus_radius(g) > CIRCUS_RIM - 0.12 and along > 8.0 and along < 10.6:
+					c = TEAM_KEY[0] if along < 8.8 else (TEAM_KEY[1] if lit > 0.35 else TEAM_KEY[2])  # a band in the owner's colour round the outer wall
+			elif circus_radius(g) < CIRCUS_TRACK and h <= 0.0:
+				c = Pixel.ramp(sand, 0.58 + (Pixel.hash2(px, py, 144) - 0.5) * 0.4, px, py, 0.25)
+			elif h <= 0.0:
+				continue
+			else:
+				c = Pixel.ramp(WOOD, 0.8 - (h - 3.0) * 0.012 + (Pixel.hash2(px, py, 143) - 0.5) * 0.2 - (0.16 if posmod(py, 3) == 0 else 0.0), px, py, 0.1)  # bench tops
+			img.set_pixel(px, py, c)
+	# the turning posts at the ends of the spine
+	var f := Frame.new(Vector2(b * 16, hs - 1 - (a + b) * 8))
+	for px: float in [2.7, 7.3]:
 		var foot := f.p(px, 2.0, 0)
-		Pixel.rect(img, int(foot.x) - 1, int(foot.y) - 8, 3, 8, BRONZE[1])
-		Pixel.rect(img, int(foot.x) - 1, int(foot.y) - 8, 1, 8, BRONZE[0])
-		Pixel.put(img, int(foot.x), int(foot.y) - 9, BRONZE[0])
-	# the stand on the near side: lower, so it doesn't hide the whole track, with its outer wall to us
-	_box(img, f, 0.0, a, 3.0, b, 0, 9, plank_lit, plank_shade, bench)
-	for k in 40:
-		var cx := Pixel.hash2(k, 9, 148) * (a - 0.4) + 0.2
-		var at := f.p(cx, 3.5, 9)
-		Pixel.put(img, int(at.x), int(at.y) - 1, crowd[int(Pixel.hash2(k, 9, 149) * crowd.size())])
-		Pixel.put(img, int(at.x), int(at.y), SKIN[0] if Pixel.hash2(k, 9, 150) < 0.7 else HAIR)
-	for i in 11:  # posts along the outer wall, with dark gaps for the stairs
-		var post := f.p(i * 0.95 + 0.1, b, 0)
-		Pixel.rect(img, int(post.x), int(post.y) - 9, 1, 9, WOOD[2])
-	for i in 3:
-		var door := f.p(2.0 + i * 3.0, b, 0)
-		Pixel.rect(img, int(door.x) - 2, int(door.y) - 5, 5, 5, Color("2a1a10"))
-	# the near end: a low timber wall with an entrance
-	_box(img, f, 9.6, a, 0.9, 3.1, 0, 6, plank_lit, plank_shade, bench)
-	var gate := f.p(a, 2.0, 0)
-	Pixel.rect(img, int(gate.x) - 2, int(gate.y) - 4, 4, 4, Color("2a1a10"))
-	# flags on the far corners and the near end
-	for fp: Vector2 in [Vector2(0.1, 0.1), Vector2(0.1, 3.9), Vector2(9.9, 0.2)]:
-		var base := f.p(fp.x, fp.y, 9 if fp.y < 1.0 else 6)
-		Pixel.rect(img, int(base.x), int(base.y) - 12, 1, 12, WOOD[2])
-		Pixel.rect(img, int(base.x) + 1, int(base.y) - 12, 5, 4, TUNIC[1])
-		Pixel.rect(img, int(base.x) + 1, int(base.y) - 12, 5, 1, GOLD[1])
+		Pixel.rect(img, int(foot.x) - 1, int(foot.y) - 9, 3, 9, BRONZE[1])
+		Pixel.rect(img, int(foot.x) - 1, int(foot.y) - 9, 1, 9, BRONZE[0])
+		Pixel.put(img, int(foot.x), int(foot.y) - 10, BRONZE[0])
 	return Pixel.outlined(img, OUT_WARM)
 
 

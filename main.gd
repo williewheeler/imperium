@@ -738,7 +738,7 @@ func _add_building(kind: String, tile: Vector2i, complete: bool) -> Building:
 	b.kind = kind
 	b.tile = tile
 	b.size = Defs.BUILDINGS[kind]["size"]
-	b.owner = -1 if Defs.BUILDINGS[kind].get("landmark", false) else 0  # the player's, unless it's a landmark
+	b.owner = 0  # the first player's (purple), landmarks included
 	b.complete = complete
 	b.building_name = CITY_NAMES[_cities % CITY_NAMES.size()] if kind == "town_center" else Defs.BUILDINGS[kind]["name"]
 	if kind == "town_center":

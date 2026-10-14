@@ -24,6 +24,7 @@ var _sprites: Array[Sprite2D] = []
 var _fire: HearthFire  # the Casa Romuli's animated hearth
 var _banner: Node2D  # the owner's pennant, on the roof (child of the right half, so it sorts with the building)
 var _cloth: Sprite2D
+var _life: CircusCrowd  # the Circus Maximus's animated crowd and flags
 var _banner_key := ""  # which picture the banner was placed for (the roof changes with the era)
 static var _peaks := {}  # sprite key -> Vector2: where the roof peaks in the picture, found once
 
@@ -61,6 +62,14 @@ func _ready() -> void:
 		_fire = HearthFire.new()
 		objects.add_child(_fire)
 	if building.owner >= 0:
+		for sprite in _sprites:
+			sprite.material = Team.material_for(building.owner)  # paints the owner's colour on any team marks in the art
+	if building.kind == "circus":
+		_life = CircusCrowd.new()
+		_life.team = building.team_color()
+		_life.position = position - corners[1]
+		_halves[1].add_child(_life)
+	if building.owner >= 0 and not building.def().get("landmark", false):  # a landmark flies its own flags
 		_banner = Node2D.new()
 		_halves[1].add_child(_banner)
 		var pole := Sprite2D.new()
@@ -81,6 +90,8 @@ func _ready() -> void:
 func go_quiet() -> void:
 	if _fire != null:
 		_fire.visible = false
+	if _life != null:
+		_life.visible = false
 
 
 ## The depth-sorted nodes standing buildings are drawn with (empty for fields).
@@ -131,6 +142,8 @@ func _update_banner(anchor: Vector2) -> void:
 
 func update_view() -> void:
 	var anchor := Art.building_anchor(building.sprite_key())
+	if _life != null:
+		_life.visible = building.complete
 	if _banner != null:
 		_update_banner(anchor)
 	if _fire != null:
