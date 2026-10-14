@@ -193,9 +193,5 @@ func _draw() -> void:
 		draw_colored_polygon(pts, Color(0.45, 0.36, 0.22, 0.55))
 	var closed := pts.duplicate()
 	closed.append(pts[0])
-	if building.owner >= 0:  # the owner's colour as an underlay: a tint over the footprint and a thin edge
-		var team := building.team_color()
-		draw_colored_polygon(pts, Color(team, 0.14))
-		draw_polyline(closed, Color(team, 0.75), 1.0)
 	if building.selected:
 		draw_polyline(closed, Color("e8c766"), 2.0)

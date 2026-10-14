@@ -53,10 +53,6 @@ func _draw() -> void:
 		_draw_road_ghost()
 	for b: Building in game.buildings:
 		var origin := Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round()
-		if b.owner >= 0:  # the owner's colour, as an edge round the footprint
-			var edge := _diamond(Vector2(b.tile), Vector2(b.size))
-			edge.append(edge[0])
-			draw_polyline(edge, Color(b.team_color(), 0.85), 1.0)
 		var w := float(b.size.x * Iso.TILE_W)
 		if not b.complete:
 			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.build_fraction(), Color("7dff7d"))
