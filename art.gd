@@ -1877,6 +1877,19 @@ const CIRCUS_TIER_H := 3.0  # each tier is this much higher (pixels)
 const CIRCUS_TOP := 12.0
 
 
+const CIRCUS_ARCH_PERIOD := 0.75  # tiles between the arches of the outer wall
+
+
+## Distance travelled along the outer wall (tiles), for spacing the arches: straight along the sides,
+## and round the curve at each end.
+static func circus_perimeter(g: Vector2) -> float:
+	if g.x > CIRCUS_C0.x and g.x < CIRCUS_C1.x:
+		return g.x
+	var c := CIRCUS_C0 if g.x <= CIRCUS_C0.x else CIRCUS_C1
+	var phi := atan2(g.y - c.y, g.x - c.x)
+	return (c.x - CIRCUS_RIM * (phi - PI / 2.0)) if g.x <= CIRCUS_C0.x else (c.x + CIRCUS_RIM * (phi + PI / 2.0))
+
+
 ## How far a point is from the capsule's centre line.
 static func circus_radius(g: Vector2) -> float:
 	var seg := CIRCUS_C1 - CIRCUS_C0
@@ -1953,6 +1966,10 @@ static func _circus() -> Image:
 					if posmod(int(g.y * 3.6), 2) == 0:
 						c = Color("2a1a10")
 				var along: float = hit["y"] - (py + 0.5)  # how high up the wall this pixel is, in pixels
+				if circus_radius(g) > CIRCUS_RIM - 0.12 and along < 7.0:  # arches all round the base of the outer wall
+					var d := fposmod(circus_perimeter(g), CIRCUS_ARCH_PERIOD) / CIRCUS_ARCH_PERIOD * 2.0 - 1.0  # -1..1 across one bay
+					if absf(d) < 0.5 and along < 3.8 + 3.0 * sqrt(1.0 - (d / 0.5) * (d / 0.5)) - 0.9:
+						c = Color("2a1a10") if along > 0.6 or absf(d) > 0.3 else Color("4a3220")  # a dark opening with a lit sill
 				if circus_radius(g) > CIRCUS_RIM - 0.12 and along > 8.0 and along < 10.6:
 					c = TEAM_KEY[0] if along < 8.8 else (TEAM_KEY[1] if lit > 0.35 else TEAM_KEY[2])  # a band in the owner's colour round the outer wall
 			elif circus_radius(g) < CIRCUS_TRACK and h <= 0.0:
