@@ -39,7 +39,7 @@ each verse, over the burning city: Aeneas, the voyage, and the voice at the mout
 ## Features
 
 - **Five eras** from the Kingdom (753 BC) to the Late Empire (476 AD); the buildings, their names
-  and their look change as you advance. Era I is built; the rest is planned.
+  and their look change as you advance. Era I is the most complete; the later ones are partly built (see the design notes).
 - **Latin interface.** All text is in Roman capitals (V for U), with English on hover. The glossary
   is in [`docs/LATIN.md`](docs/LATIN.md).
 - **A living world.** A 240x240 map with terraced hills, marsh, woods, mountains and coast; weather
@@ -68,7 +68,7 @@ a demo video in [`media/`](media/imperium-demo.mp4).
 |---|---|
 | Left click | select (drag for a box; double-click to select everything of that kind on screen; shift adds) |
 | Right click | order: move, gather, build, drop off |
-| Mouse at the edge, or drag | scroll the map |
+| Mouse at the edge of the screen | scroll the map |
 | Wheel or pinch | zoom |
 | X / S | explore / stop |
 | Esc | cancel or clear the selection |
