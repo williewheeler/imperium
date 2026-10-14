@@ -136,6 +136,8 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Veii, Cures, Alba Longa, Cumae | Their first towns (Etruscan, Sabine, Latin, Greek) |
 | Optiones | Settings (map type, size, number of peoples) |
 | Genus terrae; Magnitudo; Populi | Kind of map; Map size; Peoples |
+| Copiae; Tenuis, Mediocris, Opima | Resources; Sparse, Normal, Rich |
+| Calliditas; Facilis, Aequus, Difficilis | Computer skill (cleverness); Easy, Normal, Hard |
 | Redi | Go back (Esc) |
 | Continens, Campi, Insulae Parvae, Insulae Magnae, Archipelagus, Mare Nostrum, Paeninsula, Montes, Paludes, Silvae, Lacus, Vallis Tiberis, Ora Maritima, Duae Terrae, Anulus, Colles, Litus Asperum, Insula | The 18 map types: Continent, Plains, Small Islands, Large Islands, Archipelago, Mediterranean ("our sea"), Peninsula, Highlands, Marshlands, Great Forest, Lake District, Tiber Valley, Coast, Two Lands, Ring Island, Rolling Hills, Rugged Coast, Heartland Island |
 | Minima, Parva, Media, Magna, Maxima | Map sizes: Tiny, Small, Medium, Large, Huge |

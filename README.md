@@ -11,7 +11,10 @@ drawn in code and baked into plain PNG sheets an artist can edit.
 
 **Choose your world.** The settings screen offers 18 kinds of map (plains, small and large islands, a
 Mediterranean, a peninsula, a Tiber valley, highlands, marshes and more, each with a picture), five
-map sizes and two to eight peoples. The rivals are computer-run and play by the same rules as you.
+map sizes, two to eight peoples, three levels of resources and three levels of computer skill. Land is
+built by stamping shapes (continents, islands, ranges, lakes) onto the sea, so the maps read as places,
+with open ground to build on. The rivals are computer-run and play by the same rules as you; they never
+get free resources, on any setting.
 
 ![The settings screen, with eighteen kinds of map to choose from](docs/screenshots/settings.png)
 

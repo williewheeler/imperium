@@ -13,8 +13,7 @@ enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN, MARSH }
 const MOVE_COST := [INF, INF, 1.1, 1.0, 1.6, 2.2, INF, 2.0]
 const ROAD_SPEED := 1.3  # dirt roads are this much faster to walk
 const PAVED_SPEED := 1.7  # paved Roman roads even more
-const MARSH_TOP := 0.50  # land below this elevation, if wet enough, is marsh
-const MARSH_MOISTURE := 0.42
+const RIVAL_RING := 0.28  # how far from Rome the other peoples start, as a fraction of the map's side
 const SEA_LEVEL := 0.40  # elevation of all water; the land rises from here
 const RELIEF_SCALE := 10.0  # how strongly a slope shows as light or shade
 const SLOPE_COST := 5.0  # extra walking cost per unit of steepness (elevation change per tile)
@@ -49,13 +48,7 @@ var deposits := {}  # Vector2i -> Deposit
 var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 2 paved road
 var wear := PackedFloat32Array()  # distance walked over each tile so far
 var astar := AStarGrid2D.new()
-var _params: Dictionary
-var _elev_noise: FastNoiseLite
-var _moist_noise: FastNoiseLite
-var _block_e: FastNoiseLite  # broad regional variation in height and wetness, so the parts of a map differ
-var _block_m: FastNoiseLite
-var _e := 0.0  # the raw elevation and moisture of the tile `_tile_at` last looked at
-var _m := 0.0
+var _gen: TerrainGen
 
 ## How far generation has got (0 to 1) and what it is doing, for a loading screen. The map is built on
 ## a worker thread while the main thread draws the bar, so these are written there and only read here.
@@ -63,17 +56,15 @@ static var progress := 0.0
 static var stage := ""
 
 
-## `p_size` is the map's side in tiles and `p_type` one of GameSettings.MAP_TYPES. With `p_preview` only
-## the land-shaping noise is set up, for drawing a thumbnail with `preview` (no map is built).
-func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview := false) -> void:
+## `p_size` is the map's side in tiles, `p_type` one of GameSettings.MAP_TYPES and `p_players` how many
+## peoples play (the map is shaped so each has somewhere to start). With `p_preview_px` only the land
+## shape is laid, on a grid that size, for drawing a thumbnail with `preview` (no map is built).
+func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview_px := 0, p_players := 4) -> void:
 	seed_value = p_seed
 	w = p_size
 	h = p_size
-	_params = GameSettings.type_info(p_type)
-	_setup_noise()
-	if p_preview:
-		_elev_noise.fractal_octaves = 2  # a thumbnail wants the broad shapes, not the fine detail
-		_moist_noise.fractal_octaves = 2
+	_gen = TerrainGen.new(p_seed, p_size, p_type, p_preview_px if p_preview_px > 0 else p_size, home_points(p_players))
+	if p_preview_px > 0:
 		return
 	_report(0.0, "Terra formatur")
 	_generate()
@@ -91,12 +82,12 @@ func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview := false
 ## A small picture of what a kind of map looks like (one pixel per terrain sample, in the minimap's
 ## colours), made from the same land-shaping as the real thing on a notional 320-tile map.
 static func preview(type_id: String, px: int, preview_seed := 7) -> Image:
-	var m := GameMap.new(preview_seed, 320, type_id, true)
+	var m := GameMap.new(preview_seed, 320, type_id, px, 8)
 	var grid := PackedByteArray()
 	grid.resize(px * px)
 	for y in px:
 		for x in px:
-			grid[y * px + x] = m._tile_at(int((x + 0.5) * m.w / px), int((y + 0.5) * m.h / px))
+			grid[y * px + x] = m._gen.terrain_at(int((x + 0.5) * m.w / px), int((y + 0.5) * m.h / px))
 	var img := Image.create(px, px, false, Image.FORMAT_RGBA8)
 	var counts := PackedInt32Array()
 	counts.resize(Terrain.size())
@@ -112,6 +103,18 @@ static func preview(type_id: String, px: int, preview_seed := 7) -> Image:
 					best = t
 			img.set_pixel(x, y, PREVIEW_COLORS[best])
 	return img
+
+
+## Where each people starts, as fractions of the map's side: Rome in the middle and the others round it
+## in the directions they really lay (Defs.FACTIONS), the same ring the game places their towns on.
+static func home_points(players: int) -> Array[Vector2]:
+	var out: Array[Vector2] = [Vector2(0.5, 0.5)]
+	for faction: String in Defs.RIVAL_ORDER.slice(0, players - 1):
+		var a := deg_to_rad(float(Defs.FACTIONS[faction]["bearing"]))
+		var sd := Vector2(cos(a), sin(a))
+		var td := Vector2(sd.x / 16.0 + sd.y / 8.0, sd.y / 8.0 - sd.x / 16.0).normalized()
+		out.append((Vector2(0.5, 0.5) + td * RIVAL_RING).clamp(Vector2(0.06, 0.06), Vector2(0.94, 0.94)))
+	return out
 
 
 static func _report(fraction: float, what: String) -> void:
@@ -137,71 +140,6 @@ func _make_noise(noise_seed: int, frequency: float) -> FastNoiseLite:
 	return n
 
 
-## How wet the ground must be to turn to marsh here: easy in the Tiber lowland at the middle of the
-## world, much harder farther out, so the outer regions have the odd fen but are not marshy.
-func _marsh_moisture(x: int, y: int) -> float:
-	var d2 := (x - w / 2.0) * (x - w / 2.0) + (y - h / 2.0) * (y - h / 2.0)
-	return MARSH_MOISTURE + 0.2 * (1.0 - exp(-d2 / (2.0 * 40.0 * 40.0)))
-
-
-func _setup_noise() -> void:
-	_elev_noise = _make_noise(seed_value, float(_params["freq"]))
-	_moist_noise = _make_noise(seed_value + 7, 1.0 / 11.0)
-	_block_e = _make_noise(seed_value + 31, 1.0 / 90.0)
-	_block_m = _make_noise(seed_value + 47, 1.0 / 90.0)
-	_block_e.fractal_octaves = 1
-	_block_m.fractal_octaves = 1
-
-
-## Extra shaping some kinds of map add to the height: an inland sea in the middle, a peninsula, a river
-## and so on. `u` runs across the map on the screen (-1 left to 1 right), `v` down it (0 to 1).
-func _shape(x: int, y: int, r2: float) -> float:
-	var u := float(x - y) / w
-	var v := float(x + y) / (2.0 * w)
-	match String(_params["shape"]):
-		"inland_sea":
-			return -0.62 * exp(-r2 / (2.0 * 0.22 * 0.22))
-		"peninsula":
-			return -1.6 * maxf(0.0, absf(u) - 0.12)
-		"coast":
-			return -1.3 * maxf(0.0, v - 0.62)
-		"river":
-			return -0.75 * exp(-(u * u) / (0.028 * 0.028))
-		"strait":
-			return -0.75 * exp(-((v - 0.5) * (v - 0.5)) / (0.05 * 0.05))
-		"lagoon":
-			return -0.5 * exp(-r2 / (2.0 * 0.14 * 0.14))
-	return 0.0
-
-
-## The terrain at a tile, from the land-shaping noise alone; also leaves its elevation and moisture in
-## `_e` and `_m`.
-func _tile_at(x: int, y: int) -> Terrain:
-	var dx := (x - w / 2.0) / (w / 2.0)
-	var dy := (y - h / 2.0) / (h / 2.0)
-	var r2 := dx * dx + dy * dy
-	var basin := exp(-((x - w / 2.0) * (x - w / 2.0) + (y - h / 2.0) * (y - h / 2.0)) / (2.0 * 15.0 * 15.0))
-	var base := _elev_noise.get_noise_2d(x, y) * 0.5 + 0.5
-	var e := 0.5 + (base - 0.5) * float(_params["relief"]) + float(_params["bias"]) - r2 * float(_params["edge"]) \
-		+ _shape(x, y, r2) + _block_e.get_noise_2d(x, y) * 0.09 - basin * 0.17
-	var m := clampf(_moist_noise.get_noise_2d(x, y) * 0.5 + 0.5 + _block_m.get_noise_2d(x, y) * 0.18 + float(_params["wet"]), 0.0, 1.0)
-	_e = e
-	_m = m
-	if e < 0.28:
-		return Terrain.DEEP
-	if e < 0.40:
-		return Terrain.SHALLOW
-	if e < 0.44:
-		return Terrain.BEACH
-	if e < 0.66:
-		if e < MARSH_TOP and m > _marsh_moisture(x, y):
-			return Terrain.MARSH  # low, wet ground just above the shore
-		return Terrain.FOREST if m > 0.55 else Terrain.GRASS
-	if e < 0.76:
-		return Terrain.HILLS
-	return Terrain.MOUNTAIN
-
-
 func _generate() -> void:
 	tiles.resize(w * h)
 	moisture.resize(w * h)
@@ -210,10 +148,10 @@ func _generate() -> void:
 		if y % 8 == 0:
 			progress = 0.5 * y / h
 		for x in w:
-			var t := _tile_at(x, y)
+			var t := _gen.terrain_at(x, y)
 			tiles[y * w + x] = t
-			elevation[y * w + x] = _height_of(_e)
-			moisture[y * w + x] = _m
+			elevation[y * w + x] = _height_of(_gen.last_e)
+			moisture[y * w + x] = _gen.last_m
 			if t == Terrain.FOREST:
 				deposits[Vector2i(x, y)] = Deposit.new(Defs.Res.WOOD, Defs.DEPOSIT_AMOUNT[Defs.Res.WOOD])
 
@@ -668,7 +606,7 @@ func find_start(c := Vector2i(-1, -1), reach_from := Vector2i(-1, -1), first_lev
 	if c.x < 0:
 		c = Vector2i(w / 2, h / 2)
 	var reach := reachable_from(reach_from) if reach_from.x >= 0 else PackedByteArray()
-	var reach_limit := [30, 50, 90, maxi(w, h)]  # how far each level of choosiness is worth searching
+	var reach_limit := [30, 40, 60, maxi(w, h)]  # how far each level of choosiness is worth searching
 	for level in range(first_level, 4):  # 0 wants marsh close by (Rome began on the edge of a marsh); the rest relax in turn
 		for r in reach_limit[level]:
 			for p in _ring(c, r):
@@ -678,8 +616,8 @@ func find_start(c := Vector2i(-1, -1), reach_from := Vector2i(-1, -1), first_lev
 					continue  # a rival's town must be somewhere we can walk to
 				if level == 3:
 					return p
-				if _forest_count(p, 10) < 12:
-					continue
+				if _forest_count(p, 14) < (12 if level < 2 else 3):
+					continue  # there should be woods within reach
 				if level == 0 and _count_of(p, 9, Terrain.MARSH) < 10:
 					continue
 				if level == 2 or find_site(Vector2i(3, 3), p, 3, 5, _start_tiles(p)).x >= 0:
@@ -764,35 +702,36 @@ func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Ar
 
 
 ## Berries, stone and gold near the start, plus scattered mines elsewhere to explore for.
-func place_resources(start: Vector2i) -> void:
+func place_resources(start: Vector2i, density := 1.0) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
-	_place_start_clusters(rng, start)
-	_place_scattered(rng)
+	_place_start_clusters(rng, start, density)
+	_place_scattered(rng, density)
 
 
 ## Berries, stone and gold around another people's first town, just as the first player has.
-func place_start_resources(start: Vector2i) -> void:
+func place_start_resources(start: Vector2i, density := 1.0) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value + start.x * 131 + start.y
-	_place_start_clusters(rng, start)
+	_place_start_clusters(rng, start, density)
 
 
-func _place_start_clusters(rng: RandomNumberGenerator, start: Vector2i) -> void:
-	for i in 3:
+func _place_start_clusters(rng: RandomNumberGenerator, start: Vector2i, density: float) -> void:
+	for i in maxi(1, int(round(3.0 * density))):  # berries
 		_place_cluster(rng, start, 5.0, 11.0, Defs.Res.FOOD, 5, 2)
-	_place_cluster(rng, start, 9.0, 15.0, Defs.Res.STONE, 3, 1)
-	_place_cluster(rng, start, 12.0, 20.0, Defs.Res.GOLD, 3, 1)
+	for i in maxi(1, int(round(density))):  # stone and gold
+		_place_cluster(rng, start, 9.0, 15.0, Defs.Res.STONE, 3, 1)
+		_place_cluster(rng, start, 12.0, 20.0, Defs.Res.GOLD, 3, 1)
 
 
-func _place_scattered(rng: RandomNumberGenerator) -> void:
+func _place_scattered(rng: RandomNumberGenerator, density: float) -> void:
 	var blocks := maxi(1, w * h / 6400)  # one for every 80x80 tiles
-	for i in 8 * blocks:  # mines scattered over the whole world, for exploring armies and villagers to find
+	for i in int(round(8 * blocks * density)):  # mines scattered over the whole world, for exploring armies and villagers to find
 		for attempt in 20:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
 			if _place_cluster(rng, c, 0.0, 0.0, Defs.Res.STONE if i % 2 == 0 else Defs.Res.GOLD, 3, 1):
 				break
-	for i in 4 * blocks:  # and berry patches
+	for i in int(round(4 * blocks * density)):  # and berry patches
 		for attempt in 20:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
 			if _place_cluster(rng, c, 0.0, 0.0, Defs.Res.FOOD, 5, 2):

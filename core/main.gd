@@ -93,6 +93,16 @@ func _ready() -> void:
 		args[kv[0]] = kv[1] if kv.size() > 1 else true
 
 	GameSettings.load_saved()
+	if args.has("map"):  # debug: --map=TYPE --size=SIZE --players=N --resources=ID --difficulty=ID (not saved)
+		GameSettings.map_type = GameSettings.type_info(String(args["map"]))["id"]
+	if args.has("size"):
+		GameSettings.size_id = GameSettings.size_info(String(args["size"]))["id"]
+	if args.has("players"):
+		GameSettings.players = clampi(int(args["players"]), GameSettings.MIN_PLAYERS, GameSettings.MAX_PLAYERS)
+	if args.has("resources"):
+		GameSettings.resources_id = GameSettings.resources_info(String(args["resources"]))["id"]
+	if args.has("difficulty"):
+		GameSettings.difficulty_id = GameSettings.difficulty_info(String(args["difficulty"]))["id"]
 	Perf.on = args.has("perf")
 	_record_dir = String(args.get("record", ""))
 	if args.has("windowed") or args.has("showcase") or args.has("shot"):
@@ -116,7 +126,8 @@ func _ready() -> void:
 	var worker := Thread.new()
 	var size_tiles := GameSettings.tiles()
 	var map_type := GameSettings.map_type
-	worker.start(func() -> void: built.append(GameMap.new(world_seed, size_tiles, map_type)))
+	var players := GameSettings.players
+	worker.start(func() -> void: built.append(GameMap.new(world_seed, size_tiles, map_type, 0, players)))
 	while built.is_empty():
 		loading.show_progress(GameMap.progress, GameMap.stage)
 		await get_tree().process_frame
@@ -141,7 +152,7 @@ func _ready() -> void:
 	var site := _find_building_site("town_center", start, 3)
 	if site.x >= 0:
 		_add_building("town_center", site, true)
-	map.place_resources(start)  # after the Town Center, so berries and mines go around it
+	map.place_resources(start, float(GameSettings.resources_info(GameSettings.resources_id)["amount"]))  # after the Town Center, so berries and mines go around it
 	_place_circus(start)
 	_rome_start = start
 	_place_rivals(start)
@@ -1098,7 +1109,7 @@ func _place_circus(start: Vector2i) -> void:
 ## same stores as ours. How many play is set on the settings screen. Each is run by a Rival.
 func _place_rivals(rome: Vector2i) -> void:
 	var rome_screen := Vector2.ZERO
-	var ring := 0.28 * map.w  # how far from Rome the peoples start
+	var ring := GameMap.RIVAL_RING * map.w  # how far from Rome the peoples start
 	var connected: bool = GameSettings.type_info(GameSettings.map_type)["connected"]
 	for faction: String in Defs.RIVAL_ORDER.slice(0, GameSettings.players - 1):
 		var info: Dictionary = Defs.FACTIONS[faction]
@@ -1135,12 +1146,13 @@ func _place_rivals(rome: Vector2i) -> void:
 			units.append(u)
 		var town := _add_building("town_center", site, true, owner_id)
 		town.building_name = info["town"]
-		map.place_start_resources(spot)
+		map.place_start_resources(spot, float(GameSettings.resources_info(GameSettings.resources_id)["amount"]))
 		var rival := Rival.new()
 		rival.game = self
 		rival.owner = owner_id
 		rival.faction = faction
 		rival.start = spot
+		rival.set_difficulty(GameSettings.difficulty_id)
 		rival.fog = Fog.new(map.w, map.h, true)
 		rival_fogs[owner_id] = rival.fog
 		rival.see()  # it knows the ground round its town, and nothing else

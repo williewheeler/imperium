@@ -4,22 +4,33 @@ extends RefCounted
 ## at its town, sends them to gather, and builds huts, fields and a storehouse as it grows. It thinks
 ## a little over once a second, so it is never faster than a patient human.
 
-const THINK_INTERVAL := 1.2  # seconds between decisions
-const MAX_VILLAGERS := 40
+const MIN_THINK := 0.3
 const SEARCH_RADIUS := 26  # tiles around the town to look for something to gather
 const SHARES := [0.25, 0.58, 0.1, 0.07]  # how its villagers divide among wood, food, stone and gold
-const MAX_BUILDS := 2  # foundations it works on at once
 
 var game  # Main
 var owner := 0
 var faction := ""
 var start := Vector2i.ZERO  # where its first town stands
 var fog: Fog  # what its people have seen: the only part of the map it knows about
+var think_interval := 1.2  # seconds between decisions
+var grow_seconds := 25.0  # it aims for one more villager for every this many seconds of its history
+var max_villagers := 40
+var max_builds := 2  # foundations it works on at once
 var _timer := 0.0
 var _see_timer := 0.0
 var _scout_wait := 0.0  # seconds before another villager may be sent exploring
 var _age := 0.0
 var _blocked := {}  # deposit tile -> seconds before it is tried again (no way to reach it)
+
+
+## The difficulty only changes how fast it decides and how it aims to grow; it never gets extra resources.
+func set_difficulty(id: String) -> void:
+	var d := GameSettings.difficulty_info(id)
+	think_interval = maxf(MIN_THINK, float(d["think"]))
+	grow_seconds = float(d["grow"])
+	max_villagers = int(d["cap"])
+	max_builds = int(d["builds"])
 
 
 func tick(delta: float) -> void:
@@ -36,7 +47,7 @@ func tick(delta: float) -> void:
 	_timer -= delta
 	if _timer > 0.0:
 		return
-	_timer = THINK_INTERVAL
+	_timer = think_interval
 	var town := _town()
 	if town == null:
 		return
@@ -82,7 +93,7 @@ func _villagers() -> Array[Unit]:
 
 ## Keep the town producing villagers while the stores and the roofs allow.
 func _train(town: Building) -> void:
-	var want := mini(MAX_VILLAGERS, 10 + int(_age / 25.0))
+	var want := mini(max_villagers, 10 + int(_age / grow_seconds))
 	if _villagers().size() + town.queue >= want or town.queue >= 2:
 		return
 	var cost: Array = Defs.VILLAGER_COST
@@ -98,7 +109,7 @@ func _build(town: Building) -> void:
 	for b in _mine("hut") + _mine("farm") + _mine("storehouse"):
 		if not b.complete:
 			open += 1
-	if open >= MAX_BUILDS:
+	if open >= max_builds:
 		return
 	var villagers := _villagers()
 	if villagers.size() < 3:

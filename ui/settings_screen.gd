@@ -11,13 +11,15 @@ const CREAM := Color("f3e6c4")
 const DIM := Color("b9a98a")
 const RED := Color("7a1a1a")
 const RED_HOVER := Color("a62828")
-const COLUMNS := 6
-const THUMB := 96
+const COLUMNS := 9
+const THUMB := 84
 
 var _root: Control
 var _type_buttons := {}  # map type id -> Button
 var _size_buttons := {}
 var _player_buttons := {}
+var _resource_buttons := {}
+var _difficulty_buttons := {}
 var _about_latin: Label
 var _about_english: Label
 var _thumbs := {}  # map type id -> TextureRect
@@ -68,41 +70,42 @@ func _ready() -> void:
 	column.add_child(_about_latin)
 	column.add_child(_about_english)
 
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 60)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(row)
-	var sizes := VBoxContainer.new()
-	sizes.add_theme_constant_override("separation", 6)
-	sizes.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sizes.add_child(_heading("Magnitudo", "Map size"))
-	var size_row := HBoxContainer.new()
-	size_row.add_theme_constant_override("separation", 6)
-	size_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for s: Dictionary in GameSettings.SIZES:
-		var b := _toggle(Latin.t(s["latin"]), 92, 15)
-		b.tooltip_text = "%s map: %d × %d tiles" % [s["english"], s["tiles"], s["tiles"]]
-		b.pressed.connect(_pick_size.bind(s["id"]))
-		_size_buttons[s["id"]] = b
+	var options := GridContainer.new()  # the four choices in two rows
+	options.columns = 2
+	options.add_theme_constant_override("h_separation", 70)
+	options.add_theme_constant_override("v_separation", 8)
+	options.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	options.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(options)
+
+	var size_row := _option_row(options, "Magnitudo", "Map size")
+	for sz: Dictionary in GameSettings.SIZES:
+		var b := _toggle(Latin.t(sz["latin"]), 92, 15)
+		b.tooltip_text = "%s map: %d × %d tiles" % [sz["english"], sz["tiles"], sz["tiles"]]
+		b.pressed.connect(_pick_size.bind(sz["id"]))
+		_size_buttons[sz["id"]] = b
 		size_row.add_child(b)
-	sizes.add_child(size_row)
-	row.add_child(sizes)
-	var players := VBoxContainer.new()
-	players.add_theme_constant_override("separation", 6)
-	players.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	players.add_child(_heading("Populi", "Peoples playing: you and the rest computer-run rivals"))
-	var player_row := HBoxContainer.new()
-	player_row.add_theme_constant_override("separation", 6)
-	player_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for n in range(GameSettings.MIN_PLAYERS, GameSettings.MAX_PLAYERS + 1):
-		var b := _toggle(_numeral(n), 52, 17)
-		b.tooltip_text = "%d peoples: you and %d computer-run rivals" % [n, n - 1]
-		b.pressed.connect(_pick_players.bind(n))
-		_player_buttons[n] = b
+	var player_row := _option_row(options, "Populi", "Peoples playing: you and the rest computer-run rivals")
+	for count in range(GameSettings.MIN_PLAYERS, GameSettings.MAX_PLAYERS + 1):
+		var b := _toggle(_numeral(count), 52, 17)
+		b.tooltip_text = "%d peoples: you and %d computer-run rivals" % [count, count - 1]
+		b.pressed.connect(_pick_players.bind(count))
+		_player_buttons[count] = b
 		player_row.add_child(b)
-	players.add_child(player_row)
-	row.add_child(players)
+	var resource_row := _option_row(options, "Copiae", "Resources: how many berry patches, mines and finds there are")
+	for r: Dictionary in GameSettings.RESOURCES:
+		var b := _toggle(Latin.t(r["latin"]), 140, 15)
+		b.tooltip_text = "%s: %s" % [r["english"], r["about"]]
+		b.pressed.connect(_pick_resources.bind(r["id"]))
+		_resource_buttons[r["id"]] = b
+		resource_row.add_child(b)
+	var difficulty_row := _option_row(options, "Calliditas", "The computer-run peoples' skill. They never get free resources, on any setting.")
+	for d: Dictionary in GameSettings.DIFFICULTIES:
+		var b := _toggle(Latin.t(d["latin"]), 140, 15)
+		b.tooltip_text = "%s: %s" % [d["english"], d["about"]]
+		b.pressed.connect(_pick_difficulty.bind(d["id"]))
+		_difficulty_buttons[d["id"]] = b
+		difficulty_row.add_child(b)
 
 	var done := _toggle(Latin.t("Redi"), 150, 20)
 	done.tooltip_text = "Back to the title  (Esc)"
@@ -123,9 +126,24 @@ func _process(_delta: float) -> void:
 	_thumbs[id].texture = ImageTexture.create_from_image(GameMap.preview(id, THUMB))
 
 
+## A heading with a row of buttons under it, added to `parent`; returns the row.
+func _option_row(parent: Control, latin: String, english: String) -> HBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(_heading(latin, english))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(row)
+	parent.add_child(box)
+	return row
+
+
 func _type_button(t: Dictionary) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(THUMB + 14, THUMB + 38)
+	b.custom_minimum_size = Vector2(THUMB + 12, THUMB + 34)
 	b.focus_mode = Control.FOCUS_NONE
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.tooltip_text = "%s: %s" % [t["english"], t["about"]]
@@ -143,7 +161,7 @@ func _type_button(t: Dictionary) -> Button:
 	pic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(pic)
-	var name_label := _label(Latin.t(t["latin"]), 11, CREAM)
+	var name_label := _label(Latin.t(t["latin"]), 10, CREAM)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(name_label)
 	b.add_child(box)
@@ -222,6 +240,16 @@ func _pick_players(n: int) -> void:
 	_refresh()
 
 
+func _pick_resources(id: String) -> void:
+	GameSettings.resources_id = id
+	_refresh()
+
+
+func _pick_difficulty(id: String) -> void:
+	GameSettings.difficulty_id = id
+	_refresh()
+
+
 func _show_about(id: String) -> void:
 	var t := GameSettings.type_info(id)
 	_about_latin.text = Latin.t(t["latin"])
@@ -235,6 +263,10 @@ func _refresh() -> void:
 		_style(_size_buttons[id], id == GameSettings.size_id)
 	for n: int in _player_buttons:
 		_style(_player_buttons[n], n == GameSettings.players)
+	for id: String in _resource_buttons:
+		_style(_resource_buttons[id], id == GameSettings.resources_id)
+	for id: String in _difficulty_buttons:
+		_style(_difficulty_buttons[id], id == GameSettings.difficulty_id)
 	_show_about(GameSettings.map_type)
 
 
