@@ -107,8 +107,8 @@ func _sprite(key: String, foot: Vector2) -> Sprite2D:
 
 
 ## Trees lean a pixel in gusts: each has a second picture in the scenery sheet ("oak:0:1") with its
-## crown blown to the right. A slow wind wave rolls across the map, so neighbouring trees lean
-## together, always the same way, and ease back upright when it passes.
+## crown blown to the right. It is one wind over the whole map, so every tree leans together,
+## always the same way, and eases back upright when the gust passes.
 const GUST := 0.35  # how strong the wind must blow to tip a tree over
 const WIND_STEP := 0.25  # seconds between checks
 const WIND_SPEED := 0.22  # radians per second: one gust every half minute or so
@@ -134,7 +134,7 @@ func _sway_trees(delta: float) -> void:
 		for s in chunk["trees"]:  # felled trees are freed, so check before touching one
 			if not is_instance_valid(s):
 				continue
-			var lean := 1 if sin(t * WIND_SPEED - s.position.x * 0.006 - s.position.y * 0.01) > GUST else 0
+			var lean := 1 if sin(t * WIND_SPEED) > GUST else 0
 			if lean != s.get_meta("lean"):
 				s.set_meta("lean", lean)
 				s.texture = s.get_meta("frames")[lean]
@@ -281,6 +281,20 @@ func _build_chunk(c: Vector2i) -> void:
 	_building = {}
 
 
+## A building went up: whatever decorative scenery (bushes, reeds, willows) was already drawn on its
+## footprint is cleared away, as a builder would.
+func _clear_scenery_under(b: Building) -> void:
+	for y in range(b.tile.y, b.tile.y + b.size.y):
+		for x in range(b.tile.x, b.tile.x + b.size.x):
+			var p := Vector2i(x, y)
+			if game.map.tile(x, y) == GameMap.Terrain.FOREST:
+				continue  # woods are felled by the deposit system, not here
+			for n in _tile_objects.get(p, []):
+				if is_instance_valid(n):
+					n.queue_free()
+			_tile_objects.erase(p)
+
+
 func _process(delta: float) -> void:
 	var t0 := Perf.start()
 	_stream_terrain(delta)
@@ -289,7 +303,7 @@ func _process(delta: float) -> void:
 	_sway_trees(delta)
 	Perf.stop("tree sway", t0)
 	t0 = Perf.start()
-	ground.set_rain(game.weather.rain)
+	ground.set_rain(game.weather.rain, delta)
 	var screen := view_rect().grow(48.0)  # things off the screen aren't animated or even redrawn
 	for u: Unit in game.units:
 		if not _unit_views.has(u):
@@ -315,6 +329,7 @@ func _process(delta: float) -> void:
 			v.objects = objects
 			decals.add_child(v)
 			_building_views[b] = v
+			_clear_scenery_under(b)
 		if wide.has_point(Iso.to_screen_flat(b.center())):
 			_building_views[b].update_view()
 		else:

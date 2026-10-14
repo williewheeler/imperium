@@ -8,6 +8,7 @@ shader_type canvas_item;
 uniform sampler2D terrain : filter_nearest, repeat_disable;
 uniform sampler2D road_mask : filter_linear, repeat_disable; // dirt roads, 8 pixels per tile
 uniform sampler2D paved_mask : filter_linear, repeat_disable; // paved Roman roads
+uniform float flow = 0.0; // how far the water has drifted: the CPU adds up the time, faster in rough weather, so a change of weather never makes it jump
 uniform float rain = 0.0; // 0 dry .. 1 storm: rain ripples the water and a storm roughens it
 uniform sampler2D relief : filter_linear, repeat_disable; // light on each tile's slope, 0.5 = flat
 uniform vec2 origin = vec2(0.0); // world position of this rect's top-left corner
@@ -135,12 +136,12 @@ vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 	vec3 col;
 
 	if (id == 0) { // deep water
-		float ripple = vnoise(vec2(wp.x * 0.2 + t * 0.6 * (0.8 + rain * 1.2), wp.y * 0.65 + t * 0.15 * (0.8 + rain * 1.2)));  // faster in rough weather
+		float ripple = vnoise(vec2(wp.x * 0.2 + flow * 0.6, wp.y * 0.65 + flow * 0.15));
 		col = ramp4(hx(0x3a8fc0), hx(0x2c7db2), hx(0x206b9f), hx(0x185a88), 0.45 + (ripple - 0.5) * (0.7 + rain * 0.5) + d - rain * 0.12);
 		if (hash(wp * 0.77 + t) > 0.988 - rain * 0.022) col = hx(0x8cc8e8); // whitecaps multiply in a storm
 		col = mix(col, hx(0xd2ebf7), raindrop(wp, rain, floor(time * 8.0) / 8.0) * 0.85);
 	} else if (id == 1) { // shallows
-		float ripple = vnoise(vec2(wp.x * 0.25 + t * 0.5 * (0.8 + rain * 1.2), wp.y * 0.8 - t * 0.2 * (0.8 + rain * 1.2)));
+		float ripple = vnoise(vec2(wp.x * 0.25 + flow * 0.5, wp.y * 0.8 - flow * 0.2));
 		col = ramp4(hx(0x9ae0f0), hx(0x78cbe6), hx(0x5db7d8), hx(0x46a1c4), 0.5 + (ripple - 0.5) * (0.6 + rain * 0.5) + d - rain * 0.1);
 		if (hash(wp * 0.91 + t) > 0.985 - rain * 0.015) col = hx(0xe8fbff);
 		col = mix(col, hx(0xf2fbff), raindrop(wp, rain, floor(time * 8.0) / 8.0) * 0.85);

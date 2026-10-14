@@ -55,9 +55,15 @@ func setup(map: GameMap) -> void:
 	material = mat
 
 
+var _flow := 0.0
+
+
 ## How hard it is raining (0 to 1): rain ripples the water, and a storm roughens it.
-func set_rain(amount: float) -> void:
-	(material as ShaderMaterial).set_shader_parameter("rain", amount)
+func set_rain(amount: float, delta: float) -> void:
+	_flow += delta * (0.8 + amount * 1.2)  # the water drifts faster in rough weather; adding up the steps keeps it smooth as the weather changes
+	var mat := material as ShaderMaterial
+	mat.set_shader_parameter("rain", amount)
+	mat.set_shader_parameter("flow", floor(_flow * 1.4))
 
 
 ## A tile changed terrain (a felled forest becomes grass).

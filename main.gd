@@ -370,8 +370,12 @@ func _unhandled_input(event: InputEvent) -> void:
 					_try_place()
 				else:
 					var hit := _unit_at(get_global_mouse_position()) if event.double_click else null
+					var hit_building := building_under(get_global_mouse_position()) if event.double_click and hit == null else null
 					if hit != null:
 						_select_same_kind(hit, Input.is_key_pressed(KEY_SHIFT))
+						dragging = false
+					elif hit_building != null:
+						_select_same_building(hit_building, Input.is_key_pressed(KEY_SHIFT))
 						dragging = false
 					else:
 						dragging = true
@@ -431,6 +435,17 @@ func _select_same_kind(of: Unit, additive: bool) -> void:
 	for u in units:
 		if u.kind == of.kind and view.has_point(Iso.to_screen(u.pos)):
 			u.selected = true
+
+
+## Double click on a building: select every building of the same kind that is on the screen now.
+func _select_same_building(of: Building, additive: bool) -> void:
+	if not additive:
+		_clear_selection()
+	var half := get_viewport_rect().size / camera.zoom.x / 2.0
+	var view := Rect2(cam_pos - half, half * 2.0)
+	for b in buildings:
+		if b.kind == of.kind and view.has_point(Iso.to_screen_on(b.center(), Iso.level_of(b.tile))):
+			b.selected = true
 
 
 func _finish_select(rect: Rect2, additive: bool) -> void:
