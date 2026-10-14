@@ -14,13 +14,21 @@ var game  # Main
 var owner := 0
 var faction := ""
 var start := Vector2i.ZERO  # where its first town stands
+var fog: Fog  # what its people have seen: the only part of the map it knows about
 var _timer := 0.0
+var _see_timer := 0.0
+var _scout_wait := 0.0  # seconds before another villager may be sent exploring
 var _age := 0.0
 var _blocked := {}  # deposit tile -> seconds before it is tried again (no way to reach it)
 
 
 func tick(delta: float) -> void:
 	_age += delta
+	_scout_wait -= delta
+	_see_timer -= delta
+	if _see_timer <= 0.0:
+		_see_timer = 0.5
+		see()
 	for p: Vector2i in _blocked.keys():
 		_blocked[p] -= delta
 		if _blocked[p] <= 0.0:
@@ -35,6 +43,18 @@ func tick(delta: float) -> void:
 	_train(town)
 	_build(town)
 	_work(town)
+
+
+## Updates what its people can see, just as for the player: each villager and building sees a certain way.
+func see() -> void:
+	var sources := []
+	for u: Unit in game.units:
+		if u.owner == owner:
+			sources.append([u.pos, game.VILLAGER_SIGHT + game._height_sight(u.pos)])
+	for b: Building in game.buildings:
+		if b.owner == owner:
+			sources.append([b.center(), (b.def()["sight"] if b.complete else game.FOUNDATION_SIGHT) + game._height_sight(b.center())])
+	fog.update(sources)
 
 
 func _town() -> Building:
@@ -135,18 +155,29 @@ func _work(town: Building) -> void:
 	for u in villagers:
 		if u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN] and u.gather_kind >= 0:
 			busy[u.gather_kind] += 1
+	if villagers.size() >= 8 and _scout_wait <= 0.0 and (_nearest_deposit(Defs.Res.STONE, town.center(), 0).x < 0 or _nearest_deposit(Defs.Res.GOLD, town.center(), 0).x < 0):
+		for u in villagers:  # no stone or no gold found yet: an idle hand goes looking
+			if u.state == Unit.State.IDLE:
+				_scout_wait = 60.0
+				game._order_explore(u)
+				break
 	for u in villagers:
 		if u.state != Unit.State.IDLE:
 			continue
 		var order := _kinds_by_need(busy, villagers.size())
+		var assigned := false
 		for kind in order:
 			var tile := _nearest_deposit(kind, town.center(), 0)
 			if tile.x < 0:
 				continue
 			if game._order_gather(u, tile):
 				busy[kind] += 1
+				assigned = true
 				break
 			_blocked[tile] = 30.0
+		if not assigned and _scout_wait <= 0.0:  # nothing it knows of to work: go and look for something
+			_scout_wait = 40.0
+			game._order_explore(u)
 
 
 func _kinds_by_need(busy: Array, total: int) -> Array:
@@ -170,8 +201,8 @@ func _nearest_deposit(kind: int, from: Vector2, min_r: int, wild_only := false) 
 					continue
 				var p := Vector2i(x, y)
 				var d: Deposit = deposits.get(p)
-				if d == null or d.kind != kind or d.amount <= 0 or _blocked.has(p):
-					continue
+				if d == null or d.kind != kind or d.amount <= 0 or _blocked.has(p) or not fog.is_explored(p):
+					continue  # it cannot work what it has not found
 				if d.farm and (wild_only or d.owner != owner):
 					continue
 				return p

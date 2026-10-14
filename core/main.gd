@@ -37,6 +37,7 @@ var markers: Array[Dictionary] = []  # {pos: Vector2, t: float}
 var stock: Array[int] = []  # the first player's (ours); rivals keep theirs in `stocks`
 var stocks: Array = []  # every player's resources, by owner (stocks[0] is `stock`)
 var rivals: Array[Rival] = []
+var rival_fogs := {}  # owner -> the Fog that people has built up: what it has seen, and nothing more
 var _rome_start := Vector2i.ZERO
 var camera: Camera2D
 var hud: Hud
@@ -329,6 +330,11 @@ func building_at(tile: Vector2i) -> Building:
 	return null
 
 
+## What the given player has explored (a rival knows only what its own people have seen).
+func fog_of(owner: int) -> Fog:
+	return fog if owner == 0 else rival_fogs[owner]
+
+
 func stock_of(owner: int) -> Array[int]:
 	return stocks[owner]
 
@@ -370,7 +376,7 @@ func placement_error(kind: String, tile: Vector2i, owner := 0) -> String:
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var p := Vector2i(x, y)
-			if owner == 0 and not fog.is_explored(p):
+			if not fog_of(owner).is_explored(p):
 				return "Terra incognita."
 			if not map.is_free_land(p):
 				return "Locus liber et planus requiritur."
@@ -633,21 +639,23 @@ func _order_explore(u: Unit) -> void:
 		u.state = Unit.State.EXPLORE
 	else:
 		u.state = Unit.State.IDLE
-		hud.flash("Nihil ultra explorandum.", "Nothing reachable is left to explore.")
+		if u.owner == 0:
+			hud.flash("Nihil ultra explorandum.", "Nothing reachable is left to explore.")
 
 
 ## Heads for the nearest unseen, walkable tile that no other explorer is already going to.
 ## Tiles with no route (across water, say) are remembered and skipped.
 func _explore_next(u: Unit) -> bool:
+	var seen := fog_of(u.owner)
 	var taken: Array[Vector2i] = []
 	for o in units:
-		if o != u and o.state == Unit.State.EXPLORE:
+		if o != u and o.owner == u.owner and o.state == Unit.State.EXPLORE:
 			taken.append(o.explore_goal)
 	var cands: Array = []
 	for y in range(0, map.h, 3):  # every third tile is plenty to find the nearest unseen ground
 		for x in range(0, map.w, 3):
 			var p := Vector2i(x, y)
-			if fog.state[y * map.w + x] != Fog.HIDDEN or not map.is_walkable(p) or u.explore_skip.has(p):
+			if seen.state[y * map.w + x] != Fog.HIDDEN or not map.is_walkable(p) or u.explore_skip.has(p):
 				continue
 			var crowded := false
 			for t in taken:
@@ -1133,6 +1141,9 @@ func _place_rivals(rome: Vector2i) -> void:
 		rival.owner = owner_id
 		rival.faction = faction
 		rival.start = spot
+		rival.fog = Fog.new(map.w, map.h, true)
+		rival_fogs[owner_id] = rival.fog
+		rival.see()  # it knows the ground round its town, and nothing else
 		rivals.append(rival)
 
 
@@ -1832,7 +1843,7 @@ func _update_unit(u: Unit, delta: float) -> void:
 			if _follow(u, delta):
 				u.state = Unit.State.IDLE
 		Unit.State.EXPLORE:
-			if _follow(u, delta) or fog.is_explored(u.explore_goal):
+			if _follow(u, delta) or fog_of(u.owner).is_explored(u.explore_goal):
 				if not _explore_next(u):
 					u.path.clear()
 					u.state = Unit.State.IDLE

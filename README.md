@@ -9,6 +9,12 @@ drawn in code and baked into plain PNG sheets an artist can edit.
 
 ## A look at the game
 
+**Choose your world.** The settings screen offers 18 kinds of map (plains, small and large islands, a
+Mediterranean, a peninsula, a Tiber valley, highlands, marshes and more, each with a picture), five
+map sizes and two to eight peoples. The rivals are computer-run and play by the same rules as you.
+
+![The settings screen, with eighteen kinds of map to choose from](docs/screenshots/settings.png)
+
 **A village on the Palatine.** The Casa Romuli, the hut of Romulus, is your first town centre. Its
 hearth burns, the trees sway in the wind, and everything of yours flies the Roman purple.
 
@@ -42,7 +48,7 @@ each verse, over the burning city: Aeneas, the voyage, and the voice at the mout
   and their look change as you advance. Era I is the most complete; the later ones are partly built (see the design notes).
 - **Latin interface.** All text is in Roman capitals (V for U), with English on hover. The glossary
   is in [`docs/LATIN.md`](docs/LATIN.md).
-- **A living world.** A 240x240 map with terraced hills, marsh, woods, mountains and coast; weather
+- **A living world.** A map up to 480x480 with terraced hills, marsh, woods, mountains and coast; weather
   that changes; villagers who hide behind trees (and show through as a silhouette when they do).
 - **Gathering and building.** Wood, food, stone and gold; huts, fields, granaries, a citadel, a
   stable and Vesta's shrine.

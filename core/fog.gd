@@ -16,13 +16,18 @@ var _image: Image
 var _visible := PackedInt32Array()  # the tiles that are VISIBLE now, so a refresh touches only those
 var show_all := false  # the whole map laid open (a debug view), instead of what has been seen
 var _saved_state := PackedByteArray()
+var _headless := false
 var _last_key := ""  # what the last refresh was drawn from, so an unchanged scene costs nothing
 
 
-func _init(p_w: int, p_h: int) -> void:
+## `headless` is for a computer-run people's memory of the map: it keeps what has been seen but draws nothing.
+func _init(p_w: int, p_h: int, headless := false) -> void:
 	w = p_w
 	h = p_h
 	state.resize(w * h)
+	if headless:
+		_headless = true
+		return
 	_bytes.resize(w * h * 4)
 	for i in w * h:
 		_bytes[i * 4 + 3] = ALPHA[HIDDEN]
@@ -53,7 +58,8 @@ func update(sources: Array) -> void:
 	_last_key = key
 	for i in _visible:  # what was in sight is now only remembered
 		state[i] = EXPLORED
-		_bytes[i * 4 + 3] = ALPHA[EXPLORED]
+		if not _headless:
+			_bytes[i * 4 + 3] = ALPHA[EXPLORED]
 	_visible = PackedInt32Array()
 	for s in sources:
 		var c: Vector2 = s[0]
@@ -67,7 +73,8 @@ func update(sources: Array) -> void:
 					var i := y * w + x
 					if state[i] != VISIBLE:
 						state[i] = VISIBLE
-						_bytes[i * 4 + 3] = ALPHA[VISIBLE]
+						if not _headless:
+							_bytes[i * 4 + 3] = ALPHA[VISIBLE]
 						_visible.append(i)
 	_upload()
 
@@ -108,5 +115,7 @@ func set_show_all(on: bool) -> void:
 
 
 func _upload() -> void:
+	if _headless:
+		return
 	_image.set_data(w, h, false, Image.FORMAT_RGBA8, _bytes)
 	texture.update(_image)

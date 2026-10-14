@@ -134,6 +134,12 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Terra formatur; Montes et valles formantur; Silvae et paludes ponuntur; Itinera parantur; Orbis pingitur | Loading lines: the land takes shape; mountains and valleys are formed; woods and marshes are laid down; the paths are made ready; the world is painted |
 | Romani, Etrusci, Sabini, Latini, Graeci | The peoples: Romans, Etruscans, Sabines, Latins, Greeks |
 | Veii, Cures, Alba Longa, Cumae | Their first towns (Etruscan, Sabine, Latin, Greek) |
+| Optiones | Settings (map type, size, number of peoples) |
+| Genus terrae; Magnitudo; Populi | Kind of map; Map size; Peoples |
+| Redi | Go back (Esc) |
+| Continens, Campi, Insulae Parvae, Insulae Magnae, Archipelagus, Mare Nostrum, Paeninsula, Montes, Paludes, Silvae, Lacus, Vallis Tiberis, Ora Maritima, Duae Terrae, Anulus, Colles, Litus Asperum, Insula | The 18 map types: Continent, Plains, Small Islands, Large Islands, Archipelago, Mediterranean ("our sea"), Peninsula, Highlands, Marshlands, Great Forest, Lake District, Tiber Valley, Coast, Two Lands, Ring Island, Rolling Hills, Rugged Coast, Heartland Island |
+| Minima, Parva, Media, Magna, Maxima | Map sizes: Tiny, Small, Medium, Large, Huge |
+| Samnites, Volsci, Aequi; Bovianum, Antium, Corbio | More peoples and their first towns (the Aequian town is moderately certain) |
 | Incipe | Begin: start the game (Enter or Space; the button has a play icon) |
 | Exi | Leave: quit the game (Q or Esc; the button has a door-and-arrow icon) |
 | Ab urbe condita | From the founding of the city: the Romans' own way of dating years, counted from the traditional founding of Rome in 753 BC |
