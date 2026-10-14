@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerates the art sheets, the manifest and the Godot TileSet from the drawing code in art.gd.
+# Regenerates the art sheets, the manifest and the Godot TileSet from the drawing code in art/art.gd.
 # NOTE: this overwrites assets/art/*.png, so hand edits to the sheets will be lost.
 set -euo pipefail
 cd "$(dirname "$0")/.."

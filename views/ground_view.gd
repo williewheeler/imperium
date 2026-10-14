@@ -42,7 +42,7 @@ func setup(map: GameMap) -> void:
 	_relief_texture = ImageTexture.create_from_image(Image.create_from_data(map.w, map.h, false, Image.FORMAT_R8, map.relief))
 	_levels_texture = ImageTexture.create_from_image(Image.create_from_data(map.w, map.h, false, Image.FORMAT_R8, map.levels))
 	var mat := ShaderMaterial.new()
-	mat.shader = load("res://ground.gdshader")
+	mat.shader = load("res://shaders/ground.gdshader")
 	mat.set_shader_parameter("terrain", _texture)
 	mat.set_shader_parameter("map_size", Vector2(map.w, map.h))
 	mat.set_shader_parameter("origin", position)

@@ -13,7 +13,7 @@ func _ready() -> void:
 	layer = 1  # above the world, below the interface (which sits on layer 2)
 	_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_mat.shader = load("res://weather.gdshader")
+	_mat.shader = load("res://shaders/weather.gdshader")
 	_rect.material = _mat
 	add_child(_rect)
 

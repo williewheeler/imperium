@@ -20,7 +20,7 @@ func _ready() -> void:
 	position = Vector2(min_x, min_y)
 	size = Vector2(max_x - min_x, max_y - min_y)
 	var mat := ShaderMaterial.new()
-	mat.shader = load("res://fog.gdshader")
+	mat.shader = load("res://shaders/fog.gdshader")
 	mat.set_shader_parameter("fog_tex", fog.texture)
 	mat.set_shader_parameter("levels", ImageTexture.create_from_image(Image.create_from_data(map_size.x, map_size.y, false, Image.FORMAT_R8, levels)))
 	mat.set_shader_parameter("map_size", Vector2(map_size))

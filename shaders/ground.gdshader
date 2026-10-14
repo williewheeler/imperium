@@ -1,5 +1,5 @@
 shader_type canvas_item;
-#include "res://terrace.gdshaderinc"
+#include "res://shaders/terrace.gdshaderinc"
 // Pixel-art isometric ground. The terrain type of every tile is stored in a small texture; each
 // screen pixel looks up which tile it is over (after a noise warp, so coastlines and forest
 // edges wobble organically instead of following the diamond grid) and picks a colour from that

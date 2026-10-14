@@ -1,5 +1,5 @@
 shader_type canvas_item;
-#include "res://terrace.gdshaderinc"
+#include "res://shaders/terrace.gdshaderinc"
 // Draws the fog texture over the terraced ground: each pixel looks up the fog at the tile it shows.
 
 uniform sampler2D fog_tex : filter_linear, repeat_disable;
