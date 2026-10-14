@@ -108,21 +108,37 @@ func remove() -> void:
 	queue_free()
 
 
-## Where the roof of sprite `key` peaks, in the picture's own pixels: the topmost solid pixel near the
-## middle. The pennant is planted there.
+## Where the roof of sprite `key` peaks, in the picture's own pixels, for planting the pennant. Starting at
+## the topmost solid pixel near the middle, it looks a little way down for the narrowest row (where crossed
+## ridge-poles meet, rather than their tips) and takes the middle of that row.
 static func _roof_peak(key: String) -> Vector2:
 	if _peaks.has(key):
 		return _peaks[key]
 	var size := Art.tex(key).get_size()
-	var best := Vector2(size.x / 2.0, size.y / 2.0)
-	var found := false
-	for x in range(int(size.x * 0.34), int(size.x * 0.66)):
-		for y in int(size.y):
+	var x0 := int(size.x * 0.34)
+	var x1 := int(size.x * 0.66)
+	var top := -1
+	for y in int(size.y):
+		for x in range(x0, x1):
 			if Art.solid_at(key, Vector2i(x, y)):
-				if not found or y < best.y:
-					best = Vector2(x, y)
-					found = true
+				top = y
 				break
+		if top >= 0:
+			break
+	var best := Vector2(size.x / 2.0, size.y / 2.0)
+	if top >= 0:
+		var narrow := 999
+		for y in range(top, mini(top + 12, int(size.y))):
+			var lo := -1
+			var hi := -1
+			for x in range(x0, x1):
+				if Art.solid_at(key, Vector2i(x, y)):
+					if lo < 0:
+						lo = x
+					hi = x
+			if lo >= 0 and hi - lo <= narrow:  # ties go to the lower row
+				narrow = hi - lo
+				best = Vector2(roundf((lo + hi) / 2.0), y)
 	_peaks[key] = best
 	return best
 
