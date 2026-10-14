@@ -91,6 +91,7 @@ func _ready() -> void:
 		var kv := a.lstrip("-").split("=", true, 1)
 		args[kv[0]] = kv[1] if kv.size() > 1 else true
 
+	GameSettings.load_saved()
 	Perf.on = args.has("perf")
 	_record_dir = String(args.get("record", ""))
 	if args.has("windowed") or args.has("showcase") or args.has("shot"):
@@ -112,7 +113,9 @@ func _ready() -> void:
 	var world_seed := int(args.get("seed", randi() % 65536))
 	var built: Array = []
 	var worker := Thread.new()
-	worker.start(func() -> void: built.append(GameMap.new(world_seed)))
+	var size_tiles := GameSettings.tiles()
+	var map_type := GameSettings.map_type
+	worker.start(func() -> void: built.append(GameMap.new(world_seed, size_tiles, map_type)))
 	while built.is_empty():
 		loading.show_progress(GameMap.progress, GameMap.stage)
 		await get_tree().process_frame
@@ -258,6 +261,8 @@ func _title_sequence(args: Dictionary) -> void:
 	var splash := Splash.new()
 	splash.opaque_back = true
 	add_child(splash)
+	if args.has("settings"):  # debug: open the settings screen at once
+		splash._open_settings()
 	if shot != "":
 		await _save_title_shot(shot, frames)
 	await splash.finished
@@ -936,7 +941,6 @@ func _cycle_era(step: int) -> void:
 	era = posmod(era + step, Defs.ERAS.size())
 	if era >= 1:
 		_drain_marshes()
-	_place_rivals(_rome_start)  # a people that arrives in a later era appears when the era does
 	advancing = false
 	_clear_selection()
 	placing = ""
@@ -1081,23 +1085,32 @@ func _place_circus(start: Vector2i) -> void:
 		circus.work = 1.0
 
 
-## The other peoples of this era each get a town of their own, far enough away that Rome has the
-## first years to itself, with five villagers and the same stores as ours. Each is run by a Rival.
+## The other peoples each get a town of their own, spread round Rome in the direction each really lay
+## (Defs.FACTIONS), far enough away that Rome has the first years to itself, with five villagers and the
+## same stores as ours. How many play is set on the settings screen. Each is run by a Rival.
 func _place_rivals(rome: Vector2i) -> void:
-	for faction: String in Defs.FACTIONS:
+	var rome_screen := Vector2.ZERO
+	var ring := 0.28 * map.w  # how far from Rome the peoples start
+	var connected: bool = GameSettings.type_info(GameSettings.map_type)["connected"]
+	for faction: String in Defs.RIVAL_ORDER.slice(0, GameSettings.players - 1):
 		var info: Dictionary = Defs.FACTIONS[faction]
-		if faction == "romans" or int(info["era"]) > era:
-			continue
-		var present := false
-		for r in rivals:
-			present = present or r.faction == faction
-		if present:
-			continue  # already here
 		var owner_id: int = info["owner"]
-		var want: Vector2i = (rome + info["offset"]).clamp(Vector2i(20, 20), Vector2i(map.w - 21, map.h - 21))
-		var spot := map.find_start(want, rome)
-		if spot.distance_to(Vector2(rome)) < 40.0:
-			continue  # no good ground that we could walk to: this people stays home
+		var spot := Vector2i(-1, -1)
+		for attempt in [[0, 1.0], [25, 1.0], [-25, 1.0], [0, 0.8], [40, 1.15], [-40, 1.15]]:  # if the first try has no room, swing round a little
+			var a := deg_to_rad(float(info["bearing"]) + float(attempt[0]))
+			var screen_dir := Vector2(cos(a), sin(a))
+			var tile_dir := Vector2(screen_dir.x / 16.0 + screen_dir.y / 8.0, screen_dir.y / 8.0 - screen_dir.x / 16.0).normalized()
+			var want: Vector2i = (Vector2(rome) + tile_dir * ring * float(attempt[1])).round()
+			want = want.clamp(Vector2i(12, 12), Vector2i(map.w - 13, map.h - 13))
+			var found := map.find_start(want, rome if connected else Vector2i(-1, -1), 1)
+			var too_close := found.distance_to(Vector2(rome)) < 0.1 * map.w
+			for r in rivals:
+				too_close = too_close or found.distance_to(Vector2(r.start)) < 0.08 * map.w
+			if not too_close:
+				spot = found
+				break
+		if spot.x < 0:
+			continue  # no room for this people: it stays home
 		var site := _find_building_site("town_center", spot, 3)
 		if site.x < 0:
 			continue
@@ -1119,6 +1132,7 @@ func _place_rivals(rome: Vector2i) -> void:
 		rival.game = self
 		rival.owner = owner_id
 		rival.faction = faction
+		rival.start = spot
 		rivals.append(rival)
 
 
@@ -1362,7 +1376,6 @@ func _update_advance(delta: float) -> void:
 		advancing = false
 		era += 1
 		_drain_marshes()
-		_place_rivals(_rome_start)
 		var e: Dictionary = Defs.ERAS[era]
 		hud.flash("Aetas %s: %s" % [e["numeral"], e["latin"]], "Era %s begins: %s (%s)" % [e["numeral"], e["english"], e["years"]])
 

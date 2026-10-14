@@ -13,13 +13,6 @@ enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN, MARSH }
 const MOVE_COST := [INF, INF, 1.1, 1.0, 1.6, 2.2, INF, 2.0]
 const ROAD_SPEED := 1.3  # dirt roads are this much faster to walk
 const PAVED_SPEED := 1.7  # paved Roman roads even more
-## The world is WORLD_BLOCKS x WORLD_BLOCKS blocks of BLOCK tiles. The middle of the map is the Tiber
-## lowland where Rome begins (a basin of water and marsh); the blocks around it differ in character.
-const BLOCK := 80
-const WORLD_BLOCKS := 4
-## Per block, row by row from the north-west: how much higher the land stands, and how much wetter.
-const BLOCK_ELEVATION := [[0.05, 0.10, 0.10, 0.04], [0.0, 0.0, 0.02, 0.05], [0.02, 0.0, 0.0, 0.03], [0.03, 0.0, 0.02, 0.05]]
-const BLOCK_MOISTURE := [[-0.05, -0.08, 0.04, 0.10], [-0.12, 0.08, 0.08, 0.06], [-0.10, 0.06, 0.04, -0.04], [-0.10, -0.14, -0.04, 0.12]]
 const MARSH_TOP := 0.50  # land below this elevation, if wet enough, is marsh
 const MARSH_MOISTURE := 0.42
 const SEA_LEVEL := 0.40  # elevation of all water; the land rises from here
@@ -37,6 +30,11 @@ const TILE_COLORS := [
 	Color("4a8a36"), Color("8f9a58"), Color("8a8580"), Color("5c7a48"),
 ]
 
+const PREVIEW_COLORS := [
+	Color("1b4f86"), Color("4f9bd0"), Color("e7d79c"), Color("77b84a"),
+	Color("2f6b2d"), Color("a09a56"), Color("8f8c8a"), Color("6fb09a"),
+]  # deep water, shallows, beach, grass, forest, hills, mountain, marsh
+
 var w: int
 var h: int
 var seed_value: int
@@ -51,6 +49,13 @@ var deposits := {}  # Vector2i -> Deposit
 var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 2 paved road
 var wear := PackedFloat32Array()  # distance walked over each tile so far
 var astar := AStarGrid2D.new()
+var _params: Dictionary
+var _elev_noise: FastNoiseLite
+var _moist_noise: FastNoiseLite
+var _block_e: FastNoiseLite  # broad regional variation in height and wetness, so the parts of a map differ
+var _block_m: FastNoiseLite
+var _e := 0.0  # the raw elevation and moisture of the tile `_tile_at` last looked at
+var _m := 0.0
 
 ## How far generation has got (0 to 1) and what it is doing, for a loading screen. The map is built on
 ## a worker thread while the main thread draws the bar, so these are written there and only read here.
@@ -58,10 +63,18 @@ static var progress := 0.0
 static var stage := ""
 
 
-func _init(p_seed: int, p_w := WORLD_BLOCKS * BLOCK, p_h := WORLD_BLOCKS * BLOCK) -> void:
+## `p_size` is the map's side in tiles and `p_type` one of GameSettings.MAP_TYPES. With `p_preview` only
+## the land-shaping noise is set up, for drawing a thumbnail with `preview` (no map is built).
+func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview := false) -> void:
 	seed_value = p_seed
-	w = p_w
-	h = p_h
+	w = p_size
+	h = p_size
+	_params = GameSettings.type_info(p_type)
+	_setup_noise()
+	if p_preview:
+		_elev_noise.fractal_octaves = 2  # a thumbnail wants the broad shapes, not the fine detail
+		_moist_noise.fractal_octaves = 2
+		return
 	_report(0.0, "Terra formatur")
 	_generate()
 	_report(0.5, "Montes et valles formantur")
@@ -73,6 +86,32 @@ func _init(p_seed: int, p_w := WORLD_BLOCKS * BLOCK, p_h := WORLD_BLOCKS * BLOCK
 	_report(0.86, "Itinera parantur")
 	_build_nav()
 	_report(1.0, "")
+
+
+## A small picture of what a kind of map looks like (one pixel per terrain sample, in the minimap's
+## colours), made from the same land-shaping as the real thing on a notional 320-tile map.
+static func preview(type_id: String, px: int, preview_seed := 7) -> Image:
+	var m := GameMap.new(preview_seed, 320, type_id, true)
+	var grid := PackedByteArray()
+	grid.resize(px * px)
+	for y in px:
+		for x in px:
+			grid[y * px + x] = m._tile_at(int((x + 0.5) * m.w / px), int((y + 0.5) * m.h / px))
+	var img := Image.create(px, px, false, Image.FORMAT_RGBA8)
+	var counts := PackedInt32Array()
+	counts.resize(Terrain.size())
+	for y in px:
+		for x in px:
+			counts.fill(0)  # the commonest terrain in the 3x3 around each pixel, so the picture reads as shapes, not noise
+			for oy in range(-1, 2):
+				for ox in range(-1, 2):
+					counts[grid[clampi(y + oy, 0, px - 1) * px + clampi(x + ox, 0, px - 1)]] += 1
+			var best := grid[y * px + x]
+			for t in counts.size():
+				if counts[t] > counts[best]:
+					best = t
+			img.set_pixel(x, y, PREVIEW_COLORS[best])
+	return img
 
 
 static func _report(fraction: float, what: String) -> void:
@@ -105,22 +144,65 @@ func _marsh_moisture(x: int, y: int) -> float:
 	return MARSH_MOISTURE + 0.2 * (1.0 - exp(-d2 / (2.0 * 40.0 * 40.0)))
 
 
-## A per-block value, blended smoothly between the centres of neighbouring blocks.
-func _block_value(grid: Array, x: int, y: int) -> float:
-	var fx := clampf(float(x) / BLOCK - 0.5, 0.0, WORLD_BLOCKS - 1.0)
-	var fy := clampf(float(y) / BLOCK - 0.5, 0.0, WORLD_BLOCKS - 1.0)
-	var x0 := mini(int(fx), WORLD_BLOCKS - 2)
-	var y0 := mini(int(fy), WORLD_BLOCKS - 2)
-	var tx := smoothstep(0.0, 1.0, fx - x0)
-	var ty := smoothstep(0.0, 1.0, fy - y0)
-	var top: float = lerpf(grid[y0][x0], grid[y0][x0 + 1], tx)
-	var bottom: float = lerpf(grid[y0 + 1][x0], grid[y0 + 1][x0 + 1], tx)
-	return lerpf(top, bottom, ty)
+func _setup_noise() -> void:
+	_elev_noise = _make_noise(seed_value, float(_params["freq"]))
+	_moist_noise = _make_noise(seed_value + 7, 1.0 / 11.0)
+	_block_e = _make_noise(seed_value + 31, 1.0 / 90.0)
+	_block_m = _make_noise(seed_value + 47, 1.0 / 90.0)
+	_block_e.fractal_octaves = 1
+	_block_m.fractal_octaves = 1
+
+
+## Extra shaping some kinds of map add to the height: an inland sea in the middle, a peninsula, a river
+## and so on. `u` runs across the map on the screen (-1 left to 1 right), `v` down it (0 to 1).
+func _shape(x: int, y: int, r2: float) -> float:
+	var u := float(x - y) / w
+	var v := float(x + y) / (2.0 * w)
+	match String(_params["shape"]):
+		"inland_sea":
+			return -0.62 * exp(-r2 / (2.0 * 0.22 * 0.22))
+		"peninsula":
+			return -1.6 * maxf(0.0, absf(u) - 0.12)
+		"coast":
+			return -1.3 * maxf(0.0, v - 0.62)
+		"river":
+			return -0.75 * exp(-(u * u) / (0.028 * 0.028))
+		"strait":
+			return -0.75 * exp(-((v - 0.5) * (v - 0.5)) / (0.05 * 0.05))
+		"lagoon":
+			return -0.5 * exp(-r2 / (2.0 * 0.14 * 0.14))
+	return 0.0
+
+
+## The terrain at a tile, from the land-shaping noise alone; also leaves its elevation and moisture in
+## `_e` and `_m`.
+func _tile_at(x: int, y: int) -> Terrain:
+	var dx := (x - w / 2.0) / (w / 2.0)
+	var dy := (y - h / 2.0) / (h / 2.0)
+	var r2 := dx * dx + dy * dy
+	var basin := exp(-((x - w / 2.0) * (x - w / 2.0) + (y - h / 2.0) * (y - h / 2.0)) / (2.0 * 15.0 * 15.0))
+	var base := _elev_noise.get_noise_2d(x, y) * 0.5 + 0.5
+	var e := 0.5 + (base - 0.5) * float(_params["relief"]) + float(_params["bias"]) - r2 * float(_params["edge"]) \
+		+ _shape(x, y, r2) + _block_e.get_noise_2d(x, y) * 0.09 - basin * 0.17
+	var m := clampf(_moist_noise.get_noise_2d(x, y) * 0.5 + 0.5 + _block_m.get_noise_2d(x, y) * 0.18 + float(_params["wet"]), 0.0, 1.0)
+	_e = e
+	_m = m
+	if e < 0.28:
+		return Terrain.DEEP
+	if e < 0.40:
+		return Terrain.SHALLOW
+	if e < 0.44:
+		return Terrain.BEACH
+	if e < 0.66:
+		if e < MARSH_TOP and m > _marsh_moisture(x, y):
+			return Terrain.MARSH  # low, wet ground just above the shore
+		return Terrain.FOREST if m > 0.55 else Terrain.GRASS
+	if e < 0.76:
+		return Terrain.HILLS
+	return Terrain.MOUNTAIN
 
 
 func _generate() -> void:
-	var elev := _make_noise(seed_value, 1.0 / 16.0)
-	var moist := _make_noise(seed_value + 7, 1.0 / 11.0)
 	tiles.resize(w * h)
 	moisture.resize(w * h)
 	elevation.resize(w * h)
@@ -128,30 +210,10 @@ func _generate() -> void:
 		if y % 8 == 0:
 			progress = 0.5 * y / h
 		for x in w:
-			var dx := (x - w / 2.0) / (w / 2.0)
-			var dy := (y - h / 2.0) / (h / 2.0)
-			var basin := exp(-((x - w / 2.0) * (x - w / 2.0) + (y - h / 2.0) * (y - h / 2.0)) / (2.0 * 15.0 * 15.0))
-			var e := elev.get_noise_2d(x, y) * 0.5 + 0.5 - (dx * dx + dy * dy) * 0.32 + 0.12 + _block_value(BLOCK_ELEVATION, x, y) - basin * 0.17
-			var m := clampf(moist.get_noise_2d(x, y) * 0.5 + 0.5 + _block_value(BLOCK_MOISTURE, x, y), 0.0, 1.0)
-			var t: Terrain
-			if e < 0.28:
-				t = Terrain.DEEP
-			elif e < 0.40:
-				t = Terrain.SHALLOW
-			elif e < 0.44:
-				t = Terrain.BEACH
-			elif e < 0.66:
-				if e < MARSH_TOP and m > _marsh_moisture(x, y):
-					t = Terrain.MARSH  # low, wet ground just above the shore
-				else:
-					t = Terrain.FOREST if m > 0.55 else Terrain.GRASS
-			elif e < 0.76:
-				t = Terrain.HILLS
-			else:
-				t = Terrain.MOUNTAIN
+			var t := _tile_at(x, y)
 			tiles[y * w + x] = t
-			elevation[y * w + x] = _height_of(e)
-			moisture[y * w + x] = m
+			elevation[y * w + x] = _height_of(_e)
+			moisture[y * w + x] = _m
 			if t == Terrain.FOREST:
 				deposits[Vector2i(x, y)] = Deposit.new(Defs.Res.WOOD, Defs.DEPOSIT_AMOUNT[Defs.Res.WOOD])
 
@@ -602,30 +664,45 @@ const START_OFFSETS: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(1, 0), Vector2
 
 ## Spiral out from the centre for grass with a forest nearby and room for the starting
 ## Town Center within a few tiles. Falls back to just "grass with a forest", then "grass".
-func find_start(c := Vector2i(-1, -1), reach_from := Vector2i(-1, -1)) -> Vector2i:
+func find_start(c := Vector2i(-1, -1), reach_from := Vector2i(-1, -1), first_level := 0) -> Vector2i:
 	if c.x < 0:
 		c = Vector2i(w / 2, h / 2)
 	var reach := reachable_from(reach_from) if reach_from.x >= 0 else PackedByteArray()
-	for level in 4:  # 0 wants marsh close by (Rome began on the edge of a marsh); the rest relax in turn
-		for r in maxi(w, h):
-			for y in range(c.y - r, c.y + r + 1):
-				for x in range(c.x - r, c.x + r + 1):
-					if maxi(absi(x - c.x), absi(y - c.y)) != r:
-						continue
-					var p := Vector2i(x, y)
-					if not _grass_block(p, 1):
-						continue
-					if not reach.is_empty() and reach[p.y * w + p.x] == 0:
-						continue  # a rival's town must be somewhere we can walk to
-					if level == 3:
-						return p
-					if _forest_count(p, 10) < 12:
-						continue
-					if level == 0 and _count_of(p, 9, Terrain.MARSH) < 10:
-						continue
-					if level == 2 or find_site(Vector2i(3, 3), p, 3, 5, _start_tiles(p)).x >= 0:
-						return p
+	var reach_limit := [30, 50, 90, maxi(w, h)]  # how far each level of choosiness is worth searching
+	for level in range(first_level, 4):  # 0 wants marsh close by (Rome began on the edge of a marsh); the rest relax in turn
+		for r in reach_limit[level]:
+			for p in _ring(c, r):
+				if not _grass_block(p, 1):
+					continue
+				if not reach.is_empty() and reach[p.y * w + p.x] == 0:
+					continue  # a rival's town must be somewhere we can walk to
+				if level == 3:
+					return p
+				if _forest_count(p, 10) < 12:
+					continue
+				if level == 0 and _count_of(p, 9, Terrain.MARSH) < 10:
+					continue
+				if level == 2 or find_site(Vector2i(3, 3), p, 3, 5, _start_tiles(p)).x >= 0:
+					return p
 	return c
+
+
+## The tiles on the square ring `r` away from `c` (just `c` for r = 0), inside the map.
+func _ring(c: Vector2i, r: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if r == 0:
+		if in_bounds(c):
+			out.append(c)
+		return out
+	for i in range(-r, r + 1):
+		for p in [Vector2i(c.x + i, c.y - r), Vector2i(c.x + i, c.y + r)]:
+			if in_bounds(p):
+				out.append(p)
+		if i > -r and i < r:
+			for p in [Vector2i(c.x - r, c.y + i), Vector2i(c.x + r, c.y + i)]:
+				if in_bounds(p):
+					out.append(p)
+	return out
 
 
 ## Every tile that can be walked to from `from` (1 = reachable), found by flood fill.
@@ -709,7 +786,7 @@ func _place_start_clusters(rng: RandomNumberGenerator, start: Vector2i) -> void:
 
 
 func _place_scattered(rng: RandomNumberGenerator) -> void:
-	var blocks := WORLD_BLOCKS * WORLD_BLOCKS
+	var blocks := maxi(1, w * h / 6400)  # one for every 80x80 tiles
 	for i in 8 * blocks:  # mines scattered over the whole world, for exploring armies and villagers to find
 		for attempt in 20:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))

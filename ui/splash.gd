@@ -90,6 +90,7 @@ func _ready() -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(row)
 	row.add_child(_button("start", "Incipe", "Begin the game  (Enter)", _begin))
+	row.add_child(_button("settings", "Optiones", "Choose the map, its size and the number of peoples", _open_settings))
 	row.add_child(_button("quit", "Exi", "Leave the game  (Q)", _leave))
 
 	var tween := create_tween()
@@ -130,6 +131,10 @@ func _begin() -> void:
 	tween.tween_callback(func() -> void:
 		finished.emit()
 		queue_free())
+
+
+func _open_settings() -> void:
+	add_child(SettingsScreen.new())
 
 
 func _leave() -> void:

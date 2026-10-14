@@ -43,16 +43,22 @@ const PLAYER_COLORS := [
 ]
 
 # The peoples of the game. A player's number (`owner`) is also the index of its colour in
-# PLAYER_COLORS, so Rome is 0 (purple), the Etruscans 1 (red), the Greeks 2 (blue), the Sabines 4
-# (amber) and the Latins 7 (white: Alba Longa means "the long white one"). "offset" is where the
-# people's first town stands, in tiles from Rome; "era" is the first era it appears in.
+# PLAYER_COLORS: Rome is 0 (purple), the Etruscans 1 (red), the Greeks 2 (blue), the Samnites 3
+# (green), the Sabines 4 (amber), the Volsci 5 (teal), the Aequi 6 (yellow) and the Latins 7 (white:
+# Alba Longa means "the long white one"). "bearing" is the direction of the people's first town from
+# Rome, as a compass angle on the screen in degrees (0 east, 90 south, 180 west, 270 north).
 const FACTIONS := {
-	"romans": {"owner": 0, "latin": "Romani", "english": "Romans", "town": "Roma", "era": 0},
-	"etruscans": {"owner": 1, "latin": "Etrusci", "english": "Etruscans", "town": "Veii", "offset": Vector2i(-70, -50), "era": 0},
-	"sabines": {"owner": 4, "latin": "Sabini", "english": "Sabines", "town": "Cures", "offset": Vector2i(45, -75), "era": 0},
-	"latins": {"owner": 7, "latin": "Latini", "english": "Latins", "town": "Alba Longa", "offset": Vector2i(75, 35), "era": 0},
-	"greeks": {"owner": 2, "latin": "Graeci", "english": "Greeks", "town": "Cumae", "offset": Vector2i(0, 105), "era": 1},
+	"romans": {"owner": 0, "latin": "Romani", "english": "Romans", "town": "Roma"},
+	"etruscans": {"owner": 1, "latin": "Etrusci", "english": "Etruscans", "town": "Veii", "bearing": 225},
+	"sabines": {"owner": 4, "latin": "Sabini", "english": "Sabines", "town": "Cures", "bearing": 315},
+	"latins": {"owner": 7, "latin": "Latini", "english": "Latins", "town": "Alba Longa", "bearing": 10},
+	"greeks": {"owner": 2, "latin": "Graeci", "english": "Greeks", "town": "Cumae", "bearing": 95},
+	"samnites": {"owner": 3, "latin": "Samnites", "english": "Samnites", "town": "Bovianum", "bearing": 55},
+	"volsci": {"owner": 5, "latin": "Volsci", "english": "Volsci", "town": "Antium", "bearing": 150},
+	"aequi": {"owner": 6, "latin": "Aequi", "english": "Aequi", "town": "Corbio", "bearing": 270},
 }
+# Who joins first when more peoples play: the neighbours of early Rome, then the south.
+const RIVAL_ORDER := ["etruscans", "sabines", "latins", "greeks", "samnites", "volsci", "aequi"]
 
 # The eras of Roman history, as the game's progression. Years are the traditional dates.
 const ERAS := [

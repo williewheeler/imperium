@@ -13,6 +13,7 @@ const MAX_BUILDS := 2  # foundations it works on at once
 var game  # Main
 var owner := 0
 var faction := ""
+var start := Vector2i.ZERO  # where its first town stands
 var _timer := 0.0
 var _age := 0.0
 var _blocked := {}  # deposit tile -> seconds before it is tried again (no way to reach it)

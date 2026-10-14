@@ -98,7 +98,7 @@ func _draw_cost(y: float, text_color: Color) -> void:
 
 
 func _draw_icon(c: Vector2) -> void:
-	if icon_kind in ["explore", "stop", "start", "quit"]:
+	if icon_kind in ["explore", "stop", "start", "quit", "settings"]:
 		_draw_action_icon(c)
 		return
 	var key := icon_kind + ":idle:f:0" if icon_kind in UNIT_ICONS else icon_kind
@@ -143,6 +143,12 @@ func _draw_action_icon(c: Vector2) -> void:
 		"start":
 			draw_arc(Vector2.ZERO, 11.0, 0.0, TAU, 32, _t(GOLD), 2.0)
 			draw_colored_polygon(PackedVector2Array([Vector2(-4, -6.5), Vector2(7, 0), Vector2(-4, 6.5)]), _t(CREAM))
+		"settings":  # a cog
+			for i in 8:
+				var a := TAU * i / 8.0
+				draw_line(Vector2.from_angle(a) * 8.0, Vector2.from_angle(a) * 12.0, _t(GOLD), 3.5)
+			draw_circle(Vector2.ZERO, 9.0, _t(GOLD))
+			draw_circle(Vector2.ZERO, 4.0, _t(Color("5e1414")))
 		"quit":
 			draw_rect(Rect2(Vector2(-10, -10), Vector2(11, 20)), _t(Color("2c1410")))  # the doorway
 			draw_rect(Rect2(Vector2(-10, -10), Vector2(11, 20)), _t(GOLD), false, 1.5)
