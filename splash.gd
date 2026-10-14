@@ -5,6 +5,8 @@ extends CanvasLayer
 
 signal finished
 
+var opaque_back := false  # the backdrop is solid from the first frame (when coming from the opening scroll)
+
 var _root: Control
 
 
@@ -12,6 +14,12 @@ func _ready() -> void:
 	layer = 100
 	process_mode = Node.PROCESS_MODE_ALWAYS  # keep working while the game is paused behind it
 	get_tree().paused = true
+	if opaque_back:
+		var solid := ColorRect.new()
+		solid.color = Color(0.11, 0.045, 0.04)
+		solid.set_anchors_preset(Control.PRESET_FULL_RECT)
+		solid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(solid)
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_STOP

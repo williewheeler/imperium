@@ -216,7 +216,10 @@ func _ready() -> void:
 			add_child(Splash.new())  # pauses the game until you press Incipe
 		else:  # the opening scroll first, then the title
 			var intro := Intro.new()
-			intro.finished.connect(func() -> void: add_child(Splash.new()))
+			intro.finished.connect(func() -> void:
+				var splash := Splash.new()
+				splash.opaque_back = true
+				add_child(splash))
 			add_child(intro)
 
 

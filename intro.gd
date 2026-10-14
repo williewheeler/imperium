@@ -60,6 +60,11 @@ func _ready() -> void:
 	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(back)
 
+	var troy := TroyFire.new()  # Troy burning, dim, behind the text
+	troy.set_anchors_preset(Control.PRESET_FULL_RECT)
+	troy.modulate.a = 0.7
+	_root.add_child(troy)
+
 	_content = VBoxContainer.new()
 	_content.add_theme_constant_override("separation", 6)
 	_content.custom_minimum_size.x = WIDTH
@@ -144,8 +149,11 @@ func _finish() -> void:
 	if _done:
 		return
 	_done = true
-	finished.emit()
-	queue_free()
+	set_process_input(false)
+	finished.emit()  # the title starts fading in underneath, with its own dark backdrop
+	var tween := create_tween()
+	tween.tween_property(_root, "modulate:a", 0.0, 0.7)
+	tween.tween_callback(queue_free)
 
 
 func _input(event: InputEvent) -> void:
