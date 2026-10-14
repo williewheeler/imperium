@@ -95,7 +95,25 @@ func _ready() -> void:
 		_setup_window(String(args.get("size", "1280x720")))  # the project starts fullscreen; recordings and screenshots want a window
 
 	var _t_a := Time.get_ticks_msec()
-	map = GameMap.new(int(args.get("seed", randi() % 65536)))
+	# The world is built on a worker thread while a loading screen draws its progress bar; the game
+	# itself stays switched off until everything is ready.
+	set_process(false)
+	set_physics_process(false)
+	set_process_unhandled_input(false)
+	var loading := Loading.new()
+	add_child(loading)
+	var world_seed := int(args.get("seed", randi() % 65536))
+	var built: Array = []
+	var worker := Thread.new()
+	worker.start(func() -> void: built.append(GameMap.new(world_seed)))
+	while built.is_empty():
+		loading.show_progress(GameMap.progress, GameMap.stage)
+		await get_tree().process_frame
+	worker.wait_to_finish()
+	map = built[0]
+	loading.show_progress(1.0, "Orbis pingitur")
+	await get_tree().process_frame  # let that last line draw before the world is set up
+	await get_tree().process_frame
 	if Perf.on:
 		print("PERF startup: map generated in ", Time.get_ticks_msec() - _t_a, " ms (engine up for ", Time.get_ticks_msec(), " ms)")
 	Iso.set_terrain(map.w, map.h, map.levels)
@@ -199,6 +217,10 @@ func _ready() -> void:
 	if _record_dir != "":
 		DirAccess.make_dir_recursive_absolute(_record_dir)
 		RenderingServer.frame_post_draw.connect(_save_recorded_frame)
+	loading.finish()
+	set_process(true)
+	set_physics_process(true)
+	set_process_unhandled_input(true)
 	Engine.time_scale = float(args.get("speed", 1.0))
 	if not (args.has("demo") or args.has("showcase") or args.has("ring")):
 		_place_display_army(start)

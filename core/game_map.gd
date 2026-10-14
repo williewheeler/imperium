@@ -13,13 +13,13 @@ enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN, MARSH }
 const MOVE_COST := [INF, INF, 1.1, 1.0, 1.6, 2.2, INF, 2.0]
 const ROAD_SPEED := 1.3  # dirt roads are this much faster to walk
 const PAVED_SPEED := 1.7  # paved Roman roads even more
-## The world is WORLD_BLOCKS x WORLD_BLOCKS blocks of BLOCK tiles. The middle block is the Tiber
-## lowland where Rome begins (a basin of water and marsh); the eight around it differ in character.
+## The world is WORLD_BLOCKS x WORLD_BLOCKS blocks of BLOCK tiles. The middle of the map is the Tiber
+## lowland where Rome begins (a basin of water and marsh); the blocks around it differ in character.
 const BLOCK := 80
-const WORLD_BLOCKS := 3
+const WORLD_BLOCKS := 4
 ## Per block, row by row from the north-west: how much higher the land stands, and how much wetter.
-const BLOCK_ELEVATION := [[0.05, 0.10, 0.04], [0.0, 0.0, 0.02], [0.03, 0.0, 0.05]]
-const BLOCK_MOISTURE := [[-0.05, -0.08, 0.10], [-0.12, 0.08, 0.06], [-0.10, -0.14, 0.12]]
+const BLOCK_ELEVATION := [[0.05, 0.10, 0.10, 0.04], [0.0, 0.0, 0.02, 0.05], [0.02, 0.0, 0.0, 0.03], [0.03, 0.0, 0.02, 0.05]]
+const BLOCK_MOISTURE := [[-0.05, -0.08, 0.04, 0.10], [-0.12, 0.08, 0.08, 0.06], [-0.10, 0.06, 0.04, -0.04], [-0.10, -0.14, -0.04, 0.12]]
 const MARSH_TOP := 0.50  # land below this elevation, if wet enough, is marsh
 const MARSH_MOISTURE := 0.42
 const SEA_LEVEL := 0.40  # elevation of all water; the land rises from here
@@ -52,17 +52,32 @@ var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 
 var wear := PackedFloat32Array()  # distance walked over each tile so far
 var astar := AStarGrid2D.new()
 
+## How far generation has got (0 to 1) and what it is doing, for a loading screen. The map is built on
+## a worker thread while the main thread draws the bar, so these are written there and only read here.
+static var progress := 0.0
+static var stage := ""
+
 
 func _init(p_seed: int, p_w := WORLD_BLOCKS * BLOCK, p_h := WORLD_BLOCKS * BLOCK) -> void:
 	seed_value = p_seed
 	w = p_w
 	h = p_h
+	_report(0.0, "Terra formatur")
 	_generate()
+	_report(0.5, "Montes et valles formantur")
 	_compute_relief()
+	_report(0.72, "Silvae et paludes ponuntur")
 	_compute_biomes()
 	road.resize(w * h)
 	wear.resize(w * h)
+	_report(0.86, "Itinera parantur")
 	_build_nav()
+	_report(1.0, "")
+
+
+static func _report(fraction: float, what: String) -> void:
+	progress = fraction
+	stage = what
 
 
 ## Deterministic per-tile pseudo-random value in [0, 1) for cosmetic variation.
@@ -110,6 +125,8 @@ func _generate() -> void:
 	moisture.resize(w * h)
 	elevation.resize(w * h)
 	for y in h:
+		if y % 8 == 0:
+			progress = 0.5 * y / h
 		for x in w:
 			var dx := (x - w / 2.0) / (w / 2.0)
 			var dy := (y - h / 2.0) / (h / 2.0)
