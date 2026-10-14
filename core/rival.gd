@@ -6,7 +6,7 @@ extends RefCounted
 
 const MIN_THINK := 0.3
 const SEARCH_RADIUS := 26  # tiles around the town to look for something to gather
-const SHARES := [0.25, 0.58, 0.1, 0.07]  # how its villagers divide among wood, food, stone and gold
+
 
 var game  # Main
 var owner := 0
@@ -17,6 +17,7 @@ var think_interval := 1.2  # seconds between decisions
 var grow_seconds := 25.0  # it aims for one more villager for every this many seconds of its history
 var max_villagers := 40
 var max_builds := 2  # foundations it works on at once
+var shares := [0.3, 0.55, 0.09, 0.06]  # how its villagers divide among wood, food, stone and gold
 var _timer := 0.0
 var _see_timer := 0.0
 var _scout_wait := 0.0  # seconds before another villager may be sent exploring
@@ -31,6 +32,8 @@ func set_difficulty(id: String) -> void:
 	grow_seconds = float(d["grow"])
 	max_villagers = int(d["cap"])
 	max_builds = int(d["builds"])
+	var food := float(d["food"])  # a sharper player puts more hands on the food that grows the town
+	shares = [0.85 - food, food, 0.09, 0.06]
 
 
 func tick(delta: float) -> void:
@@ -196,7 +199,7 @@ func _kinds_by_need(busy: Array, total: int) -> Array:
 	if total >= 8:
 		kinds.append_array([Defs.Res.STONE, Defs.Res.GOLD])
 	kinds.sort_custom(func(a: int, b: int) -> bool:
-		return float(busy[a]) / maxf(1.0, total) - SHARES[a] < float(busy[b]) / maxf(1.0, total) - SHARES[b])
+		return float(busy[a]) / maxf(1.0, total) - shares[a] < float(busy[b]) / maxf(1.0, total) - shares[b])
 	return kinds
 
 
