@@ -4,10 +4,11 @@ extends Node2D
 ##
 ## This node draws the ground-level parts (foundation, selection outline), and fields (which are
 ## flat) draw their sprite here too. Standing buildings are drawn as two half-sprites in the
-## depth-sorted object layer: the left half sorts at the footprint's left corner and the right
-## half at its right corner. Sorting the whole sprite at the front corner would draw it over
-## villagers standing in front of either wall; this way a villager in front of a wall is drawn
-## over that half of the building, and one behind the building stays hidden by it.
+## depth-sorted object layer, cut into one strip per tile of each wall: the strips of the left wall
+## (running along x) sort at their own corners along it, and so do those of the right wall (running
+## along y). Sorting the whole sprite at the front corner would draw it over villagers standing in
+## front of either wall; with strips, a villager or tree in front of any part of a long wall is drawn
+## over that part, and one behind it stays hidden, even for a long building such as the aqueduct.
 ## While under construction only the bottom of the sprite shows, rising as the work progresses.
 
 ## Where a building's animated fire burns, relative to its front corner, for the sprites that have one:
@@ -19,10 +20,10 @@ var objects: Node2D  # the depth-sorted layer the halves live in
 
 var _key := ""
 var _flat: Sprite2D  # fields
-var _halves: Array[Node2D] = []  # standing buildings: [left, right]
+var _halves: Array[Node2D] = []  # standing buildings: one strip per tile along the left wall, then along the right
 var _sprites: Array[Sprite2D] = []
 var _fire: HearthFire  # the Casa Romuli's animated hearth
-var _banner: Node2D  # the owner's pennant, on the roof (child of the right half, so it sorts with the building)
+var _banner: Node2D  # the owner's pennant, on the roof (child of the front-most strip, so it sorts over the whole building)
 var _cloth: Sprite2D
 var _life: CircusCrowd  # the Circus Maximus's animated crowd and flags
 var _banner_key := ""  # which picture the banner was placed for (the roof changes with the era)
@@ -46,8 +47,12 @@ func _ready() -> void:
 		return
 	var t := Vector2(building.tile)
 	var s := Vector2(building.size)
-	var corners := [_corner(t + Vector2(0, s.y)), _corner(t + Vector2(s.x, 0))]  # left, right
-	for i in 2:
+	var corners := []  # where each strip sorts: its starting corner along the wall
+	for i in building.size.x:
+		corners.append(_corner(t + Vector2(i, s.y)))
+	for j in building.size.y:
+		corners.append(_corner(t + Vector2(s.x, j)))
+	for i in corners.size():
 		var node := Node2D.new()
 		node.position = corners[i].round()
 		var sprite := Sprite2D.new()
@@ -67,11 +72,11 @@ func _ready() -> void:
 	if building.kind == "circus":
 		_life = CircusCrowd.new()
 		_life.team = building.team_color()
-		_life.position = position - corners[1]
-		_halves[1].add_child(_life)
+		_life.position = position - corners[-1]
+		_halves[-1].add_child(_life)
 	if building.owner >= 0 and not building.def().get("landmark", false):  # a landmark flies its own flags
 		_banner = Node2D.new()
-		_halves[1].add_child(_banner)
+		_halves[-1].add_child(_banner)
 		var pole := Sprite2D.new()
 		pole.centered = false
 		pole.texture = Art.tex("pole")
@@ -151,7 +156,7 @@ func _update_banner(anchor: Vector2) -> void:
 	if key != _banner_key:  # first time, or the era changed the roof: plant it again
 		_banner_key = key
 		var world := position - anchor + _roof_peak(key)  # in the objects layer's coordinates
-		_banner.position = world - _halves[1].position + Vector2(0, 2)
+		_banner.position = world - _halves[-1].position + Vector2(0, 2)
 	var frame := int(Time.get_ticks_msec() / 220.0 + float(building.tile.x * 3 + building.tile.y)) % 3  # a gentle flutter
 	_cloth.texture = Art.tex("pennant:%d" % frame)
 
@@ -186,12 +191,17 @@ func update_view() -> void:
 		_flat.offset = Vector2(-anchor.x, -anchor.y + y0)
 		_flat.modulate = tint
 	else:
-		var split := anchor.x  # the front corner's column divides the two halves
-		var regions := [Rect2(0, y0, split, size.y - y0), Rect2(split, y0, size.x - split, size.y - y0)]
-		for i in 2:
-			_sprites[i].region_rect = regions[i]
-			# where the full sprite's top-left would be, plus this region's offset into it
-			_sprites[i].position = position - anchor + regions[i].position - _halves[i].position
+		var right_w := size.x - anchor.x
+		var cuts := []  # the columns each strip covers: the left wall's, then the right wall's
+		for k in building.size.x:
+			cuts.append([floori(anchor.x * k / building.size.x), floori(anchor.x * (k + 1) / building.size.x)])
+		for k in building.size.y:
+			cuts.append([floori(anchor.x + right_w * k / building.size.y), floori(anchor.x + right_w * (k + 1) / building.size.y)])
+		for i in _sprites.size():
+			var region := Rect2(cuts[i][0], y0, cuts[i][1] - cuts[i][0], size.y - y0)
+			_sprites[i].region_rect = region
+			# where the full sprite's top-left would be, plus this strip's offset into it
+			_sprites[i].position = position - anchor + region.position - _halves[i].position
 			_sprites[i].modulate = tint
 	queue_redraw()
 
