@@ -209,10 +209,15 @@ func _ready() -> void:
 		_auto_pan = Vector2(float(v[0]), float(v[1]))
 	_shot_frame = int(args.get("shot-frame", 20))
 	var scripted := _screenshot_path != "" or _report or _show_on or _record_dir != "" or args.has("demo") or args.has("nosplash")
-	if args.has("splash") or (not scripted and DisplayServer.get_name() != "headless"):
-		add_child(Splash.new())  # pauses the game until you press Incipe
+	if args.has("splash") or args.has("intro") or (not scripted and DisplayServer.get_name() != "headless"):
 		if _screenshot_path != "":
 			process_mode = Node.PROCESS_MODE_ALWAYS  # so a debug screenshot of the title still gets taken
+		if args.has("splash"):
+			add_child(Splash.new())  # pauses the game until you press Incipe
+		else:  # the opening scroll first, then the title
+			var intro := Intro.new()
+			intro.finished.connect(func() -> void: add_child(Splash.new()))
+			add_child(intro)
 
 
 ## Debug/recording: leave the project's fullscreen mode for a real window of the given size.

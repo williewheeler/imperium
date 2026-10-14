@@ -127,6 +127,8 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Latin | English |
 |---|---|
 | Imperivm | The Empire (the game's title) |
+| Fuga a Troia | The flight from Troy: heading of the opening scroll |
+| Preme quamlibet clavem | Press any key (to skip the scroll) |
 | Incipe | Begin: start the game (Enter or Space; the button has a play icon) |
 | Exi | Leave: quit the game (Q or Esc; the button has a door-and-arrow icon) |
 | Ab urbe condita | From the founding of the city: the Romans' own way of dating years, counted from the traditional founding of Rome in 753 BC |
