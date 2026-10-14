@@ -97,12 +97,16 @@ func _ready() -> void:
 		_window_ready = false
 		_setup_window(String(args.get("size", "1280x720")))  # the project starts fullscreen; recordings and screenshots want a window
 
-	var _t_a := Time.get_ticks_msec()
-	# The world is built on a worker thread while a loading screen draws its progress bar; the game
-	# itself stays switched off until everything is ready.
 	set_process(false)
 	set_physics_process(false)
 	set_process_unhandled_input(false)
+	var scripted := args.has("shot") or args.has("report") or args.has("showcase") or args.has("record") or args.has("demo") or args.has("nosplash")
+	if args.has("splash") or args.has("intro") or (not scripted and DisplayServer.get_name() != "headless"):
+		await _title_sequence(args)  # the opening scroll and the title screen come first; the world is built when you press Incipe
+
+	var _t_a := Time.get_ticks_msec()
+	# The world is built on a worker thread while a loading screen draws its progress bar; the game
+	# itself stays switched off until everything is ready.
 	var loading := Loading.new()
 	add_child(loading)
 	var world_seed := int(args.get("seed", randi() % 65536))
@@ -238,19 +242,35 @@ func _ready() -> void:
 		var v := String(args["pan"]).split(",")
 		_auto_pan = Vector2(float(v[0]), float(v[1]))
 	_shot_frame = int(args.get("shot-frame", 20))
-	var scripted := _screenshot_path != "" or _report or _show_on or _record_dir != "" or args.has("demo") or args.has("nosplash")
-	if args.has("splash") or args.has("intro") or (not scripted and DisplayServer.get_name() != "headless"):
-		if _screenshot_path != "":
-			process_mode = Node.PROCESS_MODE_ALWAYS  # so a debug screenshot of the title still gets taken
-		if args.has("splash"):
-			add_child(Splash.new())  # pauses the game until you press Incipe
-		else:  # the opening scroll first, then the title
-			var intro := Intro.new()
-			intro.finished.connect(func() -> void:
-				var splash := Splash.new()
-				splash.opaque_back = true
-				add_child(splash))
-			add_child(intro)
+
+
+## The opening scroll, then the title screen; returns when Incipe is pressed. (--splash shows only the
+## title and --intro only starts with the scroll; with --shot a debug screenshot of the screen is saved.)
+func _title_sequence(args: Dictionary) -> void:
+	var shot := String(args.get("shot", ""))
+	var frames := int(args.get("shot-frame", 20))
+	if not args.has("splash"):
+		var intro := Intro.new()
+		add_child(intro)
+		if shot != "":
+			await _save_title_shot(shot, frames)
+		await intro.finished
+	var splash := Splash.new()
+	splash.opaque_back = true
+	add_child(splash)
+	if shot != "":
+		await _save_title_shot(shot, frames)
+	await splash.finished
+
+
+func _save_title_shot(path: String, frames: int) -> void:
+	for i in frames:
+		await get_tree().process_frame
+	while not _window_ready:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png(path)
+	get_tree().quit()
+	await get_tree().create_timer(60.0).timeout  # never returns: the program is quitting
 
 
 ## Debug/recording: leave the project's fullscreen mode for a real window of the given size.
