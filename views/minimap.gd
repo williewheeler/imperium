@@ -58,8 +58,12 @@ func _draw() -> void:
 	draw_texture_rect(_texture, Rect2(Vector2.ZERO, size), false)
 	draw_texture_rect(game.fog.texture, Rect2(Vector2.ZERO, size), false)
 	for b: Building in game.buildings:
+		if b.owner != 0 and not game.fog.is_explored(Vector2i(b.center())):
+			continue  # a rival's town shows once we have seen it
 		draw_rect(Rect2(_to_mini(b.center()) - Vector2(2, 2), Vector2(4, 4)), b.team_color() if b.owner >= 0 else Color("ffd24a"))
 	for u: Unit in game.units:
+		if u.owner != 0 and not game.fog.is_visible_now(Vector2i(u.pos)):
+			continue
 		draw_rect(Rect2(_to_mini(u.pos) - Vector2(1.5, 1.5), Vector2(3, 3)), Defs.PLAYER_COLORS[u.owner % Defs.PLAYER_COLORS.size()])
 	var pts := PackedVector2Array()  # what the main view shows: a slanted quad in tile space
 	for c: Vector2 in game.view_corners():

@@ -7,6 +7,7 @@ var amount: int
 var max_amount: int
 var renews := false  # fields ripen again once emptied
 var farm := false
+var owner := 0  # a field belongs to whoever built it
 
 
 func _init(p_kind: int, p_amount: int) -> void:

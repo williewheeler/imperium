@@ -14,6 +14,8 @@ var texture: ImageTexture
 var _bytes := PackedByteArray()
 var _image: Image
 var _visible := PackedInt32Array()  # the tiles that are VISIBLE now, so a refresh touches only those
+var show_all := false  # the whole map laid open (a debug view), instead of what has been seen
+var _saved_state := PackedByteArray()
 var _last_key := ""  # what the last refresh was drawn from, so an unchanged scene costs nothing
 
 
@@ -40,6 +42,8 @@ func is_visible_now(p: Vector2i) -> bool:
 ## and the ones in the sources' circles are touched, and nothing is redone if the sources haven't
 ## moved from one tile to another since last time.
 func update(sources: Array) -> void:
+	if show_all:
+		return
 	var key := ""
 	for s in sources:
 		var c: Vector2 = s[0]
@@ -70,12 +74,36 @@ func update(sources: Array) -> void:
 
 ## Marks the unseen tiles within `radius` of `center` as explored (they show as remembered ground).
 func reveal(center: Vector2, radius: float) -> void:
+	if show_all:
+		return
 	for y in range(maxi(0, int(center.y - radius)), mini(h, int(center.y + radius) + 1)):
 		for x in range(maxi(0, int(center.x - radius)), mini(w, int(center.x + radius) + 1)):
 			var i := y * w + x
 			if state[i] == HIDDEN and Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius:
 				state[i] = EXPLORED
 				_bytes[i * 4 + 3] = ALPHA[EXPLORED]
+	_upload()
+
+
+## Lays the whole map open, or puts back the fog as it was.
+func set_show_all(on: bool) -> void:
+	if on == show_all:
+		return
+	show_all = on
+	if on:
+		_saved_state = state.duplicate()
+		state.fill(VISIBLE)
+		for i in w * h:
+			_bytes[i * 4 + 3] = ALPHA[VISIBLE]
+		_visible = PackedInt32Array()
+	else:
+		state = _saved_state
+		_visible = PackedInt32Array()
+		for i in w * h:
+			_bytes[i * 4 + 3] = ALPHA[state[i]]
+			if state[i] == VISIBLE:
+				_visible.append(i)
+		_last_key = ""
 	_upload()
 
 

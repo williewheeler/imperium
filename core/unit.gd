@@ -34,5 +34,5 @@ var moving := false  # moved this frame
 var stuck := 0.0  # seconds spent blocked while trying to walk
 var best_goal_dist := INF  # closest this unit has got to the end of its path
 var stall := 0.0  # seconds without getting meaningfully closer to it
-var walk := 0.0  # walk-cycle phase, advances with distance travelled
-var anim := 0.0  # seconds alive; drives work swings and idle breathing
+var walk := randf() * TAU  # walk-cycle phase, advances with distance travelled; each starts at a random point so a crowd doesn't move in step
+var anim := randf() * 30.0  # seconds alive (plus a random head start); drives work swings and idle breathing

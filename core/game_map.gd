@@ -602,8 +602,10 @@ const START_OFFSETS: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(1, 0), Vector2
 
 ## Spiral out from the centre for grass with a forest nearby and room for the starting
 ## Town Center within a few tiles. Falls back to just "grass with a forest", then "grass".
-func find_start() -> Vector2i:
-	var c := Vector2i(w / 2, h / 2)
+func find_start(c := Vector2i(-1, -1), reach_from := Vector2i(-1, -1)) -> Vector2i:
+	if c.x < 0:
+		c = Vector2i(w / 2, h / 2)
+	var reach := reachable_from(reach_from) if reach_from.x >= 0 else PackedByteArray()
 	for level in 4:  # 0 wants marsh close by (Rome began on the edge of a marsh); the rest relax in turn
 		for r in maxi(w, h):
 			for y in range(c.y - r, c.y + r + 1):
@@ -613,6 +615,8 @@ func find_start() -> Vector2i:
 					var p := Vector2i(x, y)
 					if not _grass_block(p, 1):
 						continue
+					if not reach.is_empty() and reach[p.y * w + p.x] == 0:
+						continue  # a rival's town must be somewhere we can walk to
 					if level == 3:
 						return p
 					if _forest_count(p, 10) < 12:
@@ -622,6 +626,30 @@ func find_start() -> Vector2i:
 					if level == 2 or find_site(Vector2i(3, 3), p, 3, 5, _start_tiles(p)).x >= 0:
 						return p
 	return c
+
+
+## Every tile that can be walked to from `from` (1 = reachable), found by flood fill.
+func reachable_from(from: Vector2i) -> PackedByteArray:
+	var seen := PackedByteArray()
+	seen.resize(w * h)
+	var queue: Array[int] = [from.y * w + from.x]
+	seen[queue[0]] = 1
+	var head := 0
+	while head < queue.size():
+		var i := queue[head]
+		head += 1
+		var x := i % w
+		var y := i / w
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nx: int = x + d.x
+			var ny: int = y + d.y
+			if nx < 0 or ny < 0 or nx >= w or ny >= h:
+				continue
+			var j := ny * w + nx
+			if seen[j] == 0 and MOVE_COST[tiles[j]] != INF:
+				seen[j] = 1
+				queue.append(j)
+	return seen
 
 
 func _start_tiles(start: Vector2i) -> Array[Vector2i]:
@@ -662,10 +690,25 @@ func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Ar
 func place_resources(start: Vector2i) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
+	_place_start_clusters(rng, start)
+	_place_scattered(rng)
+
+
+## Berries, stone and gold around another people's first town, just as the first player has.
+func place_start_resources(start: Vector2i) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value + start.x * 131 + start.y
+	_place_start_clusters(rng, start)
+
+
+func _place_start_clusters(rng: RandomNumberGenerator, start: Vector2i) -> void:
 	for i in 3:
 		_place_cluster(rng, start, 5.0, 11.0, Defs.Res.FOOD, 5, 2)
 	_place_cluster(rng, start, 9.0, 15.0, Defs.Res.STONE, 3, 1)
 	_place_cluster(rng, start, 12.0, 20.0, Defs.Res.GOLD, 3, 1)
+
+
+func _place_scattered(rng: RandomNumberGenerator) -> void:
 	var blocks := WORLD_BLOCKS * WORLD_BLOCKS
 	for i in 8 * blocks:  # mines scattered over the whole world, for exploring armies and villagers to find
 		for attempt in 20:

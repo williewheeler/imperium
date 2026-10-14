@@ -312,7 +312,7 @@ func _process(delta: float) -> void:
 			objects.add_child(v)
 			_unit_views[u] = v
 		var view: UnitView = _unit_views[u]
-		var on_screen := screen.has_point(Iso.to_screen(u.pos))
+		var on_screen: bool = screen.has_point(Iso.to_screen(u.pos)) and (u.owner == 0 or game.fog.is_visible_now(Vector2i(u.pos)))  # a rival's people show only while we can see them
 		view.visible = on_screen
 		if on_screen:
 			view.update_view()
@@ -330,7 +330,9 @@ func _process(delta: float) -> void:
 			decals.add_child(v)
 			_building_views[b] = v
 			_clear_scenery_under(b)
-		if wide.has_point(Iso.to_screen_flat(b.center())):
+		var seen: bool = b.owner == 0 or game.fog.is_explored(Vector2i(b.center()))  # a rival's town shows once discovered
+		_building_views[b].set_seen(seen)
+		if seen and wide.has_point(Iso.to_screen_flat(b.center())):
 			_building_views[b].update_view()
 		else:
 			_building_views[b].go_quiet()

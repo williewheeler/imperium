@@ -52,6 +52,8 @@ func _draw() -> void:
 	if game.placing_road:
 		_draw_road_ghost()
 	for b: Building in game.buildings:
+		if b.owner != 0 and not game.fog.is_explored(Vector2i(b.center())):
+			continue
 		var origin := Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round()
 		if b.selected:  # a green highlight round the footprint, like a selected villager's ring
 			var ring := _diamond(Vector2(b.tile), Vector2(b.size))

@@ -34,7 +34,10 @@ var fog: Fog
 var units: Array[Unit] = []
 var buildings: Array[Building] = []
 var markers: Array[Dictionary] = []  # {pos: Vector2, t: float}
-var stock: Array[int] = []
+var stock: Array[int] = []  # the first player's (ours); rivals keep theirs in `stocks`
+var stocks: Array = []  # every player's resources, by owner (stocks[0] is `stock`)
+var rivals: Array[Rival] = []
+var _rome_start := Vector2i.ZERO
 var camera: Camera2D
 var hud: Hud
 
@@ -120,6 +123,7 @@ func _ready() -> void:
 	var start := map.find_start()
 	fog = Fog.new(map.w, map.h)
 	stock.assign(Defs.START_STOCK)
+	stocks = [stock]
 
 	for off in GameMap.START_OFFSETS:
 		var u := Unit.new()
@@ -131,6 +135,8 @@ func _ready() -> void:
 		_add_building("town_center", site, true)
 	map.place_resources(start)  # after the Town Center, so berries and mines go around it
 	_place_circus(start)
+	_rome_start = start
+	_place_rivals(start)
 
 	_world = World.new()
 	add_child(_world)
@@ -194,6 +200,8 @@ func _ready() -> void:
 	if args.has("look"):  # debug: aim the camera this many tiles (x,y) from the Forum
 		var off := String(args["look"]).split(",")
 		cam_pos = Iso.to_screen(buildings[0].center() + Vector2(float(off[0]), float(off[1])))
+	if args.has("reveal"):  # debug: start with the whole map laid open (M toggles it)
+		fog.set_show_all(true)
 	if args.has("forum"):
 		buildings[0].selected = true
 	if args.has("builds"):  # debug: buildings at several stages of construction
@@ -296,9 +304,14 @@ func building_at(tile: Vector2i) -> Building:
 	return null
 
 
-func can_afford(cost: Array) -> bool:
+func stock_of(owner: int) -> Array[int]:
+	return stocks[owner]
+
+
+func can_afford(cost: Array, owner := 0) -> bool:
+	var have := stock_of(owner)
 	for i in cost.size():
-		if stock[i] < cost[i]:
+		if have[i] < cost[i]:
 			return false
 	return true
 
@@ -320,7 +333,7 @@ func placing_tile() -> Vector2i:
 
 
 ## Empty string if `kind` can be built with its top-left at `tile`, else the reason it can't.
-func placement_error(kind: String, tile: Vector2i) -> String:
+func placement_error(kind: String, tile: Vector2i, owner := 0) -> String:
 	var def: Dictionary = Defs.BUILDINGS[kind]
 	var rect := Rect2i(tile, def["size"])
 	for rt in road_plans:
@@ -332,7 +345,7 @@ func placement_error(kind: String, tile: Vector2i) -> String:
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var p := Vector2i(x, y)
-			if not fog.is_explored(p):
+			if owner == 0 and not fog.is_explored(p):
 				return "Terra incognita."
 			if not map.is_free_land(p):
 				return "Locus liber et planus requiritur."
@@ -342,7 +355,7 @@ func placement_error(kind: String, tile: Vector2i) -> String:
 		for u in units:
 			if rect.has_point(Vector2i(u.pos)):
 				return "Coloni impediunt."
-	if not can_afford(def["cost"]):
+	if not can_afford(def["cost"], owner):
 		return "Copiae non sufficiunt."
 	return ""
 
@@ -378,6 +391,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		command_selected("explore")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_S and not event.ctrl_pressed and not event.meta_pressed:
 		command_selected("stop")
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
+		fog.set_show_all(not fog.show_all)  # lay the whole map open, and back
+		hud.flash("Tota terra patet." if fog.show_all else "Terra iterum celatur.", "The whole map is shown." if fog.show_all else "The fog returns.")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_W:
 		weather.cycle()  # temporary: step through the weather to look at it
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
@@ -393,6 +409,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				else:
 					var hit := _unit_at(get_global_mouse_position()) if event.double_click else null
 					var hit_building := building_under(get_global_mouse_position()) if event.double_click and hit == null else null
+					if hit_building != null and hit_building.owner != 0:
+						hit_building = null
 					if hit != null:
 						_select_same_kind(hit, Input.is_key_pressed(KEY_SHIFT))
 						dragging = false
@@ -435,6 +453,8 @@ func _unit_at(mp: Vector2) -> Unit:
 	var best: Unit = null
 	var best_d := INF
 	for u in units:
+		if u.owner != 0:
+			continue  # only our own people can be picked
 		var feet := Iso.to_screen(u.pos)
 		var half_w := 9.0 if u.kind == "horseman" else 5.0
 		var height := 22.0 if u.kind == "horseman" else 16.0
@@ -455,7 +475,7 @@ func _select_same_kind(of: Unit, additive: bool) -> void:
 	var half := get_viewport_rect().size / camera.zoom.x / 2.0
 	var view := Rect2(cam_pos - half, half * 2.0)
 	for u in units:
-		if u.kind == of.kind and view.has_point(Iso.to_screen(u.pos)):
+		if u.owner == 0 and u.kind == of.kind and view.has_point(Iso.to_screen(u.pos)):
 			u.selected = true
 
 
@@ -466,7 +486,7 @@ func _select_same_building(of: Building, additive: bool) -> void:
 	var half := get_viewport_rect().size / camera.zoom.x / 2.0
 	var view := Rect2(cam_pos - half, half * 2.0)
 	for b in buildings:
-		if b.kind == of.kind and view.has_point(Iso.to_screen_on(b.center(), Iso.level_of(b.tile))):
+		if b.owner == 0 and b.kind == of.kind and view.has_point(Iso.to_screen_on(b.center(), Iso.level_of(b.tile))):
 			b.selected = true
 
 
@@ -480,7 +500,7 @@ func _finish_select(rect: Rect2, additive: bool) -> void:
 			best.selected = true
 			return
 		var b := building_under(mp)
-		if b != null:
+		if b != null and b.owner == 0:
 			b.selected = true
 			return
 		var tile := deposit_near(mp)
@@ -488,7 +508,7 @@ func _finish_select(rect: Rect2, additive: bool) -> void:
 			selected_deposit = tile
 		return
 	for u in units:
-		if rect.has_point(Iso.to_screen(u.pos) + Vector2(0, -6)):
+		if u.owner == 0 and rect.has_point(Iso.to_screen(u.pos) + Vector2(0, -6)):
 			u.selected = true
 
 
@@ -633,6 +653,8 @@ func _command_at(mp: Vector2) -> void:
 	markers.append({"pos": pos, "t": 0.0})
 	var res := deposit_near(mp)
 	var b := building_under(mp)
+	if b != null and b.owner != 0:
+		b = null  # a rival's building is just ground to us for now
 	var movers := us  # who just walks there
 	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.is_field()))):
 		hud.flash("Milites laborare non possunt.")  # they can only march to the spot
@@ -682,6 +704,12 @@ func _command_at(mp: Vector2) -> void:
 		_order_move(movers[i], goals[i % goals.size()])
 
 
+## A message about one of our own units (rivals' troubles are not ours to hear).
+func _note(u: Unit, latin: String) -> void:
+	if u.owner == 0:
+		hud.flash(latin)
+
+
 func _set_path(u: Unit, goal: Vector2i) -> bool:
 	var from := Vector2i(u.pos)
 	if not map.is_walkable(from):  # shoved against an obstacle: start from the nearest open tile
@@ -706,7 +734,7 @@ func _order_move(u: Unit, goal: Vector2i) -> void:
 		u.state = Unit.State.MOVE
 		u.target_building = null
 	else:
-		hud.flash("Iter nullum est.")
+		_note(u, "Iter nullum est.")
 
 
 ## Walk to `b` and hand over what the villager carries. If they were working, they then go back
@@ -716,7 +744,7 @@ func _order_dropoff(u: Unit, b: Building) -> void:
 	var was_working := u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]
 	var stand := map.stand_tile(b.rect(), u.pos)
 	if stand.x < 0 or not _set_path(u, stand):
-		hud.flash("Iter nullum est.")
+		_note(u, "Iter nullum est.")
 		return
 	u.state = Unit.State.RETURN
 	u.target_building = null
@@ -727,11 +755,11 @@ func _order_gather(u: Unit, tile: Vector2i) -> bool:
 	u.dropoff_only = false
 	_release_road(u)
 	var d: Deposit = map.deposits.get(tile)
-	if d == null:
+	if d == null or (d.farm and d.owner != u.owner):  # nobody works another's field
 		return false
 	var stand := map.stand_tile(Rect2i(tile, Vector2i.ONE), u.pos)
 	if stand.x < 0 or not _set_path(u, stand):
-		hud.flash("Iter nullum est.")
+		_note(u, "Iter nullum est.")
 		u.state = Unit.State.IDLE
 		return false
 	if u.carry_kind != d.kind:
@@ -750,7 +778,7 @@ func _order_build(u: Unit, b: Building) -> void:
 	_release_road(u)
 	var stand := map.stand_tile(b.rect(), u.pos)
 	if stand.x < 0 or not _set_path(u, stand):
-		hud.flash("Iter nullum est.")
+		_note(u, "Iter nullum est.")
 		return
 	u.state = Unit.State.BUILD_GO
 	u.target_building = b
@@ -773,17 +801,18 @@ func _try_place() -> void:
 	placing = ""
 
 
-func _pay(cost: Array) -> void:
+func _pay(cost: Array, owner := 0) -> void:
+	var have := stock_of(owner)
 	for i in cost.size():
-		stock[i] -= cost[i]
+		have[i] -= cost[i]
 
 
-func _add_building(kind: String, tile: Vector2i, complete: bool) -> Building:
+func _add_building(kind: String, tile: Vector2i, complete: bool, owner := 0) -> Building:
 	var b := Building.new()
 	b.kind = kind
 	b.tile = tile
 	b.size = Defs.BUILDINGS[kind]["size"]
-	b.owner = 0  # the first player's (purple), landmarks included
+	b.owner = owner  # 0 is the first player's (purple), landmarks included
 	b.complete = complete
 	b.building_name = CITY_NAMES[_cities % CITY_NAMES.size()] if kind == "town_center" else Defs.BUILDINGS[kind]["name"]
 	if kind == "town_center":
@@ -802,6 +831,7 @@ func _on_complete(b: Building) -> void:
 		var d := Deposit.new(b.def()["yield"], b.def()["crop"])
 		d.renews = true
 		d.farm = true
+		d.owner = b.owner
 		map.deposits[b.field_tile()] = d
 		return
 	match b.kind:
@@ -815,28 +845,29 @@ func _on_complete(b: Building) -> void:
 
 
 ## Population limit: each finished Town Center and House adds room.
-func pop_cap() -> int:
+func pop_cap(owner := 0) -> int:
 	var cap := 0
 	for b in buildings:
-		if b.complete:
+		if b.complete and b.owner == owner:
 			cap += b.def()["pop"]
 	return cap
 
 
 ## Population in use: everyone except units that are only there for show.
-func pop_used() -> int:
+func pop_used(owner := 0) -> int:
 	var n := 0
 	for u in units:
-		if not u.display:
+		if not u.display and u.owner == owner:
 			n += 1
 	return n
 
 
-func has_pop_room() -> bool:
+func has_pop_room(owner := 0) -> bool:
 	var queued := 0
 	for b in buildings:
-		queued += b.queue
-	return pop_used() + queued < pop_cap()
+		if b.owner == owner:
+			queued += b.queue
+	return pop_used(owner) + queued < pop_cap(owner)
 
 
 ## Train whatever the selected building trains: villagers at the Forum, soldiers at the Castra.
@@ -885,6 +916,7 @@ func _cycle_era(step: int) -> void:
 	era = posmod(era + step, Defs.ERAS.size())
 	if era >= 1:
 		_drain_marshes()
+	_place_rivals(_rome_start)  # a people that arrives in a later era appears when the era does
 	advancing = false
 	_clear_selection()
 	placing = ""
@@ -1027,6 +1059,47 @@ func _place_circus(start: Vector2i) -> void:
 		Iso.set_terrain(map.w, map.h, map.levels)
 		var circus := _add_building("circus", site, true)
 		circus.work = 1.0
+
+
+## The other peoples of this era each get a town of their own, far enough away that Rome has the
+## first years to itself, with five villagers and the same stores as ours. Each is run by a Rival.
+func _place_rivals(rome: Vector2i) -> void:
+	for faction: String in Defs.FACTIONS:
+		var info: Dictionary = Defs.FACTIONS[faction]
+		if faction == "romans" or int(info["era"]) > era:
+			continue
+		var present := false
+		for r in rivals:
+			present = present or r.faction == faction
+		if present:
+			continue  # already here
+		var owner_id: int = info["owner"]
+		var want: Vector2i = (rome + info["offset"]).clamp(Vector2i(20, 20), Vector2i(map.w - 21, map.h - 21))
+		var spot := map.find_start(want, rome)
+		if spot.distance_to(Vector2(rome)) < 40.0:
+			continue  # no good ground that we could walk to: this people stays home
+		var site := _find_building_site("town_center", spot, 3)
+		if site.x < 0:
+			continue
+		while stocks.size() <= owner_id:
+			stocks.append(null)
+		var rival_stock: Array[int] = []
+		rival_stock.assign(Defs.START_STOCK)
+		stocks[owner_id] = rival_stock
+		for off in GameMap.START_OFFSETS:
+			var u := Unit.new()
+			u.pos = Vector2(spot + off) + Vector2(0.5, 0.5)
+			u.owner = owner_id
+			_assign_sex(u)
+			units.append(u)
+		var town := _add_building("town_center", site, true, owner_id)
+		town.building_name = info["town"]
+		map.place_start_resources(spot)
+		var rival := Rival.new()
+		rival.game = self
+		rival.owner = owner_id
+		rival.faction = faction
+		rivals.append(rival)
 
 
 ## Fighting men standing near the start, just to look at (they take no population): the kinds an early
@@ -1197,7 +1270,7 @@ func _cancel_road_mode() -> void:
 func _count_built(kind: String) -> int:
 	var n := 0
 	for b in buildings:
-		if b.kind == kind and b.complete:
+		if b.kind == kind and b.complete and b.owner == 0:
 			n += 1
 	return n
 
@@ -1269,6 +1342,7 @@ func _update_advance(delta: float) -> void:
 		advancing = false
 		era += 1
 		_drain_marshes()
+		_place_rivals(_rome_start)
 		var e: Dictionary = Defs.ERAS[era]
 		hud.flash("Aetas %s: %s" % [e["numeral"], e["latin"]], "Era %s begins: %s (%s)" % [e["numeral"], e["english"], e["years"]])
 
@@ -1420,6 +1494,8 @@ func _process(delta: float) -> void:
 	_pan_camera(delta)
 	Perf.stop("pan", t0)
 	t0 = Perf.start()
+	for r in rivals:
+		r.tick(delta)
 	for u in units:
 		_update_unit(u, delta)
 	Perf.stop("unit logic", t0)
@@ -1522,9 +1598,11 @@ func _height_sight(pos: Vector2) -> float:
 func _update_fog() -> void:
 	var sources := []
 	for u in units:
-		sources.append([u.pos, VILLAGER_SIGHT + _height_sight(u.pos)])
+		if u.owner == 0:  # a rival's people see for themselves, not for us
+			sources.append([u.pos, VILLAGER_SIGHT + _height_sight(u.pos)])
 	for b in buildings:
-		sources.append([b.center(), (b.def()["sight"] if b.complete else FOUNDATION_SIGHT) + _height_sight(b.center())])
+		if b.owner == 0:
+			sources.append([b.center(), (b.def()["sight"] if b.complete else FOUNDATION_SIGHT) + _height_sight(b.center())])
 	fog.update(sources)
 
 
@@ -1736,7 +1814,7 @@ func _update_unit(u: Unit, delta: float) -> void:
 		Unit.State.RETURN:
 			if _follow(u, delta):
 				if u.carry > 0:
-					stock[u.carry_kind] += u.carry
+					stock_of(u.owner)[u.carry_kind] += u.carry
 					u.carry = 0
 				if u.dropoff_only:
 					u.dropoff_only = false
@@ -1765,7 +1843,8 @@ func _update_unit(u: Unit, delta: float) -> void:
 				if b.work >= float(b.def()["build_time"]):
 					b.complete = true
 					_on_complete(b)
-					hud.flash("%s %s." % [b.def()["name"], b.def()["done"]], "%s complete." % b.def()["english"])
+					if u.owner == 0:
+						hud.flash("%s %s." % [b.def()["name"], b.def()["done"]], "%s complete." % b.def()["english"])
 
 
 func _gather(u: Unit, delta: float) -> void:
@@ -1797,14 +1876,14 @@ func _return_to_dropsite(u: Unit) -> void:
 	var best: Building = null
 	var best_d := INF
 	for b in buildings:
-		if b.complete and u.carry_kind in b.def()["accepts"]:
+		if b.complete and b.owner == u.owner and u.carry_kind in b.def()["accepts"]:
 			var dist := b.center().distance_to(u.pos)
 			if dist < best_d:
 				best_d = dist
 				best = b
 	if best == null:
 		u.state = Unit.State.IDLE
-		hud.flash("Aedifica forum vel horreum.")
+		_note(u, "Aedifica forum vel horreum.")
 		return
 	var stand := map.stand_tile(best.rect(), u.pos)
 	if stand.x >= 0 and _set_path(u, stand):
@@ -1819,7 +1898,7 @@ func _retarget(u: Unit) -> bool:
 	var best_d := 12.0
 	for p: Vector2i in map.deposits:
 		var d: Deposit = map.deposits[p]
-		if d.kind != u.gather_kind or not fog.is_explored(p):
+		if d.kind != u.gather_kind or (d.farm and d.owner != u.owner) or (u.owner == 0 and not fog.is_explored(p)):
 			continue
 		var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
 		if dist < best_d:
@@ -1855,6 +1934,7 @@ func _update_building(b: Building, delta: float) -> void:
 		b.queue -= 1
 		var u := Unit.new()
 		u.kind = trains
+		u.owner = b.owner
 		_assign_sex(u)
 		var spawn := map.stand_tile(b.rect(), b.center())
 		u.pos = Vector2(spawn) + Vector2(0.5, 0.5)

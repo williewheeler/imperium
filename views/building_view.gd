@@ -91,6 +91,15 @@ func _ready() -> void:
 		_banner.visible = false
 
 
+## Whether the building is shown at all: a rival's town stays hidden until its ground has been explored.
+func set_seen(seen: bool) -> void:
+	if visible == seen:
+		return
+	visible = seen
+	for node in _halves:
+		node.visible = seen
+
+
 ## Off the screen: nothing to animate, so the hearth fire stops until it is seen again.
 func go_quiet() -> void:
 	if _fire != null:

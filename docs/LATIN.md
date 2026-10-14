@@ -129,6 +129,11 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Imperivm | The Empire (the game's title) |
 | Fuga a Troia | The flight from Troy: heading of the opening scroll |
 | Preme quamlibet clavem | Press any key (to skip the scroll) |
+| Tota terra patet / Terra iterum celatur | The whole map is shown / The fog returns (M) |
+| M  omnia vide | M: show the whole map |
+| Terra formatur; Montes et valles formantur; Silvae et paludes ponuntur; Itinera parantur; Orbis pingitur | Loading lines: the land takes shape; mountains and valleys are formed; woods and marshes are laid down; the paths are made ready; the world is painted |
+| Romani, Etrusci, Sabini, Latini, Graeci | The peoples: Romans, Etruscans, Sabines, Latins, Greeks |
+| Veii, Cures, Alba Longa, Cumae | Their first towns (Etruscan, Sabine, Latin, Greek) |
 | Incipe | Begin: start the game (Enter or Space; the button has a play icon) |
 | Exi | Leave: quit the game (Q or Esc; the button has a door-and-arrow icon) |
 | Ab urbe condita | From the founding of the city: the Romans' own way of dating years, counted from the traditional founding of Rome in 753 BC |
