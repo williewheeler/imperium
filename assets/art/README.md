@@ -13,6 +13,10 @@ LibreSprite...) and the game picks the changes up on the next run, with no code 
 | `ground_tiles.png` | 32x16 diamond tiles, one row per terrain (deep water, shallows, beach, grass, forest floor, hill slope, mountain rock), 4 variants each |
 | `ground_tileset.tres` | a Godot isometric `TileSet` built from `ground_tiles.png`, for painting maps in the editor |
 
+## Team colour marks
+
+Unit sprites mark the team with three placeholder colours: `#ff00ff` (light), `#c800c8` (mid) and `#8c008c` (dark). The game paints the owner's colour over them (`team.gdshader`), so the magenta you see in the sheets turns purple for player 0 and another colour for another player. Today they mark the belt, the shield rim, the spear's pennon, the slinger's headband and the horse's saddle blanket. Use these three colours only for team marks.
+
 ## Rules to keep when editing
 
 - **Keep each sprite inside its box.** `manifest.json` records every sprite's rectangle.

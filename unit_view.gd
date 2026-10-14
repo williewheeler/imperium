@@ -11,6 +11,7 @@ var _pack := Sprite2D.new()
 
 
 func _ready() -> void:
+	_body.material = Team.material_for(unit.owner)  # paints the owner's colour over the sprite's team marks
 	_body.centered = false
 	_pack.centered = false
 	add_child(_pack)

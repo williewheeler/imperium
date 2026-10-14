@@ -28,6 +28,7 @@ var lock_numeral := "":  # e.g. "II" while this needs a later era
 			queue_redraw()
 
 var _styles := {}
+var _unit_icon: TextureRect  # the picture of a unit, with the team colour painted on
 
 
 func _init() -> void:
@@ -104,7 +105,22 @@ func _draw_icon(c: Vector2) -> void:
 	var t: Texture2D = Art.tex(key) if icon_kind in UNIT_ICONS else Art.icon(Building.look_key(key), 17 if compact else 30)
 	var scale := 2.0
 	var sz := t.get_size() * scale
-	draw_texture_rect(t, Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz), false, Color(0.45, 0.45, 0.45, 0.7) if disabled else Color.WHITE)
+	var at := Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz)
+	if icon_kind in UNIT_ICONS:  # a unit picture goes through the team-colour material, which needs a node of its own
+		if _unit_icon == null:
+			_unit_icon = TextureRect.new()
+			_unit_icon.material = Team.material_for(0)
+			_unit_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			_unit_icon.stretch_mode = TextureRect.STRETCH_SCALE
+			_unit_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_unit_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			add_child(_unit_icon)
+		_unit_icon.texture = t
+		_unit_icon.position = at.position
+		_unit_icon.size = at.size
+		_unit_icon.modulate = Color(0.45, 0.45, 0.45, 0.7) if disabled else Color.WHITE
+		return
+	draw_texture_rect(t, at, false, Color(0.45, 0.45, 0.45, 0.7) if disabled else Color.WHITE)
 
 
 ## Simple drawn pictures for the order buttons: a compass for exploring, an octagonal sign for

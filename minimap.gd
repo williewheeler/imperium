@@ -60,7 +60,7 @@ func _draw() -> void:
 	for b: Building in game.buildings:
 		draw_rect(Rect2(_to_mini(b.center()) - Vector2(2, 2), Vector2(4, 4)), b.team_color() if b.owner >= 0 else Color("ffd24a"))
 	for u: Unit in game.units:
-		draw_rect(Rect2(_to_mini(u.pos) - Vector2(1.5, 1.5), Vector2(3, 3)), Color("ff4040"))
+		draw_rect(Rect2(_to_mini(u.pos) - Vector2(1.5, 1.5), Vector2(3, 3)), Defs.PLAYER_COLORS[u.owner % Defs.PLAYER_COLORS.size()])
 	var pts := PackedVector2Array()  # what the main view shows: a slanted quad in tile space
 	for c: Vector2 in game.view_corners():
 		pts.append(_to_mini(c))

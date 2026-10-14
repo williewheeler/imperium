@@ -43,6 +43,10 @@ const LINEN := [Color("f2e8cc"), Color("d9cba4"), Color("a99c78")]  # undyed tun
 const WOOL := [Color("b88a58"), Color("94683c"), Color("6a4624")]
 const DYED := [Color("8aa5cc"), Color("5a78a8"), Color("3f5a86")]  # a faded blue
 const BELT := Color("3e2a16")
+## Placeholder colours that mark a unit's team: wherever the sheets hold one of these, the game paints
+## the owner's colour (light, mid, dark) over it (see team.gdshader), so the team shows without any
+## player's colour being drawn into the art. Never use them for anything else.
+const TEAM_KEY := [Color("ff00ff"), Color("c800c8"), Color("8c008c")]
 const OUT_VILLAGER := Color("3a2018")
 
 ## Resource colours (wood, food, stone, gold) used by the UI.
@@ -617,8 +621,8 @@ static func _villager(anim: String, back: bool, frame: int, kit := "", look := 0
 				c = cloth[0]
 			elif x == fx + half + shift:
 				c = cloth[2]
-			if row == 3:
-				c = BELT
+			if row == 3:  # the belt is the owner's colour
+				c = TEAM_KEY[0] if x == fx - half + shift else (TEAM_KEY[2] if x == fx + half + shift else TEAM_KEY[1])
 			Pixel.put(img, x, y, c)
 	# head: hair on top (and all over from behind), face with eyes from the front
 	var hx := fx + lean
@@ -1287,7 +1291,7 @@ static func _infantry_gear(img: Image, kit: String, look: int, fx: int, hx: int,
 				Pixel.put(img, hx - 1 if back else hx + 1, hy - 1, crest[2])
 			if back:  # the back of the head under the helmet
 				Pixel.rect(img, hx - 1, hy + 2, 3, 1, BRONZE[2])
-			_round_shield(img, fx - 3.5, sh_y + 4.0, BRONZE[1], [Color("b0382e"), Color("e8e0c8"), Color("3f5a86")][look % 3], BRONZE[0])
+			_round_shield(img, fx - 3.5, sh_y + 4.0, TEAM_KEY[1], [Color("b0382e"), Color("e8e0c8"), Color("3f5a86")][look % 3], BRONZE[0])
 			_spear(img, hand, hy, ROCK)
 		"spearman":
 			if look == 1:  # a leather cap
@@ -1295,10 +1299,10 @@ static func _infantry_gear(img: Image, kit: String, look: int, fx: int, hx: int,
 				Pixel.rect(img, hx - 1, hy - 1, 3, 1, WOOD[0])
 			elif look == 2:  # a plain headband
 				Pixel.rect(img, hx - 1, hy, 3, 1, LINEN[0])
-			_round_shield(img, fx - 3.5, sh_y + 4.0, WOOD[2], [WOOD[0], Color("b0382e"), Color("5a78a8")][look % 3], WOOD[1])
+			_round_shield(img, fx - 3.5, sh_y + 4.0, TEAM_KEY[1], [WOOD[0], Color("b0382e"), Color("5a78a8")][look % 3], WOOD[1])
 			_spear(img, hand, hy, WOOD)
 		"slinger":
-			Pixel.rect(img, hx - 1, hy, 3, 1, [LINEN[1], BELT, TUNIC[1]][look % 3])  # a headband
+			Pixel.rect(img, hx - 1, hy, 3, 1, TEAM_KEY[1])  # a headband in the owner's colour
 			Pixel.rect(img, fx + 2, sh_y + 6, 3, 3, WOOD[1])  # the pouch of stones at the hip
 			Pixel.put(img, fx + 3, sh_y + 6, ROCK[1])
 			Pixel.line(img, Vector2i(hand.x + fx + 2, hand.y + sh_y), Vector2i(hand.x + fx + 2, hand.y + sh_y + 4), WOOD[0])  # the sling hanging from the hand
@@ -1315,12 +1319,20 @@ static func _round_shield(img: Image, cx: float, cy: float, rim: Color, face: Co
 	Pixel.put(img, int(cx), int(cy), boss)
 
 
+## A little streamer in the owner's colour, flying to the right from (x, y).
+static func _pennon(img: Image, x: int, y: int) -> void:
+	Pixel.rect(img, x + 1, y, 3, 2, TEAM_KEY[1])
+	Pixel.put(img, x + 1, y, TEAM_KEY[0])
+	Pixel.put(img, x + 4, y + 1, TEAM_KEY[2])
+
+
 ## A spear held upright in the front hand.
 static func _spear(img: Image, hand: Vector2i, hy: int, head: Array) -> void:
 	var sx := hand.x + 1
 	Pixel.line(img, Vector2i(sx, hand.y + 3), Vector2i(sx, hy - 3), WOOD[1])
 	Pixel.put(img, sx, hy - 4, head[0])
 	Pixel.put(img, sx, hy - 5, head[1])
+	_pennon(img, sx, hy - 3)
 
 
 const HORSE_COATS := [
@@ -1381,8 +1393,11 @@ static func _horseman(anim: String, frame: int, look: int) -> Image:
 	Pixel.rect(img, rx - 1, ry - 11, 3, 1, BRONZE[0])
 	Pixel.put(img, rx, ry - 12, [TUNIC[1], LINEN[0], Color("3f5a86")][look % 3])  # crest
 	Pixel.put(img, rx + 1, ry - 8, Color("3a2416"))
-	_round_shield(img, rx - 4.0, ry, BRONZE[1], [Color("b0382e"), Color("e8e0c8"), Color("3f5a86")][look % 3], BRONZE[0])
+	_round_shield(img, rx - 4.0, ry, TEAM_KEY[1], [Color("b0382e"), Color("e8e0c8"), Color("3f5a86")][look % 3], BRONZE[0])
+	Pixel.rect(img, rx - 4, int(cy) - 6, 9, 3, TEAM_KEY[1])  # a saddle blanket in the owner's colour
+	Pixel.rect(img, rx - 4, int(cy) - 6, 9, 1, TEAM_KEY[0])
 	Pixel.line(img, Vector2i(rx + 3, ry + 4), Vector2i(rx + 3, ry - 22), WOOD[1])  # a long spear
+	_pennon(img, rx + 3, ry - 21)
 	Pixel.put(img, rx + 3, ry - 23, ROCK[0])
 	Pixel.put(img, rx + 3, ry - 24, ROCK[1])
 	return Pixel.outlined(img, OUT_VILLAGER)
