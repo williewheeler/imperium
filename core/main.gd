@@ -83,7 +83,6 @@ var _screenshot_path := ""
 var _report := false
 var _shot_frame := 20
 var _frame := 0
-var voice := Voice.new()  # the answers when someone is selected
 
 
 func _ready() -> void:
@@ -120,7 +119,6 @@ func _ready() -> void:
 	if args.has("splash") or args.has("intro") or (not scripted and DisplayServer.get_name() != "headless"):
 		await _title_sequence(args)  # the opening scroll and the title screen come first; the world is built when you press Incipe
 
-	add_child(voice)
 	Team.reset()  # the colours may have been changed on the settings screen
 	var _t_a := Time.get_ticks_msec()
 	# The world is built on a worker thread while a loading screen draws its progress bar; the game
@@ -526,7 +524,6 @@ func _select_same_kind(of: Unit, additive: bool) -> void:
 	for u in units:
 		if u.owner == 0 and u.kind == of.kind and view.has_point(Iso.to_screen(u.pos)):
 			u.selected = true
-	voice.answer(of)
 
 
 ## Double click on a building: select every building of the same kind that is on the screen now.
@@ -548,7 +545,6 @@ func _finish_select(rect: Rect2, additive: bool) -> void:
 		var best := _unit_at(mp)
 		if best != null:
 			best.selected = true
-			voice.answer(best)
 			return
 		var b := building_under(mp)
 		if b != null and b.owner == 0:
@@ -558,14 +554,9 @@ func _finish_select(rect: Rect2, additive: bool) -> void:
 		if tile.x >= 0:
 			selected_deposit = tile
 		return
-	var first: Unit = null
 	for u in units:
 		if u.owner == 0 and rect.has_point(Iso.to_screen(u.pos) + Vector2(0, -6)):
 			u.selected = true
-			if first == null or (first.kind == "villager" and u.kind != "villager"):
-				first = u  # a soldier speaks for the group before a villager does
-	if first != null:
-		voice.answer(first)
 
 
 ## The building whose picture is under world position `mp`. Sprites stand tall, so this tests
