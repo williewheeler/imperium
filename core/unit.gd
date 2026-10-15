@@ -6,7 +6,7 @@ enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_
 ## Position in tile coordinates (tile centres are at +0.5).
 var kind := "villager"  # "villager", or a fighting man: "soldier", "spearman", "slinger", "horseman"
 var pos := Vector2.ZERO
-var owner := 0  # which player: an index into Defs.PLAYER_COLORS (0 is purple)
+var owner := 0  # which player: 0 is you, 1 and up the computer-run peoples (Defs.color_of gives the colour)
 var female := false  # villagers only: picks the sprite
 var look := 0  # fighting men: which of the kind's looks (tunic, armour) they wear
 var display := false  # a unit there for show: it takes no population

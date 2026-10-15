@@ -6,9 +6,14 @@ extends RefCounted
 static var _materials := {}
 
 
+## Forget the materials made so far (the colours were changed).
+static func reset() -> void:
+	_materials.clear()
+
+
 static func material_for(owner: int) -> ShaderMaterial:
 	if not _materials.has(owner):
-		var base: Color = Defs.PLAYER_COLORS[owner % Defs.PLAYER_COLORS.size()]
+		var base := Defs.color_of(owner)
 		var mat := ShaderMaterial.new()
 		mat.shader = load("res://shaders/team.gdshader")
 		mat.set_shader_parameter("team_light", base.lightened(0.35))

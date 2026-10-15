@@ -32,6 +32,8 @@ var _ghost_state := {}  # Unit -> {"wait", "ghost", "ring"}: the last occlusion 
 var _rings := {}  # Unit -> SelectionRing: shown over scenery that hides a selected unit's ring
 var _ghost_layer := Node2D.new()
 var _ghost_material: ShaderMaterial
+var _hill_material: ShaderMaterial  # the same for hills, which are snowed over all down their slopes
+var _season_material: ShaderMaterial  # dresses the trees for snow or desert; null on ordinary ground
 var _alpha_images := {}  # Texture2D -> Image, for pixel-accurate "is something solid here"
 
 ## How much of a villager must be covered before the see-through silhouette appears.
@@ -51,6 +53,14 @@ func setup(p_game) -> void:
 	add_child(decals)
 	objects.y_sort_enabled = true
 	add_child(objects)
+
+	var style: int = GameSettings.terrain_info(GameSettings.terrain_id)["style"]
+	if style != 0:  # snow on the trees, or the green parched
+		_season_material = ShaderMaterial.new()
+		_season_material.shader = load("res://shaders/season.gdshader")
+		_season_material.set_shader_parameter("style", style)
+		_hill_material = _season_material.duplicate()
+		_hill_material.set_shader_parameter("frost_bias", 1.0)
 
 	var shader := Shader.new()
 	shader.code = "shader_type canvas_item;\nuniform vec4 tint : source_color;\nvoid fragment() { COLOR = vec4(tint.rgb, texture(TEXTURE, UV).a * tint.a); }"
@@ -96,6 +106,10 @@ func remove_tile_objects(p: Vector2i) -> void:
 
 func _sprite(key: String, foot: Vector2) -> Sprite2D:
 	var s := Sprite2D.new()
+	if key.begins_with("scrub"):
+		s.material = _season_material
+	elif key.begins_with("hill"):
+		s.material = _hill_material  # snow on the bushes and hills too, or dry ones in the desert
 	s.texture = Art.tex(key)
 	s.centered = false
 	s.offset = Vector2(-s.texture.get_width() / 2.0, -(s.texture.get_height() - 1.0))
@@ -118,6 +132,7 @@ var _wind_clock := 0.0
 
 func _tree(key: String, foot: Vector2) -> Sprite2D:
 	var s := _sprite(key, foot)
+	s.material = _season_material
 	s.set_meta("frames", [s.texture, Art.tex(key + ":1")])  # upright, leaning
 	s.set_meta("lean", 0)
 	_building["trees"].append(s)

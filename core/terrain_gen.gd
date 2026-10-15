@@ -20,6 +20,7 @@ var meadow := PackedFloat32Array()  # 0 to 1: how firmly the cell is kept clear 
 var params: Dictionary
 var homes: Array[Vector2] = []  # where each people starts, as map fractions (Rome first)
 var kind := ""
+var terrain: Dictionary  # the ground chosen on the settings screen (GameSettings.TERRAINS)
 
 var _rng := RandomNumberGenerator.new()
 var _warp: FastNoiseLite  # wobbles the edge of every stamp, so coasts are ragged but smooth
@@ -32,8 +33,11 @@ var _scale := 1.0  # (side / 320) squared: how many more scattered stamps a bigg
 func _init(p_seed: int, p_side: int, p_type: String, p_n: int, p_homes: Array[Vector2]) -> void:
 	side = p_side
 	n = p_n
-	params = GameSettings.type_info(p_type)
+	params = GameSettings.type_info(p_type).duplicate()
 	kind = String(params["id"])
+	terrain = GameSettings.terrain_info(GameSettings.terrain_id)
+	for key in ["wet", "forest", "marsh"]:  # the ground's character adds to the map type's
+		params[key] = float(params[key]) + float(terrain[key])
 	homes = p_homes
 	_rng.seed = p_seed * 7919 + 13
 	_scale = pow(side / 320.0, 2.0)
@@ -46,6 +50,9 @@ func _init(p_seed: int, p_side: int, p_type: String, p_n: int, p_homes: Array[Ve
 	meadow.resize(n * n)
 	meadow.fill(0.0)
 	_lay_recipe()
+	_extra_hills(int(terrain["more_hills"]))
+	if kind in SQUARE_TYPES:
+		_sea_margin()
 	for h in homes:  # level, open ground where each people begins, with woods close by beyond it
 		_stamp(h.x, h.y, 0.07, 0.07, 0.0, "level", PLATEAU, 0.7, 0.2)
 		_stamp(h.x, h.y, 0.042, 0.042, 0.0, "open", 1.0, 0.8, 0.2)
@@ -111,12 +118,12 @@ func terrain_at(x: int, y: int) -> int:
 
 # ---------------------------------------------------------------- stamps
 
-## One stamp: an ellipse centred at (cx, cy) with radii (rx, ry), all fractions of the map's side, turned
+## One stamp: an ellipse (or, with `power` above 2, a rounded square) centred at (cx, cy) with radii (rx, ry), all fractions of the map's side, turned
 ## by `angle` radians. `mode` says what it does where it lands: "land" raises the sea to `level`; "carve"
 ## cuts water out of the land; "raise" adds `level` of height to land (hills, ridges); "flat" levels land
 ## toward `level` and keeps it clear of woods; "level" only levels it; "open" only keeps it clear. `edge` is how much of the radius
 ## is a soft slope, and `warp` how much the outline wobbles.
-func _stamp(cx: float, cy: float, rx: float, ry: float, angle: float, mode: String, level: float, edge := 0.35, warp := 0.25) -> void:
+func _stamp(cx: float, cy: float, rx: float, ry: float, angle: float, mode: String, level: float, edge := 0.35, warp := 0.25, power := 2.0) -> void:
 	var reach := maxf(rx, ry) * (1.0 + warp + 0.1) * n
 	var gcx := cx * n
 	var gcy := cy * n
@@ -135,7 +142,7 @@ func _stamp(cx: float, cy: float, rx: float, ry: float, angle: float, mode: Stri
 			var dy := gy + 0.5 - gcy
 			var u := (dx * ca + dy * sa) * inv_rx
 			var v := (-dx * sa + dy * ca) * inv_ry
-			var d := sqrt(u * u + v * v)
+			var d := sqrt(u * u + v * v) if power == 2.0 else pow(pow(absf(u), power) + pow(absf(v), power), 1.0 / power)
 			if d > 1.0 + warp:
 				continue
 			d += warp * _warp.get_noise_2d((gx + 0.5) * to_tiles, (gy + 0.5) * to_tiles)
@@ -198,7 +205,7 @@ func _carve(c: Vector2, rx: float, ry := -1.0, angle := 0.0, warp := 0.3, edge :
 
 
 func _hill(c: Vector2, rx: float, ry: float, angle: float, amp := 0.16) -> void:
-	_stamp(c.x, c.y, rx, ry, angle, "raise", amp * 1.7, 0.8, 0.2)
+	_stamp(c.x, c.y, rx, ry, angle, "raise", amp * 1.7 * float(terrain["hills"]), 0.8, 0.2)
 
 
 ## A mountain chain: overlapping ridge stamps along a line from `a` to `b`.
@@ -207,7 +214,7 @@ func _chain(a: Vector2, b: Vector2, amp: float, width: float, steps := 5) -> voi
 	for i in steps:
 		var c := a.lerp(b, (i + 0.5) / steps) + Vector2(_r(-0.015, 0.015), _r(-0.015, 0.015))
 		var len := a.distance_to(b) / steps * _r(0.8, 1.1)
-		_stamp(c.x, c.y, len, width * _r(0.8, 1.2), ang, "raise", amp * 1.35 * _r(0.8, 1.15), 0.9, 0.25)
+		_stamp(c.x, c.y, len, width * _r(0.8, 1.2), ang, "raise", amp * 1.35 * _r(0.8, 1.15) * float(terrain["hills"]), 0.9, 0.25)
 
 
 ## Keeps a patch of ground clear of woods, marsh and hills (it may stay as it is otherwise).
@@ -259,24 +266,60 @@ func _scatter_islands(placed: Array, count: int, r0: float, r1: float, spacing :
 				break
 
 
+## The kinds of map whose land is a broad square reaching nearly to the map's edge, with a strip of open
+## sea all round (Campi has no sea at all: its land runs right off the edge).
+const SQUARE_TYPES := ["continens", "lacus", "silvae", "colles", "paludes"]
+
+
+## The width of the sea round a square continent, in tiles: wide enough for ships, no more.
+func _sea_width() -> float:
+	return clampf(side * 0.028, 7.0, 12.0)
+
+
+## A broad, square-cornered landmass whose coast lies about `_sea_width() + 5` tiles from the map's edge,
+## wobbling a few tiles either way.
+func _square_land(warp := 0.08) -> void:
+	var half := (0.5 * side - _sea_width() - 5.0) / 0.9 / side
+	_stamp(0.5, 0.5, half, half, 0.0, "land", PLATEAU, 0.12, warp, 5.0)
+
+
+## Open sea all round the map's edge, whatever the land did: `_sea_width()` tiles of it, then a slope up
+## to the land. Keeps room for ships to pass between the land and the map's edge.
+func _sea_margin() -> void:
+	var width := _sea_width()
+	for gy in n:
+		for gx in n:
+			var dt := (minf(minf(gx + 0.5, gy + 0.5), minf(n - gx - 0.5, n - gy - 0.5))) * float(side) / n  # tiles from the map's edge
+			var ramp := (dt - width * 0.5) / (width * 0.9)
+			if ramp >= 1.0:
+				continue
+			var i := gy * n + gx
+			f[i] = minf(f[i], SEA + (0.6 - SEA) * maxf(ramp, 0.0))
+
+
+## `count` extra hills (the hilly and snowy grounds), spread over the land.
+func _extra_hills(count: int) -> void:
+	for i in _count(count) if count > 0 else 0:
+		_hill(_around(0.05, 0.42), _r(0.05, 0.1), _r(0.03, 0.06), _r(0.0, PI), 0.09)
+
+
 # ---------------------------------------------------------------- the recipes
 
 func _lay_recipe() -> void:
 	var mid := Vector2(0.5, 0.5)
 	match kind:
 		"continens":
-			_blobby(mid + Vector2(_r(-0.03, 0.03), _r(-0.03, 0.03)), 0.34, 0.85, 7, 0.32)
+			_square_land()
 			_lakes(3, 0.025, 0.05, 0.3)
-			for i in 2:
-				_carve(_around(0.34, 0.42), _r(0.05, 0.09))  # bays
+			for i in 5:
+				_carve(_around(0.36, 0.46), _r(0.04, 0.08), -1.0, 0.0, 0.35)  # bays and inlets round the coast
 			for i in 5:
 				_hill(_around(0.12, 0.32), _r(0.1, 0.18), _r(0.04, 0.08), _r(0.0, PI))
 			var a := _around(0.22, 0.32)
 			_chain(a, a + Vector2.from_angle(_r(0.0, TAU)) * _r(0.14, 0.22), 0.22, 0.035)
 		"campi":
-			_land(mid, 0.5, 0.32, PI / 4.0, 0.18)  # two crossed ellipses make a wide diamond
-			_land(mid, 0.5, 0.32, -PI / 4.0, 0.18)
-			_lakes(2, 0.02, 0.04, 0.3)
+			f.fill(PLATEAU)  # land to the very edge: no sea on the plains
+			_lakes(3, 0.02, 0.04, 0.34)
 			for i in 2:
 				_hill(_around(0.15, 0.3), _r(0.08, 0.14), _r(0.04, 0.07), _r(0.0, PI), 0.1)
 		"insulae_parvae":
@@ -335,19 +378,19 @@ func _lay_recipe() -> void:
 			for i in 4:
 				_clearing(_around(0.1, 0.3), _r(0.06, 0.09))
 		"paludes":
-			_blobby(mid, 0.38, 0.9, 6, 0.35)
+			_square_land(0.12)
 			_lakes(_count(16), 0.012, 0.035, 0.38)
 			for i in 6:
 				_clearing(_around(0.1, 0.34), _r(0.05, 0.08))
 		"silvae":
-			_blobby(mid, 0.36, 0.95, 8, 0.4)
+			_square_land(0.1)
 			_lakes(2, 0.02, 0.035, 0.3)
 			for i in 9:
 				_clearing(_around(0.05, 0.36), _r(0.04, 0.07))
 			for i in 3:
 				_hill(_around(0.15, 0.32), _r(0.08, 0.14), _r(0.04, 0.06), _r(0.0, PI), 0.1)
 		"lacus":
-			_blobby(mid, 0.38, 0.9, 4, 0.2)
+			_square_land()
 			_lakes(_count(16), 0.025, 0.065, 0.38)
 			for i in 2:
 				_hill(_around(0.15, 0.32), _r(0.08, 0.14), _r(0.04, 0.06), _r(0.0, PI), 0.11)
@@ -388,8 +431,8 @@ func _lay_recipe() -> void:
 				_island(placed, _around(0.44, 0.48), _r(0.02, 0.035), 1.0)
 			_island(placed, mid + Vector2(_r(-0.05, 0.05), _r(-0.05, 0.05)), 0.03, 1.0)
 		"colles":
-			_blobby(mid, 0.37, 0.9, 5, 0.3)
-			_carve(_around(0.34, 0.4), _r(0.07, 0.1))
+			_square_land(0.1)
+			_carve(_around(0.36, 0.44), _r(0.06, 0.09))
 			for i in _count(18):
 				_hill(_around(0.0, 0.36), _r(0.05, 0.1), _r(0.04, 0.08), _r(0.0, PI), 0.11)
 			_lakes(2, 0.02, 0.035, 0.3)

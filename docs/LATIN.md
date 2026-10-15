@@ -134,8 +134,14 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Terra formatur; Montes et valles formantur; Silvae et paludes ponuntur; Itinera parantur; Orbis pingitur | Loading lines: the land takes shape; mountains and valleys are formed; woods and marshes are laid down; the paths are made ready; the world is painted |
 | Romani, Etrusci, Sabini, Latini, Graeci | The peoples: Romans, Etruscans, Sabines, Latins, Greeks |
 | Veii, Cures, Alba Longa, Cumae | Their first towns (Etruscan, Sabine, Latin, Greek) |
-| Optiones | Settings (map type, size, number of peoples) |
-| Genus terrae; Magnitudo; Populi | Kind of map; Map size; Peoples |
+| Optiones | Settings |
+| Tabula; Populi; Instrumenta | The three pages of the settings: the map (a board or map); the peoples; the interface (instruments, tools) |
+| Genus terrae; Magnitudo; Numerus | Kind of map; Map size; Number (of peoples) |
+| Natura soli | The nature of the soil: the ground. Temperata, Campestris, Collina, Silvestris, Nivalis, Arida = Temperate, Grassland (of the plain), Hilly, Wooded, Snowy, Desert (dry) |
+| Populi et colores | Peoples and colours |
+| Celeritas; Lente, Norma, Celeriter, Celerrime | Game speed; Slow, Normal (norma = the rule), Fast, Fastest |
+| Musica; Soni | Music; Sounds (effects) |
+| Visus; Fenestra, Plena | Display; Window, Full (screen) |
 | Copiae; Tenuis, Mediocris, Opima | Resources; Sparse, Normal, Rich |
 | Calliditas; Facilis, Aequus, Difficilis | Computer skill (cleverness); Easy, Normal, Hard |
 | Redi | Go back (Esc) |

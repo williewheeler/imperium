@@ -11,12 +11,16 @@ drawn in code and baked into plain PNG sheets an artist can edit.
 
 **Choose your world.** The settings screen offers 18 kinds of map (plains, small and large islands, a
 Mediterranean, a peninsula, a Tiber valley, highlands, marshes and more, each with a picture), five
-map sizes, two to eight peoples, three levels of resources and three levels of computer skill. Land is
+map sizes, six kinds of ground (temperate, grassland, hilly, wooded, snowy and desert), two to eight
+peoples (pick which peoples play and in what colours), three levels of resources and three levels of
+computer skill, plus game speed, volume and screen mode. Everything is kept for next time. Land is
 built by stamping shapes (continents, islands, ranges, lakes) onto the sea, so the maps read as places,
 with open ground to build on. The rivals are computer-run and play by the same rules as you; they never
 get free resources, on any setting.
 
 ![The settings screen, with eighteen kinds of map to choose from](docs/screenshots/settings.png)
+
+![The peoples page: choose who plays and in what colours](docs/screenshots/settings_players.png)
 
 **A village on the Palatine.** The Casa Romuli, the hut of Romulus, is your first town centre. Its
 hearth burns, the trees sway in the wind, and everything of yours flies the Roman purple.

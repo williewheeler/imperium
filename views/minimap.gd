@@ -6,9 +6,14 @@ extends Control
 const SIZE := Vector2(176, 176)
 const COLORS := [Color("2c7db2"), Color("78cbe6"), Color("ebdc9e"), Color("8ec142"), Color("5e8b30"), Color("9cab4c"), Color("c8c4b4"), Color("6e8a52")]
 
+## The land's colours under snow and in the desert (grass, forest, hills, mountain and marsh differ; water and beach do not).
+const SNOW_COLORS := [Color("2c7db2"), Color("78cbe6"), Color("ebdc9e"), Color("eef4fa"), Color("a9bdd2"), Color("d4e0ec"), Color("c8c4b4"), Color("b8c8c4")]
+const DESERT_COLORS := [Color("2c7db2"), Color("78cbe6"), Color("f2e4b0"), Color("e3c47c"), Color("a88a52"), Color("c9a463"), Color("b4a898"), Color("a89c68")]
+
 signal jump_requested(tile_pos: Vector2)
 
 var game  # Main
+var _colors := COLORS
 var _image: Image
 var _texture: ImageTexture
 var _dragging := false
@@ -19,10 +24,11 @@ var _dirty_timer := 0.0
 func setup(p_game) -> void:
 	game = p_game
 	var map: GameMap = game.map
+	_colors = [COLORS, SNOW_COLORS, DESERT_COLORS][GameSettings.terrain_info(GameSettings.terrain_id)["style"]]
 	_image = Image.create(map.w, map.h, false, Image.FORMAT_RGBA8)
 	for y in map.h:
 		for x in map.w:
-			_image.set_pixel(x, y, COLORS[map.tile(x, y)])
+			_image.set_pixel(x, y, _colors[map.tile(x, y)])
 	_texture = ImageTexture.create_from_image(_image)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	custom_minimum_size = SIZE
@@ -30,7 +36,7 @@ func setup(p_game) -> void:
 
 ## A tile changed terrain (a felled forest, a drained marsh); the picture catches up shortly.
 func tile_changed(p: Vector2i) -> void:
-	_image.set_pixel(p.x, p.y, COLORS[game.map.tile(p.x, p.y)])
+	_image.set_pixel(p.x, p.y, _colors[game.map.tile(p.x, p.y)])
 	_dirty = true
 
 
@@ -64,7 +70,7 @@ func _draw() -> void:
 	for u: Unit in game.units:
 		if u.owner != 0 and not game.fog.is_visible_now(Vector2i(u.pos)):
 			continue
-		draw_rect(Rect2(_to_mini(u.pos) - Vector2(1.5, 1.5), Vector2(3, 3)), Defs.PLAYER_COLORS[u.owner % Defs.PLAYER_COLORS.size()])
+		draw_rect(Rect2(_to_mini(u.pos) - Vector2(1.5, 1.5), Vector2(3, 3)), Defs.color_of(u.owner))
 	var pts := PackedVector2Array()  # what the main view shows: a slanted quad in tile space
 	for c: Vector2 in game.view_corners():
 		pts.append(_to_mini(c))

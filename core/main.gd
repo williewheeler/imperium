@@ -95,7 +95,7 @@ func _ready() -> void:
 	GameSettings.load_saved()
 	if args.has("map"):  # debug: --map=TYPE --size=SIZE --players=N --resources=ID --difficulty=ID (not saved)
 		GameSettings.map_type = GameSettings.type_info(String(args["map"]))["id"]
-	if args.has("size"):
+	if args.has("size") and not String(args["size"]).contains("x"):  # (--size=1280x720 is the window's)
 		GameSettings.size_id = GameSettings.size_info(String(args["size"]))["id"]
 	if args.has("players"):
 		GameSettings.players = clampi(int(args["players"]), GameSettings.MIN_PLAYERS, GameSettings.MAX_PLAYERS)
@@ -103,19 +103,23 @@ func _ready() -> void:
 		GameSettings.resources_id = GameSettings.resources_info(String(args["resources"]))["id"]
 	if args.has("difficulty"):
 		GameSettings.difficulty_id = GameSettings.difficulty_info(String(args["difficulty"]))["id"]
+	if args.has("terrain"):
+		GameSettings.terrain_id = GameSettings.terrain_info(String(args["terrain"]))["id"]
 	Perf.on = args.has("perf")
 	_record_dir = String(args.get("record", ""))
 	if args.has("windowed") or args.has("showcase") or args.has("shot"):
 		_window_ready = false
-		_setup_window(String(args.get("size", "1280x720")))  # the project starts fullscreen; recordings and screenshots want a window
+		_setup_window(String(args["size"]) if String(args.get("size", "")).contains("x") else "1280x720")  # the project starts fullscreen; recordings and screenshots want a window
 
+	var scripted := args.has("shot") or args.has("report") or args.has("showcase") or args.has("record") or args.has("demo") or args.has("nosplash")
+	GameSettings.apply_interface(not scripted)
 	set_process(false)
 	set_physics_process(false)
 	set_process_unhandled_input(false)
-	var scripted := args.has("shot") or args.has("report") or args.has("showcase") or args.has("record") or args.has("demo") or args.has("nosplash")
 	if args.has("splash") or args.has("intro") or (not scripted and DisplayServer.get_name() != "headless"):
 		await _title_sequence(args)  # the opening scroll and the title screen come first; the world is built when you press Incipe
 
+	Team.reset()  # the colours may have been changed on the settings screen
 	var _t_a := Time.get_ticks_msec()
 	# The world is built on a worker thread while a loading screen draws its progress bar; the game
 	# itself stays switched off until everything is ready.
@@ -248,7 +252,7 @@ func _ready() -> void:
 	set_process(true)
 	set_physics_process(true)
 	set_process_unhandled_input(true)
-	Engine.time_scale = float(args.get("speed", 1.0))
+	Engine.time_scale = float(args.get("speed", GameSettings.speed))
 	if not (args.has("demo") or args.has("showcase") or args.has("ring")):
 		_place_display_army(start)
 	_screenshot_path = args.get("shot", "")
@@ -273,7 +277,8 @@ func _title_sequence(args: Dictionary) -> void:
 	var splash := Splash.new()
 	splash.opaque_back = true
 	add_child(splash)
-	if args.has("settings"):  # debug: open the settings screen at once
+	if args.has("settings"):  # debug: open the settings screen at once (--page=map|players|interface)
+		SettingsScreen.first_page = String(args.get("page", "map"))
 		splash._open_settings()
 	if shot != "":
 		await _save_title_shot(shot, frames)
@@ -1111,9 +1116,11 @@ func _place_rivals(rome: Vector2i) -> void:
 	var rome_screen := Vector2.ZERO
 	var ring := GameMap.RIVAL_RING * map.w  # how far from Rome the peoples start
 	var connected: bool = GameSettings.type_info(GameSettings.map_type)["connected"]
-	for faction: String in Defs.RIVAL_ORDER.slice(0, GameSettings.players - 1):
+	var slot := 0
+	for faction: String in GameSettings.playing_peoples():
+		slot += 1  # you are player 0; the peoples follow in the order chosen on the settings screen
 		var info: Dictionary = Defs.FACTIONS[faction]
-		var owner_id: int = info["owner"]
+		var owner_id := slot
 		var spot := Vector2i(-1, -1)
 		for attempt in [[0, 1.0], [25, 1.0], [-25, 1.0], [0, 0.8], [40, 1.15], [-40, 1.15]]:  # if the first try has no room, swing round a little
 			var a := deg_to_rad(float(info["bearing"]) + float(attempt[0]))

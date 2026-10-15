@@ -11,6 +11,7 @@ uniform sampler2D paved_mask : filter_linear, repeat_disable; // paved Roman roa
 uniform float flow = 0.0; // how far the water has drifted: the CPU adds up the time, faster in rough weather, so a change of weather never makes it jump
 uniform float rain = 0.0; // 0 dry .. 1 storm: rain ripples the water and a storm roughens it
 uniform sampler2D relief : filter_linear, repeat_disable; // light on each tile's slope, 0.5 = flat
+uniform int style = 0; // the ground's look: 0 temperate green, 1 snow, 2 desert
 uniform vec2 origin = vec2(0.0); // world position of this rect's top-left corner
 
 varying vec2 world;
@@ -71,6 +72,22 @@ int terrain_at(vec2 g) {
 	return int(texelFetch(terrain, t, 0).r * 255.0 + 0.5);
 }
 
+// Re-colours green ground for the snowy and desert styles, keeping its light and shade: `v` is how bright
+// the original was, so the dither and the slopes carry over.
+vec3 restyle(vec3 col, int id) {
+	float v = clamp(dot(col, vec3(0.3, 0.59, 0.11)) * 1.25 - 0.28, 0.0, 0.999); // 0 dark .. 1 light
+	if (style == 1) {
+		if (id == 4) return ramp4(hx(0xdde8f2), hx(0xc8d8e8), hx(0xb0c4da), hx(0x98aec8), v); // under the pines the snow is bluer
+		if (id == 5) return ramp4(hx(0xe8eff6), hx(0xd4e0ec), hx(0xbccdde), hx(0xa4b8cf), v);
+		if (id == 6) return col; // bare rock
+		return ramp4(hx(0xfafcff), hx(0xeaf1f8), hx(0xd6e2ee), hx(0xc0d0e2), v);
+	}
+	if (id == 4) return ramp4(hx(0xc9a45e), hx(0xb68f4e), hx(0x9d7a42), hx(0x86673a), v); // scrubby ground
+	if (id == 5) return ramp4(hx(0xd9b878), hx(0xc8a463), hx(0xb28d52), hx(0x9a7746), v);
+	if (id == 6) return col;
+	return ramp4(hx(0xefd58e), hx(0xe3c47c), hx(0xd3b06a), hx(0xbf9b5a), v);
+}
+
 // Raindrops landing on water: a little splash, then a ring spreading out (squashed, as the water
 // is seen at a slant), fading as it grows. Returns how much to lighten the water at this pixel.
 float raindrop(vec2 wp, float amount, float time) {
@@ -108,7 +125,7 @@ vec3 cliff_colour(vec2 wp, int kind, int top_id, float v) {
 	} else {
 		col = ramp4(hx(0xcba66b), hx(0xb28c58), hx(0x987344), hx(0x7a5a33), t);
 		if (v < 0.5 && hash(wp + 5.0) < 1.15 - v) { // grass hanging over the lip
-			col = kind == 1 ? hx(0x8ec142) : hx(0x628e31);
+			col = style == 1 ? (kind == 1 ? hx(0xf0f6fb) : hx(0xc4d4e6)) : style == 2 ? (kind == 1 ? hx(0xe6cc88) : hx(0xc3a362)) : kind == 1 ? hx(0x8ec142) : hx(0x628e31);
 		}
 	}
 	if (v > 0.9) col = col * 0.82; // the dark foot of the wall
@@ -133,6 +150,7 @@ vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 	d += float(lvl) * 0.1; // higher terraces are a touch lighter, so the steps read
 	if (below_wall) d -= 0.4; // the foot of a cliff sits in shadow
 	float t = floor(time * 1.4);
+	bool in_pool = false;
 	vec3 col;
 
 	if (id == 0) { // deep water
@@ -161,6 +179,7 @@ vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 		float pools = fbm(wp * 0.085 + vec2(5.0, 2.0));
 		col = ramp4(hx(0x86a058), hx(0x728c4a), hx(0x5e783c), hx(0x4a6230), 0.5 + (n - 0.5) * 0.8 + d);
 		if (pools > 0.56) {
+			in_pool = true;
 			float ripple = vnoise(vec2(wp.x * 0.3 + t * 0.4, wp.y * 0.9));
 			col = ramp4(hx(0x8fbcb2), hx(0x74a7a0), hx(0x5d9190), hx(0x4a7d7e), 0.45 + (ripple - 0.5) * 0.6 + d);
 			if (hash(wp * 0.83 + t) > 0.99) col = hx(0xd6efe8);
@@ -175,6 +194,9 @@ vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 		if (fine > 0.972) col = hx(0x629931);
 		else if (fine < 0.0016) col = hx(0xfff4b4);
 		else if (fine > 0.9962) col = hx(0xf4b8d0);
+	}
+	if (style != 0 && (id == 3 || id == 4 || id == 5 || id == 6 || (id == 7 && !in_pool))) {
+		col = restyle(col, id);
 	}
 	// Dirt roads worn by walking, over open ground only. The mask is smoothed by filtering and
 	// cut with noise, so the edges are ragged and pixelly.

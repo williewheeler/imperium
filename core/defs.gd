@@ -36,16 +36,24 @@ const ROAD_COST := [0, 0, 2, 0]
 const ROAD_BUILD_TIME := 2.5
 
 # What colour marks each player's buildings: a pennant and a tint round the footprint, drawn over and
-# under the building (never baked into its art), so every player can have their own. Player 0 is purple.
+# under the building (never baked into its art), so every player can have their own. You start in purple.
 const PLAYER_COLORS := [
 	Color("8a3fb0"), Color("c8453c"), Color("3f6fc0"), Color("3f9a55"),
 	Color("e0922e"), Color("2fa6a6"), Color("d6c13a"), Color("e8e8e8"),
 ]
 
-# The peoples of the game. A player's number (`owner`) is also the index of its colour in
-# PLAYER_COLORS: Rome is 0 (purple), the Etruscans 1 (red), the Greeks 2 (blue), the Samnites 3
-# (green), the Sabines 4 (amber), the Volsci 5 (teal), the Aequi 6 (yellow) and the Latins 7 (white:
-# Alba Longa means "the long white one"). "bearing" is the direction of the people's first town from
+# The colour of player number `owner` (you are 0; the computer-run peoples are 1 and up, in the order
+# set on the settings screen): whatever colour was picked there.
+static func color_of(owner: int) -> Color:
+	if owner < 0:
+		return Color.WHITE
+	var i: int = GameSettings.colors[owner] if owner < GameSettings.colors.size() else owner
+	return PLAYER_COLORS[i % PLAYER_COLORS.size()]
+
+
+# The peoples of the game. "owner" is the colour each usually plays in, as an index into PLAYER_COLORS:
+# Rome purple (0), the Etruscans red (1), the Greeks blue (2), the Samnites green (3), the Sabines amber
+# (4), the Volsci teal (5), the Aequi yellow (6) and the Latins white (7: Alba Longa means "the long white one"). "bearing" is the direction of the people's first town from
 # Rome, as a compass angle on the screen in degrees (0 east, 90 south, 180 west, 270 north).
 const FACTIONS := {
 	"romans": {"owner": 0, "latin": "Romani", "english": "Romans", "town": "Roma"},

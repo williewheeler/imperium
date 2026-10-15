@@ -109,7 +109,7 @@ static func preview(type_id: String, px: int, preview_seed := 7) -> Image:
 ## in the directions they really lay (Defs.FACTIONS), the same ring the game places their towns on.
 static func home_points(players: int) -> Array[Vector2]:
 	var out: Array[Vector2] = [Vector2(0.5, 0.5)]
-	for faction: String in Defs.RIVAL_ORDER.slice(0, players - 1):
+	for faction: String in GameSettings.rival_peoples.slice(0, players - 1):
 		var a := deg_to_rad(float(Defs.FACTIONS[faction]["bearing"]))
 		var sd := Vector2(cos(a), sin(a))
 		var td := Vector2(sd.x / 16.0 + sd.y / 8.0, sd.y / 8.0 - sd.x / 16.0).normalized()

@@ -52,6 +52,7 @@ func setup(map: GameMap) -> void:
 	mat.set_shader_parameter("levels", _levels_texture)
 	mat.set_shader_parameter("lift_px", Iso.LIFT)
 	mat.set_shader_parameter("max_level", float(Iso.max_level()))
+	mat.set_shader_parameter("style", int(GameSettings.terrain_info(GameSettings.terrain_id)["style"]))
 	material = mat
 
 
