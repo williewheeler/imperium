@@ -22,18 +22,33 @@ get free resources, on any setting.
 
 ![The peoples page: choose who plays and in what colours](docs/screenshots/settings_players.png)
 
+**Many kinds of ground.** The ground is chosen apart from the shape of the land, so the same coast can
+be green, snowy or sand. Snow whitens the grass, pines and hills; the desert parches them; marshlands
+are reeds and pools; hilly maps rise into terraces; wooded maps are thick with forest. The minimap is a
+parchment scroll that fills in as you explore.
+
+| Snow | Desert |
+|---|---|
+| ![Snow over the Circus Maximus and a pine wood](docs/screenshots/biome-snow.png) | ![Dry sand with parched trees around the Circus Maximus](docs/screenshots/biome-desert.png) |
+| **Marshland** | **Hills** |
+| ![Reed beds and pools beside the Circus Maximus](docs/screenshots/biome-marsh.png) | ![Terraced hills rising from open meadow](docs/screenshots/biome-hills.png) |
+
+![A wooded map: thick forest running down to a sandy shore](docs/screenshots/biome-woods.png)
+
 **A village on the Palatine.** The Casa Romuli, the hut of Romulus, is your first town centre. Its
 hearth burns, the trees sway in the wind, and everything of yours flies the Roman purple.
 
-![The Casa Romuli and its villagers, with marsh, mountains and woods around it](docs/screenshots/village.png)
+![The Casa Romuli and its villagers, the command bar flanked by columns and the minimap on a parchment scroll](docs/screenshots/village.png)
 
 **The Circus Maximus.** A landmark stadium stands in the valley near the city: four tiers of timber
 seating, a sand track, a ring of arches round the base, and a crowd that cheers in waves.
 
-![The Circus Maximus, a rounded stadium with a purple band, flags and a crowd](docs/screenshots/circus-storm.png)
+![The Circus Maximus in a storm, beside the sea](docs/screenshots/circus-storm.png)
 
 **Weather.** A slow chain of clear skies, cloud, fog, rain and storms rolls over the map. Rain
 ripples the water, storms roughen it, and fog drifts in banks.
+
+![A storm on the coast: heavy rain and a rough sea](docs/screenshots/storm.png)
 
 | Rain | Fog |
 |---|---|
@@ -42,7 +57,7 @@ ripples the water, storms roughen it, and fog drifts in banks.
 **Fighting men.** Horsemen (Equites), spearmen (Pedites) and slingers (Funditores) in the colour of
 their owner: purple for you, a different colour for another player.
 
-![Horsemen, spearmen and slingers beside the Casa Romuli, below a snowy mountain range](docs/screenshots/troops.png)
+![Horsemen, spearmen and slingers beside the Casa Romuli in the snow](docs/screenshots/troops.png)
 
 **The flight from Troy.** The game opens on a slowly rising Latin scroll, with the English beneath
 each verse, over the burning city: Aeneas, the voyage, and the voice at the mouth of the Tiber.

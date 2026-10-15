@@ -17,7 +17,7 @@ const DIM := Color("b9a98a")
 const RED := Color("7a1a1a")
 const RED_HOVER := Color("a62828")
 const COLUMNS := 9
-const THUMB := 84
+const THUMB := 72
 const PAGES := [
 	{"id": "map", "latin": "Tabula", "english": "Map: its shape, size, ground and riches"},
 	{"id": "players", "latin": "Populi", "english": "Peoples: who plays, in what colours, and how skilled"},
@@ -87,7 +87,7 @@ func _ready() -> void:
 		tab_row.add_child(b)
 
 	var area := Control.new()  # the three pages share one space, so the screen doesn't change size between them
-	area.custom_minimum_size = Vector2(0, 476)
+	area.custom_minimum_size = Vector2(0, 500)
 	area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(area)
@@ -95,7 +95,7 @@ func _ready() -> void:
 		var page := VBoxContainer.new()
 		page.set_anchors_preset(Control.PRESET_FULL_RECT)
 		page.alignment = BoxContainer.ALIGNMENT_BEGIN
-		page.add_theme_constant_override("separation", 10)
+		page.add_theme_constant_override("separation", 8)
 		page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		area.add_child(page)
 		_pages[id] = page
