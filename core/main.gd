@@ -17,6 +17,7 @@ const DETOUR_SKIP := 1.3  # waypoints this close to a finished detour are skippe
 const STALL_TIME := 2.5  # no progress for this long near the goal: settle where you are
 const WAYPOINT_REACH := 0.3  # how close counts as "at" an intermediate waypoint
 const STUCK_TIME := 1.2  # a walker blocked this long is allowed to push through
+const EXPLORE_TRIES := 8  # how many of the nearest unseen spots an explorer tries for a route
 const EXPLORE_SPREAD := 10.0  # tiles: explorers pick targets at least this far apart
 const PAN_SPEED := 700.0  # screen pixels per second
 const EDGE_PAN_MARGIN := 8.0  # screen pixels from the edge that trigger scrolling
@@ -118,6 +119,12 @@ func _ready() -> void:
 	if not scripted and DisplayServer.get_name() != "headless":
 		music = Music.new()
 		add_child(music)  # plays on through the title and the game
+	if DisplayServer.get_name() != "headless":
+		var monitor := FrameMonitor.new()  # F3 shows frame timings; stalls are logged (see FrameMonitor)
+		add_child(monitor)
+		if args.has("stutter") or args.has("perf"):
+			monitor.log_all = str(args.get("stutter", "")) == "all"
+			monitor.start_logging()
 	set_process(false)
 	set_physics_process(false)
 	set_process_unhandled_input(false)
@@ -680,22 +687,36 @@ func _explore_next(u: Unit) -> bool:
 	for o in units:
 		if o != u and o.owner == u.owner and o.state == Unit.State.EXPLORE:
 			taken.append(o.explore_goal)
-	var cands: Array = []
+	var best: Array[Vector2i] = []  # the nearest few candidates, kept in order as the map is scanned
+	var best_d: Array[float] = []
+	var width := map.w
+	var here := u.pos
 	for y in range(0, map.h, 3):  # every third tile is plenty to find the nearest unseen ground
-		for x in range(0, map.w, 3):
+		for x in range(0, width, 3):
+			if seen.state[y * width + x] != Fog.HIDDEN:
+				continue
+			var d := (Vector2(x + 0.5, y + 0.5) - here).length_squared()
+			if best.size() == EXPLORE_TRIES and d >= best_d[EXPLORE_TRIES - 1]:
+				continue  # farther than the ones already found
 			var p := Vector2i(x, y)
-			if seen.state[y * map.w + x] != Fog.HIDDEN or not map.is_walkable(p) or u.explore_skip.has(p):
+			if not map.is_walkable(p) or u.explore_skip.has(p):
 				continue
 			var crowded := false
 			for t in taken:
 				if Vector2(t - p).length() < EXPLORE_SPREAD:
 					crowded = true
 					break
-			if not crowded:
-				cands.append([(Vector2(p) + Vector2(0.5, 0.5)).distance_squared_to(u.pos), p])
-	cands.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-	for i in mini(cands.size(), 8):
-		var p: Vector2i = cands[i][1]
+			if crowded:
+				continue
+			var at := best.size()
+			while at > 0 and best_d[at - 1] > d:
+				at -= 1
+			best.insert(at, p)
+			best_d.insert(at, d)
+			if best.size() > EXPLORE_TRIES:
+				best.pop_back()
+				best_d.pop_back()
+	for p in best:
 		if _set_path(u, p):
 			u.explore_goal = p
 			return true
@@ -773,6 +794,13 @@ func _note(u: Unit, latin: String) -> void:
 
 
 func _set_path(u: Unit, goal: Vector2i) -> bool:
+	var t0 := Perf.start()
+	var ok := _set_path_inner(u, goal)
+	Perf.stop("set_path", t0)
+	return ok
+
+
+func _set_path_inner(u: Unit, goal: Vector2i) -> bool:
 	var from := Vector2i(u.pos)
 	if not map.is_walkable(from):  # shoved against an obstacle: start from the nearest open tile
 		from = map.nearest_walkable(from)
@@ -1572,14 +1600,24 @@ func _process(delta: float) -> void:
 	t0 = Perf.start()
 	for r in rivals:
 		r.tick(delta)
+	Perf.stop("rivals", t0)
+	t0 = Perf.start()
 	for u in units:
-		_update_unit(u, delta)
+		if Perf.trace:  # name the state, so a slow frame says which kind of work was slow
+			var ts := Perf.start()
+			_update_unit(u, delta)
+			Perf.stop("unit_%s_p%d" % [Unit.State.keys()[u.state].to_lower(), u.owner], ts)
+		else:
+			_update_unit(u, delta)
 	Perf.stop("unit logic", t0)
+	t0 = Perf.start()
 	t0 = Perf.start()
 	_separate_units()
 	Perf.stop("separate units", t0)
+	t0 = Perf.start()
 	for b in buildings:
 		_update_building(b, delta)
+	Perf.stop("buildings", t0)
 	for i in range(markers.size() - 1, -1, -1):
 		markers[i].t += delta
 		if markers[i].t > MARKER_LIFE:
@@ -1970,16 +2008,22 @@ func _return_to_dropsite(u: Unit) -> void:
 
 ## Send a gatherer to the nearest explored deposit of the same resource.
 func _retarget(u: Unit) -> bool:
+	var t0 := Perf.start()
 	var best := Vector2i(-1, -1)
 	var best_d := 12.0
-	for p: Vector2i in map.deposits:
-		var d: Deposit = map.deposits[p]
-		if d.kind != u.gather_kind or (d.farm and d.owner != u.owner) or (u.owner == 0 and not fog.is_explored(p)):
-			continue
-		var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
-		if dist < best_d:
-			best_d = dist
-			best = p
+	var here := Vector2i(u.pos)
+	var reach := int(best_d)
+	for y in range(maxi(0, here.y - reach), mini(map.h, here.y + reach + 1)):  # only the ground nearby: a scan of every deposit on the map takes far too long
+		for x in range(maxi(0, here.x - reach), mini(map.w, here.x + reach + 1)):
+			var p := Vector2i(x, y)
+			var d: Deposit = map.deposits.get(p)
+			if d == null or d.kind != u.gather_kind or (d.farm and d.owner != u.owner) or (u.owner == 0 and not fog.is_explored(p)):
+				continue
+			var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
+			if dist < best_d:
+				best_d = dist
+				best = p
+	Perf.stop("retarget scan", t0)
 	return best.x >= 0 and _order_gather(u, best)
 
 

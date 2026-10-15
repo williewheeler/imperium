@@ -609,7 +609,7 @@ func find_start(c := Vector2i(-1, -1), reach_from := Vector2i(-1, -1), first_lev
 	var reach_limit := [30, 40, 60, maxi(w, h)]  # how far each level of choosiness is worth searching
 	for level in range(first_level, 4):  # 0 wants marsh close by (Rome began on the edge of a marsh); the rest relax in turn
 		for r in reach_limit[level]:
-			for p in _ring(c, r):
+			for p in ring(c, r):
 				if not _grass_block(p, 1):
 					continue
 				if not reach.is_empty() and reach[p.y * w + p.x] == 0:
@@ -626,7 +626,7 @@ func find_start(c := Vector2i(-1, -1), reach_from := Vector2i(-1, -1), first_lev
 
 
 ## The tiles on the square ring `r` away from `c` (just `c` for r = 0), inside the map.
-func _ring(c: Vector2i, r: int) -> Array[Vector2i]:
+func ring(c: Vector2i, r: int) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	if r == 0:
 		if in_bounds(c):
@@ -785,11 +785,14 @@ func nearest_walkable(goal: Vector2i) -> Vector2i:
 func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	if not is_walkable(from):
 		return []
+	var t0 := Perf.start()
 	if not is_walkable(to):
 		to = nearest_walkable(to)
 		if to.x < 0:
 			return []
-	return astar.get_id_path(from, to)
+	var path := astar.get_id_path(from, to)
+	Perf.stop("pathfinding (inside unit logic)", t0)
+	return path
 
 
 ## Where a unit should stand to work on something occupying `rect`: the tile itself if

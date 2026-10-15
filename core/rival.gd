@@ -209,15 +209,11 @@ func _nearest_deposit(kind: int, from: Vector2, min_r: int, wild_only := false) 
 	var c := Vector2i(from)
 	var deposits: Dictionary = game.map.deposits
 	for r in range(min_r, SEARCH_RADIUS):
-		for y in range(c.y - r, c.y + r + 1):
-			for x in range(c.x - r, c.x + r + 1):
-				if r > 0 and maxi(absi(x - c.x), absi(y - c.y)) != r:
-					continue
-				var p := Vector2i(x, y)
-				var d: Deposit = deposits.get(p)
-				if d == null or d.kind != kind or d.amount <= 0 or _blocked.has(p) or not fog.is_explored(p):
-					continue  # it cannot work what it has not found
-				if d.farm and (wild_only or d.owner != owner):
-					continue
-				return p
+		for p in game.map.ring(c, r):  # just the cells on the ring, not the whole square again
+			var d: Deposit = deposits.get(p)
+			if d == null or d.kind != kind or d.amount <= 0 or _blocked.has(p) or not fog.is_explored(p):
+				continue  # it cannot work what it has not found
+			if d.farm and (wild_only or d.owner != owner):
+				continue
+			return p
 	return Vector2i(-1, -1)
