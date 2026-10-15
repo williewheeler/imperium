@@ -249,7 +249,7 @@ func _build_interface_page(page: VBoxContainer) -> void:
 		e.pressed.connect(_pick_effects.bind(n))
 		_effects_buttons[n] = e
 		effects_row.add_child(e)
-	page.add_child(_label("The game has no music or sounds yet; these set how loud they will be.", 12, DIM))
+	page.add_child(_label("Units answer when selected. There is no music yet; its volume is kept for when there is.", 12, DIM))
 
 
 ## The rows of the peoples playing: you, then each computer-run people with its colour.
