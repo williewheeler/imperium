@@ -50,6 +50,7 @@ var era := 0:  # index into Defs.ERAS
 	set(v):
 		era = v
 		Building.era = v
+		_music_context()
 var advancing := false  # an era advance is being researched at the Forum
 var advance_progress := 0.0  # seconds into it
 var selected_deposit := Vector2i(-1, -1)  # clicked resource tile, or (-1, -1)
@@ -83,6 +84,7 @@ var _screenshot_path := ""
 var _report := false
 var _shot_frame := 20
 var _frame := 0
+var music: Music  # null in scripted runs
 
 
 func _ready() -> void:
@@ -114,7 +116,8 @@ func _ready() -> void:
 	var scripted := args.has("shot") or args.has("report") or args.has("showcase") or args.has("record") or args.has("demo") or args.has("nosplash")
 	GameSettings.apply_interface(not scripted)
 	if not scripted and DisplayServer.get_name() != "headless":
-		add_child(Music.new())  # plays on through the title and the game
+		music = Music.new()
+		add_child(music)  # plays on through the title and the game
 	set_process(false)
 	set_physics_process(false)
 	set_process_unhandled_input(false)
@@ -203,6 +206,7 @@ func _ready() -> void:
 	if args.has("select"):
 		for u in units:
 			u.selected = true
+	_music_context()
 	if args.has("weather"):  # debug: start in a given weather (clear, cloudy, fog, rain, storm), fully developed
 		weather.set_state(Weather.NAMES.find(String(args["weather"])))
 		var look: Dictionary = Weather.LOOK[weather.state]
@@ -411,8 +415,15 @@ func placement_error(kind: String, tile: Vector2i, owner := 0) -> String:
 
 # ---------- Input ----------
 
+## Tells the music which era and weather it is playing under.
+func _music_context() -> void:
+	if music != null and weather != null:
+		music.set_context(era, weather.state)
+
+
 ## A short flash when the sky changes: rain starts, a storm breaks, fog comes in, the sun returns.
 func _on_weather_changed(state: int) -> void:
+	_music_context()
 	match state:
 		Weather.State.RAIN:
 			hud.flash("Pluit.", "It begins to rain.")

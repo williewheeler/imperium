@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Renders the game's background music to assets/audio/<name>.ogg: slow, quiet, endlessly looping
-pieces, each in its own mode, with a low drone, soft sustained chords and now and then a plucked,
-lyre-like note, all with a little echo. Pure Python (no libraries) plus ffmpeg for the Ogg files.
-Run from the project root: python3 tools/make_music.py [dorian phrygian lydian mixolydian]
-(about 90 seconds a piece; the results are committed, so this is only needed to change the music)."""
+"""Renders the game's background music to assets/audio/<era>_<mode>.ogg, in two styles:
+  regnum_*   (the Kingdom): slow, quiet, pastoral ambience: a low drone, soft sustained chords and now
+             and then a plucked, lyre-like note;
+  republic_* (the Republic): livelier, with a pulse: a frame drum and shaker, a bass, an arpeggiated
+             cithara and a reedy tibia (pipe) melody, still gentle.
+Each in four modes (dorian, phrygian, lydian, mixolydian), looping cleanly, with a little echo. Pure
+Python (no libraries) plus ffmpeg for the Ogg files. Run from the project root:
+  python3 tools/make_music.py [regnum_dorian republic_lydian ...]   (all eight by default)
+About 90 to 150 seconds a piece; the results are committed, so this is only needed to change the music."""
 import array, math, random, subprocess, sys
 
 SR = 32000
 LENGTH = 128  # seconds; the end flows into the start
-N = SR * LENGTH
+N = SR * LENGTH  # samples in the piece being rendered (set again by each render)
 rnd = random.Random(753)
 buf = [0.0] * N
 
@@ -88,9 +92,33 @@ PIECES = {
 }
 
 
-def render(name):
-    global rnd, buf
-    cfg = PIECES[name]
+def finish(name):
+    """Echo, level and write the Ogg file."""
+    global buf
+    for delay_s, gain in ECHOES:
+        d = int(delay_s * SR)
+        src = buf[:]
+        for i in range(N):
+            buf[i] += src[i - d] * gain
+    rms = math.sqrt(sum(v * v for v in buf) / N)
+    k = TARGET_RMS / rms
+    pcm = array.array("h", (int(max(-1.0, min(1.0, v * k)) * 32767) for v in buf))
+    proc = subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", str(SR), "-ac", "1", "-i", "-",
+         "-ac", "2", "-c:a", "vorbis", "-strict", "-2", "-b:a", "80k", "assets/audio/%s.ogg" % name],
+        input=pcm.tobytes())
+    if proc.returncode != 0:
+        sys.exit(proc.returncode)
+
+
+ECHOES = [(0.37, 0.35), (0.71, 0.25), (1.13, 0.2), (1.9, 0.12)]
+TARGET_RMS = 0.05  # about -26 dB: quiet
+
+
+def render_regnum(mode):
+    global rnd, buf, N
+    cfg = PIECES[mode]
+    N = SR * LENGTH
     rnd = random.Random(cfg["seed"])
     buf = [0.0] * N
     root = cfg["root"]
@@ -113,23 +141,114 @@ def render(name):
             pluck(scale[pos], t, rnd.uniform(0.2, 0.32), bright=rnd.uniform(0.3, 0.7))
             t += rnd.choice([1.4, 1.8, 2.4])
         t += rnd.uniform(5.0, 11.0)
-    # a little room: a few echoes, wrapped round the loop
-    for delay_s, gain in [(0.37, 0.35), (0.71, 0.25), (1.13, 0.2), (1.9, 0.12)]:
-        d = int(delay_s * SR)
-        src = buf[:]
-        for i in range(N):
-            buf[i] += src[i - d] * gain
-    # normalise to a low, even level
-    peak = max(abs(v) for v in buf)
-    k = 0.30 / peak
-    pcm = array.array("h", (int(max(-1.0, min(1.0, v * k)) * 32767) for v in buf))
-    proc = subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", str(SR), "-ac", "1", "-i", "-",
-         "-ac", "2", "-c:a", "vorbis", "-strict", "-2", "-b:a", "80k", "assets/audio/%s.ogg" % name],
-        input=pcm.tobytes())
-    if proc.returncode != 0:
-        sys.exit(proc.returncode)
+    finish("regnum_" + mode)
 
 
-for piece in (sys.argv[1:] or PIECES):
-    render(piece)
+# --- the Republic: a pulse --------------------------------------------------------------------
+
+BPM = {"dorian": 96, "phrygian": 108, "lydian": 112, "mixolydian": 104}
+RHYTHMS = [  # a two-bar melody rhythm, in beats (each adds up to 8)
+    [1, 1, 2, 1, 1, 2], [1.5, 0.5, 1, 1, 1.5, 0.5, 2], [2, 1, 1, 2, 2], [1, 0.5, 0.5, 1, 1, 1, 1, 1, 1],
+    [0.5, 0.5, 1, 1, 1, 0.5, 0.5, 1, 2], [3, 1, 1, 1, 2],
+]
+
+
+def bass(midi, start_s, dur_s, gain):
+    f = hz(midi)
+    n = int(dur_s * SR)
+    out = [math.exp(-3.2 * i / SR) * smooth(i / (0.01 * SR)) * (math.sin(2 * math.pi * f * i / SR) + 0.35 * math.sin(4 * math.pi * f * i / SR)) for i in range(n)]
+    add_circular(int(start_s * SR), out, gain)
+
+
+def tibia(midi, start_s, dur_s, gain):
+    """A reedy pipe: odd harmonics, a little breath, a vibrato that arrives after a moment."""
+    f = hz(midi)
+    n = int((dur_s + 0.1) * SR)
+    out = []
+    ph = 0.0
+    for i in range(n):
+        t = i / SR
+        env = smooth(t / 0.04) * (0.8 + 0.2 * math.exp(-t * 6)) * (1.0 - smooth((t - dur_s) / 0.1))
+        vib = 1.0 + 0.006 * smooth((t - 0.25) / 0.3) * math.sin(2 * math.pi * 5.2 * t)
+        ph += 2 * math.pi * f * vib / SR
+        out.append(env * (math.sin(ph) + 0.22 * math.sin(2 * ph) + 0.4 * math.sin(3 * ph) + 0.1 * math.sin(5 * ph) + 0.03 * rnd.uniform(-1, 1)))
+    add_circular(int(start_s * SR), out, gain)
+
+
+def drum(start_s, gain):
+    """A frame drum: a quick low thump that drops in pitch."""
+    n = int(0.4 * SR)
+    out = []
+    ph = 0.0
+    for i in range(n):
+        t = i / SR
+        ph += 2 * math.pi * (62 + 60 * math.exp(-t * 28)) / SR
+        out.append(math.exp(-t * 9) * math.sin(ph) + 0.12 * math.exp(-t * 60) * rnd.uniform(-1, 1))
+    add_circular(int(start_s * SR), out, gain)
+
+
+def shaker(start_s, gain):
+    n = int(0.07 * SR)
+    prev = 0.0
+    out = []
+    for i in range(n):
+        x = rnd.uniform(-1, 1)
+        out.append((x - prev) * math.exp(-i / SR * 55))  # a crude high-pass: all hiss, no body
+        prev = x
+    add_circular(int(start_s * SR), out, gain)
+
+
+def render_republic(mode):
+    global rnd, buf, N
+    cfg = PIECES[mode]
+    rnd = random.Random(cfg["seed"] + 1000)
+    beat = 60.0 / BPM[mode]
+    bars = 48
+    N = int(bars * 4 * beat * SR)
+    buf = [0.0] * N
+    chords = cfg["chords"]
+    scale = cfg["scale"]
+    for bar in range(bars):
+        t0 = bar * 4 * beat
+        ch = chords[(bar // 2) % len(chords)]
+        low = min(ch) - 12
+        # bass on the beat, the fifth on the "and" of three
+        bass(low, t0, beat * 1.6, 0.55)
+        bass(low if bar % 2 else low + 7, t0 + 2 * beat, beat * 1.2, 0.4)
+        if bar % 4 == 3:
+            bass(low + 7, t0 + 3.5 * beat, beat * 0.5, 0.3)
+        # the cithara: an eighth-note arpeggio of the chord
+        for k in range(8):
+            note = ch[[0, 1, 2, 1, 2, 1, 2, 1][k]] + 12
+            pluck(note, t0 + k * beat / 2, 0.16 if k % 2 == 0 else 0.11, seconds=1.0, bright=0.6)
+        # percussion: drum on one and three, a tap before four, a shaker on every eighth
+        drum(t0, 0.5)
+        drum(t0 + 2 * beat, 0.3)
+        if bar % 2:
+            drum(t0 + 3.5 * beat, 0.18)
+        for k in range(8):
+            shaker(t0 + k * beat / 2, 0.06 if k % 2 == 0 else 0.1)
+    # the melody on the tibia: two-bar phrases that wander the scale and settle on a chord note
+    pos = cfg["start"]
+    for seg in range(bars // 2):
+        t0 = seg * 8 * beat
+        ch = chords[seg % len(chords)]
+        if seg % 4 == 3:
+            continue  # a phrase's breath
+        tones = [i for i, m in enumerate(scale) if (m % 12) in [c % 12 for c in ch]]
+        rhythm = RHYTHMS[(seg * 5 + rnd.randrange(3)) % len(RHYTHMS)] if seg % 8 else RHYTHMS[0]
+        t = 0.0
+        for j, d in enumerate(rhythm):
+            if j == len(rhythm) - 1 and tones:
+                pos = min(tones, key=lambda x: abs(x - pos))
+            else:
+                pos = max(0, min(len(scale) - 1, pos + rnd.choice([-1, -1, 0, 1, 1, 2, -2])))
+            tibia(scale[pos], t0 + t * beat, d * beat * 0.92, 0.3)
+            t += d
+    finish("republic_" + mode)
+
+
+names = sys.argv[1:] or ["%s_%s" % (era, m) for era in ("regnum", "republic") for m in PIECES]
+for name in names:
+    era, mode = name.split("_", 1)
+    (render_regnum if era == "regnum" else render_republic)(mode)
