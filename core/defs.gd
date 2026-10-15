@@ -53,17 +53,16 @@ static func color_of(owner: int) -> Color:
 
 # The peoples of the game. "owner" is the colour each usually plays in, as an index into PLAYER_COLORS:
 # Rome purple (0), the Etruscans red (1), the Greeks blue (2), the Samnites green (3), the Sabines amber
-# (4), the Volsci teal (5), the Aequi yellow (6) and the Latins white (7: Alba Longa means "the long white one"). "bearing" is the direction of the people's first town from
-# Rome, as a compass angle on the screen in degrees (0 east, 90 south, 180 west, 270 north).
+# (4), the Volsci teal (5), the Aequi yellow (6) and the Latins white (7: Alba Longa means "the long white one").
 const FACTIONS := {
 	"romans": {"owner": 0, "latin": "Romani", "english": "Romans", "town": "Roma"},
-	"etruscans": {"owner": 1, "latin": "Etrusci", "english": "Etruscans", "town": "Veii", "bearing": 225},
-	"sabines": {"owner": 4, "latin": "Sabini", "english": "Sabines", "town": "Cures", "bearing": 315},
-	"latins": {"owner": 7, "latin": "Latini", "english": "Latins", "town": "Alba Longa", "bearing": 10},
-	"greeks": {"owner": 2, "latin": "Graeci", "english": "Greeks", "town": "Cumae", "bearing": 95},
-	"samnites": {"owner": 3, "latin": "Samnites", "english": "Samnites", "town": "Bovianum", "bearing": 55},
-	"volsci": {"owner": 5, "latin": "Volsci", "english": "Volsci", "town": "Antium", "bearing": 150},
-	"aequi": {"owner": 6, "latin": "Aequi", "english": "Aequi", "town": "Corbio", "bearing": 270},
+	"etruscans": {"owner": 1, "latin": "Etrusci", "english": "Etruscans", "town": "Veii"},
+	"sabines": {"owner": 4, "latin": "Sabini", "english": "Sabines", "town": "Cures"},
+	"latins": {"owner": 7, "latin": "Latini", "english": "Latins", "town": "Alba Longa"},
+	"greeks": {"owner": 2, "latin": "Graeci", "english": "Greeks", "town": "Cumae"},
+	"samnites": {"owner": 3, "latin": "Samnites", "english": "Samnites", "town": "Bovianum"},
+	"volsci": {"owner": 5, "latin": "Volsci", "english": "Volsci", "town": "Antium"},
+	"aequi": {"owner": 6, "latin": "Aequi", "english": "Aequi", "town": "Corbio"},
 }
 # Who joins first when more peoples play: the neighbours of early Rome, then the south.
 const RIVAL_ORDER := ["etruscans", "sabines", "latins", "greeks", "samnites", "volsci", "aequi"]

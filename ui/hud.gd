@@ -118,10 +118,31 @@ func setup(game) -> void:
 
 	var sel := _panel(0, 1, 8.0)  # command bar: spans the bottom, up to the minimap
 	sel.anchor_right = 1.0
-	sel.offset_right = -(Minimap.SIZE.x + 2.0 * FramedPanel.FRAME + 2.0 * MARGIN)
+	sel.offset_right = -(MapScroll.SIZE.x + 2.0 * MARGIN + 8.0)
 	sel.custom_minimum_size.y = 98.0 + 2.0 * (FramedPanel.FRAME + 8.0)  # fits the tallest buttons (unit training)
+	var inset := MarginContainer.new()  # room at each end for a column
+	inset.add_theme_constant_override("margin_left", 30)
+	inset.add_theme_constant_override("margin_right", 30)
+	sel.add_child(inset)
 	var bar_row := HBoxContainer.new()
-	sel.add_child(bar_row)
+	inset.add_child(bar_row)
+	var cw := float(Ornament.COLUMN_W * Ornament.SCALE)
+	var ch := float(Ornament.COLUMN_H * Ornament.SCALE)
+	for side in [0, 1]:  # a marble column at each end of the bar, standing a little taller than it
+		var col := TextureRect.new()
+		col.texture = Ornament.column()
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		col.anchor_top = 1.0
+		col.anchor_bottom = 1.0
+		col.anchor_left = 0.0 if side == 0 else 1.0
+		col.anchor_right = col.anchor_left
+		var edge := MARGIN - 12.0 if side == 0 else -(MapScroll.SIZE.x + 2.0 * MARGIN + 8.0) + 12.0  # the bar's end, the column straddling its border
+		col.offset_left = edge if side == 0 else edge - cw
+		col.offset_right = col.offset_left + cw
+		col.offset_bottom = -MARGIN + 2.0
+		col.offset_top = col.offset_bottom - ch
+		add_child(col)
 	var left := VBoxContainer.new()  # what's selected
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.custom_minimum_size.x = 188
@@ -155,10 +176,12 @@ func setup(game) -> void:
 	_btn_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar_row.add_child(_btn_box)
 
-	var map_frame := _panel(1, 1, 0.0)  # the minimap sits inside its own frame
+	var scroll := MapScroll.new()  # the minimap sits on a parchment scroll
+	add_child(scroll)
+	_anchor(scroll, 1, 1)
 	minimap = Minimap.new()
 	minimap.setup(game)
-	map_frame.add_child(minimap)
+	scroll.hold(minimap)
 
 	_msg = PanelContainer.new()
 	_msg.theme = _theme

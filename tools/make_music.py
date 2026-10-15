@@ -3,10 +3,12 @@
   regnum_*   (the Kingdom): slow, quiet, pastoral ambience: a low drone, soft sustained chords and now
              and then a plucked, lyre-like note;
   republic_* (the Republic): livelier, with a pulse: a frame drum and shaker, a bass, an arpeggiated
-             cithara and a reedy tibia (pipe) melody, still gentle.
+             cithara and a reedy tibia (pipe) melody, still gentle;
+  title_imperial: the title music: a stately march in D minor with brass chords, a fanfare melody and
+             timpani, which plays through the opening scroll, the title and the loading screen.
 Each in four modes (dorian, phrygian, lydian, mixolydian), looping cleanly, with a little echo. Pure
 Python (no libraries) plus ffmpeg for the Ogg files. Run from the project root:
-  python3 tools/make_music.py [regnum_dorian republic_lydian ...]   (all eight by default)
+  python3 tools/make_music.py [regnum_dorian republic_lydian title_imperial ...]   (all nine by default)
 About 90 to 150 seconds a piece; the results are committed, so this is only needed to change the music."""
 import array, math, random, subprocess, sys
 
@@ -248,7 +250,99 @@ def render_republic(mode):
     finish("republic_" + mode)
 
 
-names = sys.argv[1:] or ["%s_%s" % (era, m) for era in ("regnum", "republic") for m in PIECES]
+# --- the title music: imperial ------------------------------------------------------------------
+
+def brass(midi, start_s, dur_s, gain, attack=0.3, release=0.5, harmonics=6):
+    """A brass-like tone: many harmonics, a swell in and a soft release."""
+    f = hz(midi)
+    n = int((dur_s + release) * SR)
+    out = []
+    w = 2 * math.pi * f / SR
+    for i in range(n):
+        t = i / SR
+        env = smooth(t / attack) * (1.0 - smooth((t - dur_s) / release))
+        # the tone brightens as the note swells
+        bright = 0.5 + 0.5 * smooth(t / (attack * 2.5))
+        v = 0.0
+        for k in range(1, harmonics + 1):
+            v += math.sin(k * w * i) / (k ** 1.15) * (1.0 if k <= 2 else bright)
+        out.append(env * v)
+    add_circular(int(start_s * SR), out, gain)
+
+
+def timpani(midi, start_s, gain):
+    f = hz(midi)
+    n = int(1.1 * SR)
+    out = []
+    ph = 0.0
+    for i in range(n):
+        t = i / SR
+        ph += 2 * math.pi * f * (1.0 + 0.5 * math.exp(-t * 18)) / SR
+        out.append(math.exp(-t * 4.5) * math.sin(ph) + 0.15 * math.exp(-t * 40) * rnd.uniform(-1, 1))
+    add_circular(int(start_s * SR), out, gain)
+
+
+# one chord per bar: the bass note and the brass chord. D minor, with the dominant major (A, with C sharp)
+CHORDS = {
+    "Dm": (38, [50, 57, 62, 65]), "Bb": (34, [46, 53, 58, 62]), "C": (36, [48, 55, 60, 64]),
+    "Gm": (43, [43, 50, 55, 58]), "A": (45, [45, 52, 57, 61]),
+}
+PHRASE_A = ["Dm", "Dm", "Bb", "C"]
+PHRASE_B = ["Dm", "Gm", "A", "Dm"]
+# the fanfare: (beat in the bar, MIDI note, length in beats), a bar at a time
+MELODY_A = [
+    [(0, 69, 1.5), (1.5, 74, 0.5), (2, 77, 2)],
+    [(0, 76, 1), (1, 74, 1), (2, 72, 1), (3, 74, 1)],
+    [(0, 70, 1.5), (1.5, 74, 0.5), (2, 77, 2)],
+    [(0, 72, 1.5), (1.5, 76, 0.5), (2, 79, 2)],
+]
+MELODY_B = [
+    [(0, 74, 1), (1, 77, 1), (2, 81, 2)],
+    [(0, 79, 1.5), (1.5, 77, 0.5), (2, 74, 2)],
+    [(0, 73, 1), (1, 76, 1), (2, 81, 1), (3, 76, 1)],
+    [(0, 74, 4)],
+]
+
+
+def render_title():
+    global rnd, buf, N
+    rnd = random.Random(27)
+    beat = 60.0 / 72
+    bars = 32
+    N = int(bars * 4 * beat * SR)
+    buf = [0.0] * N
+    plan = (PHRASE_A + PHRASE_B) * 4
+    melody = (MELODY_A + MELODY_B) * 4
+    for bar in range(bars):
+        t0 = bar * 4 * beat
+        bass, tones = CHORDS[plan[bar]]
+        second = bar >= 16  # the repeat is bigger: an octave higher fanfare, more brass
+        for m in tones:  # the brass chord, held the whole bar and swelling
+            brass(m, t0, 4 * beat - 0.05, 0.16 if not second else 0.2)
+        brass(bass, t0, 4 * beat - 0.05, 0.4, attack=0.1, harmonics=4)
+        for m in (tones[2] + 12, tones[3] + 12):  # strings above, soft
+            pad(m, t0, 4 * beat - 0.1, 0.05, attack=0.6, release=0.8)
+        # the fanfare on top
+        for b, note, length in melody[bar]:
+            brass(note + (12 if second and bar % 8 < 7 else 0), t0 + b * beat, length * beat * 0.95, 0.24, attack=0.06, release=0.25, harmonics=7)
+        # timpani: a heavy one and a light three; a roll at the end of each phrase
+        timpani(bass if bass < 40 else bass - 12, t0, 0.8)
+        timpani(33, t0 + 2 * beat, 0.45)
+        if bar % 4 == 3:
+            for k in range(8):
+                timpani(33 + (k % 2) * 5, t0 + 2 * beat + k * beat / 4, 0.25 + 0.06 * k)
+    # a grander room: long echoes
+    global ECHOES
+    saved = ECHOES
+    ECHOES = [(0.5, 0.4), (1.0, 0.3), (1.7, 0.2), (2.6, 0.12)]
+    finish("title_imperial")
+    ECHOES = saved
+
+
+names = sys.argv[1:] or ["%s_%s" % (era, m) for era in ("regnum", "republic") for m in PIECES] + ["title_imperial"]
 for name in names:
+    if name == "title_imperial":
+        render_title()
+        continue
     era, mode = name.split("_", 1)
     (render_regnum if era == "regnum" else render_republic)(mode)

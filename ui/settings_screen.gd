@@ -108,6 +108,10 @@ func _ready() -> void:
 	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	done.pressed.connect(_close)
 	column.add_child(done)
+	var gap := Control.new()  # a little room between the button and the border
+	gap.custom_minimum_size = Vector2(0, 16)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(gap)
 
 	_show_page(first_page)
 	_refresh()

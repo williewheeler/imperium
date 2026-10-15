@@ -4,6 +4,9 @@ extends Node
 ## and out. They play on the Music bus, so the volume on the settings screen applies, and carry on through
 ## the opening scroll, the title and the game.
 ##
+## Until the map comes up (begin_map), the title music plays: a stately, imperial march that loops through
+## the opening scroll, the title screen and the loading screen. Then it fades and the map music takes over.
+##
 ## What plays depends on the era and the weather. The Kingdom (era I) has slow, pastoral ambience
 ## ("regnum_<mode>"); the Republic onward is livelier, with a pulse ("republic_<mode>"). The weather picks
 ## the mode: bright Lydian and easy Mixolydian in clear skies, Dorian under cloud and in fog, and darker
@@ -11,6 +14,7 @@ extends Node
 ## current piece doesn't suit, it fades out and a fitting one begins; otherwise it plays to its end.
 
 const DIR := "res://assets/audio/"
+const TITLE := "title_imperial"
 const FADE_IN := 6.0  # seconds
 const FADE_OUT := 5.0
 const SHIFT_FADE := 3.0  # a quicker fade when the weather turns
@@ -28,6 +32,7 @@ var _weather := Weather.State.CLEAR
 var _last := ""
 var _fading := false
 var _tween: Tween
+var _title := true  # the title music is playing (or due), not the map music
 
 
 func _ready() -> void:
@@ -42,8 +47,21 @@ func _ready() -> void:
 func set_context(era: int, weather_state: int) -> void:
 	_era = era
 	_weather = weather_state
+	if _title:
+		return
 	if _player.playing and not _fading and not _suits(_last):
 		_fade_out(SHIFT_FADE)
+
+
+## The map has come up: the title music fades away and the map music begins.
+func begin_map() -> void:
+	if not _title:
+		return
+	_title = false
+	if _player.playing:
+		_fade_out(SHIFT_FADE)
+	else:
+		_next()
 
 
 ## The file stem of a piece: which era's style and which mode.
@@ -63,6 +81,17 @@ func _suits(stem: String) -> bool:
 
 ## Starts a piece that suits now (never the one just heard, if there is another), fading in.
 func _next() -> void:
+	if _title:
+		if ResourceLoader.exists("%s%s.ogg" % [DIR, TITLE]):
+			var stream := load("%s%s.ogg" % [DIR, TITLE]) as AudioStreamOggVorbis
+			stream.loop = true
+			_last = TITLE
+			_player.stream = stream
+			_player.volume_db = -40.0
+			_fading = false
+			_player.play()
+			_fade(0.0, FADE_IN)
+		return
 	var choices: Array = []
 	for mode: String in MODES_BY_WEATHER[_weather]:
 		var stem := _stem(mode)
@@ -97,5 +126,5 @@ func _fade_out(seconds: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	if _player.playing and not _fading and _player.stream != null and _player.stream.get_length() - _player.get_playback_position() < FADE_OUT:
+	if not _title and _player.playing and not _fading and _player.stream != null and _player.stream.get_length() - _player.get_playback_position() < FADE_OUT:
 		_fade_out(FADE_OUT)

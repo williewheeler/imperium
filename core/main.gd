@@ -155,7 +155,7 @@ func _ready() -> void:
 	if Perf.on:
 		print("PERF startup: map generated in ", Time.get_ticks_msec() - _t_a, " ms (engine up for ", Time.get_ticks_msec(), " ms)")
 	Iso.set_terrain(map.w, map.h, map.levels)
-	var start := map.find_start()
+	var start := map.find_start(Vector2i((map.homes[0] * map.w).round()), Vector2i(-1, -1), 0)  # you start on the ring round the map like everyone else
 	fog = Fog.new(map.w, map.h)
 	stock.assign(Defs.START_STOCK)
 	stocks = [stock]
@@ -262,6 +262,8 @@ func _ready() -> void:
 		DirAccess.make_dir_recursive_absolute(_record_dir)
 		RenderingServer.frame_post_draw.connect(_save_recorded_frame)
 	loading.finish()
+	if music != null:
+		music.begin_map()  # the title music gives way to the map music
 	set_process(true)
 	set_physics_process(true)
 	set_process_unhandled_input(true)
@@ -1150,29 +1152,27 @@ func _place_circus(start: Vector2i) -> void:
 		circus.work = 1.0
 
 
-## The other peoples each get a town of their own, spread round Rome in the direction each really lay
-## (Defs.FACTIONS), far enough away that Rome has the first years to itself, with five villagers and the
-## same stores as ours. How many play is set on the settings screen. Each is run by a Rival.
+## The other peoples each get a town of their own, spaced round the map like you (see
+## GameMap.home_points), with five villagers and the same stores as ours. How many play is set on the
+## settings screen. Each is run by a Rival.
 func _place_rivals(rome: Vector2i) -> void:
-	var rome_screen := Vector2.ZERO
-	var ring := GameMap.RIVAL_RING * map.w  # how far from Rome the peoples start
 	var connected: bool = GameSettings.type_info(GameSettings.map_type)["connected"]
+	var middle := Vector2(0.5, 0.5)
 	var slot := 0
 	for faction: String in GameSettings.playing_peoples():
 		slot += 1  # you are player 0; the peoples follow in the order chosen on the settings screen
 		var info: Dictionary = Defs.FACTIONS[faction]
 		var owner_id := slot
 		var spot := Vector2i(-1, -1)
-		for attempt in [[0, 1.0], [25, 1.0], [-25, 1.0], [0, 0.8], [40, 1.15], [-40, 1.15]]:  # if the first try has no room, swing round a little
-			var a := deg_to_rad(float(info["bearing"]) + float(attempt[0]))
-			var screen_dir := Vector2(cos(a), sin(a))
-			var tile_dir := Vector2(screen_dir.x / 16.0 + screen_dir.y / 8.0, screen_dir.y / 8.0 - screen_dir.x / 16.0).normalized()
-			var want: Vector2i = (Vector2(rome) + tile_dir * ring * float(attempt[1])).round()
-			want = want.clamp(Vector2i(12, 12), Vector2i(map.w - 13, map.h - 13))
+		var home: Vector2 = map.homes[slot]
+		var inward := (middle - home).normalized()
+		var along := inward.rotated(PI / 2.0)
+		for attempt in [Vector2.ZERO, inward * 0.05, inward * 0.1, along * 0.06, -along * 0.06, inward * 0.15]:  # if the first try has no room, shift a little
+			var want := Vector2i(((home + attempt) * map.w).round()).clamp(Vector2i(12, 12), Vector2i(map.w - 13, map.h - 13))
 			var found := map.find_start(want, rome if connected else Vector2i(-1, -1), 1)
 			var too_close := found.distance_to(Vector2(rome)) < 0.1 * map.w
 			for r in rivals:
-				too_close = too_close or found.distance_to(Vector2(r.start)) < 0.08 * map.w
+				too_close = too_close or found.distance_to(Vector2(r.start)) < 0.1 * map.w
 			if not too_close:
 				spot = found
 				break

@@ -13,7 +13,6 @@ enum Terrain { DEEP, SHALLOW, BEACH, GRASS, FOREST, HILLS, MOUNTAIN, MARSH }
 const MOVE_COST := [INF, INF, 1.1, 1.0, 1.6, 2.2, INF, 2.0]
 const ROAD_SPEED := 1.3  # dirt roads are this much faster to walk
 const PAVED_SPEED := 1.7  # paved Roman roads even more
-const RIVAL_RING := 0.28  # how far from Rome the other peoples start, as a fraction of the map's side
 const SEA_LEVEL := 0.40  # elevation of all water; the land rises from here
 const RELIEF_SCALE := 10.0  # how strongly a slope shows as light or shade
 const SLOPE_COST := 5.0  # extra walking cost per unit of steepness (elevation change per tile)
@@ -49,6 +48,7 @@ var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 
 var wear := PackedFloat32Array()  # distance walked over each tile so far
 var astar := AStarGrid2D.new()
 var _gen: TerrainGen
+var homes: Array[Vector2] = []  # where each player starts, as fractions of the map's side: you first (see home_points)
 
 ## How far generation has got (0 to 1) and what it is doing, for a loading screen. The map is built on
 ## a worker thread while the main thread draws the bar, so these are written there and only read here.
@@ -63,7 +63,8 @@ func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview_px := 0,
 	seed_value = p_seed
 	w = p_size
 	h = p_size
-	_gen = TerrainGen.new(p_seed, p_size, p_type, p_preview_px if p_preview_px > 0 else p_size, home_points(p_players))
+	_gen = TerrainGen.new(p_seed, p_size, p_type, p_preview_px if p_preview_px > 0 else p_size, home_points(p_players, p_type, p_seed))
+	homes = _gen.homes
 	if p_preview_px > 0:
 		return
 	_report(0.0, "Terra formatur")
@@ -105,16 +106,57 @@ static func preview(type_id: String, px: int, preview_seed := 7) -> Image:
 	return img
 
 
-## Where each people starts, as fractions of the map's side: Rome in the middle and the others round it
-## in the directions they really lay (Defs.FACTIONS), the same ring the game places their towns on.
-static func home_points(players: int) -> Array[Vector2]:
-	var out: Array[Vector2] = [Vector2(0.5, 0.5)]
-	for faction: String in GameSettings.rival_peoples.slice(0, players - 1):
-		var a := deg_to_rad(float(Defs.FACTIONS[faction]["bearing"]))
-		var sd := Vector2(cos(a), sin(a))
-		var td := Vector2(sd.x / 16.0 + sd.y / 8.0, sd.y / 8.0 - sd.x / 16.0).normalized()
-		out.append((Vector2(0.5, 0.5) + td * RIVAL_RING).clamp(Vector2(0.06, 0.06), Vector2(0.94, 0.94)))
+## Where the players start round the map, as fractions of the map's side: all of them spread evenly round
+## a ring (you too, not in the middle), as far from each other as the shape of the land allows. The ring is
+## a square for the broad continents, an ellipse for the rest (a long thin one for the peninsula and the
+## river valley), and the first start is at a random place on it (from the seed). Island maps put each
+## player's home on an island of its own at these points. `slot 0` is you; the rest follow round the ring.
+const RINGS := {
+	"continens": {"shape": "square", "h": 0.35},
+	"campi": {"shape": "square", "h": 0.38},
+	"lacus": {"shape": "square", "h": 0.35},
+	"silvae": {"shape": "square", "h": 0.35},
+	"colles": {"shape": "square", "h": 0.35},
+	"paludes": {"shape": "square", "h": 0.34},
+	"insulae_parvae": {"shape": "square", "h": 0.34},
+	"insulae_magnae": {"shape": "square", "h": 0.33},
+	"archipelagus": {"shape": "square", "h": 0.32},
+	"mare_nostrum": {"shape": "ellipse", "rx": 0.37, "ry": 0.37},
+	"paeninsula": {"shape": "ellipse", "rx": 0.36, "ry": 0.07, "angle": PI / 4.0},
+	"montes": {"shape": "ellipse", "rx": 0.34, "ry": 0.34},
+	"vallis_tiberis": {"shape": "ellipse", "rx": 0.4, "ry": 0.2, "angle": PI / 4.0},
+	"ora_maritima": {"shape": "ellipse", "rx": 0.36, "ry": 0.17, "center": Vector2(0.5, 0.4)},
+	"duae_terrae": {"shape": "ellipse", "rx": 0.34, "ry": 0.34},
+	"anulus": {"shape": "ellipse", "rx": 0.31, "ry": 0.31},
+	"litus_asperum": {"shape": "ellipse", "rx": 0.3, "ry": 0.3},
+	"insula_unica": {"shape": "ellipse", "rx": 0.21, "ry": 0.21},
+}
+
+
+static func home_points(players: int, type_id := "continens", p_seed := 0) -> Array[Vector2]:
+	var spec: Dictionary = RINGS.get(type_id, {"shape": "ellipse", "rx": 0.3, "ry": 0.3})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = p_seed * 31 + 7
+	var first := rng.randf()  # where on the ring you start
+	var out: Array[Vector2] = []
+	for i in players:
+		var t := fposmod(first + float(i) / players, 1.0)
+		out.append(_ring_point(spec, t).clamp(Vector2(0.06, 0.06), Vector2(0.94, 0.94)))
 	return out
+
+
+## The point a fraction `t` (0 to 1) of the way round a ring.
+static func _ring_point(spec: Dictionary, t: float) -> Vector2:
+	var c: Vector2 = spec.get("center", Vector2(0.5, 0.5))
+	if spec["shape"] == "square":
+		var h: float = spec["h"]
+		var s := t * 4.0
+		var f := s - floorf(s)
+		var side := int(s)
+		var off: Vector2 = [Vector2(-h + 2.0 * h * f, -h), Vector2(h, -h + 2.0 * h * f), Vector2(h - 2.0 * h * f, h), Vector2(-h, h - 2.0 * h * f)][side]
+		return c + off
+	var a := t * TAU
+	return c + Vector2(cos(a) * float(spec["rx"]), sin(a) * float(spec["ry"])).rotated(float(spec.get("angle", 0.0)))
 
 
 static func _report(fraction: float, what: String) -> void:
