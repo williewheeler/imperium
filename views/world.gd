@@ -26,6 +26,7 @@ var _streamed := false
 var _tile_objects := {}  # Vector2i -> Array[Node2D]: a tile's trees / hill / mountain sprites
 var _deposit_nodes := {}  # Vector2i -> Sprite2D: berries, stone and gold
 var _unit_views := {}  # Unit -> UnitView
+var _falling: Array[UnitView] = []  # the fallen, playing their collapse
 var _building_views := {}  # Building -> BuildingView
 var _ghosts := {}  # Unit -> Sprite2D: a see-through copy drawn over whatever hides the unit
 var _ghost_state := {}  # Unit -> {"wait", "ghost", "ring"}: the last occlusion result and when to redo it
@@ -53,6 +54,9 @@ func setup(p_game) -> void:
 	add_child(decals)
 	objects.y_sort_enabled = true
 	add_child(objects)
+	var shots := ProjectileView.new()  # slingers' bullets fly above everything standing on the ground
+	shots.game = game
+	add_child(shots)
 
 	var style: int = GameSettings.terrain_info(GameSettings.terrain_id)["style"]
 	if style != 0:  # snow on the trees, or the green parched
@@ -351,9 +355,16 @@ func _process(delta: float) -> void:
 			_building_views[b].update_view()
 		else:
 			_building_views[b].go_quiet()
+	for v in _falling.duplicate():
+		if not is_instance_valid(v) or not v.update_death(delta):
+			_falling.erase(v)
 	for u: Unit in _unit_views.keys():  # things that no longer exist
 		if not game.units.has(u):
-			_unit_views[u].queue_free()
+			if u.dead and _unit_views[u].visible:  # a fighter that fell where we can see it: show it fall
+				_unit_views[u].start_death()
+				_falling.append(_unit_views[u])
+			else:
+				_unit_views[u].queue_free()
 			if _ghosts.has(u):
 				_ghosts[u].queue_free()
 				_ghosts.erase(u)

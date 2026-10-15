@@ -145,6 +145,10 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Copiae; Tenuis, Mediocris, Opima | Resources; Sparse, Normal, Rich |
 | Calliditas; Facilis, Aequus, Difficilis | Computer skill (cleverness); Easy, Normal, Hard |
 | Redi | Go back (Esc) |
+| Oppugna | Attack (the attack-move order, A) |
+| Quo oppugnamus? Sinistra. | Where do we attack? Left click. |
+| Hostem persequitur; Pugnat; Fugit | Closing on the enemy; Fighting; Fleeing |
+| vita | health (life): shown as "vita 42/80" |
 | Continens, Campi, Insulae Parvae, Insulae Magnae, Archipelagus, Mare Nostrum, Paeninsula, Montes, Paludes, Silvae, Lacus, Vallis Tiberis, Ora Maritima, Duae Terrae, Anulus, Colles, Litus Asperum, Insula | The 18 map types: Continent, Plains, Small Islands, Large Islands, Archipelago, Mediterranean ("our sea"), Peninsula, Highlands, Marshlands, Great Forest, Lake District, Tiber Valley, Coast, Two Lands, Ring Island, Rolling Hills, Rugged Coast, Heartland Island |
 | Minima, Parva, Media, Magna, Maxima | Map sizes: Tiny, Small, Medium, Large, Huge |
 | Samnites, Volsci, Aequi; Bovianum, Antium, Corbio | More peoples and their first towns (the Aequian town is moderately certain) |

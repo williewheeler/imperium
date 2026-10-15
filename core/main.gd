@@ -86,6 +86,9 @@ var _report := false
 var _shot_frame := 20
 var _frame := 0
 var music: Music  # null in scripted runs
+var combat := Combat.new(self)  # who fights whom
+var _skirmish_look := Vector2.INF  # --skirmish: where the camera goes
+var attack_move_mode := false  # the next left click sends the selected fighters there to fight on the way (key A)
 
 
 func _ready() -> void:
@@ -236,6 +239,8 @@ func _ready() -> void:
 	if args.has("look"):  # debug: aim the camera this many tiles (x,y) from the Forum
 		var off := String(args["look"]).split(",")
 		cam_pos = Iso.to_screen(buildings[0].center() + Vector2(float(off[0]), float(off[1])))
+	if _skirmish_look != Vector2.INF and not args.has("look"):
+		cam_pos = _skirmish_look
 	if args.has("reveal"):  # debug: start with the whole map laid open (M toggles it)
 		fog.set_show_all(true)
 	if args.has("forum"):
@@ -248,6 +253,19 @@ func _ready() -> void:
 			if spot.x >= 0:
 				var b := _add_building(specs[i][0], spot, specs[i][1] >= 1.0)
 				b.work = float(b.def()["build_time"]) * float(specs[i][1])
+	if args.has("skirmish"):  # debug: --skirmish=KIND:KIND (or just --skirmish): two small armies a few tiles apart, ours (purple) and the first rival's
+		var spec: Array = Array(str(args["skirmish"]).split(":")) if str(args["skirmish"]).contains(":") else ["soldier,spearman,slinger,horseman", "soldier,spearman,slinger,horseman"]
+		var base := Vector2(start) + Vector2(-9, 5)
+		for side in 2:
+			var kinds := String(spec[side]).split(",")
+			for i in kinds.size() * 3:
+				var u := Unit.new()
+				u.kind = kinds[i % kinds.size()]
+				u.owner = side
+				u.display = true
+				u.pos = base + Vector2(side * float(args.get("gap", 6.5)), float(i) * 0.9 - 4.0)
+				units.append(u)
+		_skirmish_look = Iso.to_screen(base + Vector2(float(args.get("gap", 6.5)) / 2.0, 0.0))
 	if args.has("town"):  # debug: a built-up town round the Forum: one of most kinds of building, finished
 		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple"]
 		for i in kinds.size():
@@ -259,6 +277,11 @@ func _ready() -> void:
 			var spot := map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8, [])
 			if spot.x >= 0:
 				_add_building(kind, spot, true)
+	if args.has("selectb"):  # debug: select the first building of this kind (to look at its command bar)
+		for b in buildings:
+			if b.kind == str(args["selectb"]) and b.complete:
+				b.selected = true
+				break
 	if args.has("ring"):  # debug: villagers standing around the Forum's walls, to check drawing order
 		var r := buildings[0].rect()
 		var spots := [Vector2(r.position.x + 0.6, r.end.y + 0.5), Vector2(r.position.x + 1.6, r.end.y + 0.5),
@@ -279,7 +302,7 @@ func _ready() -> void:
 	set_physics_process(true)
 	set_process_unhandled_input(true)
 	Engine.time_scale = float(args.get("speed", GameSettings.speed))
-	if not (args.has("demo") or args.has("showcase") or args.has("ring")):
+	if not (args.has("demo") or args.has("showcase") or args.has("ring") or args.has("skirmish")):
 		_place_display_army(start)
 	_screenshot_path = args.get("shot", "")
 	_report = args.has("report")
@@ -461,7 +484,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_Q:
 		get_tree().quit()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-		if placing_road:  # Esc backs out of whatever is being placed, or else clears the selection
+		if attack_move_mode:
+			attack_move_mode = false
+		elif placing_road:  # Esc backs out of whatever is being placed, or else clears the selection
 			_cancel_road_mode()
 		elif placing != "":
 			placing = ""
@@ -469,6 +494,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_clear_selection()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_X:
 		command_selected("explore")
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_A and not event.ctrl_pressed and not event.meta_pressed:
+		command_selected("attack_move")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_S and not event.ctrl_pressed and not event.meta_pressed:
 		command_selected("stop")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
@@ -481,7 +508,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
-				if placing_road:
+				if attack_move_mode:
+					attack_move_mode = false
+					_attack_move_to(get_global_mouse_position())
+				elif placing_road:
 					_road_dragging = true
 					_road_start = _mouse_tile()
 				elif placing != "":
@@ -501,7 +531,9 @@ func _unhandled_input(event: InputEvent) -> void:
 						dragging = true
 						_drag_start = get_global_mouse_position()
 			MOUSE_BUTTON_RIGHT:
-				if placing_road:
+				if attack_move_mode:
+					attack_move_mode = false
+				elif placing_road:
 					_cancel_road_mode()
 				elif placing != "":
 					placing = ""
@@ -529,12 +561,14 @@ func _clear_selection() -> void:
 
 ## The unit whose body is under world position `mp` (a click picks someone only if it lands on their
 ## body, not just near it), or null.
-func _unit_at(mp: Vector2) -> Unit:
+func _unit_at(mp: Vector2, enemy := false) -> Unit:
 	var best: Unit = null
 	var best_d := INF
 	for u in units:
-		if u.owner != 0:
-			continue  # only our own people can be picked
+		if u.dead or (u.owner != 0) != enemy:
+			continue  # only our own people can be picked (or, with `enemy`, only the other peoples' that we can see)
+		if enemy and not fog.is_visible_now(Vector2i(u.pos)):
+			continue
 		var feet := Iso.to_screen(u.pos)
 		var half_w := 9.0 if u.kind == "horseman" else 5.0
 		var height := 22.0 if u.kind == "horseman" else 16.0
@@ -668,9 +702,37 @@ func command_selected(action: String) -> void:
 				_order_explore(u)
 			"stop":
 				_order_stop(u)
+	if action == "attack_move" and not selected_fighters().is_empty():
+		attack_move_mode = true
+		hud.flash("Quo oppugnamus? Sinistra.", "Attack-move: left click where the fighters should go, fighting whatever they meet. (Esc cancels)")
+
+
+## The selected units that can fight.
+func selected_fighters() -> Array[Unit]:
+	var out: Array[Unit] = []
+	for u in selected_units():
+		if Combat.fights(u):
+			out.append(u)
+	return out
+
+
+## Left click in attack-move mode: the fighters march there, attacking what they meet.
+func _attack_move_to(mp: Vector2) -> void:
+	var fighters := selected_fighters()
+	var tile := Vector2i(Iso.to_tile(mp).floor())
+	if fighters.is_empty() or not map.in_bounds(tile):
+		return
+	markers.append({"pos": Iso.to_tile(mp), "t": 0.0, "attack": true})
+	var goals := map.spread_goals(tile, fighters.size())
+	if goals.is_empty():
+		hud.flash("Iter nullum est.")
+		return
+	for i in fighters.size():
+		combat.order_attack_move(fighters[i], goals[i % goals.size()])
 
 
 func _order_stop(u: Unit) -> void:
+	Combat.clear(u)
 	u.dropoff_only = false
 	_release_road(u)
 	u.path.clear()
@@ -680,6 +742,7 @@ func _order_stop(u: Unit) -> void:
 
 
 func _order_explore(u: Unit) -> void:
+	Combat.clear(u)
 	u.dropoff_only = false
 	_release_road(u)
 	u.explore_skip.clear()
@@ -746,6 +809,20 @@ func _command_at(mp: Vector2) -> void:
 	var tile := Vector2i(pos.floor())
 	if not map.in_bounds(tile):
 		return
+	var foe := _unit_at(mp, true)
+	var fighters := selected_fighters()
+	if foe != null and not fighters.is_empty():  # right click on an enemy we can see: the fighters attack it
+		markers.append({"pos": foe.pos, "t": 0.0, "attack": true})
+		for u in fighters:
+			combat.order_attack(u, foe)
+		foe.targeted = Combat.TARGET_MARK
+		var others: Array[Unit] = []
+		for u in us:
+			if not Combat.fights(u):
+				others.append(u)
+		if others.is_empty():
+			return
+		us = others  # the villagers in the group just go to the spot
 	markers.append({"pos": pos, "t": 0.0})
 	var res := deposit_near(mp)
 	var b := building_under(mp)
@@ -831,6 +908,7 @@ func _set_path_inner(u: Unit, goal: Vector2i) -> bool:
 
 
 func _order_move(u: Unit, goal: Vector2i) -> void:
+	Combat.clear(u)  # a plain move order ignores the enemy until arrival: pull back, regroup
 	u.dropoff_only = false
 	_release_road(u)
 	if _set_path(u, goal):
@@ -969,23 +1047,23 @@ func has_pop_room(owner := 0) -> bool:
 	var queued := 0
 	for b in buildings:
 		if b.owner == owner:
-			queued += b.queue
+			queued += b.train_queue.size()
 	return pop_used(owner) + queued < pop_cap(owner)
 
 
-## Train whatever the selected building trains: villagers at the Forum, soldiers at the Castra.
-func _train_unit() -> void:
+## Train a `kind` of unit at the selected building: villagers at the Forum, fighting men at the Castra or Stabulum.
+func _train_unit(kind: String) -> void:
 	var b := selected_building()
-	if b == null or not b.complete or not b.def().has("trains"):
+	if b == null or not b.complete or not b.trains().has(kind):
 		return
-	var cost: Array = Defs.UNITS[b.def()["trains"]]["cost"]
+	var cost: Array = Defs.UNITS[kind]["cost"]
 	if not can_afford(cost):
 		return
 	if not has_pop_room():
 		hud.flash("Domus plures requiruntur.")
 		return
 	_pay(cost)
-	b.queue += 1
+	b.train_queue.append(kind)
 
 
 ## Closest clear spot for `kind` near `near`, avoiding the tiles villagers are standing on.
@@ -1629,6 +1707,10 @@ func _process(delta: float) -> void:
 	for b in buildings:
 		_update_building(b, delta)
 	Perf.stop("buildings", t0)
+	t0 = Perf.start()
+	combat.update_projectiles(delta)
+	combat.flush_dead()  # the dead leave the game now that the loops over the units are done
+	Perf.stop("combat", t0)
 	for i in range(markers.size() - 1, -1, -1):
 		markers[i].t += delta
 		if markers[i].t > MARKER_LIFE:
@@ -1913,16 +1995,24 @@ func _nudge(u: Unit, v: Vector2) -> void:
 func _walk_speed(u: Unit, cost: float) -> float:
 	if u.kind == "horseman":
 		return minf(VILLAGER_SPEED * HORSE_SPEED_FACTOR / (cost * cost), HORSE_MAX_SPEED)
-	return VILLAGER_SPEED / cost
+	return VILLAGER_SPEED * float(Defs.UNITS[u.kind].get("speed", 1.0)) / cost
 
 
 func _update_unit(u: Unit, delta: float) -> void:
+	if u.dead:
+		return
 	u.moving = false
 	u.anim += delta
+	combat.tick_unit(u, delta)
 	match u.state:
 		Unit.State.MOVE:
 			if _follow(u, delta):
 				u.state = Unit.State.IDLE
+				u.amove = false
+		Unit.State.ATTACK_GO, Unit.State.ATTACKING:
+			combat.update_fight(u, delta)
+		Unit.State.FLEE:
+			combat.update_flee(u, delta)
 		Unit.State.EXPLORE:
 			if _follow(u, delta) or fog_of(u.owner).is_explored(u.explore_goal):
 				if not _explore_next(u):
@@ -2056,13 +2146,13 @@ func _update_building(b: Building, delta: float) -> void:
 		if b.complete:
 			_update_farm(b, delta)
 		return
-	if not b.complete or b.queue <= 0:
+	if not b.complete or b.train_queue.is_empty():
 		return
-	var trains: String = b.def()["trains"]
+	var trains: String = b.train_queue[0]
 	b.train_progress += delta
 	if b.train_progress >= float(Defs.UNITS[trains]["time"]):
 		b.train_progress = 0.0
-		b.queue -= 1
+		b.train_queue.pop_front()
 		var u := Unit.new()
 		u.kind = trains
 		u.owner = b.owner
@@ -2079,7 +2169,7 @@ func _report_text() -> String:
 	for u in units:
 		lines.append("unit pos=(%.2f, %.2f) state=%s carry=%d" % [u.pos.x, u.pos.y, Unit.State.keys()[u.state], u.carry])
 	for b in buildings:
-		lines.append("building %s complete=%s queue=%d" % [b.kind, b.complete, b.queue])
+		lines.append("building %s complete=%s queue=%d" % [b.kind, b.complete, b.train_queue.size()])
 	return "\n".join(lines)
 
 
@@ -2164,7 +2254,7 @@ func _show_start_field() -> void:
 func _show_train() -> void:
 	if can_afford(Defs.VILLAGER_COST) and has_pop_room():
 		_pay(Defs.VILLAGER_COST)
-		buildings[0].queue += 1
+		buildings[0].train_queue.append("villager")
 
 
 func _show_hut(builder: Unit, then: Callable) -> void:

@@ -3,7 +3,7 @@ extends CanvasLayer
 ## Every piece of Latin text carries an English tooltip (hover to read it).
 
 signal build_requested(kind: String)
-signal train_requested
+signal train_requested(kind: String)
 signal road_requested
 signal advance_requested
 signal action_requested(action: String)
@@ -22,10 +22,14 @@ const STATES := {  # unit state -> [Latin, English]
 	Unit.State.ROAD_GO: ["Ad viam properat", "Hurrying to the road"],
 	Unit.State.PAVING: ["Viam munit", "Building the road"],
 	Unit.State.EXPLORE: ["Explorat", "Exploring"],
+	Unit.State.ATTACK_GO: ["Hostem persequitur", "Closing on the enemy"],
+	Unit.State.ATTACKING: ["Pugnat", "Fighting"],
+	Unit.State.FLEE: ["Fugit", "Fleeing"],
 }
 const HELP := [  # [Latin, English]
 	["Sinistra  elige", "Left click: select a unit, building or resource (see how much is left). Drag a box: select a group. Double click a unit: select all of that kind on the screen. Click empty ground: deselect."],
-	["Dextra  iube", "Right click: give an order (move, gather or build)."],
+	["Dextra  iube", "Right click: give an order (move, gather or build). Right click an enemy you can see: your fighters attack it, then go after the next enemy nearby. A plain right click on the ground is a move that ignores enemies, so you can pull back."],
+	["A  oppugna", "A, then left click: attack-move. Fighters march there and attack whatever they meet. S stops them."],
 	["Margo  circumspice", "Move the mouse to a screen edge (or use the arrow keys): pan the camera."],
 	["Rota  auge", "Mouse wheel: zoom."],
 	["M  omnia vide", "M: show the whole map, or hide the unexplored parts again."],
@@ -285,7 +289,9 @@ func refresh() -> void:
 	var mode := "none"
 	if not us.is_empty():
 		mode = "villagers" if not _game.selected_workers().is_empty() else "soldiers"
-	elif b != null and b.complete and b.def().has("trains"):
+		if not _game.selected_fighters().is_empty():
+			mode += ":f"  # there are fighting men among them: they get the attack order too
+	elif b != null and b.complete and not b.trains().is_empty():
 		mode = "trainer:" + b.kind
 	if mode != _mode:
 		_mode = mode
@@ -332,6 +338,9 @@ func refresh() -> void:
 		if u.carry > 0:
 			latin += "  ·  onus: %s %d" % [Defs.RES_NAMES[u.carry_kind], u.carry]
 			english += "  ·  carrying %d %s" % [u.carry, Defs.RES_ENGLISH[u.carry_kind].to_lower()]
+		if u.hp < float(uname["hp"]) - 0.5 or Combat.fights(u):  # a fighting man's health is worth knowing
+			latin += "  ·  vita %d/%d" % [int(ceil(u.hp)), uname["hp"]]
+			english += "  ·  health %d/%d" % [int(ceil(u.hp)), uname["hp"]]
 		_say(_sel_name, uname["name"], uname["english"])
 		_say(_sel_info, latin, english)
 	elif us.size() > 1:
@@ -360,8 +369,8 @@ func refresh() -> void:
 		if not b.complete:
 			var pct := int(b.build_fraction() * 100)
 			_say(_sel_info, "Aedificatur  %d%%" % pct, "Under construction  %d%%" % pct)
-		elif b.queue > 0:
-			_say(_sel_info, "In ordine: %d" % b.queue, "Villagers in training: %d" % b.queue)
+		elif not b.train_queue.is_empty():
+			_say(_sel_info, "In ordine: %d" % b.train_queue.size(), "In training: %d" % b.train_queue.size())
 		elif b.is_field() and map_deposit_for(b) != null:
 			var fd: Deposit = map_deposit_for(b)
 			_say(_sel_info, "Reliquum: %d / %d" % [fd.amount, fd.max_amount], "Remaining: %d of %d %s%s" % [fd.amount, fd.max_amount, Defs.RES_ENGLISH[fd.kind].to_lower(), "  (ripening again...)" if fd.amount <= 0 else ""])
@@ -392,7 +401,7 @@ func _rebuild_buttons(mode: String) -> void:
 	_buttons.clear()
 	var parts := mode.split(":")
 	if parts[0] in ["villagers", "soldiers"]:
-		_add_actions()
+		_add_actions(parts.size() > 1 and parts[1] == "f")
 	match parts[0]:
 		"villagers":
 			for kind: String in Defs.BUILDINGS:
@@ -408,11 +417,13 @@ func _rebuild_buttons(mode: String) -> void:
 			_buttons[-1].set_meta("era", Defs.ROAD_ERA)
 			_buttons[-1].compact = true
 		"trainer":
-			var unit_kind: String = Defs.BUILDINGS[parts[1]]["trains"]
-			var unit: Dictionary = Defs.UNITS[unit_kind]
-			_add_button(unit_kind, unit["name"], "Train a %s (%s)" % [String(unit["english"]).to_lower(), _cost_text(unit["cost"])],
-				unit["cost"], func() -> void: train_requested.emit())
-			_buttons[-1].set_meta("train", true)
+			for unit_kind: String in Defs.BUILDINGS[parts[1]]["trains"]:
+				var unit: Dictionary = Defs.UNITS[unit_kind]
+				var tip := "Train a %s (%s)" % [String(unit["english"]).to_lower(), _cost_text(unit["cost"])]
+				if unit.has("about"):
+					tip += ". " + unit["about"]
+				_add_button(unit_kind, unit["name"], tip, unit["cost"], func() -> void: train_requested.emit(unit_kind))
+				_buttons[-1].set_meta("train", true)
 			if parts[1] == "town_center":
 				var adv: Variant = _game.advance_data()
 				_add_button("advance", "Progredere", "", adv["cost"] if adv != null else [0, 0, 0, 0], func() -> void: advance_requested.emit())
@@ -421,10 +432,13 @@ func _rebuild_buttons(mode: String) -> void:
 
 ## The orders any selected unit can be given, ahead of the buildings. The captions are Latin
 ## imperatives; the hotkey badge and tooltip say what they do.
-func _add_actions() -> void:
-	for a: Array in [
+func _add_actions(fighters := false) -> void:
+	var orders: Array = [
 			["explore", "Explora", "Explore: walk the unit toward unseen land until none is left (X)", "X"],
-			["stop", "Siste", "Stop: drop the current order and stand still (S)", "S"]]:
+			["stop", "Siste", "Stop: drop the current order and stand still (S)", "S"]]
+	if fighters:
+		orders.append(["attack_move", "Oppugna", "Attack-move: click a spot and the fighters march there, attacking whatever they meet (A). Right-click an enemy to attack it; a plain right-click on the ground is a move that ignores the enemy, to pull back.", "A"])
+	for a: Array in orders:
 		var action: String = a[0]
 		_add_button(action, a[1], a[2], [0, 0, 0, 0], func() -> void: action_requested.emit(action))
 		var b: CommandButton = _buttons[-1]

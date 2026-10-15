@@ -13,7 +13,7 @@ var size := Vector2i.ONE
 var work := 0.0  # builder-seconds invested so far
 var complete := false
 var selected := false
-var queue := 0  # villagers waiting to be trained
+var train_queue: Array[String] = []  # the units waiting to be trained, in order (the first is in training)
 var train_progress := 0.0
 var stage := 0  # fields: 0 ripe .. 3 freshly sown
 var regrow := 0.0  # fields: seconds since they were emptied
@@ -21,6 +21,11 @@ var regrow := 0.0  # fields: seconds since they were emptied
 
 func def() -> Dictionary:
 	return def_for(kind)
+
+
+## What this building trains (an empty list for most).
+func trains() -> Array:
+	return def().get("trains", [])
 
 
 ## The owner's color (white for a landmark).

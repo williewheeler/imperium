@@ -37,7 +37,7 @@ func _draw() -> void:
 		for i in 25:
 			var a := TAU * i / 24.0
 			pts.append(c + Vector2(cos(a) * (5 + 11 * k), sin(a) * (2.5 + 5.5 * k)))
-		draw_polyline(pts, Color(0.49, 1, 0.49, 1 - k), 1.0)
+		draw_polyline(pts, (Color(1.0, 0.35, 0.3, 1 - k) if m.get("attack", false) else Color(0.49, 1, 0.49, 1 - k)), 1.0)
 
 	if game.selected_deposit.x >= 0:
 		var d := _diamond(Vector2(game.selected_deposit), Vector2.ONE)
@@ -63,8 +63,8 @@ func _draw() -> void:
 		var w := float(b.size.x * Iso.TILE_W)
 		if not b.complete:
 			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.build_fraction(), Color("7dff7d"))
-		elif b.queue > 0:
-			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.train_progress / float(Defs.UNITS[b.def()["trains"]]["time"]), GOLD)
+		elif not b.train_queue.is_empty():
+			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.train_progress / float(Defs.UNITS[b.train_queue[0]]["time"]), GOLD)
 		if b.complete and (b.kind == "town_center" or b.kind == "circus"):  # landmarks wear their name
 			var anchor := Art.building_anchor(b.sprite_key())
 			var label := Latin.t(b.building_name)

@@ -98,7 +98,7 @@ func _draw_cost(y: float, text_color: Color) -> void:
 
 
 func _draw_icon(c: Vector2) -> void:
-	if icon_kind in ["explore", "stop", "start", "quit", "settings"]:
+	if icon_kind in ["explore", "stop", "start", "quit", "settings", "attack_move"]:
 		_draw_action_icon(c)
 		return
 	var key := icon_kind + ":idle:f:0" if icon_kind in UNIT_ICONS else icon_kind
@@ -140,6 +140,11 @@ func _draw_action_icon(c: Vector2) -> void:
 				pts.append(Vector2.from_angle(TAU * (i + 0.5) / 8.0) * 9.0)
 			draw_colored_polygon(pts, _t(CREAM))
 			draw_rect(Rect2(Vector2(-4, -4), Vector2(8, 8)), _t(Color("7a1a1a")))
+		"attack_move":  # two crossed swords
+			for s in [-1.0, 1.0]:
+				draw_line(Vector2(-9.0 * s, 9.0), Vector2(8.0 * s, -8.0), _t(CREAM), 2.5)  # the blade
+				draw_line(Vector2(-6.0 * s - 2.0, 6.0 - 2.0 * s), Vector2(-6.0 * s + 2.0, 6.0 + 2.0 * s), _t(GOLD), 2.0)  # the crossguard
+			draw_circle(Vector2.ZERO, 1.6, _t(Color("e0604c")))
 		"start":
 			draw_arc(Vector2.ZERO, 11.0, 0.0, TAU, 32, _t(GOLD), 2.0)
 			draw_colored_polygon(PackedVector2Array([Vector2(-4, -6.5), Vector2(7, 0), Vector2(-4, 6.5)]), _t(CREAM))

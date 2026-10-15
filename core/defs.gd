@@ -23,13 +23,32 @@ const SOLDIER_TRAIN_TIME := 12.0
 const SPEARMAN_COST := [20, 30, 0, 0]
 const SLINGER_COST := [0, 20, 10, 0]
 const HORSEMAN_COST := [0, 70, 0, 40]
+# Fighting stats. `attack` is damage per blow and `cooldown` the seconds between blows; `range` is how far a
+# ranged fighter shoots, in tiles (0 for a melee fighter, who must be at arm's length); `armor` is the share of
+# a blow turned aside, [by melee blows, by shot]; `bonus` multiplies the damage dealt to a kind of unit. The
+# four kinds of fighting man run in a circle, as in the old rock-paper-scissors games, each with a reason:
+#   spearmen stop horsemen (a wall of spear points; horses won't charge it)  ->
+#   horsemen ride down slingers (skirmishers with no armor and no spear)  ->
+#   slingers wear down heavy infantry from out of reach (lead shot dents bronze, and they are not caught)  ->
+#   heavy infantry crush spearmen (better armor and a sword once the spears are past)  ->  spearmen
+# Villagers have no attack and are easy prey; horsemen and heavy infantry are especially good at cutting them down.
 const UNITS := {
-	"villager": {"name": "Colonus", "english": "Villager", "cost": VILLAGER_COST, "time": VILLAGER_TRAIN_TIME},
-	"soldier": {"name": "Miles Gravis", "english": "Heavy Infantry", "cost": SOLDIER_COST, "time": SOLDIER_TRAIN_TIME},
-	"spearman": {"name": "Pedes", "english": "Spearman", "cost": SPEARMAN_COST, "time": SOLDIER_TRAIN_TIME},
-	"slinger": {"name": "Funditor", "english": "Slinger", "cost": SLINGER_COST, "time": SOLDIER_TRAIN_TIME},
-	"horseman": {"name": "Eques", "english": "Horseman", "cost": HORSEMAN_COST, "time": 16.0},
+	"villager": {"name": "Colonus", "english": "Villager", "cost": VILLAGER_COST, "time": VILLAGER_TRAIN_TIME,
+		"hp": 25, "attack": 0.0, "cooldown": 1.0, "range": 0.0, "armor": [0.0, 0.0], "bonus": {}, "speed": 1.0},
+	"soldier": {"name": "Miles Gravis", "english": "Heavy Infantry", "cost": SOLDIER_COST, "time": SOLDIER_TRAIN_TIME,
+		"hp": 80, "attack": 9.0, "cooldown": 1.1, "range": 0.0, "armor": [0.30, 0.10], "bonus": {"villager": 1.5, "spearman": 1.4}, "speed": 0.8,
+		"about": "Armored and sturdy. Crushes spearmen and villagers, but slingers wear it down from afar."},
+	"spearman": {"name": "Pedes", "english": "Spearman", "cost": SPEARMAN_COST, "time": SOLDIER_TRAIN_TIME,
+		"hp": 55, "attack": 7.0, "cooldown": 1.0, "range": 0.0, "armor": [0.15, 0.15], "bonus": {"horseman": 2.4},
+		"about": "A wall of spear points that stops cavalry. Weak against heavy infantry."},
+	"slinger": {"name": "Funditor", "english": "Slinger", "cost": SLINGER_COST, "time": SOLDIER_TRAIN_TIME,
+		"hp": 35, "attack": 6.0, "cooldown": 1.4, "range": 7.0, "armor": [0.0, 0.0], "bonus": {"soldier": 2.5}, "speed": 1.1,
+		"about": "Hurls lead shot from a distance, wearing down heavy infantry. Helpless once horsemen close in."},
+	"horseman": {"name": "Eques", "english": "Horseman", "cost": HORSEMAN_COST, "time": 16.0,
+		"hp": 70, "attack": 8.0, "cooldown": 1.0, "range": 0.0, "armor": [0.10, 0.15], "bonus": {"slinger": 2.0, "villager": 1.5},
+		"about": "Fast. Rides down slingers and villagers. Spearmen are its death."},
 }
+const MELEE_REACH := 0.9  # tiles between centers for a melee blow (a horseman reaches a little farther)
 
 # Paved Roman road ("via"): cost per tile and the time one villager needs to lay a tile.
 const ROAD_COST := [0, 0, 2, 0]
@@ -94,7 +113,7 @@ const ROAD_ERA := 1  # paved roads are Era II (the Via Appia dates from 312 BC)
 const BUILDINGS := {
 	"town_center": {
 		"name": "Forum", "acc": "Forum", "english": "Town Center", "done": "perfectum est", "ready": "Paratum",
-		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": "villager",
+		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": ["villager"],
 		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3], "pop": 10,
 		"early": {"name": "Casa Romuli", "acc": "Casam Romuli", "english": "Hut of Romulus", "look": "regia", "done": "perfecta est", "ready": "Parata"},
 	},
@@ -137,14 +156,14 @@ const BUILDINGS := {
 	},
 	"castra": {
 		"name": "Castra", "acc": "Castra", "english": "Barracks", "done": "perfecta sunt", "ready": "Parata",
-		"size": Vector2i(3, 3), "cost": [100, 0, 50, 0], "trains": "soldier",
+		"size": Vector2i(3, 3), "cost": [100, 0, 50, 0], "trains": ["soldier", "spearman", "slinger"],
 		"build_time": 35.0, "sight": 8.0, "accepts": [], "pop": 0,
 		# in the Kingdom the soldiers' base was the stockaded hilltop fortress
 		"early": {"name": "Arx", "acc": "Arcem", "english": "Citadel (Barracks)", "look": "arx", "done": "perfecta est", "ready": "Parata"},
 	},
 	"stabulum": {
 		"name": "Stabulum", "acc": "Stabulum", "english": "Stable", "done": "perfectum est", "ready": "Paratum",
-		"size": Vector2i(3, 3), "cost": [100, 0, 0, 0], "trains": "horseman",  # the Celeres, the wealthy citizens' horsemen
+		"size": Vector2i(3, 3), "cost": [100, 0, 0, 0], "trains": ["horseman"],  # the Celeres, the wealthy citizens' horsemen
 		"build_time": 30.0, "sight": 6.0, "accepts": [], "pop": 0,
 	},
 	"circus": {

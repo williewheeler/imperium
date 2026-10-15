@@ -65,6 +65,16 @@ their owner: purple for you, a different color for another player.
 
 ![Horsemen, spearmen and slingers beside the Casa Romuli in the snow](docs/screenshots/troops.png)
 
+**Combat.** Fighting men fight each other and the computer-run peoples, who raise armies and send them
+against you. The four kinds run in a circle: spearmen stop horsemen, horsemen ride down slingers,
+slingers wear down heavy infantry from out of reach, and heavy infantry crush spearmen. Right-click an
+enemy to attack it; after a kill a fighter goes after the next enemy nearby. A plain move order ignores
+the enemy, so you can pull units back, and **A** then a click sends them attack-moving. Slingers shoot
+from a distance, there are attack animations and health bars, and villagers run for the town when hurt.
+Buildings cannot be attacked yet.
+
+![A skirmish: slingers whirling their slings, horsemen charging with lances, health bars over the wounded](docs/screenshots/combat.png)
+
 **The flight from Troy.** The game opens on a slowly rising Latin scroll, with the English beneath
 each verse, over the burning city: Aeneas, the voyage, and the voice at the mouth of the Tiber.
 

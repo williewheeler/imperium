@@ -30,6 +30,9 @@ const VILLAGER_FRAMES := {"idle": 2, "walk": 6, "chop": 6, "mine": 6, "forage": 
 ## The fighting units, and how many different looks each has. Early Roman soldiers armed
 ## themselves and wore no uniform, so no two neighbors need look alike: tunic color and how
 ## much armor they could afford vary from look to look.
+## Frames in a fighting man's attack: wind-up, the blow, the follow-through and recovery. (Only the fighting men have
+## this animation; the picture is wider to leave room for the weapon reaching out.)
+const ATTACK_FRAMES := 4
 const UNIT_LOOKS := {"soldier": 3, "spearman": 3, "slinger": 3, "horseman": 3}
 const HORSE_FEET := Vector2(18, 31)
 ## Where the villager's feet are inside each villager image (for anchoring).
@@ -556,7 +559,7 @@ static func _swing(phase: float, raised: float, strike: float) -> float:
 ## One frame of a Roman villager in a red tunic. `back` shows them from behind (walking away
 ## from the camera). They always face to the right; the game mirrors the sprite for left.
 static func _villager(anim: String, back: bool, frame: int, kit := "", look := 0) -> Image:
-	var n: int = VILLAGER_FRAMES[anim]
+	var n: int = VILLAGER_FRAMES.get(anim, ATTACK_FRAMES)
 	var ph := float(frame) / n
 	var pose := {"bob": 0, "foot_f": Vector2i(2, 0), "foot_b": Vector2i(-2, 0), "hand_f": Vector2i(1, 4), "hand_b": Vector2i(-1, 4), "tool": "", "angle": 0.0, "lean": 0}
 	match anim:
@@ -584,6 +587,18 @@ static func _villager(anim: String, back: bool, frame: int, kit := "", look := 0
 		"till":
 			pose.tool = "hoe"
 			pose.angle = _swing(ph, -PI / 2.0 - 0.3, 1.0)
+		"attack":
+			pose.foot_f = Vector2i(3, 0)
+			pose.foot_b = Vector2i(-3, 0)
+			if kit == "slinger":  # whirling the sling overhead, then letting go
+				pose.hand_f = [Vector2i(1, -6), Vector2i(1, -7), Vector2i(1, -6), Vector2i(5, 0)][frame]
+				pose.hand_b = Vector2i(-2, 3)
+				pose.lean = [0, 0, 1, 2][frame]
+			else:  # a spear thrust: pulled back, driven forward, held, drawn back
+				pose.hand_f = [Vector2i(-1, 2), Vector2i(4, 2), Vector2i(6, 3), Vector2i(2, 3)][frame]
+				pose.hand_b = Vector2i(-2, 3)
+				pose.lean = [0, 1, 2, 1][frame]
+				pose.foot_f = Vector2i(4, 0) if frame == 2 else Vector2i(3, 0)
 		"forage":
 			var d := sin(ph * TAU)
 			pose.lean = 1 if frame % 2 == 0 else 2
@@ -595,7 +610,7 @@ static func _villager(anim: String, back: bool, frame: int, kit := "", look := 0
 		pose.hand_b = Vector2i(roundi(v.x) - 1, roundi(v.y) + 1)
 		pose.foot_f = Vector2i(2, 0)
 		pose.foot_b = Vector2i(-2, 0)
-	var img := Pixel.blank(20, 22)
+	var img := Pixel.blank(28 if anim == "attack" else 20, 22)  # wider for an attack: the weapon reaches out
 	var fx := 10
 	var fy := 19
 	var bob: int = pose.bob
@@ -670,7 +685,7 @@ static func _villager(anim: String, back: bool, frame: int, kit := "", look := 0
 				Pixel.line(img, Vector2i(tip), Vector2i(tip + perp * 2.5 + dir * 1.0), ROCK[2])
 				Pixel.put(img, int(tip.x + perp.x * 2.5 + dir.x * 1.0), int(tip.y + perp.y * 2.5 + dir.y * 1.0), ROCK[1])
 	if kit in ["soldier", "spearman", "slinger"]:
-		_infantry_gear(img, kit, look, fx, hx, hy, sh_y, hand, bob, back)
+		_infantry_gear(img, kit, look, fx, hx, hy, sh_y, hand, bob, back, anim, frame)
 	return Pixel.outlined(img, OUT_VILLAGER)
 
 
@@ -835,12 +850,12 @@ static func villager_rows() -> Array:
 ## Fighting men get their own sheet (the horses make its cells bigger than the villagers').
 static func military_rows() -> Array:
 	var rows := []
-	for kind: String in UNIT_LOOKS:  # fighting men only stand and march
+	for kind: String in UNIT_LOOKS:  # fighting men stand, march and strike
 		for look in UNIT_LOOKS[kind]:
-			for anim in ["idle", "walk"]:
+			for anim in ["idle", "walk", "attack"]:
 				for dir in ["f", "b"]:
 					var row: Array[String] = []
-					for i in VILLAGER_FRAMES[anim]:
+					for i in VILLAGER_FRAMES.get(anim, ATTACK_FRAMES):
 						row.append("%s:%s:%s:%d%s" % [kind, anim, dir, i, ":%d" % look if look > 0 else ""])
 					rows.append(row)
 	return rows
@@ -1276,7 +1291,7 @@ static func _cloth(kit: String, look: int) -> Array:
 ## - soldier (a rich citizen): bronze helmet, breastplate (look 2 has only the helmet), round shield, spear
 ## - spearman (a middling farmer): a wooden shield and a spear, no armor
 ## - slinger (the poorest): a sling in the hand and a pouch of stones at the belt
-static func _infantry_gear(img: Image, kit: String, look: int, fx: int, hx: int, hy: int, sh_y: int, hand: Vector2i, bob: int, back: bool) -> void:
+static func _infantry_gear(img: Image, kit: String, look: int, fx: int, hx: int, hy: int, sh_y: int, hand: Vector2i, bob: int, back: bool, anim := "", frame := 0) -> void:
 	match kit:
 		"soldier":
 			if look != 2:
@@ -1292,7 +1307,10 @@ static func _infantry_gear(img: Image, kit: String, look: int, fx: int, hx: int,
 			if back:  # the back of the head under the helmet
 				Pixel.rect(img, hx - 1, hy + 2, 3, 1, BRONZE[2])
 			_round_shield(img, fx - 3.5, sh_y + 4.0, TEAM_KEY[1], [Color("b0382e"), Color("e8e0c8"), Color("3f5a86")][look % 3], BRONZE[0])
-			_spear(img, hand, hy, ROCK)
+			if anim == "attack":
+				_spear_thrust(img, hand, ROCK)
+			else:
+				_spear(img, hand, hy, ROCK)
 		"spearman":
 			if look == 1:  # a leather cap
 				Pixel.rect(img, hx - 1, hy - 1, 3, 2, WOOD[1])
@@ -1300,13 +1318,19 @@ static func _infantry_gear(img: Image, kit: String, look: int, fx: int, hx: int,
 			elif look == 2:  # a plain headband
 				Pixel.rect(img, hx - 1, hy, 3, 1, LINEN[0])
 			_round_shield(img, fx - 3.5, sh_y + 4.0, TEAM_KEY[1], [WOOD[0], Color("b0382e"), Color("5a78a8")][look % 3], WOOD[1])
-			_spear(img, hand, hy, WOOD)
+			if anim == "attack":
+				_spear_thrust(img, hand, WOOD)
+			else:
+				_spear(img, hand, hy, WOOD)
 		"slinger":
 			Pixel.rect(img, hx - 1, hy, 3, 1, TEAM_KEY[1])  # a headband in the owner's color
 			Pixel.rect(img, fx + 2, sh_y + 6, 3, 3, WOOD[1])  # the pouch of stones at the hip
 			Pixel.put(img, fx + 3, sh_y + 6, ROCK[1])
-			Pixel.line(img, Vector2i(hand.x + fx + 2, hand.y + sh_y), Vector2i(hand.x + fx + 2, hand.y + sh_y + 4), WOOD[0])  # the sling hanging from the hand
-			Pixel.put(img, hand.x + fx + 2, hand.y + sh_y + 4, ROCK[2])
+			if anim == "attack":
+				_sling_whirl(img, hand, frame)
+			else:
+				Pixel.line(img, Vector2i(hand.x + fx + 2, hand.y + sh_y), Vector2i(hand.x + fx + 2, hand.y + sh_y + 4), WOOD[0])  # the sling hanging from the hand
+				Pixel.put(img, hand.x + fx + 2, hand.y + sh_y + 4, ROCK[2])
 
 
 ## A round shield seen face-on: rim color, painted face color and a bright boss.
@@ -1324,6 +1348,29 @@ static func _pennon(img: Image, x: int, y: int) -> void:
 	Pixel.rect(img, x + 1, y, 3, 2, TEAM_KEY[1])
 	Pixel.put(img, x + 1, y, TEAM_KEY[0])
 	Pixel.put(img, x + 4, y + 1, TEAM_KEY[2])
+
+
+## A spear held level in the front hand, point forward (to the right), for the thrust.
+static func _spear_thrust(img: Image, hand: Vector2i, head: Array) -> void:
+	var tail := Vector2i(hand.x - 5, hand.y + 1)
+	var tip := Vector2i(hand.x + 7, hand.y - 1)
+	Pixel.line(img, tail, tip, WOOD[1])
+	Pixel.put(img, tip.x + 1, tip.y, head[0])
+	Pixel.put(img, tip.x + 2, tip.y, head[1])
+	_pennon(img, hand.x + 2, hand.y - 3)
+
+
+## The sling in the air: the cord from the hand round to the stone (frames 0 to 2 whirl it overhead), and
+## after the release (frame 3) a slack cord trailing behind the throwing arm.
+static func _sling_whirl(img: Image, hand: Vector2i, frame: int) -> void:
+	if frame >= 3:
+		Pixel.line(img, hand, Vector2i(hand.x - 4, hand.y + 3), WOOD[0])
+		return
+	var angle: float = [3.67, 5.2, 0.5][frame]  # where the stone is on its circle (radians)
+	var stone := Vector2(hand) + Vector2.from_angle(angle) * 5.0
+	Pixel.line(img, hand, Vector2i(stone), WOOD[0])
+	Pixel.put(img, int(stone.x), int(stone.y), ROCK[2])
+	Pixel.put(img, int(stone.x) + 1, int(stone.y), ROCK[1])
 
 
 ## A spear held upright in the front hand.
@@ -1347,9 +1394,10 @@ const HORSE_COATS := [
 static func _horseman(anim: String, frame: int, look: int) -> Image:
 	var coat: Array = HORSE_COATS[look % 3]
 	var mane := WOOD[2] if look != 2 else Color("6a6458")
-	var img := Pixel.blank(36, 34)
-	var walking := anim == "walk"
-	var ph := float(frame) / VILLAGER_FRAMES["walk"] if walking else 0.0
+	var attacking := anim == "attack"
+	var img := Pixel.blank(50 if attacking else 36, 34)  # wider for a charge: the lance reaches out in front
+	var walking := anim == "walk" or attacking  # a charge is a gallop, so the legs run
+	var ph := float(frame) / (ATTACK_FRAMES if attacking else VILLAGER_FRAMES["walk"]) if walking else 0.0
 	var bob := (-1 if frame % 2 == 1 else 0) if not walking else (-1 if absf(sin(ph * TAU * 2.0)) < 0.4 else 0)
 	var cx := 18.0
 	var cy := 20.0 + bob
@@ -1396,10 +1444,19 @@ static func _horseman(anim: String, frame: int, look: int) -> Image:
 	_round_shield(img, rx - 4.0, ry, TEAM_KEY[1], [Color("b0382e"), Color("e8e0c8"), Color("3f5a86")][look % 3], BRONZE[0])
 	Pixel.rect(img, rx - 4, int(cy) - 6, 9, 3, TEAM_KEY[1])  # a saddle blanket in the owner's color
 	Pixel.rect(img, rx - 4, int(cy) - 6, 9, 1, TEAM_KEY[0])
-	Pixel.line(img, Vector2i(rx + 3, ry + 4), Vector2i(rx + 3, ry - 22), WOOD[1])  # a long spear
-	_pennon(img, rx + 3, ry - 21)
-	Pixel.put(img, rx + 3, ry - 23, ROCK[0])
-	Pixel.put(img, rx + 3, ry - 24, ROCK[1])
+	if attacking:  # the lance comes down from upright to level, is driven home, and rises again
+		var dir := Vector2.from_angle([-1.35, -0.7, -0.05, -0.6][frame])
+		var grip := Vector2(rx + 3, ry + 1)
+		var tip := grip + dir * 20.0
+		Pixel.line(img, Vector2i(grip - dir * 4.0), Vector2i(tip), WOOD[1])
+		_pennon(img, int(grip.x + dir.x * 14.0), int(grip.y + dir.y * 14.0) - 1)
+		Pixel.put(img, int(tip.x + dir.x), int(tip.y + dir.y), ROCK[0])
+		Pixel.put(img, int(tip.x + dir.x * 2.0), int(tip.y + dir.y * 2.0), ROCK[1])
+	else:
+		Pixel.line(img, Vector2i(rx + 3, ry + 4), Vector2i(rx + 3, ry - 22), WOOD[1])  # a long spear
+		_pennon(img, rx + 3, ry - 21)
+		Pixel.put(img, rx + 3, ry - 23, ROCK[0])
+		Pixel.put(img, rx + 3, ry - 24, ROCK[1])
 	return Pixel.outlined(img, OUT_VILLAGER)
 
 

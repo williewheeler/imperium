@@ -59,7 +59,7 @@
 		},
 		"troops.png": {
 			"cell": [
-				38,
+				52,
 				36
 			],
 			"rows": [
@@ -88,6 +88,18 @@
 					"soldier:walk:b:5"
 				],
 				[
+					"soldier:attack:f:0",
+					"soldier:attack:f:1",
+					"soldier:attack:f:2",
+					"soldier:attack:f:3"
+				],
+				[
+					"soldier:attack:b:0",
+					"soldier:attack:b:1",
+					"soldier:attack:b:2",
+					"soldier:attack:b:3"
+				],
+				[
 					"soldier:idle:f:0:1",
 					"soldier:idle:f:1:1"
 				],
@@ -110,6 +122,18 @@
 					"soldier:walk:b:3:1",
 					"soldier:walk:b:4:1",
 					"soldier:walk:b:5:1"
+				],
+				[
+					"soldier:attack:f:0:1",
+					"soldier:attack:f:1:1",
+					"soldier:attack:f:2:1",
+					"soldier:attack:f:3:1"
+				],
+				[
+					"soldier:attack:b:0:1",
+					"soldier:attack:b:1:1",
+					"soldier:attack:b:2:1",
+					"soldier:attack:b:3:1"
 				],
 				[
 					"soldier:idle:f:0:2",
@@ -136,6 +160,18 @@
 					"soldier:walk:b:5:2"
 				],
 				[
+					"soldier:attack:f:0:2",
+					"soldier:attack:f:1:2",
+					"soldier:attack:f:2:2",
+					"soldier:attack:f:3:2"
+				],
+				[
+					"soldier:attack:b:0:2",
+					"soldier:attack:b:1:2",
+					"soldier:attack:b:2:2",
+					"soldier:attack:b:3:2"
+				],
+				[
 					"spearman:idle:f:0",
 					"spearman:idle:f:1"
 				],
@@ -158,6 +194,18 @@
 					"spearman:walk:b:3",
 					"spearman:walk:b:4",
 					"spearman:walk:b:5"
+				],
+				[
+					"spearman:attack:f:0",
+					"spearman:attack:f:1",
+					"spearman:attack:f:2",
+					"spearman:attack:f:3"
+				],
+				[
+					"spearman:attack:b:0",
+					"spearman:attack:b:1",
+					"spearman:attack:b:2",
+					"spearman:attack:b:3"
 				],
 				[
 					"spearman:idle:f:0:1",
@@ -184,6 +232,18 @@
 					"spearman:walk:b:5:1"
 				],
 				[
+					"spearman:attack:f:0:1",
+					"spearman:attack:f:1:1",
+					"spearman:attack:f:2:1",
+					"spearman:attack:f:3:1"
+				],
+				[
+					"spearman:attack:b:0:1",
+					"spearman:attack:b:1:1",
+					"spearman:attack:b:2:1",
+					"spearman:attack:b:3:1"
+				],
+				[
 					"spearman:idle:f:0:2",
 					"spearman:idle:f:1:2"
 				],
@@ -206,6 +266,18 @@
 					"spearman:walk:b:3:2",
 					"spearman:walk:b:4:2",
 					"spearman:walk:b:5:2"
+				],
+				[
+					"spearman:attack:f:0:2",
+					"spearman:attack:f:1:2",
+					"spearman:attack:f:2:2",
+					"spearman:attack:f:3:2"
+				],
+				[
+					"spearman:attack:b:0:2",
+					"spearman:attack:b:1:2",
+					"spearman:attack:b:2:2",
+					"spearman:attack:b:3:2"
 				],
 				[
 					"slinger:idle:f:0",
@@ -232,6 +304,18 @@
 					"slinger:walk:b:5"
 				],
 				[
+					"slinger:attack:f:0",
+					"slinger:attack:f:1",
+					"slinger:attack:f:2",
+					"slinger:attack:f:3"
+				],
+				[
+					"slinger:attack:b:0",
+					"slinger:attack:b:1",
+					"slinger:attack:b:2",
+					"slinger:attack:b:3"
+				],
+				[
 					"slinger:idle:f:0:1",
 					"slinger:idle:f:1:1"
 				],
@@ -254,6 +338,18 @@
 					"slinger:walk:b:3:1",
 					"slinger:walk:b:4:1",
 					"slinger:walk:b:5:1"
+				],
+				[
+					"slinger:attack:f:0:1",
+					"slinger:attack:f:1:1",
+					"slinger:attack:f:2:1",
+					"slinger:attack:f:3:1"
+				],
+				[
+					"slinger:attack:b:0:1",
+					"slinger:attack:b:1:1",
+					"slinger:attack:b:2:1",
+					"slinger:attack:b:3:1"
 				],
 				[
 					"slinger:idle:f:0:2",
@@ -280,6 +376,18 @@
 					"slinger:walk:b:5:2"
 				],
 				[
+					"slinger:attack:f:0:2",
+					"slinger:attack:f:1:2",
+					"slinger:attack:f:2:2",
+					"slinger:attack:f:3:2"
+				],
+				[
+					"slinger:attack:b:0:2",
+					"slinger:attack:b:1:2",
+					"slinger:attack:b:2:2",
+					"slinger:attack:b:3:2"
+				],
+				[
 					"horseman:idle:f:0",
 					"horseman:idle:f:1"
 				],
@@ -302,6 +410,18 @@
 					"horseman:walk:b:3",
 					"horseman:walk:b:4",
 					"horseman:walk:b:5"
+				],
+				[
+					"horseman:attack:f:0",
+					"horseman:attack:f:1",
+					"horseman:attack:f:2",
+					"horseman:attack:f:3"
+				],
+				[
+					"horseman:attack:b:0",
+					"horseman:attack:b:1",
+					"horseman:attack:b:2",
+					"horseman:attack:b:3"
 				],
 				[
 					"horseman:idle:f:0:1",
@@ -328,6 +448,18 @@
 					"horseman:walk:b:5:1"
 				],
 				[
+					"horseman:attack:f:0:1",
+					"horseman:attack:f:1:1",
+					"horseman:attack:f:2:1",
+					"horseman:attack:f:3:1"
+				],
+				[
+					"horseman:attack:b:0:1",
+					"horseman:attack:b:1:1",
+					"horseman:attack:b:2:1",
+					"horseman:attack:b:3:1"
+				],
+				[
 					"horseman:idle:f:0:2",
 					"horseman:idle:f:1:2"
 				],
@@ -350,6 +482,18 @@
 					"horseman:walk:b:3:2",
 					"horseman:walk:b:4:2",
 					"horseman:walk:b:5:2"
+				],
+				[
+					"horseman:attack:f:0:2",
+					"horseman:attack:f:1:2",
+					"horseman:attack:f:2:2",
+					"horseman:attack:f:3:2"
+				],
+				[
+					"horseman:attack:b:0:2",
+					"horseman:attack:b:1:2",
+					"horseman:attack:b:2:2",
+					"horseman:attack:b:3:2"
 				]
 			]
 		},
@@ -927,339 +1071,507 @@
 			32,
 			25
 		],
-		"horseman:idle:b:0": [
+		"horseman:attack:b:0": [
 			"troops.png",
 			0,
-			1332,
+			2124,
+			52,
+			36
+		],
+		"horseman:attack:b:0:1": [
+			"troops.png",
+			0,
+			2340,
+			52,
+			36
+		],
+		"horseman:attack:b:0:2": [
+			"troops.png",
+			0,
+			2556,
+			52,
+			36
+		],
+		"horseman:attack:b:1": [
+			"troops.png",
+			52,
+			2124,
+			52,
+			36
+		],
+		"horseman:attack:b:1:1": [
+			"troops.png",
+			52,
+			2340,
+			52,
+			36
+		],
+		"horseman:attack:b:1:2": [
+			"troops.png",
+			52,
+			2556,
+			52,
+			36
+		],
+		"horseman:attack:b:2": [
+			"troops.png",
+			104,
+			2124,
+			52,
+			36
+		],
+		"horseman:attack:b:2:1": [
+			"troops.png",
+			104,
+			2340,
+			52,
+			36
+		],
+		"horseman:attack:b:2:2": [
+			"troops.png",
+			104,
+			2556,
+			52,
+			36
+		],
+		"horseman:attack:b:3": [
+			"troops.png",
+			156,
+			2124,
+			52,
+			36
+		],
+		"horseman:attack:b:3:1": [
+			"troops.png",
+			156,
+			2340,
+			52,
+			36
+		],
+		"horseman:attack:b:3:2": [
+			"troops.png",
+			156,
+			2556,
+			52,
+			36
+		],
+		"horseman:attack:f:0": [
+			"troops.png",
+			0,
+			2088,
+			52,
+			36
+		],
+		"horseman:attack:f:0:1": [
+			"troops.png",
+			0,
+			2304,
+			52,
+			36
+		],
+		"horseman:attack:f:0:2": [
+			"troops.png",
+			0,
+			2520,
+			52,
+			36
+		],
+		"horseman:attack:f:1": [
+			"troops.png",
+			52,
+			2088,
+			52,
+			36
+		],
+		"horseman:attack:f:1:1": [
+			"troops.png",
+			52,
+			2304,
+			52,
+			36
+		],
+		"horseman:attack:f:1:2": [
+			"troops.png",
+			52,
+			2520,
+			52,
+			36
+		],
+		"horseman:attack:f:2": [
+			"troops.png",
+			104,
+			2088,
+			52,
+			36
+		],
+		"horseman:attack:f:2:1": [
+			"troops.png",
+			104,
+			2304,
+			52,
+			36
+		],
+		"horseman:attack:f:2:2": [
+			"troops.png",
+			104,
+			2520,
+			52,
+			36
+		],
+		"horseman:attack:f:3": [
+			"troops.png",
+			156,
+			2088,
+			52,
+			36
+		],
+		"horseman:attack:f:3:1": [
+			"troops.png",
+			156,
+			2304,
+			52,
+			36
+		],
+		"horseman:attack:f:3:2": [
+			"troops.png",
+			156,
+			2520,
+			52,
+			36
+		],
+		"horseman:idle:b:0": [
+			"troops.png",
+			7,
+			1980,
 			38,
 			36
 		],
 		"horseman:idle:b:0:1": [
 			"troops.png",
-			0,
-			1476,
+			7,
+			2196,
 			38,
 			36
 		],
 		"horseman:idle:b:0:2": [
 			"troops.png",
-			0,
-			1620,
+			7,
+			2412,
 			38,
 			36
 		],
 		"horseman:idle:b:1": [
 			"troops.png",
-			38,
-			1332,
+			59,
+			1980,
 			38,
 			36
 		],
 		"horseman:idle:b:1:1": [
 			"troops.png",
-			38,
-			1476,
+			59,
+			2196,
 			38,
 			36
 		],
 		"horseman:idle:b:1:2": [
 			"troops.png",
-			38,
-			1620,
+			59,
+			2412,
 			38,
 			36
 		],
 		"horseman:idle:f:0": [
 			"troops.png",
-			0,
-			1296,
+			7,
+			1944,
 			38,
 			36
 		],
 		"horseman:idle:f:0:1": [
 			"troops.png",
-			0,
-			1440,
+			7,
+			2160,
 			38,
 			36
 		],
 		"horseman:idle:f:0:2": [
 			"troops.png",
-			0,
-			1584,
+			7,
+			2376,
 			38,
 			36
 		],
 		"horseman:idle:f:1": [
 			"troops.png",
-			38,
-			1296,
+			59,
+			1944,
 			38,
 			36
 		],
 		"horseman:idle:f:1:1": [
 			"troops.png",
-			38,
-			1440,
+			59,
+			2160,
 			38,
 			36
 		],
 		"horseman:idle:f:1:2": [
 			"troops.png",
-			38,
-			1584,
+			59,
+			2376,
 			38,
 			36
 		],
 		"horseman:walk:b:0": [
 			"troops.png",
-			0,
-			1404,
+			7,
+			2052,
 			38,
 			36
 		],
 		"horseman:walk:b:0:1": [
 			"troops.png",
-			0,
-			1548,
+			7,
+			2268,
 			38,
 			36
 		],
 		"horseman:walk:b:0:2": [
 			"troops.png",
-			0,
-			1692,
+			7,
+			2484,
 			38,
 			36
 		],
 		"horseman:walk:b:1": [
 			"troops.png",
-			38,
-			1404,
+			59,
+			2052,
 			38,
 			36
 		],
 		"horseman:walk:b:1:1": [
 			"troops.png",
-			38,
-			1548,
+			59,
+			2268,
 			38,
 			36
 		],
 		"horseman:walk:b:1:2": [
 			"troops.png",
-			38,
-			1692,
+			59,
+			2484,
 			38,
 			36
 		],
 		"horseman:walk:b:2": [
 			"troops.png",
-			76,
-			1404,
+			111,
+			2052,
 			38,
 			36
 		],
 		"horseman:walk:b:2:1": [
 			"troops.png",
-			76,
-			1548,
+			111,
+			2268,
 			38,
 			36
 		],
 		"horseman:walk:b:2:2": [
 			"troops.png",
-			76,
-			1692,
+			111,
+			2484,
 			38,
 			36
 		],
 		"horseman:walk:b:3": [
 			"troops.png",
-			114,
-			1404,
+			163,
+			2052,
 			38,
 			36
 		],
 		"horseman:walk:b:3:1": [
 			"troops.png",
-			114,
-			1548,
+			163,
+			2268,
 			38,
 			36
 		],
 		"horseman:walk:b:3:2": [
 			"troops.png",
-			114,
-			1692,
+			163,
+			2484,
 			38,
 			36
 		],
 		"horseman:walk:b:4": [
 			"troops.png",
-			152,
-			1404,
+			215,
+			2052,
 			38,
 			36
 		],
 		"horseman:walk:b:4:1": [
 			"troops.png",
-			152,
-			1548,
+			215,
+			2268,
 			38,
 			36
 		],
 		"horseman:walk:b:4:2": [
 			"troops.png",
-			152,
-			1692,
+			215,
+			2484,
 			38,
 			36
 		],
 		"horseman:walk:b:5": [
 			"troops.png",
-			190,
-			1404,
+			267,
+			2052,
 			38,
 			36
 		],
 		"horseman:walk:b:5:1": [
 			"troops.png",
-			190,
-			1548,
+			267,
+			2268,
 			38,
 			36
 		],
 		"horseman:walk:b:5:2": [
 			"troops.png",
-			190,
-			1692,
+			267,
+			2484,
 			38,
 			36
 		],
 		"horseman:walk:f:0": [
 			"troops.png",
-			0,
-			1368,
+			7,
+			2016,
 			38,
 			36
 		],
 		"horseman:walk:f:0:1": [
 			"troops.png",
-			0,
-			1512,
+			7,
+			2232,
 			38,
 			36
 		],
 		"horseman:walk:f:0:2": [
 			"troops.png",
-			0,
-			1656,
+			7,
+			2448,
 			38,
 			36
 		],
 		"horseman:walk:f:1": [
 			"troops.png",
-			38,
-			1368,
+			59,
+			2016,
 			38,
 			36
 		],
 		"horseman:walk:f:1:1": [
 			"troops.png",
-			38,
-			1512,
+			59,
+			2232,
 			38,
 			36
 		],
 		"horseman:walk:f:1:2": [
 			"troops.png",
-			38,
-			1656,
+			59,
+			2448,
 			38,
 			36
 		],
 		"horseman:walk:f:2": [
 			"troops.png",
-			76,
-			1368,
+			111,
+			2016,
 			38,
 			36
 		],
 		"horseman:walk:f:2:1": [
 			"troops.png",
-			76,
-			1512,
+			111,
+			2232,
 			38,
 			36
 		],
 		"horseman:walk:f:2:2": [
 			"troops.png",
-			76,
-			1656,
+			111,
+			2448,
 			38,
 			36
 		],
 		"horseman:walk:f:3": [
 			"troops.png",
-			114,
-			1368,
+			163,
+			2016,
 			38,
 			36
 		],
 		"horseman:walk:f:3:1": [
 			"troops.png",
-			114,
-			1512,
+			163,
+			2232,
 			38,
 			36
 		],
 		"horseman:walk:f:3:2": [
 			"troops.png",
-			114,
-			1656,
+			163,
+			2448,
 			38,
 			36
 		],
 		"horseman:walk:f:4": [
 			"troops.png",
-			152,
-			1368,
+			215,
+			2016,
 			38,
 			36
 		],
 		"horseman:walk:f:4:1": [
 			"troops.png",
-			152,
-			1512,
+			215,
+			2232,
 			38,
 			36
 		],
 		"horseman:walk:f:4:2": [
 			"troops.png",
-			152,
-			1656,
+			215,
+			2448,
 			38,
 			36
 		],
 		"horseman:walk:f:5": [
 			"troops.png",
-			190,
-			1368,
+			267,
+			2016,
 			38,
 			36
 		],
 		"horseman:walk:f:5:1": [
 			"troops.png",
-			190,
-			1512,
+			267,
+			2232,
 			38,
 			36
 		],
 		"horseman:walk:f:5:2": [
 			"troops.png",
-			190,
-			1656,
+			267,
+			2448,
 			38,
 			36
 		],
@@ -1564,339 +1876,507 @@
 			14,
 			10
 		],
+		"slinger:attack:b:0": [
+			"troops.png",
+			11,
+			1488,
+			30,
+			24
+		],
+		"slinger:attack:b:0:1": [
+			"troops.png",
+			11,
+			1704,
+			30,
+			24
+		],
+		"slinger:attack:b:0:2": [
+			"troops.png",
+			11,
+			1920,
+			30,
+			24
+		],
+		"slinger:attack:b:1": [
+			"troops.png",
+			63,
+			1488,
+			30,
+			24
+		],
+		"slinger:attack:b:1:1": [
+			"troops.png",
+			63,
+			1704,
+			30,
+			24
+		],
+		"slinger:attack:b:1:2": [
+			"troops.png",
+			63,
+			1920,
+			30,
+			24
+		],
+		"slinger:attack:b:2": [
+			"troops.png",
+			115,
+			1488,
+			30,
+			24
+		],
+		"slinger:attack:b:2:1": [
+			"troops.png",
+			115,
+			1704,
+			30,
+			24
+		],
+		"slinger:attack:b:2:2": [
+			"troops.png",
+			115,
+			1920,
+			30,
+			24
+		],
+		"slinger:attack:b:3": [
+			"troops.png",
+			167,
+			1488,
+			30,
+			24
+		],
+		"slinger:attack:b:3:1": [
+			"troops.png",
+			167,
+			1704,
+			30,
+			24
+		],
+		"slinger:attack:b:3:2": [
+			"troops.png",
+			167,
+			1920,
+			30,
+			24
+		],
+		"slinger:attack:f:0": [
+			"troops.png",
+			11,
+			1452,
+			30,
+			24
+		],
+		"slinger:attack:f:0:1": [
+			"troops.png",
+			11,
+			1668,
+			30,
+			24
+		],
+		"slinger:attack:f:0:2": [
+			"troops.png",
+			11,
+			1884,
+			30,
+			24
+		],
+		"slinger:attack:f:1": [
+			"troops.png",
+			63,
+			1452,
+			30,
+			24
+		],
+		"slinger:attack:f:1:1": [
+			"troops.png",
+			63,
+			1668,
+			30,
+			24
+		],
+		"slinger:attack:f:1:2": [
+			"troops.png",
+			63,
+			1884,
+			30,
+			24
+		],
+		"slinger:attack:f:2": [
+			"troops.png",
+			115,
+			1452,
+			30,
+			24
+		],
+		"slinger:attack:f:2:1": [
+			"troops.png",
+			115,
+			1668,
+			30,
+			24
+		],
+		"slinger:attack:f:2:2": [
+			"troops.png",
+			115,
+			1884,
+			30,
+			24
+		],
+		"slinger:attack:f:3": [
+			"troops.png",
+			167,
+			1452,
+			30,
+			24
+		],
+		"slinger:attack:f:3:1": [
+			"troops.png",
+			167,
+			1668,
+			30,
+			24
+		],
+		"slinger:attack:f:3:2": [
+			"troops.png",
+			167,
+			1884,
+			30,
+			24
+		],
 		"slinger:idle:b:0": [
 			"troops.png",
-			8,
-			912,
+			15,
+			1344,
 			22,
 			24
 		],
 		"slinger:idle:b:0:1": [
 			"troops.png",
-			8,
-			1056,
+			15,
+			1560,
 			22,
 			24
 		],
 		"slinger:idle:b:0:2": [
 			"troops.png",
-			8,
-			1200,
+			15,
+			1776,
 			22,
 			24
 		],
 		"slinger:idle:b:1": [
 			"troops.png",
-			46,
-			912,
+			67,
+			1344,
 			22,
 			24
 		],
 		"slinger:idle:b:1:1": [
 			"troops.png",
-			46,
-			1056,
+			67,
+			1560,
 			22,
 			24
 		],
 		"slinger:idle:b:1:2": [
 			"troops.png",
-			46,
-			1200,
+			67,
+			1776,
 			22,
 			24
 		],
 		"slinger:idle:f:0": [
 			"troops.png",
-			8,
-			876,
+			15,
+			1308,
 			22,
 			24
 		],
 		"slinger:idle:f:0:1": [
 			"troops.png",
-			8,
-			1020,
+			15,
+			1524,
 			22,
 			24
 		],
 		"slinger:idle:f:0:2": [
 			"troops.png",
-			8,
-			1164,
+			15,
+			1740,
 			22,
 			24
 		],
 		"slinger:idle:f:1": [
 			"troops.png",
-			46,
-			876,
+			67,
+			1308,
 			22,
 			24
 		],
 		"slinger:idle:f:1:1": [
 			"troops.png",
-			46,
-			1020,
+			67,
+			1524,
 			22,
 			24
 		],
 		"slinger:idle:f:1:2": [
 			"troops.png",
-			46,
-			1164,
+			67,
+			1740,
 			22,
 			24
 		],
 		"slinger:walk:b:0": [
 			"troops.png",
-			8,
-			984,
+			15,
+			1416,
 			22,
 			24
 		],
 		"slinger:walk:b:0:1": [
 			"troops.png",
-			8,
-			1128,
+			15,
+			1632,
 			22,
 			24
 		],
 		"slinger:walk:b:0:2": [
 			"troops.png",
-			8,
-			1272,
+			15,
+			1848,
 			22,
 			24
 		],
 		"slinger:walk:b:1": [
 			"troops.png",
-			46,
-			984,
+			67,
+			1416,
 			22,
 			24
 		],
 		"slinger:walk:b:1:1": [
 			"troops.png",
-			46,
-			1128,
+			67,
+			1632,
 			22,
 			24
 		],
 		"slinger:walk:b:1:2": [
 			"troops.png",
-			46,
-			1272,
+			67,
+			1848,
 			22,
 			24
 		],
 		"slinger:walk:b:2": [
 			"troops.png",
-			84,
-			984,
+			119,
+			1416,
 			22,
 			24
 		],
 		"slinger:walk:b:2:1": [
 			"troops.png",
-			84,
-			1128,
+			119,
+			1632,
 			22,
 			24
 		],
 		"slinger:walk:b:2:2": [
 			"troops.png",
-			84,
-			1272,
+			119,
+			1848,
 			22,
 			24
 		],
 		"slinger:walk:b:3": [
 			"troops.png",
-			122,
-			984,
+			171,
+			1416,
 			22,
 			24
 		],
 		"slinger:walk:b:3:1": [
 			"troops.png",
-			122,
-			1128,
+			171,
+			1632,
 			22,
 			24
 		],
 		"slinger:walk:b:3:2": [
 			"troops.png",
-			122,
-			1272,
+			171,
+			1848,
 			22,
 			24
 		],
 		"slinger:walk:b:4": [
 			"troops.png",
-			160,
-			984,
+			223,
+			1416,
 			22,
 			24
 		],
 		"slinger:walk:b:4:1": [
 			"troops.png",
-			160,
-			1128,
+			223,
+			1632,
 			22,
 			24
 		],
 		"slinger:walk:b:4:2": [
 			"troops.png",
-			160,
-			1272,
+			223,
+			1848,
 			22,
 			24
 		],
 		"slinger:walk:b:5": [
 			"troops.png",
-			198,
-			984,
+			275,
+			1416,
 			22,
 			24
 		],
 		"slinger:walk:b:5:1": [
 			"troops.png",
-			198,
-			1128,
+			275,
+			1632,
 			22,
 			24
 		],
 		"slinger:walk:b:5:2": [
 			"troops.png",
-			198,
-			1272,
+			275,
+			1848,
 			22,
 			24
 		],
 		"slinger:walk:f:0": [
 			"troops.png",
-			8,
-			948,
+			15,
+			1380,
 			22,
 			24
 		],
 		"slinger:walk:f:0:1": [
 			"troops.png",
-			8,
-			1092,
+			15,
+			1596,
 			22,
 			24
 		],
 		"slinger:walk:f:0:2": [
 			"troops.png",
-			8,
-			1236,
+			15,
+			1812,
 			22,
 			24
 		],
 		"slinger:walk:f:1": [
 			"troops.png",
-			46,
-			948,
+			67,
+			1380,
 			22,
 			24
 		],
 		"slinger:walk:f:1:1": [
 			"troops.png",
-			46,
-			1092,
+			67,
+			1596,
 			22,
 			24
 		],
 		"slinger:walk:f:1:2": [
 			"troops.png",
-			46,
-			1236,
+			67,
+			1812,
 			22,
 			24
 		],
 		"slinger:walk:f:2": [
 			"troops.png",
-			84,
-			948,
+			119,
+			1380,
 			22,
 			24
 		],
 		"slinger:walk:f:2:1": [
 			"troops.png",
-			84,
-			1092,
+			119,
+			1596,
 			22,
 			24
 		],
 		"slinger:walk:f:2:2": [
 			"troops.png",
-			84,
-			1236,
+			119,
+			1812,
 			22,
 			24
 		],
 		"slinger:walk:f:3": [
 			"troops.png",
-			122,
-			948,
+			171,
+			1380,
 			22,
 			24
 		],
 		"slinger:walk:f:3:1": [
 			"troops.png",
-			122,
-			1092,
+			171,
+			1596,
 			22,
 			24
 		],
 		"slinger:walk:f:3:2": [
 			"troops.png",
-			122,
-			1236,
+			171,
+			1812,
 			22,
 			24
 		],
 		"slinger:walk:f:4": [
 			"troops.png",
-			160,
-			948,
+			223,
+			1380,
 			22,
 			24
 		],
 		"slinger:walk:f:4:1": [
 			"troops.png",
-			160,
-			1092,
+			223,
+			1596,
 			22,
 			24
 		],
 		"slinger:walk:f:4:2": [
 			"troops.png",
-			160,
-			1236,
+			223,
+			1812,
 			22,
 			24
 		],
 		"slinger:walk:f:5": [
 			"troops.png",
-			198,
-			948,
+			275,
+			1380,
 			22,
 			24
 		],
 		"slinger:walk:f:5:1": [
 			"troops.png",
-			198,
-			1092,
+			275,
+			1596,
 			22,
 			24
 		],
 		"slinger:walk:f:5:2": [
 			"troops.png",
-			198,
-			1236,
+			275,
+			1812,
 			22,
 			24
 		],
@@ -1914,675 +2394,1011 @@
 			15,
 			24
 		],
+		"soldier:attack:b:0": [
+			"troops.png",
+			11,
+			192,
+			30,
+			24
+		],
+		"soldier:attack:b:0:1": [
+			"troops.png",
+			11,
+			408,
+			30,
+			24
+		],
+		"soldier:attack:b:0:2": [
+			"troops.png",
+			11,
+			624,
+			30,
+			24
+		],
+		"soldier:attack:b:1": [
+			"troops.png",
+			63,
+			192,
+			30,
+			24
+		],
+		"soldier:attack:b:1:1": [
+			"troops.png",
+			63,
+			408,
+			30,
+			24
+		],
+		"soldier:attack:b:1:2": [
+			"troops.png",
+			63,
+			624,
+			30,
+			24
+		],
+		"soldier:attack:b:2": [
+			"troops.png",
+			115,
+			192,
+			30,
+			24
+		],
+		"soldier:attack:b:2:1": [
+			"troops.png",
+			115,
+			408,
+			30,
+			24
+		],
+		"soldier:attack:b:2:2": [
+			"troops.png",
+			115,
+			624,
+			30,
+			24
+		],
+		"soldier:attack:b:3": [
+			"troops.png",
+			167,
+			192,
+			30,
+			24
+		],
+		"soldier:attack:b:3:1": [
+			"troops.png",
+			167,
+			408,
+			30,
+			24
+		],
+		"soldier:attack:b:3:2": [
+			"troops.png",
+			167,
+			624,
+			30,
+			24
+		],
+		"soldier:attack:f:0": [
+			"troops.png",
+			11,
+			156,
+			30,
+			24
+		],
+		"soldier:attack:f:0:1": [
+			"troops.png",
+			11,
+			372,
+			30,
+			24
+		],
+		"soldier:attack:f:0:2": [
+			"troops.png",
+			11,
+			588,
+			30,
+			24
+		],
+		"soldier:attack:f:1": [
+			"troops.png",
+			63,
+			156,
+			30,
+			24
+		],
+		"soldier:attack:f:1:1": [
+			"troops.png",
+			63,
+			372,
+			30,
+			24
+		],
+		"soldier:attack:f:1:2": [
+			"troops.png",
+			63,
+			588,
+			30,
+			24
+		],
+		"soldier:attack:f:2": [
+			"troops.png",
+			115,
+			156,
+			30,
+			24
+		],
+		"soldier:attack:f:2:1": [
+			"troops.png",
+			115,
+			372,
+			30,
+			24
+		],
+		"soldier:attack:f:2:2": [
+			"troops.png",
+			115,
+			588,
+			30,
+			24
+		],
+		"soldier:attack:f:3": [
+			"troops.png",
+			167,
+			156,
+			30,
+			24
+		],
+		"soldier:attack:f:3:1": [
+			"troops.png",
+			167,
+			372,
+			30,
+			24
+		],
+		"soldier:attack:f:3:2": [
+			"troops.png",
+			167,
+			588,
+			30,
+			24
+		],
 		"soldier:idle:b:0": [
 			"troops.png",
-			8,
+			15,
 			48,
 			22,
 			24
 		],
 		"soldier:idle:b:0:1": [
 			"troops.png",
-			8,
-			192,
+			15,
+			264,
 			22,
 			24
 		],
 		"soldier:idle:b:0:2": [
 			"troops.png",
-			8,
-			336,
+			15,
+			480,
 			22,
 			24
 		],
 		"soldier:idle:b:1": [
 			"troops.png",
-			46,
+			67,
 			48,
 			22,
 			24
 		],
 		"soldier:idle:b:1:1": [
 			"troops.png",
-			46,
-			192,
+			67,
+			264,
 			22,
 			24
 		],
 		"soldier:idle:b:1:2": [
 			"troops.png",
-			46,
-			336,
+			67,
+			480,
 			22,
 			24
 		],
 		"soldier:idle:f:0": [
 			"troops.png",
-			8,
+			15,
 			12,
 			22,
 			24
 		],
 		"soldier:idle:f:0:1": [
 			"troops.png",
-			8,
-			156,
+			15,
+			228,
 			22,
 			24
 		],
 		"soldier:idle:f:0:2": [
 			"troops.png",
-			8,
-			300,
+			15,
+			444,
 			22,
 			24
 		],
 		"soldier:idle:f:1": [
 			"troops.png",
-			46,
+			67,
 			12,
 			22,
 			24
 		],
 		"soldier:idle:f:1:1": [
 			"troops.png",
-			46,
-			156,
+			67,
+			228,
 			22,
 			24
 		],
 		"soldier:idle:f:1:2": [
 			"troops.png",
-			46,
-			300,
+			67,
+			444,
 			22,
 			24
 		],
 		"soldier:walk:b:0": [
 			"troops.png",
-			8,
+			15,
 			120,
 			22,
 			24
 		],
 		"soldier:walk:b:0:1": [
 			"troops.png",
-			8,
-			264,
+			15,
+			336,
 			22,
 			24
 		],
 		"soldier:walk:b:0:2": [
 			"troops.png",
-			8,
-			408,
+			15,
+			552,
 			22,
 			24
 		],
 		"soldier:walk:b:1": [
 			"troops.png",
-			46,
+			67,
 			120,
 			22,
 			24
 		],
 		"soldier:walk:b:1:1": [
 			"troops.png",
-			46,
-			264,
+			67,
+			336,
 			22,
 			24
 		],
 		"soldier:walk:b:1:2": [
 			"troops.png",
-			46,
-			408,
+			67,
+			552,
 			22,
 			24
 		],
 		"soldier:walk:b:2": [
 			"troops.png",
-			84,
+			119,
 			120,
 			22,
 			24
 		],
 		"soldier:walk:b:2:1": [
 			"troops.png",
-			84,
-			264,
+			119,
+			336,
 			22,
 			24
 		],
 		"soldier:walk:b:2:2": [
 			"troops.png",
-			84,
-			408,
+			119,
+			552,
 			22,
 			24
 		],
 		"soldier:walk:b:3": [
 			"troops.png",
-			122,
+			171,
 			120,
 			22,
 			24
 		],
 		"soldier:walk:b:3:1": [
 			"troops.png",
-			122,
-			264,
+			171,
+			336,
 			22,
 			24
 		],
 		"soldier:walk:b:3:2": [
 			"troops.png",
-			122,
-			408,
+			171,
+			552,
 			22,
 			24
 		],
 		"soldier:walk:b:4": [
 			"troops.png",
-			160,
+			223,
 			120,
 			22,
 			24
 		],
 		"soldier:walk:b:4:1": [
 			"troops.png",
-			160,
-			264,
+			223,
+			336,
 			22,
 			24
 		],
 		"soldier:walk:b:4:2": [
 			"troops.png",
-			160,
-			408,
+			223,
+			552,
 			22,
 			24
 		],
 		"soldier:walk:b:5": [
 			"troops.png",
-			198,
+			275,
 			120,
 			22,
 			24
 		],
 		"soldier:walk:b:5:1": [
 			"troops.png",
-			198,
-			264,
+			275,
+			336,
 			22,
 			24
 		],
 		"soldier:walk:b:5:2": [
 			"troops.png",
-			198,
-			408,
+			275,
+			552,
 			22,
 			24
 		],
 		"soldier:walk:f:0": [
 			"troops.png",
-			8,
+			15,
 			84,
 			22,
 			24
 		],
 		"soldier:walk:f:0:1": [
 			"troops.png",
-			8,
-			228,
+			15,
+			300,
 			22,
 			24
 		],
 		"soldier:walk:f:0:2": [
 			"troops.png",
-			8,
-			372,
+			15,
+			516,
 			22,
 			24
 		],
 		"soldier:walk:f:1": [
 			"troops.png",
-			46,
+			67,
 			84,
 			22,
 			24
 		],
 		"soldier:walk:f:1:1": [
 			"troops.png",
-			46,
-			228,
+			67,
+			300,
 			22,
 			24
 		],
 		"soldier:walk:f:1:2": [
 			"troops.png",
-			46,
-			372,
+			67,
+			516,
 			22,
 			24
 		],
 		"soldier:walk:f:2": [
 			"troops.png",
-			84,
+			119,
 			84,
 			22,
 			24
 		],
 		"soldier:walk:f:2:1": [
 			"troops.png",
-			84,
-			228,
+			119,
+			300,
 			22,
 			24
 		],
 		"soldier:walk:f:2:2": [
 			"troops.png",
-			84,
-			372,
+			119,
+			516,
 			22,
 			24
 		],
 		"soldier:walk:f:3": [
 			"troops.png",
-			122,
+			171,
 			84,
 			22,
 			24
 		],
 		"soldier:walk:f:3:1": [
 			"troops.png",
-			122,
-			228,
+			171,
+			300,
 			22,
 			24
 		],
 		"soldier:walk:f:3:2": [
 			"troops.png",
-			122,
-			372,
+			171,
+			516,
 			22,
 			24
 		],
 		"soldier:walk:f:4": [
 			"troops.png",
-			160,
+			223,
 			84,
 			22,
 			24
 		],
 		"soldier:walk:f:4:1": [
 			"troops.png",
-			160,
-			228,
+			223,
+			300,
 			22,
 			24
 		],
 		"soldier:walk:f:4:2": [
 			"troops.png",
-			160,
-			372,
+			223,
+			516,
 			22,
 			24
 		],
 		"soldier:walk:f:5": [
 			"troops.png",
-			198,
+			275,
 			84,
 			22,
 			24
 		],
 		"soldier:walk:f:5:1": [
 			"troops.png",
-			198,
-			228,
+			275,
+			300,
 			22,
 			24
 		],
 		"soldier:walk:f:5:2": [
 			"troops.png",
-			198,
-			372,
+			275,
+			516,
 			22,
+			24
+		],
+		"spearman:attack:b:0": [
+			"troops.png",
+			11,
+			840,
+			30,
+			24
+		],
+		"spearman:attack:b:0:1": [
+			"troops.png",
+			11,
+			1056,
+			30,
+			24
+		],
+		"spearman:attack:b:0:2": [
+			"troops.png",
+			11,
+			1272,
+			30,
+			24
+		],
+		"spearman:attack:b:1": [
+			"troops.png",
+			63,
+			840,
+			30,
+			24
+		],
+		"spearman:attack:b:1:1": [
+			"troops.png",
+			63,
+			1056,
+			30,
+			24
+		],
+		"spearman:attack:b:1:2": [
+			"troops.png",
+			63,
+			1272,
+			30,
+			24
+		],
+		"spearman:attack:b:2": [
+			"troops.png",
+			115,
+			840,
+			30,
+			24
+		],
+		"spearman:attack:b:2:1": [
+			"troops.png",
+			115,
+			1056,
+			30,
+			24
+		],
+		"spearman:attack:b:2:2": [
+			"troops.png",
+			115,
+			1272,
+			30,
+			24
+		],
+		"spearman:attack:b:3": [
+			"troops.png",
+			167,
+			840,
+			30,
+			24
+		],
+		"spearman:attack:b:3:1": [
+			"troops.png",
+			167,
+			1056,
+			30,
+			24
+		],
+		"spearman:attack:b:3:2": [
+			"troops.png",
+			167,
+			1272,
+			30,
+			24
+		],
+		"spearman:attack:f:0": [
+			"troops.png",
+			11,
+			804,
+			30,
+			24
+		],
+		"spearman:attack:f:0:1": [
+			"troops.png",
+			11,
+			1020,
+			30,
+			24
+		],
+		"spearman:attack:f:0:2": [
+			"troops.png",
+			11,
+			1236,
+			30,
+			24
+		],
+		"spearman:attack:f:1": [
+			"troops.png",
+			63,
+			804,
+			30,
+			24
+		],
+		"spearman:attack:f:1:1": [
+			"troops.png",
+			63,
+			1020,
+			30,
+			24
+		],
+		"spearman:attack:f:1:2": [
+			"troops.png",
+			63,
+			1236,
+			30,
+			24
+		],
+		"spearman:attack:f:2": [
+			"troops.png",
+			115,
+			804,
+			30,
+			24
+		],
+		"spearman:attack:f:2:1": [
+			"troops.png",
+			115,
+			1020,
+			30,
+			24
+		],
+		"spearman:attack:f:2:2": [
+			"troops.png",
+			115,
+			1236,
+			30,
+			24
+		],
+		"spearman:attack:f:3": [
+			"troops.png",
+			167,
+			804,
+			30,
+			24
+		],
+		"spearman:attack:f:3:1": [
+			"troops.png",
+			167,
+			1020,
+			30,
+			24
+		],
+		"spearman:attack:f:3:2": [
+			"troops.png",
+			167,
+			1236,
+			30,
 			24
 		],
 		"spearman:idle:b:0": [
 			"troops.png",
-			8,
-			480,
+			15,
+			696,
 			22,
 			24
 		],
 		"spearman:idle:b:0:1": [
 			"troops.png",
-			8,
-			624,
+			15,
+			912,
 			22,
 			24
 		],
 		"spearman:idle:b:0:2": [
 			"troops.png",
-			8,
-			768,
+			15,
+			1128,
 			22,
 			24
 		],
 		"spearman:idle:b:1": [
 			"troops.png",
-			46,
-			480,
+			67,
+			696,
 			22,
 			24
 		],
 		"spearman:idle:b:1:1": [
 			"troops.png",
-			46,
-			624,
+			67,
+			912,
 			22,
 			24
 		],
 		"spearman:idle:b:1:2": [
 			"troops.png",
-			46,
-			768,
+			67,
+			1128,
 			22,
 			24
 		],
 		"spearman:idle:f:0": [
 			"troops.png",
-			8,
-			444,
+			15,
+			660,
 			22,
 			24
 		],
 		"spearman:idle:f:0:1": [
 			"troops.png",
-			8,
-			588,
+			15,
+			876,
 			22,
 			24
 		],
 		"spearman:idle:f:0:2": [
 			"troops.png",
-			8,
-			732,
+			15,
+			1092,
 			22,
 			24
 		],
 		"spearman:idle:f:1": [
 			"troops.png",
-			46,
-			444,
+			67,
+			660,
 			22,
 			24
 		],
 		"spearman:idle:f:1:1": [
 			"troops.png",
-			46,
-			588,
+			67,
+			876,
 			22,
 			24
 		],
 		"spearman:idle:f:1:2": [
 			"troops.png",
-			46,
-			732,
+			67,
+			1092,
 			22,
 			24
 		],
 		"spearman:walk:b:0": [
 			"troops.png",
-			8,
-			552,
+			15,
+			768,
 			22,
 			24
 		],
 		"spearman:walk:b:0:1": [
 			"troops.png",
-			8,
-			696,
+			15,
+			984,
 			22,
 			24
 		],
 		"spearman:walk:b:0:2": [
 			"troops.png",
-			8,
-			840,
+			15,
+			1200,
 			22,
 			24
 		],
 		"spearman:walk:b:1": [
 			"troops.png",
-			46,
-			552,
+			67,
+			768,
 			22,
 			24
 		],
 		"spearman:walk:b:1:1": [
 			"troops.png",
-			46,
-			696,
+			67,
+			984,
 			22,
 			24
 		],
 		"spearman:walk:b:1:2": [
 			"troops.png",
-			46,
-			840,
+			67,
+			1200,
 			22,
 			24
 		],
 		"spearman:walk:b:2": [
 			"troops.png",
-			84,
-			552,
+			119,
+			768,
 			22,
 			24
 		],
 		"spearman:walk:b:2:1": [
 			"troops.png",
-			84,
-			696,
+			119,
+			984,
 			22,
 			24
 		],
 		"spearman:walk:b:2:2": [
 			"troops.png",
-			84,
-			840,
+			119,
+			1200,
 			22,
 			24
 		],
 		"spearman:walk:b:3": [
 			"troops.png",
-			122,
-			552,
+			171,
+			768,
 			22,
 			24
 		],
 		"spearman:walk:b:3:1": [
 			"troops.png",
-			122,
-			696,
+			171,
+			984,
 			22,
 			24
 		],
 		"spearman:walk:b:3:2": [
 			"troops.png",
-			122,
-			840,
+			171,
+			1200,
 			22,
 			24
 		],
 		"spearman:walk:b:4": [
 			"troops.png",
-			160,
-			552,
+			223,
+			768,
 			22,
 			24
 		],
 		"spearman:walk:b:4:1": [
 			"troops.png",
-			160,
-			696,
+			223,
+			984,
 			22,
 			24
 		],
 		"spearman:walk:b:4:2": [
 			"troops.png",
-			160,
-			840,
+			223,
+			1200,
 			22,
 			24
 		],
 		"spearman:walk:b:5": [
 			"troops.png",
-			198,
-			552,
+			275,
+			768,
 			22,
 			24
 		],
 		"spearman:walk:b:5:1": [
 			"troops.png",
-			198,
-			696,
+			275,
+			984,
 			22,
 			24
 		],
 		"spearman:walk:b:5:2": [
 			"troops.png",
-			198,
-			840,
+			275,
+			1200,
 			22,
 			24
 		],
 		"spearman:walk:f:0": [
 			"troops.png",
-			8,
-			516,
+			15,
+			732,
 			22,
 			24
 		],
 		"spearman:walk:f:0:1": [
 			"troops.png",
-			8,
-			660,
+			15,
+			948,
 			22,
 			24
 		],
 		"spearman:walk:f:0:2": [
 			"troops.png",
-			8,
-			804,
+			15,
+			1164,
 			22,
 			24
 		],
 		"spearman:walk:f:1": [
 			"troops.png",
-			46,
-			516,
+			67,
+			732,
 			22,
 			24
 		],
 		"spearman:walk:f:1:1": [
 			"troops.png",
-			46,
-			660,
+			67,
+			948,
 			22,
 			24
 		],
 		"spearman:walk:f:1:2": [
 			"troops.png",
-			46,
-			804,
+			67,
+			1164,
 			22,
 			24
 		],
 		"spearman:walk:f:2": [
 			"troops.png",
-			84,
-			516,
+			119,
+			732,
 			22,
 			24
 		],
 		"spearman:walk:f:2:1": [
 			"troops.png",
-			84,
-			660,
+			119,
+			948,
 			22,
 			24
 		],
 		"spearman:walk:f:2:2": [
 			"troops.png",
-			84,
-			804,
+			119,
+			1164,
 			22,
 			24
 		],
 		"spearman:walk:f:3": [
 			"troops.png",
-			122,
-			516,
+			171,
+			732,
 			22,
 			24
 		],
 		"spearman:walk:f:3:1": [
 			"troops.png",
-			122,
-			660,
+			171,
+			948,
 			22,
 			24
 		],
 		"spearman:walk:f:3:2": [
 			"troops.png",
-			122,
-			804,
+			171,
+			1164,
 			22,
 			24
 		],
 		"spearman:walk:f:4": [
 			"troops.png",
-			160,
-			516,
+			223,
+			732,
 			22,
 			24
 		],
 		"spearman:walk:f:4:1": [
 			"troops.png",
-			160,
-			660,
+			223,
+			948,
 			22,
 			24
 		],
 		"spearman:walk:f:4:2": [
 			"troops.png",
-			160,
-			804,
+			223,
+			1164,
 			22,
 			24
 		],
 		"spearman:walk:f:5": [
 			"troops.png",
-			198,
-			516,
+			275,
+			732,
 			22,
 			24
 		],
 		"spearman:walk:f:5:1": [
 			"troops.png",
-			198,
-			660,
+			275,
+			948,
 			22,
 			24
 		],
 		"spearman:walk:f:5:2": [
 			"troops.png",
-			198,
-			804,
+			275,
+			1164,
 			22,
 			24
 		],

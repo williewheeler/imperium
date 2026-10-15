@@ -1,7 +1,7 @@
 class_name Unit
 extends RefCounted
 
-enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING, EXPLORE }
+enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING, EXPLORE, ATTACK_GO, ATTACKING, FLEE }
 
 ## Position in tile coordinates (tile centers are at +0.5).
 var kind := "villager"  # "villager", or a fighting man: "soldier", "spearman", "slinger", "horseman"
@@ -17,6 +17,33 @@ var selected := false
 var state := State.IDLE
 var explore_goal := Vector2i(-1, -1)  # the unseen tile an explorer is heading for
 var explore_skip := {}  # unseen tiles this explorer found no route to
+
+# Fighting
+var _hp := 0.0
+var _hp_set := false
+var hp: float:  # health; starts full
+	get:
+		if not _hp_set:
+			_hp = float(Defs.UNITS[kind]["hp"])
+			_hp_set = true
+		return _hp
+	set(v):
+		_hp = v
+		_hp_set = true
+var target: Unit  # the enemy being fought
+var target_seen_at := Vector2.INF  # where the target was last seen, so a chase can go on a little after it slips from sight
+var lost_for := 0.0  # seconds the target has been out of sight
+var atk_t := 0.0  # seconds into the current blow's wind-up and recovery
+var struck := false  # this cycle's blow has landed
+var hit_flash := 0.0  # a brief white flash when hurt
+var amove := false  # attack-moving: fights whatever it meets on the way to `amove_goal`
+var amove_goal := Vector2.INF
+var scan_t := randf() * 0.4  # seconds until the next look round for enemies
+var flee_t := 0.0  # seconds left of running away
+var repath_t := 0.0  # seconds until a chase may plan a new path
+var dead := false
+var targeted := 0.0  # seconds left of the red ring shown on a unit the player has ordered an attack on
+var bar_t := 0.0  # seconds the health bar stays up after a fight
 
 var target_tile := Vector2i(-1, -1)  # deposit being worked
 var gather_kind := -1  # Defs.Res being gathered

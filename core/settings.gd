@@ -123,13 +123,13 @@ const RESOURCES := [
 
 ## How good the computer-run peoples are at running a town. They never get free resources or any other
 ## bonus, on any setting; the difference is how often they decide, how fast they aim to grow and how large
-## a people they can keep going.
+## a people they can keep going, how much of it is army, how big a force they send and how soon.
 const DIFFICULTIES := [
-	{"id": "easy", "latin": "Facilis", "english": "Easy", "think": 2.6, "grow": 45.0, "cap": 20, "builds": 1, "food": 0.4,
+	{"id": "easy", "latin": "Facilis", "english": "Easy", "think": 2.6, "grow": 45.0, "cap": 20, "builds": 1, "food": 0.4, "army": 0.12, "wave": 9, "attack_after": 840.0,
 		"about": "Slow to decide and slow to grow. A gentle neighbor."},
-	{"id": "normal", "latin": "Aequus", "english": "Normal", "think": 1.2, "grow": 25.0, "cap": 40, "builds": 2, "food": 0.55,
+	{"id": "normal", "latin": "Aequus", "english": "Normal", "think": 1.2, "grow": 25.0, "cap": 40, "builds": 2, "food": 0.55, "army": 0.22, "wave": 8, "attack_after": 600.0,
 		"about": "A steady rival that plays like a patient person."},
-	{"id": "hard", "latin": "Difficilis", "english": "Hard", "think": 0.6, "grow": 14.0, "cap": 70, "builds": 3, "food": 0.6,
+	{"id": "hard", "latin": "Difficilis", "english": "Hard", "think": 0.6, "grow": 14.0, "cap": 70, "builds": 3, "food": 0.6, "army": 0.32, "wave": 7, "attack_after": 420.0,
 		"about": "Quick, efficient and ambitious. Still plays by the same rules as you."},
 ]
 
