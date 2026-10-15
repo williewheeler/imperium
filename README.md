@@ -22,6 +22,16 @@ get free resources, on any setting.
 
 ![The peoples page: choose who plays and in what colours](docs/screenshots/settings_players.png)
 
+**A village on the Palatine.** The Casa Romuli, the hut of Romulus, is your first town centre. Its
+hearth burns, the trees sway in the wind, and everything of yours flies the Roman purple.
+
+![The Casa Romuli and its villagers, the command bar flanked by columns and the minimap on a parchment scroll](docs/screenshots/village.png)
+
+**The Circus Maximus.** A landmark stadium stands in the valley near the city: four tiers of timber
+seating, a sand track, a ring of arches round the base, and a crowd that cheers in waves.
+
+![The Circus Maximus in a storm, beside the sea](docs/screenshots/circus-storm.png)
+
 **The Republic.** Advancing to Era II (*Res Publica*) changes the look of everything: the interface takes
 a violet-and-white border, the hut of Romulus gives way to a marble Forum with a tiled roof, and
 houses, vineyards, an aqueduct, the Senate House (*Curia*) and barracks become available.
@@ -40,16 +50,6 @@ parchment scroll that fills in as you explore.
 | ![Reed beds and pools beside the Circus Maximus](docs/screenshots/biome-marsh.png) | ![Terraced hills rising from open meadow](docs/screenshots/biome-hills.png) |
 
 ![A wooded map: thick forest running down to a sandy shore](docs/screenshots/biome-woods.png)
-
-**A village on the Palatine.** The Casa Romuli, the hut of Romulus, is your first town centre. Its
-hearth burns, the trees sway in the wind, and everything of yours flies the Roman purple.
-
-![The Casa Romuli and its villagers, the command bar flanked by columns and the minimap on a parchment scroll](docs/screenshots/village.png)
-
-**The Circus Maximus.** A landmark stadium stands in the valley near the city: four tiers of timber
-seating, a sand track, a ring of arches round the base, and a crowd that cheers in waves.
-
-![The Circus Maximus in a storm, beside the sea](docs/screenshots/circus-storm.png)
 
 **Weather.** A slow chain of clear skies, cloud, fog, rain and storms rolls over the map. Rain
 ripples the water, storms roughen it, and fog drifts in banks.
