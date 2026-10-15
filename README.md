@@ -22,6 +22,12 @@ get free resources, on any setting.
 
 ![The peoples page: choose who plays and in what colours](docs/screenshots/settings_players.png)
 
+**The Republic.** Advancing to Era II (*Res Publica*) changes the look of everything: the interface takes
+a violet-and-white border, the hut of Romulus gives way to a marble Forum with a tiled roof, and
+houses, vineyards, an aqueduct, the Senate House (*Curia*) and barracks become available.
+
+![A Republican town: a marble Forum, an aqueduct, a house and a vineyard, under the violet border of Era II](docs/screenshots/republic.png)
+
 **Many kinds of ground.** The ground is chosen apart from the shape of the land, so the same coast can
 be green, snowy or sand. Snow whitens the grass, pines and hills; the desert parches them; marshlands
 are reeds and pools; hilly maps rise into terraces; wooded maps are thick with forest. The minimap is a
@@ -29,7 +35,7 @@ parchment scroll that fills in as you explore.
 
 | Snow | Desert |
 |---|---|
-| ![Snow over the Circus Maximus and a pine wood](docs/screenshots/biome-snow.png) | ![Dry sand with parched trees around the Circus Maximus](docs/screenshots/biome-desert.png) |
+| ![A Republican town in the snow, beside the Circus Maximus](docs/screenshots/biome-snow.png) | ![A Republican town on dry sand](docs/screenshots/biome-desert.png) |
 | **Marshland** | **Hills** |
 | ![Reed beds and pools beside the Circus Maximus](docs/screenshots/biome-marsh.png) | ![Terraced hills rising from open meadow](docs/screenshots/biome-hills.png) |
 
@@ -52,7 +58,7 @@ ripples the water, storms roughen it, and fog drifts in banks.
 
 | Rain | Fog |
 |---|---|
-| ![Rain falling over the village and its pond](docs/screenshots/rain.png) | ![Fog rolling over the village](docs/screenshots/fog.png) |
+| ![Rain falling over a Republican Forum and aqueduct](docs/screenshots/rain.png) | ![Fog rolling over the village](docs/screenshots/fog.png) |
 
 **Fighting men.** Horsemen (Equites), spearmen (Pedites) and slingers (Funditores) in the colour of
 their owner: purple for you, a different colour for another player.

@@ -248,6 +248,17 @@ func _ready() -> void:
 			if spot.x >= 0:
 				var b := _add_building(specs[i][0], spot, specs[i][1] >= 1.0)
 				b.work = float(b.def()["build_time"]) * float(specs[i][1])
+	if args.has("town"):  # debug: a built-up town round the Forum: one of most kinds of building, finished
+		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple"]
+		for i in kinds.size():
+			var kind: String = kinds[i]
+			if not Defs.BUILDINGS.has(kind):
+				continue
+			var dir := Vector2.from_angle(float(i) * 2.399 + 0.4)  # round the Forum at the golden angle
+			var want := buildings[0].tile + Vector2i((dir * (7.0 + float(i % 4) * 3.0)).round())
+			var spot := map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8, [])
+			if spot.x >= 0:
+				_add_building(kind, spot, true)
 	if args.has("ring"):  # debug: villagers standing around the Forum's walls, to check drawing order
 		var r := buildings[0].rect()
 		var spots := [Vector2(r.position.x + 0.6, r.end.y + 0.5), Vector2(r.position.x + 1.6, r.end.y + 0.5),
