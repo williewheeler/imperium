@@ -32,6 +32,18 @@ func setup(p_game) -> void:
 	_texture = ImageTexture.create_from_image(_image)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	custom_minimum_size = SIZE
+	var land := TextureRect.new()  # the land, behind the dots: only what has been seen is drawn, on the parchment
+	land.texture = _texture
+	land.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	land.stretch_mode = TextureRect.STRETCH_SCALE
+	land.set_anchors_preset(Control.PRESET_FULL_RECT)
+	land.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	land.show_behind_parent = true
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/minimap.gdshader")
+	mat.set_shader_parameter("fog", game.fog.texture)
+	land.material = mat
+	add_child(land)
 
 
 ## A tile changed terrain (a felled forest, a drained marsh); the picture catches up shortly.
@@ -60,9 +72,6 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var map: GameMap = game.map
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.04, 0.09, 0.14))
-	draw_texture_rect(_texture, Rect2(Vector2.ZERO, size), false)
-	draw_texture_rect(game.fog.texture, Rect2(Vector2.ZERO, size), false)
 	for b: Building in game.buildings:
 		if b.owner != 0 and not game.fog.is_explored(Vector2i(b.center())):
 			continue  # a rival's town shows once we have seen it
