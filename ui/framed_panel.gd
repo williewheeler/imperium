@@ -26,6 +26,6 @@ func set_era(era: int) -> void:
 
 
 ## The fill goes right up to the inside edge of the border, behind the contents. (The border is
-## drawn without a centre, because stretching a tiled 9-patch's centre leaves visible seams.)
+## drawn without a center, because stretching a tiled 9-patch's center leaves visible seams.)
 func _draw() -> void:
 	draw_rect(Rect2(Vector2(FRAME, FRAME), size - Vector2(FRAME, FRAME) * 2.0), _fill)

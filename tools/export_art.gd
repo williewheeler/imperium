@@ -69,7 +69,7 @@ func _grid(file: String, rows: Array) -> void:
 		for ci in rows[ri].size():
 			var k: String = rows[ri][ci]
 			var img := Art.image(k)
-			# sprites sit at the bottom centre of their cell, so anchors stay consistent
+			# sprites sit at the bottom center of their cell, so anchors stay consistent
 			var at := Vector2i(ci * cell.x + (cell.x - img.get_width()) / 2, ri * cell.y + cell.y - img.get_height())
 			sheet.blit_rect(img, Rect2i(Vector2i.ZERO, img.get_size()), at)
 			manifest["sprites"][k] = [file, at.x, at.y, img.get_width(), img.get_height()]

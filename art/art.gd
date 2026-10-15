@@ -4,7 +4,7 @@ extends RefCounted
 ## top-left) and cached as textures. Scenery is Italian: stone pines, oaks, cypresses,
 ## limestone mountains; buildings are Roman: terracotta roofs, plaster walls, a columned forum.
 ##
-## Sprites are anchored at the bottom-centre of their image (the point that touches the ground).
+## Sprites are anchored at the bottom-center of their image (the point that touches the ground).
 
 # Palettes run light -> dark.
 const OAK := [Color("a6d856"), Color("74b53c"), Color("52943a"), Color("367430")]
@@ -28,8 +28,8 @@ const BERRY := Color("d8403c")
 ## Frames per villager animation.
 const VILLAGER_FRAMES := {"idle": 2, "walk": 6, "chop": 6, "mine": 6, "forage": 4, "till": 6, "build": 6}
 ## The fighting units, and how many different looks each has. Early Roman soldiers armed
-## themselves and wore no uniform, so no two neighbours need look alike: tunic colour and how
-## much armour they could afford vary from look to look.
+## themselves and wore no uniform, so no two neighbors need look alike: tunic color and how
+## much armor they could afford vary from look to look.
 const UNIT_LOOKS := {"soldier": 3, "spearman": 3, "slinger": 3, "horseman": 3}
 const HORSE_FEET := Vector2(18, 31)
 ## Where the villager's feet are inside each villager image (for anchoring).
@@ -43,13 +43,13 @@ const LINEN := [Color("f2e8cc"), Color("d9cba4"), Color("a99c78")]  # undyed tun
 const WOOL := [Color("b88a58"), Color("94683c"), Color("6a4624")]
 const DYED := [Color("8aa5cc"), Color("5a78a8"), Color("3f5a86")]  # a faded blue
 const BELT := Color("3e2a16")
-## Placeholder colours that mark a unit's team: wherever the sheets hold one of these, the game paints
-## the owner's colour (light, mid, dark) over it (see team.gdshader), so the team shows without any
-## player's colour being drawn into the art. Never use them for anything else.
+## Placeholder colors that mark a unit's team: wherever the sheets hold one of these, the game paints
+## the owner's color (light, mid, dark) over it (see team.gdshader), so the team shows without any
+## player's color being drawn into the art. Never use them for anything else.
 const TEAM_KEY := [Color("ff00ff"), Color("c800c8"), Color("8c008c")]
 const OUT_VILLAGER := Color("3a2018")
 
-## Resource colours (wood, food, stone, gold) used by the UI.
+## Resource colors (wood, food, stone, gold) used by the UI.
 const RES_COLORS := [Color("8a5a2b"), Color("d94a4a"), Color("a8a8a8"), Color("ffd24a")]
 
 ## Footprint size (tiles) and roof height of each building, which fix where its ground corner is.
@@ -621,7 +621,7 @@ static func _villager(anim: String, back: bool, frame: int, kit := "", look := 0
 				c = cloth[0]
 			elif x == fx + half + shift:
 				c = cloth[2]
-			if row == 3:  # the belt is the owner's colour
+			if row == 3:  # the belt is the owner's color
 				c = TEAM_KEY[0] if x == fx - half + shift else (TEAM_KEY[2] if x == fx + half + shift else TEAM_KEY[1])
 			Pixel.put(img, x, y, c)
 	# head: hair on top (and all over from behind), face with eyes from the front
@@ -698,7 +698,7 @@ static func building_anchor(kind: String) -> Vector2:
 	return Vector2(a * 16 + 1, int((a + b) * 8 + g["ridge"] + 8))
 
 
-## Small version of a sprite for the command bar (shrunk with nearest-neighbour so it stays
+## Small version of a sprite for the command bar (shrunk with nearest-neighbor so it stays
 ## pixelated), at most `max_h` pixels tall.
 static func icon(key: String, max_h := 30) -> Texture2D:
 	if not _icons.has(key):
@@ -925,7 +925,7 @@ static func _hut() -> Image:
 	return Pixel.outlined(img, OUT_WARM)
 
 
-## One round wattle-and-daub hut with a thatched cone, centred at (cx, base_y) on the ground.
+## One round wattle-and-daub hut with a thatched cone, centerd at (cx, base_y) on the ground.
 ## `s` scales it (1.0 = the 1x1 Casa, whose wall radius is 11 px).
 static func _round_hut(img: Image, cx: float, base_y: float, s: float) -> void:
 	var rx := 11.0 * s
@@ -963,7 +963,7 @@ static func _round_hut(img: Image, cx: float, base_y: float, s: float) -> void:
 	Pixel.put(img, int(cx), int(apex_y) - 1, THATCH[3])  # the tied-off peak
 
 
-## The Era I town centre (art key "regia"), the Casa Romuli: the hut of Romulus. A great round hall and two lesser huts around
+## The Era I town center (art key "regia"), the Casa Romuli: the hut of Romulus. A great round hall and two lesser huts around
 ## a trodden yard with the sacred hearth. (Early Rome was a cluster of thatched huts; the Forum
 ## itself was a drained marsh until about 600 BC.) 3x3 tiles.
 static func _regia() -> Image:
@@ -1242,7 +1242,7 @@ static func _frame(era: int) -> Image:
 
 
 ## The era's frame as a 9-patch style for a panel. Only the border is drawn: the panel's own
-## contents are inset to sit exactly inside it, so fill behind them with a flat colour.
+## contents are inset to sit exactly inside it, so fill behind them with a flat color.
 static func frame_style(era := 0) -> StyleBoxTexture:
 	var sb := StyleBoxTexture.new()
 	sb.texture = tex("frame:%d" % era)
@@ -1260,7 +1260,7 @@ static func frame_style(era := 0) -> StyleBoxTexture:
 const BRONZE := [Color("f0c878"), Color("c8963e"), Color("94682a")]
 
 
-## Tunic colours of the fighting men: each look wears something different.
+## Tunic colors of the fighting men: each look wears something different.
 static func _cloth(kit: String, look: int) -> Array:
 	match kit:
 		"soldier":
@@ -1274,7 +1274,7 @@ static func _cloth(kit: String, look: int) -> Array:
 
 ## What a fighting man carries over the villager rig, by how much he could afford:
 ## - soldier (a rich citizen): bronze helmet, breastplate (look 2 has only the helmet), round shield, spear
-## - spearman (a middling farmer): a wooden shield and a spear, no armour
+## - spearman (a middling farmer): a wooden shield and a spear, no armor
 ## - slinger (the poorest): a sling in the hand and a pouch of stones at the belt
 static func _infantry_gear(img: Image, kit: String, look: int, fx: int, hx: int, hy: int, sh_y: int, hand: Vector2i, bob: int, back: bool) -> void:
 	match kit:
@@ -1302,14 +1302,14 @@ static func _infantry_gear(img: Image, kit: String, look: int, fx: int, hx: int,
 			_round_shield(img, fx - 3.5, sh_y + 4.0, TEAM_KEY[1], [WOOD[0], Color("b0382e"), Color("5a78a8")][look % 3], WOOD[1])
 			_spear(img, hand, hy, WOOD)
 		"slinger":
-			Pixel.rect(img, hx - 1, hy, 3, 1, TEAM_KEY[1])  # a headband in the owner's colour
+			Pixel.rect(img, hx - 1, hy, 3, 1, TEAM_KEY[1])  # a headband in the owner's color
 			Pixel.rect(img, fx + 2, sh_y + 6, 3, 3, WOOD[1])  # the pouch of stones at the hip
 			Pixel.put(img, fx + 3, sh_y + 6, ROCK[1])
 			Pixel.line(img, Vector2i(hand.x + fx + 2, hand.y + sh_y), Vector2i(hand.x + fx + 2, hand.y + sh_y + 4), WOOD[0])  # the sling hanging from the hand
 			Pixel.put(img, hand.x + fx + 2, hand.y + sh_y + 4, ROCK[2])
 
 
-## A round shield seen face-on: rim colour, painted face colour and a bright boss.
+## A round shield seen face-on: rim color, painted face color and a bright boss.
 static func _round_shield(img: Image, cx: float, cy: float, rim: Color, face: Color, boss: Color) -> void:
 	for y in range(int(cy) - 3, int(cy) + 4):
 		for x in range(int(cx) - 3, int(cx) + 4):
@@ -1319,7 +1319,7 @@ static func _round_shield(img: Image, cx: float, cy: float, rim: Color, face: Co
 	Pixel.put(img, int(cx), int(cy), boss)
 
 
-## A little streamer in the owner's colour, flying to the right from (x, y).
+## A little streamer in the owner's color, flying to the right from (x, y).
 static func _pennon(img: Image, x: int, y: int) -> void:
 	Pixel.rect(img, x + 1, y, 3, 2, TEAM_KEY[1])
 	Pixel.put(img, x + 1, y, TEAM_KEY[0])
@@ -1338,7 +1338,7 @@ static func _spear(img: Image, hand: Vector2i, hy: int, head: Array) -> void:
 const HORSE_COATS := [
 	[Color("b07848"), Color("8a5a30"), Color("5e3c1e")],  # bay
 	[Color("d88a48"), Color("b2642a"), Color("84441c")],  # chestnut
-	[Color("e8e4dc"), Color("c4bfb4"), Color("98927f")],  # grey
+	[Color("e8e4dc"), Color("c4bfb4"), Color("98927f")],  # gray
 ]
 
 
@@ -1394,7 +1394,7 @@ static func _horseman(anim: String, frame: int, look: int) -> Image:
 	Pixel.put(img, rx, ry - 12, [TUNIC[1], LINEN[0], Color("3f5a86")][look % 3])  # crest
 	Pixel.put(img, rx + 1, ry - 8, Color("3a2416"))
 	_round_shield(img, rx - 4.0, ry, TEAM_KEY[1], [Color("b0382e"), Color("e8e0c8"), Color("3f5a86")][look % 3], BRONZE[0])
-	Pixel.rect(img, rx - 4, int(cy) - 6, 9, 3, TEAM_KEY[1])  # a saddle blanket in the owner's colour
+	Pixel.rect(img, rx - 4, int(cy) - 6, 9, 3, TEAM_KEY[1])  # a saddle blanket in the owner's color
 	Pixel.rect(img, rx - 4, int(cy) - 6, 9, 1, TEAM_KEY[0])
 	Pixel.line(img, Vector2i(rx + 3, ry + 4), Vector2i(rx + 3, ry - 22), WOOD[1])  # a long spear
 	_pennon(img, rx + 3, ry - 21)
@@ -1418,7 +1418,7 @@ static func _horse_leg(img: Image, hip_x: float, hip_y: float, ph: float, offset
 
 # ---------------------------------------------------------------- marsh
 
-## A clump of reeds and cattails standing in the marsh. Anchor = bottom centre.
+## A clump of reeds and cattails standing in the marsh. Anchor = bottom center.
 static func _reeds(seed_v: int) -> Image:
 	var img := Pixel.blank(15, 14)
 	var reed := [Color("d2de7a"), Color("a8c05a"), Color("7f9c42")]  # pale, yellowish marsh grass
@@ -1442,7 +1442,7 @@ static func _reeds(seed_v: int) -> Image:
 
 const ALDER := [Color("a4b86a"), Color("7e9a4e"), Color("5c7a3a"), Color("445f2c")]  # olive: wet-ground foliage
 const WILLOW := [Color("d6e28a"), Color("b0c76c"), Color("86a450"), Color("66823c")]  # pale, silvery green
-const SNAG := [Color("a89c86"), Color("7f745f"), Color("584f40")]  # grey, weathered dead wood
+const SNAG := [Color("a89c86"), Color("7f745f"), Color("584f40")]  # gray, weathered dead wood
 
 
 ## Alder, the tree of wet ground: slim, with a narrow dark crown on a pale trunk. Variant 1 is the
@@ -1493,7 +1493,7 @@ static func _willow(variant: int) -> Image:
 	return Pixel.outlined(img, OUT_GREEN)
 
 
-## A dead tree standing in the bog: a bare, crooked grey trunk with a couple of broken limbs.
+## A dead tree standing in the bog: a bare, crooked gray trunk with a couple of broken limbs.
 static func _snag(variant: int) -> Image:
 	var img := Pixel.blank(13, 22)
 	var lean := 1 if variant == 0 else -1
@@ -1522,7 +1522,7 @@ static func _scrub(variant: int) -> Image:
 	return Pixel.outlined(img, OUT_GREEN)
 
 
-# ---------------------------------------------------------------- team colours
+# ---------------------------------------------------------------- team colors
 
 ## The pole of a building's pennant: bare wood with a gold tip. Not tinted.
 static func _pole() -> Image:
@@ -1533,8 +1533,8 @@ static func _pole() -> Image:
 	return Pixel.outlined(img, OUT_WARM)
 
 
-## The cloth of a pennant, in three frames of fluttering. It is drawn in pale greys so the game can tint
-## it with any player's colour (see Defs.PLAYER_COLORS). Anchor = the top-left, where it meets the pole.
+## The cloth of a pennant, in three frames of fluttering. It is drawn in pale grays so the game can tint
+## it with any player's color (see Defs.PLAYER_COLORS). Anchor = the top-left, where it meets the pole.
 static func _pennant(frame: int) -> Image:
 	var img := Pixel.blank(11, 9)
 	for x in 11:
@@ -1853,7 +1853,7 @@ static func _rails(img: Image, f: Frame, a: Vector2, b: Vector2, lit: bool, gap:
 			prev[k] = top
 
 
-## A thatched gable roof (like _gable_roof but straw-coloured): ridge along x.
+## A thatched gable roof (like _gable_roof but straw-colored): ridge along x.
 static func _thatch_roof(img: Image, f: Frame, x0: float, x1: float, y0: float, y1: float, wall_h: float, ridge_h: float) -> void:
 	var ym := (y0 + y1) / 2.0
 	Pixel.poly(img, [f.p(x0, y0, wall_h), f.p(x1, y0, wall_h), f.p(x1, ym, ridge_h), f.p(x0, ym, ridge_h)], func(x: int, y: int) -> Color:
@@ -1868,7 +1868,7 @@ static func _thatch_roof(img: Image, f: Frame, x0: float, x1: float, y0: float, 
 ## stadium (a capsule: a straight run with a half circle at each end): a sand track round a low spine, tiered
 ## timber seating all the way round it, the starting gates at the far end. The crowd and the flags are not
 ## in this picture: the game animates them (see circus_crowd.gd). 10x4 tiles.
-const CIRCUS_C0 := Vector2(2.0, 2.0)  # the ends of the capsule's centre line, in tiles
+const CIRCUS_C0 := Vector2(2.0, 2.0)  # the ends of the capsule's center line, in tiles
 const CIRCUS_C1 := Vector2(8.0, 2.0)
 const CIRCUS_TRACK := 1.05  # radius where the track ends and the seating begins
 const CIRCUS_RIM := 1.95  # radius of the outer wall
@@ -1880,7 +1880,7 @@ const CIRCUS_TOP := 12.0
 const CIRCUS_ARCH_PERIOD := 0.5  # tiles between the arches of the outer wall
 
 
-## Distance travelled along the outer wall (tiles), for spacing the arches: straight along the sides,
+## Distance traveled along the outer wall (tiles), for spacing the arches: straight along the sides,
 ## and round the curve at each end.
 static func circus_perimeter(g: Vector2) -> float:
 	if g.x > CIRCUS_C0.x and g.x < CIRCUS_C1.x:
@@ -1890,7 +1890,7 @@ static func circus_perimeter(g: Vector2) -> float:
 	return (c.x - CIRCUS_RIM * (phi - PI / 2.0)) if g.x <= CIRCUS_C0.x else (c.x + CIRCUS_RIM * (phi + PI / 2.0))
 
 
-## How far a point is from the capsule's centre line.
+## How far a point is from the capsule's center line.
 static func circus_radius(g: Vector2) -> float:
 	var seg := CIRCUS_C1 - CIRCUS_C0
 	var t := clampf((g - CIRCUS_C0).dot(seg) / seg.length_squared(), 0.0, 1.0)
@@ -1972,7 +1972,7 @@ static func _circus() -> Image:
 						c = Color("55391f")  # a shaded recess, deep brown rather than black
 						c = c.darkened(0.15 * (1.0 - lit))
 				if circus_radius(g) > CIRCUS_RIM - 0.12 and along > 8.0 and along < 10.6:
-					c = TEAM_KEY[0] if along < 8.8 else (TEAM_KEY[1] if lit > 0.35 else TEAM_KEY[2])  # a band in the owner's colour round the outer wall
+					c = TEAM_KEY[0] if along < 8.8 else (TEAM_KEY[1] if lit > 0.35 else TEAM_KEY[2])  # a band in the owner's color round the outer wall
 			elif circus_radius(g) < CIRCUS_TRACK and h <= 0.0:
 				c = Pixel.ramp(sand, 0.58 + (Pixel.hash2(px, py, 144) - 0.5) * 0.4, px, py, 0.25)
 			elif h <= 0.0:

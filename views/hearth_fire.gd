@@ -2,7 +2,7 @@ class_name HearthFire
 extends Node2D
 ## The Casa Romuli's sacred hearth: flickering flames and a thin curl of smoke. Drawn in code (a pixel
 ## at a time, so it matches the art) and sits in the depth-sorted layer so villagers pass in front
-## of and behind it correctly. The origin is the centre of the hearth on the ground.
+## of and behind it correctly. The origin is the center of the hearth on the ground.
 
 const SMOKE_PUFFS := 6
 const SMOKE_LIFE := 4.0  # seconds for a puff to rise and fade

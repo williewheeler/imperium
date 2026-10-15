@@ -57,7 +57,7 @@ static func _make() -> ImageTexture:
 				var burn := clampf(1.0 - (d + wob) / 7.0, 0.0, 1.0)
 				c = base.lerp(Color("8a5f30"), burn * 0.65)
 				if (x * 7 + y * 13) % 29 == 0:
-					c = c.darkened(0.06)  # a fibre
+					c = c.darkened(0.06)  # a fiber
 				var shade := clampf(1.0 - float(y - roller) / 5.0, 0.0, 1.0)  # the roll casts a shadow on the sheet
 				c = c.darkened(shade * 0.25) if y < h / 2 else c.darkened(clampf(1.0 - float(h - roller - 1 - y) / 5.0, 0.0, 1.0) * 0.25)
 			img.set_pixel(x, y, c)

@@ -4,7 +4,7 @@ extends RefCounted
 ## screen/world pixels using 2:1 diamonds, 32x16 pixels per tile.
 ##
 ## Integer tile coordinates are the TOP corner of a tile's diamond, so tile (gx, gy) spans
-## (gx, gy)..(gx+1, gy+1) and its centre is at (gx + 0.5, gy + 0.5). +x runs down-right on
+## (gx, gy)..(gx+1, gy+1) and its center is at (gx + 0.5, gy + 0.5). +x runs down-right on
 ## screen, +y runs down-left.
 ##
 ## The land is terraced: each tile stands on a level (0..5), and every level lifts things

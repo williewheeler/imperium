@@ -90,7 +90,7 @@ func setup(game) -> void:
 		_res_labels.append(l)
 	_pop_label = _res_labels[4]
 
-	var banner := _panel(0, 0)  # which era we're in, top centre
+	var banner := _panel(0, 0)  # which era we're in, top center
 	banner.anchor_left = 0.5
 	banner.anchor_right = 0.5
 	banner.offset_left = 0.0

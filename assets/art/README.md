@@ -9,19 +9,19 @@ LibreSprite...) and the game picks the changes up on the next run, with no code 
 | `scenery.png` | oak 0-2, pine 0-1, cypress, mountain 0-3, hill 0-1, berries, stone 0-1, gold 0-1, carried packs, `via` (paving tile, the road icon), `advance` (a Roman standard: the era-advance icon), `icon:wood/food/stone/gold/pop` (the resource-bar pictures), `frame:0`, `frame:1` (the HUD panel borders for Era I and II: a 28x28 nine-patch, 10px corners, 8px repeating edges) |
 | `buildings.png` | town_center (Forum), house (Domus), storehouse (Horreum), hut (Casa, 1x1), stabulum (the Era I stable), farm:0-3 (Ager, a 3x3 wheat field: ripe, half-harvested, stubble, freshly sown), vineyard:0-3 (Vinea: laden, half picked, bare, newly pruned), curia (Senate house, 3x3), aqueduct (4x1), castra (3x3) |
 | `villagers.png` | grid, 22x24 cells. One row per animation and direction (idle, walk, chop, mine, forage, till, build; each front then back), one column per frame. Villagers always face right; the game mirrors them. |
-| `troops.png` | grid, 38x36 cells. The fighting men (soldier, spearman, slinger, horseman), each in three looks (`kind:anim:dir:frame:look`; look 0 has no suffix): one row per look, animation (idle, walk) and direction, one column per frame. Early Roman soldiers armed themselves, so the looks differ in tunic colour and how much armour they have. The horse faces right and the game mirrors it. |
+| `troops.png` | grid, 38x36 cells. The fighting men (soldier, spearman, slinger, horseman), each in three looks (`kind:anim:dir:frame:look`; look 0 has no suffix): one row per look, animation (idle, walk) and direction, one column per frame. Early Roman soldiers armed themselves, so the looks differ in tunic color and how much armor they have. The horse faces right and the game mirrors it. |
 | `ground_tiles.png` | 32x16 diamond tiles, one row per terrain (deep water, shallows, beach, grass, forest floor, hill slope, mountain rock), 4 variants each |
 | `ground_tileset.tres` | a Godot isometric `TileSet` built from `ground_tiles.png`, for painting maps in the editor |
 
-## Team colour marks
+## Team color marks
 
-Unit sprites mark the team with three placeholder colours: `#ff00ff` (light), `#c800c8` (mid) and `#8c008c` (dark). The game paints the owner's colour over them (`team.gdshader`), so the magenta you see in the sheets turns purple for player 0 and another colour for another player. Today they mark the belt, the shield rim, the spear's pennon, the slinger's headband and the horse's saddle blanket. Use these three colours only for team marks.
+Unit sprites mark the team with three placeholder colors: `#ff00ff` (light), `#c800c8` (mid) and `#8c008c` (dark). The game paints the owner's color over them (`team.gdshader`), so the magenta you see in the sheets turns purple for player 0 and another color for another player. Today they mark the belt, the shield rim, the spear's pennon, the slinger's headband and the horse's saddle blanket. Use these three colors only for team marks.
 
 ## Rules to keep when editing
 
 - **Keep each sprite inside its box.** `manifest.json` records every sprite's rectangle.
   Changing a sprite's *size* means updating its entry too.
-- **Anchors are fixed by size.** Trees and scenery stand on their bottom-centre pixel; buildings
+- **Anchors are fixed by size.** Trees and scenery stand on their bottom-center pixel; buildings
   anchor at the front corner of their footprint (`Art.building_anchor`; fields are flat and drawn under the villagers); villagers' feet are at
   `Art.VILLAGER_FEET`. Keep feet/bases at the same spot when redrawing.
 - **Lighting comes from the top-left.** Left faces are lit, right faces shaded.

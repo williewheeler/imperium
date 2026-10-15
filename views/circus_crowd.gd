@@ -1,7 +1,7 @@
 class_name CircusCrowd
 extends Node2D
 ## The Circus Maximus's crowd and its flags, drawn in code so they can move: spectators sit on the tiers,
-## and a wave of cheering (arms up, a hop) runs round the stands; a pennant in the owner's colour flutters
+## and a wave of cheering (arms up, a hop) runs round the stands; a pennant in the owner's color flutters
 ## on each corner. The place for each person comes from the same shape as the stadium picture
 ## (Art.circus_height / circus_surface), and only seats that are actually in view get someone in them.
 ## Everything is positioned relative to the building's front corner, like its sprite.

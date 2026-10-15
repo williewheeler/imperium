@@ -3,12 +3,12 @@ extends RefCounted
 
 enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING, EXPLORE }
 
-## Position in tile coordinates (tile centres are at +0.5).
+## Position in tile coordinates (tile centers are at +0.5).
 var kind := "villager"  # "villager", or a fighting man: "soldier", "spearman", "slinger", "horseman"
 var pos := Vector2.ZERO
-var owner := 0  # which player: 0 is you, 1 and up the computer-run peoples (Defs.color_of gives the colour)
+var owner := 0  # which player: 0 is you, 1 and up the computer-run peoples (Defs.color_of gives the color)
 var female := false  # villagers only: picks the sprite
-var look := 0  # fighting men: which of the kind's looks (tunic, armour) they wear
+var look := 0  # fighting men: which of the kind's looks (tunic, armor) they wear
 var display := false  # a unit there for show: it takes no population
 var path: Array[Vector2] = []
 var detour_cooldown := 0.0  # seconds before another detour may be planned
@@ -34,5 +34,5 @@ var moving := false  # moved this frame
 var stuck := 0.0  # seconds spent blocked while trying to walk
 var best_goal_dist := INF  # closest this unit has got to the end of its path
 var stall := 0.0  # seconds without getting meaningfully closer to it
-var walk := randf() * TAU  # walk-cycle phase, advances with distance travelled; each starts at a random point so a crowd doesn't move in step
+var walk := randf() * TAU  # walk-cycle phase, advances with distance traveled; each starts at a random point so a crowd doesn't move in step
 var anim := randf() * 30.0  # seconds alive (plus a random head start); drives work swings and idle breathing

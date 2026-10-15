@@ -1,7 +1,7 @@
 shader_type canvas_item;
-// Paints a player's colour onto a unit: wherever the sprite holds one of the three placeholder colours
+// Paints a player's color onto a unit: wherever the sprite holds one of the three placeholder colors
 // (Art.TEAM_KEY: magenta, in light, mid and dark), it is swapped for the owner's light, mid or dark
-// colour. Everything else is drawn as it is.
+// color. Everything else is drawn as it is.
 
 uniform vec3 team_light : source_color = vec3(1.0, 0.0, 1.0);
 uniform vec3 team_mid : source_color = vec3(0.78, 0.0, 0.78);

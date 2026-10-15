@@ -6,7 +6,7 @@ extends Control
 const SIZE := Vector2(176, 176)
 const COLORS := [Color("2c7db2"), Color("78cbe6"), Color("ebdc9e"), Color("8ec142"), Color("5e8b30"), Color("9cab4c"), Color("c8c4b4"), Color("6e8a52")]
 
-## The land's colours under snow and in the desert (grass, forest, hills, mountain and marsh differ; water and beach do not).
+## The land's colors under snow and in the desert (grass, forest, hills, mountain and marsh differ; water and beach do not).
 const SNOW_COLORS := [Color("2c7db2"), Color("78cbe6"), Color("ebdc9e"), Color("eef4fa"), Color("a9bdd2"), Color("d4e0ec"), Color("c8c4b4"), Color("b8c8c4")]
 const DESERT_COLORS := [Color("2c7db2"), Color("78cbe6"), Color("f2e4b0"), Color("e3c47c"), Color("a88a52"), Color("c9a463"), Color("b4a898"), Color("a89c68")]
 

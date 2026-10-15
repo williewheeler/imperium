@@ -1,7 +1,7 @@
 class_name GameSettings
 extends RefCounted
 ## What the player chose on the settings screen: the map (its shape, size, ground and riches), the peoples
-## (how many play, which, and in what colours) and the interface (game speed, volumes, full screen). Kept
+## (how many play, which, and in what colors) and the interface (game speed, volumes, full screen). Kept
 ## between sessions in user://settings.cfg, and loaded again at the next start.
 
 const PATH := "user://settings.cfg"
@@ -126,7 +126,7 @@ const RESOURCES := [
 ## a people they can keep going.
 const DIFFICULTIES := [
 	{"id": "easy", "latin": "Facilis", "english": "Easy", "think": 2.6, "grow": 45.0, "cap": 20, "builds": 1, "food": 0.4,
-		"about": "Slow to decide and slow to grow. A gentle neighbour."},
+		"about": "Slow to decide and slow to grow. A gentle neighbor."},
 	{"id": "normal", "latin": "Aequus", "english": "Normal", "think": 1.2, "grow": 25.0, "cap": 40, "builds": 2, "food": 0.55,
 		"about": "A steady rival that plays like a patient person."},
 	{"id": "hard", "latin": "Difficilis", "english": "Hard", "think": 0.6, "grow": 14.0, "cap": 70, "builds": 3, "food": 0.6,
@@ -140,14 +140,14 @@ static var resources_id := "normal"
 static var difficulty_id := "normal"
 static var terrain_id := "temperate"
 static var rival_peoples: Array = []  # the faction of each computer-run slot (Defs.RIVAL_ORDER by default)
-static var colors: Array = []  # the colour index (into Defs.PLAYER_COLORS) of each slot: you first, then the rivals'
+static var colors: Array = []  # the color index (into Defs.PLAYER_COLORS) of each slot: you first, then the rivals'
 static var speed := 1.0
 static var music := 3  # volume notches, 0 to VOLUME_STEPS
 static var effects := 4
 static var fullscreen := true
 
 
-## The starting arrangement: the first peoples in Defs.RIVAL_ORDER, each in its traditional colour.
+## The starting arrangement: the first peoples in Defs.RIVAL_ORDER, each in its traditional color.
 static func default_peoples() -> void:
 	rival_peoples = Defs.RIVAL_ORDER.duplicate()
 	colors = [0]
@@ -155,8 +155,8 @@ static func default_peoples() -> void:
 		colors.append(int(Defs.FACTIONS[f]["owner"]))
 
 
-## Makes the peoples and colours valid after a change of the count or a bad save: every people and every
-## colour is used at most once, and everything has a value.
+## Makes the peoples and colors valid after a change of the count or a bad save: every people and every
+## color is used at most once, and everything has a value.
 static func tidy_players() -> void:
 	if rival_peoples.size() != Defs.RIVAL_ORDER.size() or colors.size() != Defs.RIVAL_ORDER.size() + 1:
 		default_peoples()
@@ -183,7 +183,7 @@ static func tidy_players() -> void:
 		seen_c[c] = true
 
 
-## Gives slot `slot` (0 is you) colour `c`; whoever had it takes the colour that slot gave up.
+## Gives slot `slot` (0 is you) color `c`; whoever had it takes the color that slot gave up.
 static func set_color(slot: int, c: int) -> void:
 	var other := colors.find(c)
 	if other >= 0 and other != slot:

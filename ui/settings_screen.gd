@@ -2,7 +2,7 @@ class_name SettingsScreen
 extends CanvasLayer
 ## The settings screen, opened from the title, in three pages:
 ##   Tabula (the map): its kind (with a picture of each), size, ground and riches;
-##   Populi (the peoples): how many play, which peoples and in what colours, and how skilled the
+##   Populi (the peoples): how many play, which peoples and in what colors, and how skilled the
 ##     computer-run ones are;
 ##   Instrumenta (the interface): game speed, music and effects volume, window or full screen.
 ## Every choice is kept at once, for next time. Esc, Enter or "Redi" goes back.
@@ -20,7 +20,7 @@ const COLUMNS := 9
 const THUMB := 72
 const PAGES := [
 	{"id": "map", "latin": "Tabula", "english": "Map: its shape, size, ground and riches"},
-	{"id": "players", "latin": "Populi", "english": "Peoples: who plays, in what colours, and how skilled"},
+	{"id": "players", "latin": "Populi", "english": "Peoples: who plays, in what colors, and how skilled"},
 	{"id": "interface", "latin": "Instrumenta", "english": "Interface: game speed, volume and screen"},
 ]
 
@@ -208,7 +208,7 @@ func _build_players_page(page: VBoxContainer) -> void:
 		b.pressed.connect(_pick_difficulty.bind(d["id"]))
 		_difficulty_buttons[d["id"]] = b
 		skill_row.add_child(b)
-	page.add_child(_heading("Populi et colores", "Who plays, and in what colours: pick a people and a colour for each. Pick one already taken and the two swap.", "shield:romans"))
+	page.add_child(_heading("Populi et colores", "Who plays, and in what colors: pick a people and a color for each. Pick one already taken and the two swap.", "shield:romans"))
 	_slot_box = VBoxContainer.new()
 	_slot_box.add_theme_constant_override("separation", 5)
 	_slot_box.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -256,7 +256,7 @@ func _build_interface_page(page: VBoxContainer) -> void:
 	page.add_child(_label("Quiet background music plays; the effects volume is kept for when there are sounds.", 12, DIM))
 
 
-## The rows of the peoples playing: you, then each computer-run people with its colour.
+## The rows of the peoples playing: you, then each computer-run people with its color.
 func _rebuild_slots() -> void:
 	for c in _slot_box.get_children():
 		c.queue_free()
@@ -392,7 +392,7 @@ func _style(b: Button, selected := false) -> void:
 		b.add_theme_stylebox_override(state, sb)
 
 
-## A colour button: a square of the colour, ringed in gold when it is the one picked.
+## A color button: a square of the color, ringed in gold when it is the one picked.
 func _swatch(b: Button, color: Color, selected: bool) -> void:
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
 		var sb := StyleBoxFlat.new()

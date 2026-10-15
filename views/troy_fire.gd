@@ -65,7 +65,7 @@ func _draw() -> void:
 	# the glow of the burning city, strongest at the bottom
 	draw_texture_rect(_glow, Rect2(0, h * 0.2, w, h * 0.8), false, Color(1, 1, 1, pulse * 0.9))
 	var cols := int(w / U) + 2
-	var off := maxf((COLS - cols) / 2.0, 0.0)  # centre the skyline when the screen is narrower than the strip
+	var off := maxf((COLS - cols) / 2.0, 0.0)  # center the skyline when the screen is narrower than the strip
 	# flames, behind the silhouette
 	for f in _fires:
 		var c := int(f.x - off)

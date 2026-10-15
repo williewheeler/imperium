@@ -8,8 +8,8 @@ const HORSE_MAX_SPEED := 4.0  # tiles/sec, even on a paved road
 const VILLAGER_SIGHT := 7.0
 const FOUNDATION_SIGHT := 4.0
 const FOG_INTERVAL := 0.1
-const WALK_CYCLE_PER_TILE := 7.0  # radians of walk animation per tile travelled
-const UNIT_SPACING := 0.5  # minimum distance between unit centres, in tiles
+const WALK_CYCLE_PER_TILE := 7.0  # radians of walk animation per tile traveled
+const UNIT_SPACING := 0.5  # minimum distance between unit centers, in tiles
 const AVOID_RADIUS := 1.0  # walkers steer around anyone this close ahead of them
 const AVOID_CLEARANCE := 0.65  # sideways room to leave when passing someone
 const DETOUR_LOOK := 1.2  # how far ahead to look for someone in the way
@@ -59,7 +59,7 @@ var dragging := false
 var drag_rect := Rect2()  # world pixels
 
 var _world: World
-var cam_pos := Vector2.ZERO  # camera centre in world pixels (smooth; the Camera2D gets it rounded)
+var cam_pos := Vector2.ZERO  # camera center in world pixels (smooth; the Camera2D gets it rounded)
 var zoom_px := 0  # whole physical screen pixels per art pixel, so pixels stay square
 var _zoom_accum := 0.0
 var _drag_start := Vector2.ZERO
@@ -131,7 +131,7 @@ func _ready() -> void:
 	if args.has("splash") or args.has("intro") or (not scripted and DisplayServer.get_name() != "headless"):
 		await _title_sequence(args)  # the opening scroll and the title screen come first; the world is built when you press Incipe
 
-	Team.reset()  # the colours may have been changed on the settings screen
+	Team.reset()  # the colors may have been changed on the settings screen
 	var _t_a := Time.get_ticks_msec()
 	# The world is built on a worker thread while a loading screen draws its progress bar; the game
 	# itself stays switched off until everything is ready.
@@ -398,7 +398,7 @@ func view_corners() -> Array[Vector2]:
 	return out
 
 
-## Top-left tile of the building footprint being placed, centred under the cursor.
+## Top-left tile of the building footprint being placed, centerd under the cursor.
 func placing_tile() -> Vector2i:
 	var size: Vector2i = Defs.BUILDINGS[placing]["size"]
 	var m := Iso.to_tile(get_global_mouse_position())
@@ -1153,7 +1153,7 @@ func _place_circus(start: Vector2i) -> void:
 	for b in buildings:
 		rects.append(b.rect().grow(2))
 	var size: Vector2i = Defs.BUILDINGS["circus"]["size"]
-	var site := map.find_site(size, start, 6, 40, avoid, rects, true)  # woods in the way are felled, marsh drained, the ground levelled and raised
+	var site := map.find_site(size, start, 6, 40, avoid, rects, true)  # woods in the way are felled, marsh drained, the ground leveled and raised
 	if site.x >= 0:
 		var apron := Rect2i(site, size).grow(1)  # a tile of cleared ground all round it
 		map.clear_ground(apron)  # the valley floor: woods felled, marsh drained, no scrub left growing
@@ -2188,7 +2188,7 @@ func _showcase_update(delta: float) -> void:
 	for u: Unit in _show_jobs.keys():
 		if u.state == Unit.State.IDLE and _show_t > 1.0:
 			_show_jobs[u].call(u)
-	# the camera drifts gently to keep the action centred
+	# the camera drifts gently to keep the action centerd
 	var focus := buildings[0].center()
 	var n := 1.0
 	for u in units:

@@ -1,6 +1,6 @@
 shader_type canvas_item;
 // The weather as one pixel-art overlay: cloud shadows, a dark tint, fog banks, rain and lightning.
-// Everything is quantised to chunky pixels and dithered, to sit with the rest of the art.
+// Everything is quantized to chunky pixels and dithered, to sit with the rest of the art.
 
 uniform vec2 area = vec2(1280.0, 720.0); // the screen in logical pixels
 uniform float darkness = 0.0;

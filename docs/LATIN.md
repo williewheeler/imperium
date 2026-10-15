@@ -46,14 +46,14 @@ Some buildings change name and picture between eras (`"early"` entry in `Defs.BU
 ## Units
 
 Early Roman citizens armed themselves and wore no uniform, so the richest fought mounted and the poorest
-with slings. Each fighting kind has three looks (tunic colour, how much armour). See `docs/DESIGN.md`.
+with slings. Each fighting kind has three looks (tunic color, how much armor). See `docs/DESIGN.md`.
 
 | Latin | English | Notes |
 |---|---|---|
 | Colonus (pl. *coloni*) | Villager | men and women alike. A *colonus* is a settler or farmer |
 | Eques (pl. *equites*) | Horseman | the wealthy, who could afford a horse. Trained at the Stabulum. The kings' cavalry were traditionally the *celeres* |
 | Miles Gravis (pl. *milites graves*) | Heavy infantry | helmet, breastplate, round shield, spear. *Miles* is the ordinary word for a soldier; "gravis" (heavy-armed) is the game's label, not an attested unit name |
-| Pedes | Spearman | a foot soldier with a shield and spear but no armour. *Pedes* is singular and plural alike |
+| Pedes | Spearman | a foot soldier with a shield and spear but no armor. *Pedes* is singular and plural alike |
 | Funditor (pl. *funditores*) | Slinger | the poorest citizens, with a sling and stones. A real Latin word |
 
 The HUD says "milites" for any group of fighting men, whatever their kind.
@@ -138,7 +138,7 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 | Tabula; Populi; Instrumenta | The three pages of the settings: the map (a board or map); the peoples; the interface (instruments, tools) |
 | Genus terrae; Magnitudo; Numerus | Kind of map; Map size; Number (of peoples) |
 | Natura soli | The nature of the soil: the ground. Temperata, Campestris, Collina, Silvestris, Nivalis, Arida = Temperate, Grassland (of the plain), Hilly, Wooded, Snowy, Desert (dry) |
-| Populi et colores | Peoples and colours |
+| Populi et colores | Peoples and colors |
 | Celeritas; Lente, Norma, Celeriter, Celerrime | Game speed; Slow, Normal (norma = the rule), Fast, Fastest |
 | Musica; Soni | Music; Sounds (effects) |
 | Visus; Fenestra, Plena | Display; Window, Full (screen) |

@@ -28,7 +28,7 @@ var lock_numeral := "":  # e.g. "II" while this needs a later era
 			queue_redraw()
 
 var _styles := {}
-var _unit_icon: TextureRect  # the picture of a unit, with the team colour painted on
+var _unit_icon: TextureRect  # the picture of a unit, with the team color painted on
 
 
 func _init() -> void:
@@ -75,7 +75,7 @@ func _draw() -> void:
 	_draw_cost(size.y - (4 if compact else 9), text_color)
 
 
-## Greys a colour out while the button is disabled.
+## Grays a color out while the button is disabled.
 func _t(c: Color) -> Color:
 	return c.lerp(Color(0.32, 0.32, 0.32), 0.6) if disabled else c
 
@@ -106,7 +106,7 @@ func _draw_icon(c: Vector2) -> void:
 	var scale := 2.0
 	var sz := t.get_size() * scale
 	var at := Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz)
-	if icon_kind in UNIT_ICONS:  # a unit picture goes through the team-colour material, which needs a node of its own
+	if icon_kind in UNIT_ICONS:  # a unit picture goes through the team-color material, which needs a node of its own
 		if _unit_icon == null:
 			_unit_icon = TextureRect.new()
 			_unit_icon.material = Team.material_for(0)

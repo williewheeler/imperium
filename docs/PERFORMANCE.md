@@ -55,7 +55,7 @@ The real stalls were CPU time in GDScript, found by the per-part marks:
 
 These hit the player too: rivals always exist, and `_retarget` runs for the player's villagers.
 
-After the fixes: worst frame in the same run 45 ms (was 680 ms). Rival behaviour unchanged (a 400 s headless
+After the fixes: worst frame in the same run 45 ms (was 680 ms). Rival behavior unchanged (a 400 s headless
 simulation still ends with 9 villagers each) and that simulation runs much faster.
 
 ## Still open

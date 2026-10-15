@@ -35,15 +35,15 @@ const UNITS := {
 const ROAD_COST := [0, 0, 2, 0]
 const ROAD_BUILD_TIME := 2.5
 
-# What colour marks each player's buildings: a pennant and a tint round the footprint, drawn over and
+# What color marks each player's buildings: a pennant and a tint round the footprint, drawn over and
 # under the building (never baked into its art), so every player can have their own. You start in purple.
 const PLAYER_COLORS := [
 	Color("8a3fb0"), Color("c8453c"), Color("3f6fc0"), Color("3f9a55"),
 	Color("e0922e"), Color("2fa6a6"), Color("d6c13a"), Color("e8e8e8"),
 ]
 
-# The colour of player number `owner` (you are 0; the computer-run peoples are 1 and up, in the order
-# set on the settings screen): whatever colour was picked there.
+# The color of player number `owner` (you are 0; the computer-run peoples are 1 and up, in the order
+# set on the settings screen): whatever color was picked there.
 static func color_of(owner: int) -> Color:
 	if owner < 0:
 		return Color.WHITE
@@ -51,7 +51,7 @@ static func color_of(owner: int) -> Color:
 	return PLAYER_COLORS[i % PLAYER_COLORS.size()]
 
 
-# The peoples of the game. "owner" is the colour each usually plays in, as an index into PLAYER_COLORS:
+# The peoples of the game. "owner" is the color each usually plays in, as an index into PLAYER_COLORS:
 # Rome purple (0), the Etruscans red (1), the Greeks blue (2), the Samnites green (3), the Sabines amber
 # (4), the Volsci teal (5), the Aequi yellow (6) and the Latins white (7: Alba Longa means "the long white one").
 const FACTIONS := {
@@ -64,7 +64,7 @@ const FACTIONS := {
 	"volsci": {"owner": 5, "latin": "Volsci", "english": "Volsci", "town": "Antium"},
 	"aequi": {"owner": 6, "latin": "Aequi", "english": "Aequi", "town": "Corbio"},
 }
-# Who joins first when more peoples play: the neighbours of early Rome, then the south.
+# Who joins first when more peoples play: the neighbors of early Rome, then the south.
 const RIVAL_ORDER := ["etruscans", "sabines", "latins", "greeks", "samnites", "volsci", "aequi"]
 
 # The eras of Roman history, as the game's progression. Years are the traditional dates.

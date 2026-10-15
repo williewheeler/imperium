@@ -84,7 +84,7 @@ func rebuild_roads() -> void:
 	_paved_texture.update(_paved_image)
 
 
-## A tile became a road (dirt or paved): paint it and its links to neighbouring road tiles.
+## A tile became a road (dirt or paved): paint it and its links to neighboring road tiles.
 func update_road(p: Vector2i) -> void:
 	_stroke_tile(p)
 	_dirt_texture.update(_dirt_image)

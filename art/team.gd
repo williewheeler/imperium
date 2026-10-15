@@ -1,12 +1,12 @@
 class_name Team
 extends RefCounted
-## One shared material per player that paints that player's colour onto their units
+## One shared material per player that paints that player's color onto their units
 ## (team.gdshader), made on first use.
 
 static var _materials := {}
 
 
-## Forget the materials made so far (the colours were changed).
+## Forget the materials made so far (the colors were changed).
 static func reset() -> void:
 	_materials.clear()
 

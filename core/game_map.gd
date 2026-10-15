@@ -18,7 +18,7 @@ const RELIEF_SCALE := 10.0  # how strongly a slope shows as light or shade
 const SLOPE_COST := 5.0  # extra walking cost per unit of steepness (elevation change per tile)
 ## Height above the sea at which each terrace starts: finer on the plains, coarser up the hills.
 const LEVEL_STARTS := [0.075, 0.15, 0.24, 0.33, 0.42]
-const MIN_TERRACE := 26  # tiles: a smaller patch of one level is folded into its neighbour
+const MIN_TERRACE := 26  # tiles: a smaller patch of one level is folded into its neighbor
 const MAX_LEVEL := 5  # = LEVEL_STARTS.size()
 ## Direction the light comes from, as a unit vector in tile space: the top-left of the screen.
 const LIGHT := Vector2(-0.95, -0.32)
@@ -81,7 +81,7 @@ func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview_px := 0,
 
 
 ## A small picture of what a kind of map looks like (one pixel per terrain sample, in the minimap's
-## colours), made from the same land-shaping as the real thing on a notional 320-tile map.
+## colors), made from the same land-shaping as the real thing on a notional 320-tile map.
 static func preview(type_id: String, px: int, preview_seed := 7) -> Image:
 	var m := GameMap.new(preview_seed, 320, type_id, px, 8)
 	var grid := PackedByteArray()
@@ -232,7 +232,7 @@ func _compute_relief() -> void:
 
 
 ## Cuts the (blurred) elevation into terraces. Water and beaches stay at level 0, and lone tiles
-## that disagree with all their neighbours are folded into them so the cliffs form sensible lines.
+## that disagree with all their neighbors are folded into them so the cliffs form sensible lines.
 func _compute_levels(smooth: PackedFloat32Array) -> void:
 	levels.resize(w * h)
 	var wide := _box_blur(smooth, 2)
@@ -275,11 +275,11 @@ func _compute_levels(smooth: PackedFloat32Array) -> void:
 				if west == here or east == here or north == here or south == here:
 					continue
 				var common := (1 if east == west else 0) + (1 if north == west else 0) + (1 if south == west else 0)
-				if common >= 2:  # three of the four neighbours agree with the first
+				if common >= 2:  # three of the four neighbors agree with the first
 					levels[i] = west
 
 
-## Averages each tile with its neighbours within `radius` (edges repeat): a fast separable box blur.
+## Averages each tile with its neighbors within `radius` (edges repeat): a fast separable box blur.
 func _box_blur(src: PackedFloat32Array, radius: int) -> PackedFloat32Array:
 	var tmp := PackedFloat32Array()
 	tmp.resize(w * h)
@@ -304,7 +304,7 @@ func _box_blur(src: PackedFloat32Array, radius: int) -> PackedFloat32Array:
 	return out
 
 
-## Folds terraces smaller than MIN_TERRACE tiles into the neighbouring terrace they share the
+## Folds terraces smaller than MIN_TERRACE tiles into the neighboring terrace they share the
 ## longest border with, so a step is a proper ledge and not a scatter of short dashes.
 func _merge_small_terraces() -> void:
 	for _round in 3:
@@ -642,7 +642,7 @@ func drain_marsh(center: Vector2, radius: float) -> Array[Vector2i]:
 const START_OFFSETS: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 1), Vector2i(1, 1)]
 
 
-## Spiral out from the centre for grass with a forest nearby and room for the starting
+## Spiral out from the center for grass with a forest nearby and room for the starting
 ## Town Center within a few tiles. Falls back to just "grass with a forest", then "grass".
 func find_start(c := Vector2i(-1, -1), reach_from := Vector2i(-1, -1), first_level := 0) -> Vector2i:
 	if c.x < 0:

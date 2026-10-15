@@ -2,7 +2,7 @@ shader_type canvas_item;
 #include "res://shaders/terrace.gdshaderinc"
 // Pixel-art isometric ground. The terrain type of every tile is stored in a small texture; each
 // screen pixel looks up which tile it is over (after a noise warp, so coastlines and forest
-// edges wobble organically instead of following the diamond grid) and picks a colour from that
+// edges wobble organically instead of following the diamond grid) and picks a color from that
 // terrain's palette with ordered dithering. Everything is snapped to whole world pixels.
 
 uniform sampler2D terrain : filter_nearest, repeat_disable;
@@ -51,7 +51,7 @@ vec3 hx(int c) {
 	return vec3(float((c >> 16) & 255), float((c >> 8) & 255), float(c & 255)) / 255.0;
 }
 
-// v in [0,1], 1 = lightest; a is the lightest colour, d the darkest.
+// v in [0,1], 1 = lightest; a is the lightest color, d the darkest.
 vec3 ramp4(vec3 a, vec3 b, vec3 c, vec3 d, float v) {
 	int i = 3 - int(clamp(v, 0.0, 0.999) * 4.0);
 	if (i == 0) return a;
@@ -72,7 +72,7 @@ int terrain_at(vec2 g) {
 	return int(texelFetch(terrain, t, 0).r * 255.0 + 0.5);
 }
 
-// Re-colours green ground for the snowy and desert styles, keeping its light and shade: `v` is how bright
+// Re-colors green ground for the snowy and desert styles, keeping its light and shade: `v` is how bright
 // the original was, so the dither and the slopes carry over.
 vec3 restyle(vec3 col, int id) {
 	float v = clamp(dot(col, vec3(0.3, 0.59, 0.11)) * 1.25 - 0.28, 0.0, 0.999); // 0 dark .. 1 light
@@ -101,8 +101,8 @@ float raindrop(vec2 wp, float amount, float time) {
 			if (hash(k + 11.0) > amount * 0.7) continue; // heavier rain: more drops
 			float period = 1.1 + hash(k + 3.0) * 1.2;
 			float age = fract(time / period + hash(k + 7.0));
-			vec2 centre = (k + vec2(0.2 + 0.6 * hash(k + 1.0), 0.2 + 0.6 * hash(k + 2.0))) * cell;
-			vec2 d = (wp - centre) * vec2(1.0, 2.0);
+			vec2 center = (k + vec2(0.2 + 0.6 * hash(k + 1.0), 0.2 + 0.6 * hash(k + 2.0))) * cell;
+			vec2 d = (wp - center) * vec2(1.0, 2.0);
 			float dist = length(d);
 			float radius = age * 11.0;
 			if (age < 0.12 && dist < 1.6) lit = max(lit, 1.0); // the splash
@@ -113,7 +113,7 @@ float raindrop(vec2 wp, float amount, float time) {
 }
 
 // A cliff face between two terraces: earth with strata, a grassy lip on top and a shaded foot.
-vec3 cliff_colour(vec2 wp, int kind, int top_id, float v) {
+vec3 cliff_color(vec2 wp, int kind, int top_id, float v) {
 	float bd = bayer(wp);
 	float strata = vnoise(vec2(wp.x * 0.35, floor(wp.y / 2.0) * 1.7)) - 0.5;
 	bool rocky = top_id == 5 || top_id == 6;
@@ -132,7 +132,7 @@ vec3 cliff_colour(vec2 wp, int kind, int top_id, float v) {
 	return col;
 }
 
-vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
+vec3 ground_color(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 	float bd = bayer(wp);
 	vec2 warp = (vec2(vnoise(wp * 0.11), vnoise(wp * 0.11 + vec2(17.3, 5.1))) - 0.5) * 10.0;
 	vec2 gw = g + to_tile(warp); // the tile this pixel is "in", after the coastline wobble
@@ -237,11 +237,11 @@ void fragment() {
 	float wall_v;
 	vec2 g = surface(wp, cliff, wall_v);
 	if (cliff > 0) {
-		COLOR = vec4(cliff_colour(wp, cliff, terrain_at(g), wall_v), 1.0);
+		COLOR = vec4(cliff_color(wp, cliff, terrain_at(g), wall_v), 1.0);
 	} else {
 		int c2;
 		float v2;
 		surface(wp - vec2(0.0, 3.0), c2, v2);
-		COLOR = vec4(ground_colour(wp, g, TIME, c2 > 0, level_at(g)), 1.0);
+		COLOR = vec4(ground_color(wp, g, TIME, c2 > 0, level_at(g)), 1.0);
 	}
 }

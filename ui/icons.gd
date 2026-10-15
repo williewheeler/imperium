@@ -236,7 +236,7 @@ static func _pine(img: Image, cx: int, base: int) -> void:
 		_rect(img, cx - half, base - 4 + i, 1 + half * 2, 1, GREEN_DARK if i % 2 == 0 else GREEN)
 
 
-## A half-disc mound with its top at `base - r` and its foot on row `base`, centred at column `cx`.
+## A half-disc mound with its top at `base - r` and its foot on row `base`, centerd at column `cx`.
 static func _mound(img: Image, cx: int, base: int, r: int, col: Color) -> void:
 	for y in range(base - r, base + 1):
 		var dy := float(base - y)

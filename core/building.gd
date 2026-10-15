@@ -1,7 +1,7 @@
 class_name Building
 extends RefCounted
 
-## The era the game is in. The town centre changes from the Casa Romuli (the hut village) to the marble Forum in Era II.
+## The era the game is in. The town center changes from the Casa Romuli (the hut village) to the marble Forum in Era II.
 static var era := 0
 static var _early_defs := {}  # kind -> its Era I definition (name and picture differ)
 
@@ -23,12 +23,12 @@ func def() -> Dictionary:
 	return def_for(kind)
 
 
-## The owner's colour (white for a landmark).
+## The owner's color (white for a landmark).
 func team_color() -> Color:
 	return Defs.color_of(owner)
 
 
-## Building data. Some buildings look and read differently in Era I: the town centre is the
+## Building data. Some buildings look and read differently in Era I: the town center is the
 ## Casa Romuli (then the Forum), the barracks the Arx (then the Castra), the temple the Aedes (then the Templum).
 static func def_for(k: String) -> Dictionary:
 	var d: Dictionary = Defs.BUILDINGS[k]

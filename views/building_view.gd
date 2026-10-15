@@ -68,7 +68,7 @@ func _ready() -> void:
 		objects.add_child(_fire)
 	if building.owner >= 0:
 		for sprite in _sprites:
-			sprite.material = Team.material_for(building.owner)  # paints the owner's colour on any team marks in the art
+			sprite.material = Team.material_for(building.owner)  # paints the owner's color on any team marks in the art
 	if building.kind == "circus":
 		_life = CircusCrowd.new()
 		_life.team = building.team_color()

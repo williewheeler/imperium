@@ -118,7 +118,7 @@ func terrain_at(x: int, y: int) -> int:
 
 # ---------------------------------------------------------------- stamps
 
-## One stamp: an ellipse (or, with `power` above 2, a rounded square) centred at (cx, cy) with radii (rx, ry), all fractions of the map's side, turned
+## One stamp: an ellipse (or, with `power` above 2, a rounded square) centerd at (cx, cy) with radii (rx, ry), all fractions of the map's side, turned
 ## by `angle` radians. `mode` says what it does where it lands: "land" raises the sea to `level`; "carve"
 ## cuts water out of the land; "raise" adds `level` of height to land (hills, ridges); "flat" levels land
 ## toward `level` and keeps it clear of woods; "level" only levels it; "open" only keeps it clear. `edge` is how much of the radius
@@ -240,7 +240,7 @@ func _near_home(c: Vector2, r: float) -> bool:
 	return false
 
 
-## An island blob that keeps clear of the islands already laid (a list of [centre, radius]).
+## An island blob that keeps clear of the islands already laid (a list of [center, radius]).
 func _island(placed: Array, c: Vector2, r: float, spacing := 1.2, warp := 0.32) -> bool:
 	for p in placed:
 		if c.distance_to(p[0]) < (r + float(p[1])) * spacing:
