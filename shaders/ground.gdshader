@@ -157,12 +157,12 @@ vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 		float ripple = vnoise(vec2(wp.x * 0.2 + flow * 0.6, wp.y * 0.65 + flow * 0.15));
 		col = ramp4(hx(0x3a8fc0), hx(0x2c7db2), hx(0x206b9f), hx(0x185a88), 0.45 + (ripple - 0.5) * (0.7 + rain * 0.5) + d - rain * 0.12);
 		if (hash(wp * 0.77 + t) > 0.988 - rain * 0.022) col = hx(0x8cc8e8); // whitecaps multiply in a storm
-		col = mix(col, hx(0xd2ebf7), raindrop(wp, rain, floor(time * 8.0) / 8.0) * 0.85);
+		col = mix(col, hx(0xd2ebf7), raindrop(wp, rain, floor(time * 15.0) / 15.0) * 0.85);
 	} else if (id == 1) { // shallows
 		float ripple = vnoise(vec2(wp.x * 0.25 + flow * 0.5, wp.y * 0.8 - flow * 0.2));
 		col = ramp4(hx(0x9ae0f0), hx(0x78cbe6), hx(0x5db7d8), hx(0x46a1c4), 0.5 + (ripple - 0.5) * (0.6 + rain * 0.5) + d - rain * 0.1);
 		if (hash(wp * 0.91 + t) > 0.985 - rain * 0.015) col = hx(0xe8fbff);
-		col = mix(col, hx(0xf2fbff), raindrop(wp, rain, floor(time * 8.0) / 8.0) * 0.85);
+		col = mix(col, hx(0xf2fbff), raindrop(wp, rain, floor(time * 15.0) / 15.0) * 0.85);
 	} else if (id == 2) { // beach
 		col = ramp4(hx(0xf4e7b0), hx(0xebdc9e), hx(0xddca8a), hx(0xcdb678), 0.55 + (n - 0.5) * 0.7 + d);
 		if (fine > 0.97) col = hx(0xc2ac6c);
@@ -183,7 +183,7 @@ vec3 ground_colour(vec2 wp, vec2 g, float time, bool below_wall, int lvl) {
 			float ripple = vnoise(vec2(wp.x * 0.3 + t * 0.4, wp.y * 0.9));
 			col = ramp4(hx(0x8fbcb2), hx(0x74a7a0), hx(0x5d9190), hx(0x4a7d7e), 0.45 + (ripple - 0.5) * 0.6 + d);
 			if (hash(wp * 0.83 + t) > 0.99) col = hx(0xd6efe8);
-			col = mix(col, hx(0xe4f4ef), raindrop(wp, rain, floor(time * 8.0) / 8.0) * 0.8);
+			col = mix(col, hx(0xe4f4ef), raindrop(wp, rain, floor(time * 15.0) / 15.0) * 0.8);
 		} else if (pools > 0.5) {
 			col = hx(0x5a6a38); // the muddy rim
 		} else if (fine > 0.955) {
