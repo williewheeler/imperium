@@ -35,7 +35,7 @@ parchment scroll that fills in as you explore.
 
 | Snow | Desert |
 |---|---|
-| ![A Republican town in the snow, beside the Circus Maximus](docs/screenshots/biome-snow.png) | ![A Republican town on dry sand](docs/screenshots/biome-desert.png) |
+| ![A Republican town in the snow, beside the Circus Maximus](docs/screenshots/republic-snow.png) | ![A Republican town on dry sand](docs/screenshots/republic-desert.png) |
 | **Marshland** | **Hills** |
 | ![Reed beds and pools beside the Circus Maximus](docs/screenshots/biome-marsh.png) | ![Terraced hills rising from open meadow](docs/screenshots/biome-hills.png) |
 
@@ -58,7 +58,7 @@ ripples the water, storms roughen it, and fog drifts in banks.
 
 | Rain | Fog |
 |---|---|
-| ![Rain falling over a Republican Forum and aqueduct](docs/screenshots/rain.png) | ![Fog rolling over the village](docs/screenshots/fog.png) |
+| ![Rain falling over a Republican Forum and aqueduct](docs/screenshots/republic-rain.png) | ![Fog rolling over the village](docs/screenshots/fog.png) |
 
 **Fighting men.** Horsemen (Equites), spearmen (Pedites) and slingers (Funditores) in the colour of
 their owner: purple for you, a different colour for another player.
