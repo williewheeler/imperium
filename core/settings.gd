@@ -142,7 +142,7 @@ static var terrain_id := "temperate"
 static var rival_peoples: Array = []  # the faction of each computer-run slot (Defs.RIVAL_ORDER by default)
 static var colors: Array = []  # the colour index (into Defs.PLAYER_COLORS) of each slot: you first, then the rivals'
 static var speed := 1.0
-static var music := 4  # volume notches, 0 to VOLUME_STEPS
+static var music := 3  # volume notches, 0 to VOLUME_STEPS
 static var effects := 4
 static var fullscreen := true
 

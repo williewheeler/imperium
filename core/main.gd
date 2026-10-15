@@ -113,6 +113,8 @@ func _ready() -> void:
 
 	var scripted := args.has("shot") or args.has("report") or args.has("showcase") or args.has("record") or args.has("demo") or args.has("nosplash")
 	GameSettings.apply_interface(not scripted)
+	if not scripted and DisplayServer.get_name() != "headless":
+		add_child(Music.new())  # plays on through the title and the game
 	set_process(false)
 	set_physics_process(false)
 	set_process_unhandled_input(false)
