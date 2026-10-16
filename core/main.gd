@@ -120,7 +120,21 @@ func _wrap_tooltips(node: Node) -> void:
 				c.tooltip_text = wrap_tip(c.tooltip_text))
 
 
+## Tooltips get a solid dark panel with a thin gold edge, so whatever is behind them never shows through the text.
+static func style_tooltips() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.02, 0.02, 1.0)
+	sb.set_border_width_all(1)
+	sb.border_color = Color("b8932f")
+	sb.set_corner_radius_all(4)
+	sb.set_content_margin_all(8)
+	var theme := ThemeDB.get_default_theme()
+	theme.set_stylebox("panel", "TooltipPanel", sb)
+	theme.set_color("font_color", "TooltipLabel", Color("f3e6c4"))
+
+
 func _ready() -> void:
+	style_tooltips()
 	get_tree().node_added.connect(_wrap_tooltips)
 	# Debug flags: godot --path . -- --seed=42 --demo --speed=5 --shot=out.png --shot-frame=600
 	var args := {}
