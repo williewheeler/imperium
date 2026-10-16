@@ -287,7 +287,7 @@ func _build_chunk(c: Vector2i) -> void:
 				GameMap.Terrain.MOUNTAIN:
 					list.append(_sprite("mountain:%d" % int(Pixel.hash2(x, y, 70) * 4.0), Iso.to_screen_on(Vector2(x + 1, y + 1), Iso.level_of(p))))
 			var d: Deposit = map.deposits.get(p)
-			if d != null and d.kind != Defs.Res.WOOD:  # trees are the forest tile's own sprites
+			if d != null and d.kind != Defs.Res.WOOD and not d.farm:  # trees are the forest tile's own sprites; a field draws its own crop
 				var key := "berries"
 				if d.kind == Defs.Res.STONE:
 					key = "stone:%d" % int(Pixel.hash2(x, y, 80) * 2.0)
