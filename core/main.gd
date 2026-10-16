@@ -91,7 +91,37 @@ var _skirmish_look := Vector2.INF  # --skirmish: where the camera goes
 var attack_move_mode := false  # the next left click sends the selected fighters there to fight on the way (key A)
 
 
+## Tooltips are never one long line: whichever control is about to show one gets its text broken
+## into lines of about TIP_WIDTH characters (done as the mouse enters, so every tooltip is covered).
+const TIP_WIDTH := 56
+
+
+static func wrap_tip(text: String) -> String:
+	if text.length() <= TIP_WIDTH:
+		return text
+	var lines: Array[String] = []
+	for para in text.split("\n"):
+		var line := ""
+		for word in para.split(" ", false):
+			if line != "" and line.length() + 1 + word.length() > TIP_WIDTH:
+				lines.append(line)
+				line = word
+			else:
+				line = word if line == "" else line + " " + word
+		lines.append(line)
+	return "\n".join(lines)
+
+
+func _wrap_tooltips(node: Node) -> void:
+	if node is Control:
+		node.mouse_entered.connect(func() -> void:
+			var c := node as Control
+			if c.tooltip_text.length() > TIP_WIDTH:
+				c.tooltip_text = wrap_tip(c.tooltip_text))
+
+
 func _ready() -> void:
+	get_tree().node_added.connect(_wrap_tooltips)
 	# Debug flags: godot --path . -- --seed=42 --demo --speed=5 --shot=out.png --shot-frame=600
 	var args := {}
 	for a in OS.get_cmdline_user_args():

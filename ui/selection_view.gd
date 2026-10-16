@@ -285,7 +285,7 @@ func _stat(i: int, latin: String, english: String) -> int:
 ## Sets Latin text (in capitals) and its English tooltip.
 func _text(c: Label, latin: String, english: String) -> void:
 	c.text = Latin.t(latin)
-	c.tooltip_text = english
+	c.tooltip_text = Main.wrap_tip(english)
 	c.mouse_filter = Control.MOUSE_FILTER_PASS if english != "" else Control.MOUSE_FILTER_IGNORE
 
 

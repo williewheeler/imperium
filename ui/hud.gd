@@ -290,7 +290,7 @@ func refresh() -> void:
 	for btn in _buttons:
 		if btn.get_meta("advance", false):  # the era-advance button explains itself in full
 			btn.disabled = not _game.can_advance()
-			btn.tooltip_text = _game.advance_tooltip()
+			btn.tooltip_text = Main.wrap_tip(_game.advance_tooltip())
 			continue
 		var base: String = btn.get_meta("tip")
 		var need_era: int = btn.get_meta("era", 0)
@@ -307,7 +307,7 @@ func refresh() -> void:
 			why = "  —  not enough resources"
 		elif full:
 			why = "  —  population limit reached: build a House"
-		btn.tooltip_text = base + why
+		btn.tooltip_text = Main.wrap_tip(base + why)
 
 	_view.update()
 	if _quit_armed > 0.0:
@@ -427,7 +427,7 @@ func _cost_text(cost: Array) -> String:
 ## Sets Latin display text (capitals, V for U) and its English tooltip.
 func _say(c: Control, latin: String, english: String) -> void:
 	c.set("text", Latin.t(latin))
-	c.tooltip_text = english
+	c.tooltip_text = Main.wrap_tip(english)
 	if c is Label and english != "":
 		c.mouse_filter = Control.MOUSE_FILTER_PASS  # labels ignore the mouse by default, which hides tooltips
 
