@@ -83,6 +83,16 @@ const FACTIONS := {
 	"volsci": {"owner": 5, "latin": "Volsci", "english": "Volsci", "town": "Antium"},
 	"aequi": {"owner": 6, "latin": "Aequi", "english": "Aequi", "town": "Corbio"},
 }
+# The people player number `owner` plays: you are the Romans, the computer-run slots follow the settings.
+static func faction_of(owner: int) -> Dictionary:
+	var i := owner - 1
+	if owner > 0 and i < GameSettings.rival_peoples.size():
+		return FACTIONS[GameSettings.rival_peoples[i]]
+	if owner > 0 and i < RIVAL_ORDER.size():
+		return FACTIONS[RIVAL_ORDER[i]]
+	return FACTIONS["romans"]
+
+
 # Who joins first when more peoples play: the neighbors of early Rome, then the south.
 const RIVAL_ORDER := ["etruscans", "sabines", "latins", "greeks", "samnites", "volsci", "aequi"]
 

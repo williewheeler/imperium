@@ -24,6 +24,8 @@ const PAGES := [
 	{"id": "interface", "latin": "Instrumenta", "english": "Interface: game speed, volume and screen"},
 ]
 
+static var in_game := false  # opened from a running game: only the interface page applies, the map is already made
+
 var _root: Control
 var _tabs := {}  # page id -> Button
 var _pages := {}  # page id -> Control
@@ -113,10 +115,16 @@ func _ready() -> void:
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(gap)
 
-	_show_page(first_page)
+	if in_game:  # the map and the peoples are settled once the game has begun
+		for id: String in ["map", "players"]:
+			_tabs[id].visible = false
+		done.tooltip_text = "Back to the game  (Esc)"
+		_show_page("interface")
+	else:
+		_show_page(first_page)
+		for t: Dictionary in GameSettings.MAP_TYPES:
+			_todo.append(t["id"])
 	_refresh()
-	for t: Dictionary in GameSettings.MAP_TYPES:
-		_todo.append(t["id"])
 
 
 ## One picture per frame, so the screen opens at once and fills in.

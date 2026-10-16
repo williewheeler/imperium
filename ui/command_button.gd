@@ -98,7 +98,7 @@ func _draw_cost(y: float, text_color: Color) -> void:
 
 
 func _draw_icon(c: Vector2) -> void:
-	if icon_kind in ["explore", "stop", "start", "quit", "settings", "attack_move"]:
+	if icon_kind in ["explore", "stop", "start", "quit", "settings", "attack_move", "help"]:
 		_draw_action_icon(c)
 		return
 	var key := icon_kind + ":idle:f:0" if icon_kind in UNIT_ICONS else icon_kind
@@ -145,6 +145,11 @@ func _draw_action_icon(c: Vector2) -> void:
 				draw_line(Vector2(-9.0 * s, 9.0), Vector2(8.0 * s, -8.0), _t(CREAM), 2.5)  # the blade
 				draw_line(Vector2(-6.0 * s - 2.0, 6.0 - 2.0 * s), Vector2(-6.0 * s + 2.0, 6.0 + 2.0 * s), _t(GOLD), 2.0)  # the crossguard
 			draw_circle(Vector2.ZERO, 1.6, _t(Color("e0604c")))
+		"help":  # a question mark in a ring
+			draw_arc(Vector2.ZERO, 11.0, 0.0, TAU, 32, _t(GOLD), 2.0)
+			draw_arc(Vector2(0, -3), 4.0, PI * 1.05, PI * 2.55, 14, _t(CREAM), 2.2)
+			draw_line(Vector2(2.6, 0.2), Vector2(0, 3.2), _t(CREAM), 2.2)
+			draw_circle(Vector2(0, 7.0), 1.4, _t(CREAM))
 		"start":
 			draw_arc(Vector2.ZERO, 11.0, 0.0, TAU, 32, _t(GOLD), 2.0)
 			draw_colored_polygon(PackedVector2Array([Vector2(-4, -6.5), Vector2(7, 0), Vector2(-4, 6.5)]), _t(CREAM))

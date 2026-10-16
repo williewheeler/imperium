@@ -7,6 +7,8 @@ signal train_requested(kind: String)
 signal road_requested
 signal advance_requested
 signal action_requested(action: String)
+signal kind_chosen(kind: String)  # a tile of the group panel was clicked
+signal settings_requested
 
 const GOLD := Color("e8c766")
 const CREAM := Color("f3e6c4")
@@ -50,12 +52,11 @@ var _era_prog: Label
 var _res_labels: Array[Label] = []
 var _res_icons: Array[TextureRect] = []
 var _pop_label: Label
-var _sel_name: Label
-var _sel_info: Label
+var _view: SelectionView  # the portrait and details of the selection, left of the command bar
 var _btn_box: HFlowContainer
-var _action_box: HBoxContainer  # the order buttons (explore, stop), under the selection's name
-var _bar: ProgressBar
-var _bar_fill: StyleBoxFlat
+var _help: FramedPanel  # the controls, shown on request
+var _quit_button: CommandButton
+var _quit_armed := 0.0  # seconds left in which a second click on Exi really quits
 var _buttons: Array[Button] = []
 var _mode := ""
 var _msg: PanelContainer  # the flashed message: Latin with its English underneath, on a dim backing
@@ -112,9 +113,20 @@ func setup(game) -> void:
 	bv.add_child(_era_name)
 	bv.add_child(_era_prog)
 
-	var help := _panel(1, 0)
+	var menu := _panel(1, 0, 8.0)  # help, settings and quit, top right
+	var mrow := HBoxContainer.new()
+	mrow.add_theme_constant_override("separation", 6)
+	menu.add_child(mrow)
+	mrow.add_child(_menu_button("help", "Auxilium", "Show or hide the controls  (F1)", _toggle_help))
+	mrow.add_child(_menu_button("settings", "Optiones", "Game speed, volume and screen", func() -> void: settings_requested.emit()))
+	_quit_button = _menu_button("quit", "Exi", "Leave the game  (Q). Click twice.", _quit_pressed)
+	mrow.add_child(_quit_button)
+
+	_help = _panel(1, 0)
+	_help.offset_top = MARGIN + 90.0
+	_help.visible = false
 	var hv := VBoxContainer.new()
-	help.add_child(hv)
+	_help.add_child(hv)
 	for line: Array in HELP:
 		var l := _label("", 12)
 		_say(l, line[0], line[1])
@@ -147,31 +159,10 @@ func setup(game) -> void:
 		col.offset_bottom = -MARGIN + 2.0
 		col.offset_top = col.offset_bottom - ch
 		add_child(col)
-	var left := VBoxContainer.new()  # what's selected
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.custom_minimum_size.x = 188
-	left.size_flags_horizontal = Control.SIZE_FILL
-	bar_row.add_child(left)
-	_sel_name = _label("", 16, GOLD)
-	_sel_info = _label("", 12)
-	left.add_child(_sel_name)
-	left.add_child(_sel_info)
-	_action_box = HBoxContainer.new()
-	_action_box.add_theme_constant_override("separation", 6)
-	left.add_child(_action_box)
-	_bar = ProgressBar.new()  # how much is left in a selected resource
-	_bar.show_percentage = false
-	_bar.custom_minimum_size = Vector2(240, 12)
-	_bar.mouse_filter = Control.MOUSE_FILTER_PASS
-	var bar_bg := StyleBoxFlat.new()
-	bar_bg.bg_color = Color(0, 0, 0, 0.5)
-	bar_bg.set_corner_radius_all(3)
-	_bar_fill = StyleBoxFlat.new()
-	_bar_fill.set_corner_radius_all(3)
-	_bar.add_theme_stylebox_override("background", bar_bg)
-	_bar.add_theme_stylebox_override("fill", _bar_fill)
-	_bar.visible = false
-	left.add_child(_bar)
+	_view = SelectionView.new()  # a portrait of what's selected, and its details
+	_view.setup(_game)
+	_view.kind_chosen.connect(func(kind: String) -> void: kind_chosen.emit(kind))
+	bar_row.add_child(_view)
 	_btn_box = HFlowContainer.new()  # command icons, wrapping into rows
 	_btn_box.add_theme_constant_override("h_separation", 6)
 	_btn_box.add_theme_constant_override("v_separation", 6)
@@ -318,85 +309,16 @@ func refresh() -> void:
 			why = "  —  population limit reached: build a House"
 		btn.tooltip_text = base + why
 
-	_bar.visible = false
-	if _game.placing_road:
-		_say(_sel_name, "Via", "Road")
-		_say(_sel_info, "Sinistra: trahe  ·  Dextra: abroga", "Left click and drag to lay a road  ·  Right click to stop")
-	elif _game.placing != "":
-		var def: Dictionary = Building.def_for(_game.placing)
-		_say(_sel_name, "Pone %s" % def["acc"], "Place %s" % def["english"])
-		_say(_sel_info, "Sinistra: pone  ·  Dextra: abroga", "Left click: place  ·  Right click: cancel")
-	elif us.size() == 1:
-		var u := us[0]
-		var uname: Dictionary = Defs.UNITS[u.kind]
-		var st: Array = STATES[u.state]
-		var latin: String = st[0]
-		var english: String = st[1]
-		if u.working_farm and u.state == Unit.State.GATHERING:
-			latin = "Colit"  # tends the field
-			english = "Farming"
-		if u.carry > 0:
-			latin += "  ·  onus: %s %d" % [Defs.RES_NAMES[u.carry_kind], u.carry]
-			english += "  ·  carrying %d %s" % [u.carry, Defs.RES_ENGLISH[u.carry_kind].to_lower()]
-		if u.hp < float(uname["hp"]) - 0.5 or Combat.fights(u):  # a fighting man's health is worth knowing
-			latin += "  ·  vita %d/%d" % [int(ceil(u.hp)), uname["hp"]]
-			english += "  ·  health %d/%d" % [int(ceil(u.hp)), uname["hp"]]
-		_say(_sel_name, uname["name"], uname["english"])
-		_say(_sel_info, latin, english)
-	elif us.size() > 1:
-		var idle := 0
-		var soldiers := 0
-		for u in us:
-			if u.state == Unit.State.IDLE:
-				idle += 1
-			if u.kind != "villager":
-				soldiers += 1
-		var workers := us.size() - soldiers
-		var latin_parts: Array[String] = []
-		var english_parts: Array[String] = []
-		if workers > 0:
-			latin_parts.append("%d coloni" % workers)
-			english_parts.append("%d villagers" % workers)
-		if soldiers > 0:
-			latin_parts.append("%d milites" % soldiers)
-			english_parts.append("%d fighting men" % soldiers)
-		_say(_sel_name, "  ·  ".join(latin_parts), ", ".join(english_parts))
-		_say(_sel_info, "%d otiosi" % idle, "%d idle" % idle)
-	elif b != null:
-		var def := b.def()
-		var city := "  —  " + b.building_name if b.kind == "town_center" else ""
-		_say(_sel_name, "%s%s" % [def["name"], city], "%s%s" % [def["english"], city])
-		if not b.complete:
-			var pct := int(b.build_fraction() * 100)
-			_say(_sel_info, "Aedificatur  %d%%" % pct, "Under construction  %d%%" % pct)
-		elif not b.train_queue.is_empty():
-			_say(_sel_info, "In ordine: %d" % b.train_queue.size(), "In training: %d" % b.train_queue.size())
-		elif b.is_field() and map_deposit_for(b) != null:
-			var fd: Deposit = map_deposit_for(b)
-			_say(_sel_info, "Reliquum: %d / %d" % [fd.amount, fd.max_amount], "Remaining: %d of %d %s%s" % [fd.amount, fd.max_amount, Defs.RES_ENGLISH[fd.kind].to_lower(), "  (ripening again...)" if fd.amount <= 0 else ""])
-		else:
-			_say(_sel_info, def["ready"], "Ready")
-	elif _game.selected_deposit.x >= 0 and _game.map.deposits.has(_game.selected_deposit):
-		var d: Deposit = _game.map.deposits[_game.selected_deposit]
-		var full: int = d.max_amount
-		var res: String = Defs.RES_ENGLISH[d.kind].to_lower()
-		var english := "Remaining: %d of %d %s" % [d.amount, full, res]
-		_say(_sel_name, Defs.DEPOSIT_LATIN[d.kind], "%s: a source of %s" % [Defs.DEPOSIT_ENGLISH[d.kind], res])
-		_say(_sel_info, "Reliquum: %d / %d" % [d.amount, full], english)
-		_bar.max_value = full
-		_bar.value = d.amount
-		_bar.tooltip_text = english
-		_bar_fill.bg_color = Art.RES_COLORS[d.kind]
-		_bar.visible = true
-	else:
-		_say(_sel_name, "Nihil electum", "Nothing selected")
-		_say(_sel_info, "Elige colonos tuos.", "Select your villagers.")
+	_view.update()
+	if _quit_armed > 0.0:
+		_quit_armed -= get_process_delta_time()
+		if _quit_armed <= 0.0:
+			_quit_button.caption = Latin.t("Exi")
+			_quit_button.queue_redraw()
 
 
 func _rebuild_buttons(mode: String) -> void:
 	for c in _btn_box.get_children():
-		c.queue_free()
-	for c in _action_box.get_children():
 		c.queue_free()
 	_buttons.clear()
 	var parts := mode.split(":")
@@ -444,9 +366,39 @@ func _add_actions(fighters := false) -> void:
 		var b: CommandButton = _buttons[-1]
 		b.hotkey = a[3]
 		b.compact = true
-		b.custom_minimum_size = Vector2(64, 56)  # short enough to sit under the selection's name
-		_btn_box.remove_child(b)
-		_action_box.add_child(b)
+
+
+## A small button for the corner menu.
+func _menu_button(icon: String, caption: String, english: String, callback: Callable) -> CommandButton:
+	var b := CommandButton.new()
+	b.icon_kind = icon
+	b.caption = Latin.t(caption)
+	b.tooltip_text = english
+	b.compact = true
+	b.custom_minimum_size = Vector2(66, 58)
+	b.pressed.connect(callback)
+	return b
+
+
+func _toggle_help() -> void:
+	_help.visible = not _help.visible
+
+
+## Leaving takes a second click within three seconds, so a stray click can't end the game.
+func _quit_pressed() -> void:
+	if _quit_armed > 0.0:
+		get_tree().quit()
+		return
+	_quit_armed = 3.0
+	_quit_button.caption = Latin.t("Certus?")
+	_quit_button.tooltip_text = "Click again to leave the game"
+	_quit_button.queue_redraw()
+	flash("Iterum preme, ut exeas.", "Click Exi again to leave the game.")
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F1:
+		_toggle_help()
 
 
 ## An icon button: `icon` picks the picture, `caption` is the short Latin label, and `english`

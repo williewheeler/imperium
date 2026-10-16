@@ -204,6 +204,8 @@ func _ready() -> void:
 	weather.changed.connect(_on_weather_changed)
 	hud.advance_requested.connect(start_advance)
 	hud.action_requested.connect(command_selected)
+	hud.kind_chosen.connect(select_only_kind)
+	hud.settings_requested.connect(_open_settings)
 	hud.train_requested.connect(_train_unit)
 	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: cam_pos = Iso.to_screen(tile_pos))
 	hud.flash("Elige colonos et iube eos laborare.")
@@ -213,9 +215,6 @@ func _ready() -> void:
 		print("PERF startup: ready at ", Time.get_ticks_msec(), " ms")
 	if args.has("demo"):
 		_run_demo(start)
-	if args.has("select"):
-		for u in units:
-			u.selected = true
 	_music_context()
 	if args.has("weather"):  # debug: start in a given weather (clear, cloudy, fog, rain, storm), fully developed
 		weather.set_state(Weather.NAMES.find(String(args["weather"])))
@@ -266,6 +265,20 @@ func _ready() -> void:
 				u.pos = base + Vector2(side * float(args.get("gap", 6.5)), float(i) * 0.9 - 4.0)
 				units.append(u)
 		_skirmish_look = Iso.to_screen(base + Vector2(float(args.get("gap", 6.5)) / 2.0, 0.0))
+	if args.has("select"):  # debug: --select selects all our people; --select=KIND,KIND:N only those kinds (N of each at most)
+		var counts := {}
+		var wanted := String(args["select"]).split(",", false)
+		for u in units:
+			if u.owner != 0:
+				continue
+			if wanted.is_empty():
+				u.selected = true
+				continue
+			for w in wanted:
+				var kn := w.split(":")
+				if kn[0] == u.kind and int(counts.get(w, 0)) < (int(kn[1]) if kn.size() > 1 else 9999):
+					counts[w] = int(counts.get(w, 0)) + 1
+					u.selected = true
 	if args.has("town"):  # debug: a built-up town round the Forum: one of most kinds of building, finished
 		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple"]
 		for i in kinds.size():
@@ -549,6 +562,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventPanGesture:
 		_zoom_accum -= event.delta.y * 0.05
 		_drain_zoom_accum()
+
+
+## The settings screen over the running game (paused): the sound, speed and screen only, as the map is made.
+func _open_settings() -> void:
+	if get_tree().paused:
+		return
+	SettingsScreen.in_game = true
+	var screen := SettingsScreen.new()
+	get_tree().paused = true
+	add_child(screen)
+	screen.closed.connect(func() -> void:
+		SettingsScreen.in_game = false
+		get_tree().paused = false
+		Engine.time_scale = GameSettings.speed)
 
 
 func _clear_selection() -> void:
@@ -1992,6 +2019,17 @@ func _nudge(u: Unit, v: Vector2) -> void:
 ## Tiles per second for `u` over ground with the given move cost (1.0 = open grass). Horses are much
 ## faster than a man on open ground, but rough ground (forest, hills) slows them more, so there
 ## the gap closes.
+## How fast `u` walks over open ground, in tiles a second.
+func unit_speed(u: Unit) -> float:
+	return _walk_speed(u, 1.0)
+
+
+## Keeps just the units of one kind from the current selection (a click on a tile of the group panel).
+func select_only_kind(kind: String) -> void:
+	for u in units:
+		u.selected = u.selected and u.kind == kind
+
+
 func _walk_speed(u: Unit, cost: float) -> float:
 	if u.kind == "horseman":
 		return minf(VILLAGER_SPEED * HORSE_SPEED_FACTOR / (cost * cost), HORSE_MAX_SPEED)
