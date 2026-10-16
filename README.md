@@ -87,6 +87,8 @@ presses *Incipe*; every computer then builds the same world from the host's seed
 synchronized yet:** after the start each computer plays its own copy of that map, with no orders shared
 between players. See [Multiplayer](#multiplayer) below.
 
+![The multiplayer lobby: the host sees the addresses to give out, who has joined and who is ready](docs/screenshots/lobby.png)
+
 ## Features
 
 - **Five eras** from the Kingdom (753 BC) to the Late Empire (476 AD); the buildings, their names
