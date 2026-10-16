@@ -80,6 +80,13 @@ each verse, over the burning city: Aeneas, the voyage, and the voice at the mout
 
 ![The opening scroll over a burning Troy](docs/screenshots/scroll.png)
 
+**Multiplayer (lobby only so far).** *Plures* on the title screen opens a lobby where one player hosts and
+the others join by the host's IP address. There is no server or lobby service: the host's computer is the
+lobby. Everyone sees who has joined, the others press *Paratus* (ready), and the host picks the map and
+presses *Incipe*; every computer then builds the same world from the host's seed. **The game itself is not
+synchronized yet:** after the start each computer plays its own copy of that map, with no orders shared
+between players. See [Multiplayer](#multiplayer) below.
+
 ## Features
 
 - **Five eras** from the Kingdom (753 BC) to the Late Empire (476 AD); the buildings, their names
@@ -90,7 +97,9 @@ each verse, over the burning city: Aeneas, the voyage, and the voice at the mout
   that changes; villagers who hide behind trees (and show through as a silhouette when they do).
 - **Gathering and building.** Wood, food, stone and gold; huts, fields, granaries, a citadel, a
   stable and Vesta's shrine.
-- **Team colors** on buildings and units, ready for a second player.
+- **Team colors** on buildings and units, one per player.
+- **Multiplayer lobby** over a local network, the internet or one computer (host or join by IP); in-game
+  sync is still to come.
 
 ## Running it
 
@@ -106,6 +115,29 @@ You need [Godot 4](https://godotengine.org) (`brew install --cask godot` on macO
 The first run imports the project, which takes a moment. Other options include `--windowed`,
 `--zoom=N`, `--weather=rain|fog|storm|cloudy|clear`, and `--shot=FILE` to save a screenshot. There is
 a demo video in [`media/`](media/imperium-demo.mp4).
+
+### Multiplayer
+
+Click *Plures* on the title screen, type a name, then either:
+
+- **Exhibe** (host): opens a lobby on a port (default 7777, UDP). The lobby shows the addresses to give
+  the others. Choose the map with *Optiones*, and press *Incipe* when everyone is *Paratus*.
+- **Iunge** (join): enter the host's address and port, and press the button. Then press *Paratus*.
+
+Which address to use:
+
+| Where the players are | Address to join |
+|---|---|
+| Two copies on one computer (testing) | `127.0.0.1` |
+| The same local network (LAN) | the host's LAN address, shown in the host's lobby (such as `192.168.x.x`) |
+| Over the internet | the host's public IP. The host must forward UDP port 7777 on the router to their computer, and allow it through the firewall. |
+
+macOS asks the host to allow incoming connections the first time. If a join times out, the usual causes
+are a wrong address, a blocked port, or a missing port forward.
+
+Try it on one computer with two copies: `just mp` (host and joiner, started together), or `just host` and
+`just join` in two terminals. `just net-test` checks the networking without a window. The network code is
+in `net/net_session.gd` and the lobby screen in `ui/lobby_screen.gd`.
 
 ### Controls
 
@@ -127,11 +159,13 @@ a demo video in [`media/`](media/imperium-demo.mp4).
 | `core/` | game state and rules: the map, units, buildings, weather, fog |
 | `art/` | the drawing code that makes every sprite, and team colors |
 | `views/` | everything drawn from the game state: world, buildings, units, fog, weather |
-| `ui/` | the HUD, buttons, the title screen and the opening scroll |
+| `ui/` | the HUD, buttons, the title screen, the multiplayer lobby and the opening scroll |
+| `net/` | multiplayer: hosting, joining and the lobby's roster (`net_session.gd`) |
 | `shaders/` | the ground, fog, weather and team-color shaders |
 | `assets/` | the art sheets (PNG) and fonts |
 | `docs/` | [`DESIGN.md`](docs/DESIGN.md) (design notes and what is built) and [`LATIN.md`](docs/LATIN.md) |
-| `tools/` | `export_art.sh` regenerates the art sheets from the drawing code |
+| `tools/` | `export_art.sh` regenerates the art sheets from the drawing code; `net_test.gd` is the headless network check |
+| `justfile` | recipes for running, testing and screenshots (`just` lists them) |
 
 See [`assets/art/README.md`](assets/art/README.md) for the art rules. Note that `tools/export_art.sh`
 overwrites hand edits to the sheets.
