@@ -164,13 +164,19 @@ func _ready() -> void:
 	if args.has("splash") or args.has("intro") or (not scripted and DisplayServer.get_name() != "headless"):
 		await _title_sequence(args)  # the opening scroll and the title screen come first; the world is built when you press Incipe
 
+	var session := NetSession.current  # a multiplayer game: the host's choices and seed replace ours, so every machine builds the same world
+	var net_seed := -1
+	if session != null and session.started:
+		GameSettings.apply_lobby(session.config)
+		net_seed = int(session.config["seed"])
+		print("NET multiplayer game: slot %d of %d, seed %d, map %s" % [session.my_slot(), GameSettings.players, net_seed, GameSettings.map_type])
 	Team.reset()  # the colors may have been changed on the settings screen
 	var _t_a := Time.get_ticks_msec()
 	# The world is built on a worker thread while a loading screen draws its progress bar; the game
 	# itself stays switched off until everything is ready.
 	var loading := Loading.new()
 	add_child(loading)
-	var world_seed := int(args.get("seed", randi() % 65536))
+	var world_seed := net_seed if net_seed >= 0 else int(args.get("seed", randi() % 65536))
 	var built: Array = []
 	var worker := Thread.new()
 	var size_tiles := GameSettings.tiles()
@@ -238,7 +244,10 @@ func _ready() -> void:
 	hud.settings_requested.connect(_open_settings)
 	hud.train_requested.connect(_train_unit)
 	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: cam_pos = Iso.to_screen(tile_pos))
-	hud.flash("Elige colonos et iube eos laborare.")
+	if net_seed >= 0:
+		hud.flash("Lusor %d ex %d." % [session.my_slot() + 1, GameSettings.players], "Multiplayer: you are player %d of %d, on the host's map (seed %d). Play is not synchronized between the machines yet." % [session.my_slot() + 1, GameSettings.players, net_seed])
+	else:
+		hud.flash("Elige colonos et iube eos laborare.")
 
 	_update_fog()
 	if Perf.on:
@@ -372,6 +381,10 @@ func _title_sequence(args: Dictionary) -> void:
 	if args.has("settings"):  # debug: open the settings screen at once (--page=map|players|interface)
 		SettingsScreen.first_page = String(args.get("page", "map"))
 		splash._open_settings()
+	if args.has("lobby"):  # debug: open the multiplayer lobby at once; --lobby=host or --lobby=join[:ADDRESS] also host or join, and --autostart then begins the game when all are ready
+		LobbyScreen.auto = String(args["lobby"]) if args["lobby"] is String else ""
+		LobbyScreen.auto_start = args.has("autostart")
+		splash._open_lobby()
 	if shot != "":
 		await _save_title_shot(shot, frames)
 	await splash.finished

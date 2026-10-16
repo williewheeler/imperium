@@ -145,6 +145,9 @@ static var speed := 1.0
 static var music := 3  # volume notches, 0 to VOLUME_STEPS
 static var effects := 4
 static var fullscreen := true
+static var net_name := "Player"  # multiplayer: how we are called in a lobby, the last address we joined and the port we use
+static var net_address := "127.0.0.1"
+static var net_port := 7777
 
 
 ## The starting arrangement: the first peoples in Defs.RIVAL_ORDER, each in its traditional color.
@@ -202,6 +205,33 @@ static func set_people(slot: int, faction: String) -> void:
 ## The peoples that play this game, in slot order.
 static func playing_peoples() -> Array:
 	return rival_peoples.slice(0, players - 1)
+
+
+## The choices that shape a game (not the interface ones), as sent from the host of a multiplayer game to
+## everyone who joined, so all of them build the same world.
+static func lobby_dict() -> Dictionary:
+	return {"map_type": map_type, "size_id": size_id, "players": players, "resources_id": resources_id,
+		"difficulty_id": difficulty_id, "terrain_id": terrain_id,
+		"rival_peoples": rival_peoples.duplicate(), "colors": colors.duplicate()}
+
+
+## Takes the host's choices in place of ours (for this run only: nothing is saved). Anything odd is mended.
+static func apply_lobby(d: Dictionary) -> void:
+	map_type = type_info(String(d.get("map_type", map_type)))["id"]
+	size_id = size_info(String(d.get("size_id", size_id)))["id"]
+	players = clampi(int(d.get("players", players)), MIN_PLAYERS, MAX_PLAYERS)
+	resources_id = resources_info(String(d.get("resources_id", resources_id)))["id"]
+	difficulty_id = difficulty_info(String(d.get("difficulty_id", difficulty_id)))["id"]
+	terrain_id = terrain_info(String(d.get("terrain_id", terrain_id)))["id"]
+	rival_peoples = Array(d.get("rival_peoples", rival_peoples))
+	colors = Array(d.get("colors", colors))
+	tidy_players()
+
+
+## One line on the map chosen, for the lobby.
+static func summary() -> String:
+	return "%s, %s, %s, %d players" % [type_info(map_type)["english"], size_info(size_id)["english"],
+		terrain_info(terrain_id)["english"], players]
 
 
 static func terrain_info(id: String) -> Dictionary:
@@ -289,6 +319,9 @@ static func load_saved() -> void:
 	music = clampi(int(cfg.get_value("interface", "music", music)), 0, VOLUME_STEPS)
 	effects = clampi(int(cfg.get_value("interface", "effects", effects)), 0, VOLUME_STEPS)
 	fullscreen = bool(cfg.get_value("interface", "fullscreen", fullscreen))
+	net_name = String(cfg.get_value("net", "name", net_name))
+	net_address = String(cfg.get_value("net", "address", net_address))
+	net_port = clampi(int(cfg.get_value("net", "port", net_port)), 1024, 65535)
 
 
 static func save() -> void:
@@ -305,4 +338,7 @@ static func save() -> void:
 	cfg.set_value("interface", "music", music)
 	cfg.set_value("interface", "effects", effects)
 	cfg.set_value("interface", "fullscreen", fullscreen)
+	cfg.set_value("net", "name", net_name)
+	cfg.set_value("net", "address", net_address)
+	cfg.set_value("net", "port", net_port)
 	cfg.save(PATH)

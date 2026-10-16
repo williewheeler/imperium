@@ -1,7 +1,8 @@
 class_name Splash
 extends CanvasLayer
-## The title screen: the Capitoline she-wolf with Romulus and Remus over IMPERIVM, with two
-## buttons: Incipe (begin) and Exi (leave). The game waits, paused, until you choose.
+## The title screen: the Capitoline she-wolf with Romulus and Remus over IMPERIVM, with buttons to
+## play alone (Solus), play with others (Plures, which opens the multiplayer lobby), change the settings
+## (Optiones) and leave (Exi). The game waits, paused, until you choose.
 
 signal finished
 
@@ -89,7 +90,8 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 28)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(row)
-	row.add_child(_button("start", "Incipe", "Begin the game  (Enter)", _begin))
+	row.add_child(_button("start", "Solus", "Single player: a game against the computer-run peoples  (Enter)", _begin))
+	row.add_child(_button("multi", "Plures", "Multiplayer: host a game or join one over a local network or the internet", _open_lobby))
 	row.add_child(_button("settings", "Optiones", "Choose the map, its size and the number of peoples", _open_settings))
 	row.add_child(_button("quit", "Exi", "Leave the game  (Q)", _leave))
 
@@ -135,6 +137,18 @@ func _begin() -> void:
 
 func _open_settings() -> void:
 	add_child(SettingsScreen.new())
+
+
+## The multiplayer lobby over the title. The title stops listening for keys meanwhile (typing a name
+## must not begin the game or quit it). When the host starts the game, so does this screen.
+func _open_lobby() -> void:
+	var lobby := LobbyScreen.new()
+	set_process_input(false)
+	add_child(lobby)
+	lobby.closed.connect(func() -> void: set_process_input(true))
+	lobby.game_starting.connect(func() -> void:
+		lobby.queue_free()
+		_begin())
 
 
 func _leave() -> void:

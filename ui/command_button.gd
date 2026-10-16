@@ -98,7 +98,7 @@ func _draw_cost(y: float, text_color: Color) -> void:
 
 
 func _draw_icon(c: Vector2) -> void:
-	if icon_kind in ["explore", "stop", "start", "quit", "settings", "attack_move", "help"]:
+	if icon_kind in ["explore", "stop", "start", "quit", "settings", "attack_move", "help", "multi"]:
 		_draw_action_icon(c)
 		return
 	var key := icon_kind + ":idle:f:0" if icon_kind in UNIT_ICONS else icon_kind
@@ -153,6 +153,11 @@ func _draw_action_icon(c: Vector2) -> void:
 		"start":
 			draw_arc(Vector2.ZERO, 11.0, 0.0, TAU, 32, _t(GOLD), 2.0)
 			draw_colored_polygon(PackedVector2Array([Vector2(-4, -6.5), Vector2(7, 0), Vector2(-4, 6.5)]), _t(CREAM))
+		"multi":  # two figures side by side, each a head over shoulders
+			for s in [-1.0, 1.0]:
+				var col := _t(GOLD if s < 0.0 else CREAM)
+				draw_circle(Vector2(7.0 * s, -5.0), 4.0, col)
+				draw_colored_polygon(PackedVector2Array([Vector2(7.0 * s - 7.0, 9.0), Vector2(7.0 * s - 5.0, 0.0), Vector2(7.0 * s + 5.0, 0.0), Vector2(7.0 * s + 7.0, 9.0)]), col)
 		"settings":  # a cog
 			for i in 8:
 				var a := TAU * i / 8.0
