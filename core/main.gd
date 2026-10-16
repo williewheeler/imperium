@@ -3,8 +3,8 @@ extends Node2D
 
 const MARKER_LIFE := 0.7
 const VILLAGER_SPEED := 1.5  # tiles/sec on grass
-const HORSE_SPEED_FACTOR := 2.0  # a horse covers open ground this many times faster than a man
-const HORSE_MAX_SPEED := 4.0  # tiles/sec, even on a paved road
+const HORSE_SPEED_FACTOR := 3.0  # a horse covers open ground this many times faster than a man
+const HORSE_MAX_SPEED := 6.0  # tiles/sec, even on a paved road
 const VILLAGER_SIGHT := 7.0
 const FOUNDATION_SIGHT := 4.0
 const FOG_INTERVAL := 0.1
