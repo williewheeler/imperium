@@ -100,6 +100,7 @@ You need [Godot 4](https://godotengine.org) (`brew install --cask godot` on macO
 ./run.sh                 # play
 ./run.sh --seed=42       # a particular map
 ./run.sh --nosplash      # skip the opening scroll and title
+# or use `just` (see justfile): just dev, just mp, just net-test, just shot out.png
 ```
 
 The first run imports the project, which takes a moment. Other options include `--windowed`,
