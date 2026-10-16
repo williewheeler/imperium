@@ -59,6 +59,10 @@ static func _draw(img: Image, id: String, color: Color) -> void:
 			_rect(img, o, o, s, s, GREEN)
 			_rect(img, o, o, s, 1, Color("86b342"))
 			_rect(img, o, o + s - 1, s, 1, GREEN_DARK)
+		"act":
+			if name == "start":  # a play triangle, pointing right
+				for y in 10:
+					_rect(img, 4, 3 + y, 2 + mini(y, 9 - y) * 2, 1, GOLD)
 		"coins":
 			_coins(img, int(name))
 		"skill":

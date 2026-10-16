@@ -141,7 +141,7 @@ func _build_join_page() -> Control:
 	_port_edit.max_length = 5
 	host_port_row.add_child(_port_edit)
 	host_box.add_child(host_port_row)
-	_host_button = _button(Latin.t("Exhibe"), 200, 20, "start")
+	_host_button = _button(Latin.t("Exhibe"), 200, 20, "world")
 	_host_button.tooltip_text = "Open a lobby on this computer"
 	_host_button.pressed.connect(_do_host)
 	host_box.add_child(_host_button)
@@ -164,7 +164,7 @@ func _build_join_page() -> Control:
 	_port_edit.text_changed.connect(func(t: String) -> void: jport.text = t)
 	jport_row.add_child(jport)
 	join_box.add_child(jport_row)
-	_join_button = _button(Latin.t("Iunge"), 200, 20, "players")
+	_join_button = _button(Latin.t("Iunge"), 200, 20, "tab:players")
 	_join_button.tooltip_text = "Connect to the host (Enter)"
 	_join_button.pressed.connect(_do_join)
 	join_box.add_child(_join_button)
@@ -220,7 +220,7 @@ func _build_room_page() -> Control:
 			_session.set_ready(on)
 		_style(_ready_button, on))
 	buttons.add_child(_ready_button)
-	_start_button = _button(Latin.t("Incipe"), 200, 20, "start")
+	_start_button = _button(Latin.t("Incipe"), 200, 20, "act:start")
 	_start_button.tooltip_text = "Begin the game for everyone"
 	_start_button.pressed.connect(_do_start)
 	buttons.add_child(_start_button)
@@ -299,7 +299,7 @@ func _button(text: String, width: float, px: int, icon := "", toggle := false) -
 	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
 		b.add_theme_color_override(c, CREAM)
 	b.add_theme_color_override("font_disabled_color", Color(CREAM, 0.4))
-	b.add_theme_constant_override("h_separation", 8)
+	b.add_theme_constant_override("h_separation", 12)
 	if icon != "":
 		b.icon = Icons.tex(icon)
 	_style(b)
@@ -315,6 +315,8 @@ func _style(b: Button, selected := false) -> void:
 		sb.set_border_width_all(3 if selected else 2)
 		sb.border_color = GOLD if selected else Color("6a4a30")
 		sb.set_corner_radius_all(6)
+		sb.content_margin_left = 20  # room between the border and the icon or text
+		sb.content_margin_right = 20
 		b.add_theme_stylebox_override(state, sb)
 
 
