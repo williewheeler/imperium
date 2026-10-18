@@ -41,23 +41,50 @@ func update(delta: float) -> void:
 			dragging = false
 			finish_select(drag_rect, Input.is_key_pressed(KEY_SHIFT))
 	update_road_drag()
-	if selected_deposit.x >= 0 and not main.sim.state.map.deposits.has(selected_deposit):
+	if selected_deposit.x >= 0 and main.view.deposit_at(selected_deposit) == null:
 		selected_deposit = Vector2i(-1, -1)  # used up
+	for u in main.view.seen_units():  # the red ring on an enemy the person has ordered an attack on fades
+		u.targeted = maxf(0.0, u.targeted - delta)
 
 
-func selected_units() -> Array[Unit]:
-	var out: Array[Unit] = []
-	for u in main.sim.state.units:
+func selected_units() -> Array[UnitInfo]:
+	var out: Array[UnitInfo] = []
+	for u in main.view.my_units():
 		if u.selected:
 			out.append(u)
 	return out
 
 
-func selected_building() -> Building:
-	for b in main.sim.state.buildings:
+func selected_building() -> BuildingInfo:
+	for b in main.view.my_buildings():
 		if b.selected:
 			return b
 	return null
+
+
+## Selects (or deselects) a unit by number. (For the debug scenes, which put things in the world and then point at them.)
+func set_selected_unit(id: int, on := true) -> void:
+	for u in main.view.my_units():
+		if u.id == id:
+			u.selected = on
+			return
+	main.view.refresh()  # it may be newer than the client's picture of the world
+	for u in main.view.my_units():
+		if u.id == id:
+			u.selected = on
+			return
+
+
+func set_selected_building(id: int, on := true) -> void:
+	for b in main.view.my_buildings():
+		if b.id == id:
+			b.selected = on
+			return
+	main.view.refresh()
+	for b in main.view.my_buildings():
+		if b.id == id:
+			b.selected = on
+			return
 
 
 ## Top-left tile of the building footprint being placed, centerd under the cursor.
@@ -89,14 +116,11 @@ func handle_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_S and not event.ctrl_pressed and not event.meta_pressed:
 		command_selected("stop")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
-		main.fog.set_show_all(not main.fog.show_all)  # lay the whole map open, and back
-		main.sim.taint("M (map laid open)")  # the player's main.fog is the simulation's: a replay would not see what this game saw
-		main.hud.flash_key("msg.map_open" if main.fog.show_all else "msg.map_closed")
+		main.toggle_whole_map()  # lay the whole map open, and back (a debug aid)
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_W:
-		main.weather.cycle()  # temporary: step through the main.weather to look at it
+		main.weather.cycle()  # temporary: step through the weather to look at it
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
-		main.era_preview.cycle(-1 if event.shift_pressed else 1)  # temporary: jump through the eras
-		main.sim.taint("E (era preview)")
+		main.cycle_eras(-1 if event.shift_pressed else 1)  # temporary: jump through the eras
 	elif event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
@@ -114,7 +138,7 @@ func handle_input(event: InputEvent) -> void:
 				else:
 					var hit := unit_at(main.get_global_mouse_position()) if event.double_click else null
 					var hit_building := building_under(main.get_global_mouse_position()) if event.double_click and hit == null else null
-					if hit_building != null and hit_building.owner != 0:
+					if hit_building != null and not hit_building.own:
 						hit_building = null
 					if hit != null:
 						select_same_kind(hit, Input.is_key_pressed(KEY_SHIFT))
@@ -148,22 +172,20 @@ func handle_input(event: InputEvent) -> void:
 
 
 func clear_selection() -> void:
-	for u in main.sim.state.units:
+	for u in main.view.my_units():
 		u.selected = false
-	for b in main.sim.state.buildings:
+	for b in main.view.my_buildings():
 		b.selected = false
 	selected_deposit = Vector2i(-1, -1)
 
 
 ## The unit whose body is under world position `mp` (a click picks someone only if it lands on their
 ## body, not just near it), or null.
-func unit_at(mp: Vector2, enemy := false) -> Unit:
-	var best: Unit = null
+func unit_at(mp: Vector2, enemy := false) -> UnitInfo:
+	var best: UnitInfo = null
 	var best_d := INF
-	for u in main.sim.state.units:
-		if u.dead or (u.owner != 0) != enemy:
-			continue  # only our own people can be picked (or, with `enemy`, only the other peoples' that we can see)
-		if enemy and not main.fog.is_visible_now(Vector2i(u.pos)):
+	for u in (main.view.seen_units() if enemy else main.view.my_units()):  # only our own people can be picked (or, with `enemy`, only the other peoples' that we can see)
+		if u.dead:
 			continue
 		var feet := Iso.to_screen(u.pos)
 		var half_w := 9.0 if u.kind == "horseman" else 5.0
@@ -179,24 +201,24 @@ func unit_at(mp: Vector2, enemy := false) -> Unit:
 
 ## Double click: select every unit of the same kind that is on the screen now. Villagers count
 ## together whatever their sex; fighting men only with their own kind (looks don't matter).
-func select_same_kind(of: Unit, additive: bool) -> void:
+func select_same_kind(of: UnitInfo, additive: bool) -> void:
 	if not additive:
 		clear_selection()
 	var half := main.get_viewport_rect().size / main.rig.camera.zoom.x / 2.0
 	var view := Rect2(main.rig.pos - half, half * 2.0)
-	for u in main.sim.state.units:
-		if u.owner == 0 and u.kind == of.kind and view.has_point(Iso.to_screen(u.pos)):
+	for u in main.view.my_units():
+		if u.kind == of.kind and view.has_point(Iso.to_screen(u.pos)):
 			u.selected = true
 
 
 ## Double click on a building: select every building of the same kind that is on the screen now.
-func select_same_building(of: Building, additive: bool) -> void:
+func select_same_building(of: BuildingInfo, additive: bool) -> void:
 	if not additive:
 		clear_selection()
 	var half := main.get_viewport_rect().size / main.rig.camera.zoom.x / 2.0
 	var view := Rect2(main.rig.pos - half, half * 2.0)
-	for b in main.sim.state.buildings:
-		if b.owner == 0 and b.kind == of.kind and view.has_point(Iso.to_screen_on(b.center(), Iso.level_of(b.tile))):
+	for b in main.view.my_buildings():
+		if b.kind == of.kind and view.has_point(Iso.to_screen_on(b.center(), Iso.level_of(b.tile))):
 			b.selected = true
 
 
@@ -210,23 +232,23 @@ func finish_select(rect: Rect2, additive: bool) -> void:
 			best.selected = true
 			return
 		var b := building_under(mp)
-		if b != null and b.owner == 0:
+		if b != null and b.own:
 			b.selected = true
 			return
 		var tile := deposit_near(mp)
 		if tile.x >= 0:
 			selected_deposit = tile
 		return
-	for u in main.sim.state.units:
-		if u.owner == 0 and rect.has_point(Iso.to_screen(u.pos) + Vector2(0, -6)):
+	for u in main.view.my_units():
+		if rect.has_point(Iso.to_screen(u.pos) + Vector2(0, -6)):
 			u.selected = true
 
 
 ## The building whose picture is under world position `mp`. Sprites stand tall, so this tests
 ## the actual pixel under the cursor (transparent corners don't count).
-func building_under(mp: Vector2) -> Building:
-	var hit: Building = null
-	for b in main.sim.state.buildings:
+func building_under(mp: Vector2) -> BuildingInfo:
+	var hit: BuildingInfo = null
+	for b in main.view.buildings():
 		var origin := Iso.to_screen_on(Vector2(b.stand_tile() + b.stand_size()), Iso.level_of(b.tile)).round() - Art.building_anchor(b.sprite_key())
 		if Art.solid_at(b.sprite_key(), Vector2i((mp - origin).floor())) and (hit == null or b.tile.y > hit.tile.y):
 			hit = b
@@ -238,11 +260,11 @@ func building_under(mp: Vector2) -> Building:
 func deposit_near(mp: Vector2) -> Vector2i:
 	for dy in [0.0, 5.0, 10.0]:
 		var t := Vector2i(Iso.to_tile(mp + Vector2(0, dy)).floor())
-		if main.fog.is_explored(t) and main.sim.state.map.deposits.has(t):
+		if main.view.deposit_at(t) != null:
 			return t
 	var on := Vector2i(Iso.to_tile(mp).floor())  # anywhere on a farm plot is the plot
-	var farm: Building = main.sim.placement.building_at(on)
-	if farm != null and farm.has_plots() and main.fog.is_explored(on):
+	var farm := main.view.building_at(on)
+	if farm != null and farm.has_plots() and main.view.is_explored(on):
 		var plot := farm.plot_at(on)
 		if plot.x >= 0:
 			return plot
@@ -250,16 +272,16 @@ func deposit_near(mp: Vector2) -> Vector2i:
 
 
 ## The selected boats.
-func selected_boats() -> Array[Unit]:
-	var out: Array[Unit] = []
+func selected_boats() -> Array[UnitInfo]:
+	var out: Array[UnitInfo] = []
 	for u in selected_units():
 		if Defs.UNITS[u.kind].get("water", false):
 			out.append(u)
 	return out
 
 
-func selected_workers() -> Array[Unit]:
-	var out: Array[Unit] = []
+func selected_workers() -> Array[UnitInfo]:
+	var out: Array[UnitInfo] = []
 	for u in selected_units():
 		if u.kind == "villager":
 			out.append(u)
@@ -281,7 +303,7 @@ func command_selected(action: String) -> void:
 ## Left click in absorb mode: the selected villagers go into the town clicked, and are its citizens for good.
 func absorb_at(mp: Vector2) -> void:
 	var b := building_under(mp)
-	if b == null or b.owner != Main.LOCAL or not b.absorbs() or not b.complete:
+	if b == null or not b.own or not b.absorbs() or not b.complete:
 		main.hud.flash_key("err.not_allowed")
 		return
 	give({"type": "absorb", "building": b.id, "units": ids(selected_workers())})
@@ -299,17 +321,16 @@ func give(cmd: Dictionary) -> bool:
 func _submit(cmd: Dictionary) -> String:
 	if main.replayer != null:
 		return "err.not_allowed"
-	cmd["owner"] = Main.LOCAL
-	return main.sim.commands.submit(cmd)
+	return main.client.submit(cmd)
 
 
 func ids(us: Array) -> Array:
-	return us.map(func(u: Unit) -> int: return u.id)
+	return us.map(func(u: UnitInfo) -> int: return u.id)
 
 
 ## The selected units that can fight.
-func selected_fighters() -> Array[Unit]:
-	var out: Array[Unit] = []
+func selected_fighters() -> Array[UnitInfo]:
+	var out: Array[UnitInfo] = []
 	for u in selected_units():
 		if Combat.fights(u):
 			out.append(u)
@@ -320,7 +341,7 @@ func selected_fighters() -> Array[Unit]:
 func attack_move_to(mp: Vector2) -> void:
 	var fighters := selected_fighters()
 	var tile := Vector2i(Iso.to_tile(mp).floor())
-	if fighters.is_empty() or not main.sim.state.map.in_bounds(tile):
+	if fighters.is_empty() or not main.view.map().in_bounds(tile):
 		return
 	markers.append({"pos": Iso.to_tile(mp), "t": 0.0, "attack": true})
 	give({"type": "attack_move", "tile": tile, "units": ids(fighters)})
@@ -333,7 +354,7 @@ func command_at(mp: Vector2) -> void:
 	var workers := selected_workers()
 	var pos := Iso.to_tile(mp)
 	var tile := Vector2i(pos.floor())
-	if not main.sim.state.map.in_bounds(tile):
+	if not main.view.map().in_bounds(tile):
 		return
 	var foe := unit_at(mp, true)
 	var fighters := selected_fighters()
@@ -341,7 +362,7 @@ func command_at(mp: Vector2) -> void:
 		markers.append({"pos": foe.pos, "t": 0.0, "attack": true})
 		give({"type": "attack", "target": foe.id, "units": ids(fighters)})
 		foe.targeted = Combat.TARGET_MARK
-		var others: Array[Unit] = []
+		var others: Array[UnitInfo] = []
 		for u in us:
 			if not Combat.fights(u):
 				others.append(u)
@@ -349,10 +370,10 @@ func command_at(mp: Vector2) -> void:
 			return
 		us = others  # the villagers in the group just go to the spot
 	var enemy_building := building_under(mp)
-	if enemy_building != null and enemy_building.owner != Main.LOCAL and enemy_building.attackable() and not fighters.is_empty() and main.fog.is_explored(Vector2i(enemy_building.center())):
+	if enemy_building != null and not enemy_building.own and enemy_building.attackable() and not fighters.is_empty() and main.view.is_explored(Vector2i(enemy_building.center())):
 		markers.append({"pos": enemy_building.center(), "t": 0.0, "attack": true})  # right click on an enemy building: the fighters attack it
 		give({"type": "attack_building", "building": enemy_building.id, "units": ids(fighters)})
-		var villagers_here: Array[Unit] = []
+		var villagers_here: Array[UnitInfo] = []
 		for u in us:
 			if not Combat.fights(u):
 				villagers_here.append(u)
@@ -364,13 +385,13 @@ func command_at(mp: Vector2) -> void:
 		var fish := deposit_near(mp)
 		var dock := building_under(mp)
 		markers.append({"pos": pos, "t": 0.0})
-		if fish.x >= 0 and main.sim.state.map.deposits[fish].fish:
+		if fish.x >= 0 and main.view.deposit_at(fish).fish:
 			give({"type": "gather", "tile": fish, "units": ids(boats)})
-		elif dock != null and dock.owner == Main.LOCAL and dock.complete and dock.def().get("boats_only", false):
+		elif dock != null and dock.own and dock.complete and dock.def().get("boats_only", false):
 			give({"type": "dropoff", "building": dock.id, "units": ids(boats)})
 		else:
 			give({"type": "move", "tile": tile, "units": ids(boats)})
-		var others_here: Array[Unit] = []
+		var others_here: Array[UnitInfo] = []
 		for u in us:
 			if not boats.has(u):
 				others_here.append(u)
@@ -381,13 +402,13 @@ func command_at(mp: Vector2) -> void:
 	markers.append({"pos": pos, "t": 0.0})
 	var res := deposit_near(mp)
 	var b := building_under(mp)
-	if b != null and b.owner != Main.LOCAL:
+	if b != null and not b.own:
 		b = null  # an AI's building is just ground to us for now
 	var movers := us  # who just walks there
 	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.has_plots()))):
 		main.hud.flash_key("err.soldiers_cant_work")  # they can only march to the spot
 	if b != null and b.complete and res.x < 0:  # laden villagers go and unload at a depot they click
-		var carriers: Array[Unit] = []
+		var carriers: Array[UnitInfo] = []
 		for u in workers:
 			if u.carry > 0 and u.carry_kind in b.def()["accepts"]:
 				carriers.append(u)
@@ -404,7 +425,7 @@ func command_at(mp: Vector2) -> void:
 		var handled := true
 		if res.x >= 0:
 			give({"type": "gather", "tile": res, "units": ids(workers)})
-		elif main.sim.state.road_plans.has(tile):  # right-click a marked road tile: go and pave it
+		elif main.view.has_road_plan(tile):  # right-click a marked road tile: go and pave it
 			give({"type": "pave_work", "units": ids(workers)})
 		elif b != null and not b.complete:
 			give({"type": "build", "building": b.id, "units": ids(workers)})
@@ -481,5 +502,5 @@ func commit_road(line: Array[Vector2i]) -> void:
 
 ## Keeps just the units of one kind from the current selection (a click on a tile of the group panel).
 func select_only_kind(kind: String) -> void:
-	for u in main.sim.state.units:
+	for u in main.view.my_units():
 		u.selected = u.selected and u.kind == kind

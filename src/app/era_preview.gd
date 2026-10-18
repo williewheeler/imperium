@@ -93,7 +93,7 @@ func _dress_unit(kind: String, at: Vector2) -> Unit:
 	u.kind = kind
 	game.sim.setup.assign_sex(u)
 	u.pos = _free_spot(at)
-	game.sim.state.units.append(u)
+	game.sim.add_unit(u)
 	_dressed_units.append(u)
 	return u
 

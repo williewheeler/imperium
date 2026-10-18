@@ -89,8 +89,8 @@ func _process(_dt: float) -> bool:
 			_check("Esc clears the selection", p.selected_units().size(), 0)
 
 			# the Forum is selected and a villager asked for through the interface
-			g.sim.state.buildings[0].selected = true
-			_check("the Forum is the selected building", p.selected_building(), g.sim.state.buildings[0])
+			p.set_selected_building(g.sim.state.buildings[0].id)
+			_check("the Forum is the selected building", p.selected_building() != null and p.selected_building().id == g.sim.state.buildings[0].id, true)
 			g.hud.train_requested.emit("villager")
 			_check("the interface's train button queues a villager", g.sim.state.buildings[0].train_queue, ["villager"])
 			_check("and it is paid for", g.sim.state.stocks[0][Defs.Res.FOOD] < 1000, true)

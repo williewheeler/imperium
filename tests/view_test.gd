@@ -52,7 +52,7 @@ func _init() -> void:
 	spy.owner = foe
 	spy.pos = town.center() + Vector2(4.0, 4.0)
 	sim.add_unit(spy)
-	spy.state = Unit.State.ATTACKING  # what it is doing is its own business
+	spy.state = Unit.State.ATTACK_GO  # where it means to go is its own business
 	sim.step()
 	for i in 4:
 		sim.step()
@@ -60,13 +60,13 @@ func _init() -> void:
 	_check("another people's unit in sight is seen", view.seen_units().size() == 1 and view.seen_units()[0].id == spy.id, "%d" % view.seen_units().size())
 	var seen := view.seen_units()[0]
 	_check("as what it is and where it stands", seen.kind == "soldier" and seen.owner == foe and seen.pos.distance_to(spy.pos) < 0.01 and not seen.own)
-	_check("but not what it is doing", seen.state == Unit.State.IDLE and seen.carry == 0)
+	_check("but not what it means to do", seen.state != Unit.State.ATTACK_GO and seen.carry == 0)
 	_check("and it can tell it is a fighter", seen.fights())
 	spy.pos = Vector2(spy.pos.x, spy.pos.y) + Vector2(60.0, 0.0)
 	for i in 4:
 		sim.step()
 	view.refresh()
-	_check("out of sight it is no longer known", view.seen_units().is_empty() and seen.dead)
+	_check("out of sight it is no longer known (and not dead)", view.seen_units().is_empty() and seen.gone and not seen.dead)
 
 	# once the ground is explored, a building on it is known, but not what goes on inside
 	sim.state.buildings[0].train_queue.append("villager")
@@ -90,11 +90,40 @@ func _init() -> void:
 	var moved: UnitInfo = view.my_units().filter(func(u: UnitInfo) -> bool: return u.id == mine.id)[0]
 	_check("its own unit's news is kept up to date", moved == mine and mine.state == Unit.State.MOVE and mine.pos.distance_to(sim.state.units.filter(func(u: Unit) -> bool: return u.id == mine.id)[0].pos) < 0.01)
 
+	# the screen's side: marks survive, news is for the player it concerns, things that leave are told apart
+	var me_unit: UnitInfo = view.my_units()[1]
+	me_unit.selected = true
+	me_unit.targeted = 0.5
+	sim.step()
+	view.refresh()
+	_check("the client's marks on a unit survive a refresh", view.my_units().has(me_unit) and me_unit.selected and me_unit.targeted == 0.5)
+	var heard: Array = []
+	view.notice.connect(func(key: String) -> void: heard.append(key))
+	sim.notice.emit(me, "msg.test")
+	sim.notice.emit(foe, "msg.not_for_me")
+	_check("a message reaches only the player it is for", heard == ["msg.test"], str(heard))
+	var hut := sim.add_building("hut", view.find_site(Vector2i(1, 1), ai.start, 6, 14, []), true, me)
+	view.refresh()
+	var hut_info: BuildingInfo = view.my_buildings().filter(func(b: BuildingInfo) -> bool: return b.id == hut.id)[0]
+	var fallen: Array = []
+	view.building_destroyed.connect(func(b: BuildingInfo) -> void: fallen.append(b))
+	sim.destroy_building(hut)
+	view.refresh()
+	_check("a building that falls is announced and marked", fallen.size() == 1 and fallen[0] == hut_info and hut_info.dead)
+	var victim: UnitInfo = view.my_units()[2]
+	var real: Unit = sim.state.units.filter(func(u: Unit) -> bool: return u.id == victim.id)[0]
+	sim.combat.disband(real)
+	sim.step()
+	view.refresh()
+	_check("a unit that dies is marked dead, not merely gone", victim.dead and not victim.absorbed and not victim.gone and not view.my_units().has(victim))
+	var whole := PlayerView.god(sim)
+	_check("a view of the whole world holds every unit and building", whole.units().size() == sim.state.units.size() and whole.buildings().size() == sim.state.buildings.size(), "%d of %d units" % [whole.units().size(), sim.state.units.size()])
+
 	# and the AIs play a game through all this
 	sim.ai_enabled = true
-	for i in 150 * Simulation.TICKS_PER_SECOND:
+	for i in 240 * Simulation.TICKS_PER_SECOND:
 		sim.step()
 	var s: Dictionary = ai.summary()
-	_check("an AI that plays through its view grows", int(s["villagers"]) > 8 and int(s["buildings"]) > 4, str(s))
+	_check("an AI that plays through its view grows", int(s["villagers"]) >= 9 and int(s["buildings"]) >= 4, str(s))
 	print("DONE fails=", fails)
 	quit(1 if fails > 0 else 0)

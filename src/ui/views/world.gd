@@ -25,15 +25,15 @@ var _streamed := false
 
 var _tile_objects := {}  # Vector2i -> Array[Node2D]: a tile's trees / hill / mountain sprites
 var _deposit_nodes := {}  # Vector2i -> Sprite2D: berries, stone and gold
-var _unit_views := {}  # Unit -> UnitView
+var _unit_views := {}  # UnitInfo -> UnitView
 var _falling: Array[UnitView] = []  # the fallen, playing their collapse
 const COLLAPSE := 3.0  # seconds a fallen building stands burning before it crumbles
-var _collapsing := {}  # Building -> seconds left
+var _collapsing := {}  # BuildingInfo -> seconds left
 var _ruin_flames: Array[Dictionary] = []  # burning ruins: {node, center}; shown only while the ground is in sight
-var _building_views := {}  # Building -> BuildingView
-var _ghosts := {}  # Unit -> Sprite2D: a see-through copy drawn over whatever hides the unit
-var _ghost_state := {}  # Unit -> {"wait", "ghost", "ring"}: the last occlusion result and when to redo it
-var _rings := {}  # Unit -> SelectionRing: shown over scenery that hides a selected unit's ring
+var _building_views := {}  # BuildingInfo -> BuildingView
+var _ghosts := {}  # UnitInfo -> Sprite2D: a see-through copy drawn over whatever hides the unit
+var _ghost_state := {}  # UnitInfo -> {"wait", "ghost", "ring"}: the last occlusion result and when to redo it
+var _rings := {}  # UnitInfo -> SelectionRing: shown over scenery that hides a selected unit's ring
 var _ghost_layer := Node2D.new()
 var _ghost_material: ShaderMaterial
 var _hill_material: ShaderMaterial  # the same for hills, which are snowed over all down their slopes
@@ -48,12 +48,12 @@ const GHOST_TINT := Color(1.0, 0.93, 0.55, 0.8)
 
 func setup(p_game) -> void:
 	game = p_game
-	game.sim.building_destroyed.connect(_on_building_destroyed)
+	game.view.building_destroyed.connect(_on_building_destroyed)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # crisp pixels
 
 	ground = GroundView.new()
 	add_child(ground)
-	ground.setup(game.sim.state.map)
+	ground.setup(game.view.map())
 
 	add_child(decals)
 	objects.y_sort_enabled = true
@@ -61,14 +61,12 @@ func setup(p_game) -> void:
 	if game.spectating:  # each pane sees the shots its own AI can see
 		for i in game.viewers.size():
 			var shots := ProjectileView.new()
-			shots.game = game
-			shots.fog = game.viewers[i].fog
-			shots.viewer = game.viewers[i].owner
+			shots.view = game.viewers[i].view  # the shots that AI can see
 			shots.visibility_layer = Spectator.pane_bit(i)
 			add_child(shots)
 	else:
 		var shots := ProjectileView.new()  # slingers' bullets fly above everything standing on the ground
-		shots.game = game
+		shots.view = game.view
 		add_child(shots)
 
 	var style: int = GameSettings.terrain_info(GameSettings.terrain_id)["style"]
@@ -90,15 +88,15 @@ func setup(p_game) -> void:
 		for i in game.viewers.size():
 			var pane_fog := FogView.new()
 			pane_fog.fog = game.viewers[i].fog
-			pane_fog.map_size = Vector2i(game.sim.state.map.w, game.sim.state.map.h)
-			pane_fog.levels = game.sim.state.map.levels
+			pane_fog.map_size = game.view.map_size()
+			pane_fog.levels = game.view.map().levels
 			pane_fog.visibility_layer = Spectator.pane_bit(i)
 			add_child(pane_fog)
 	else:
 		var fog_view := FogView.new()
 		fog_view.fog = game.fog
-		fog_view.map_size = Vector2i(game.sim.state.map.w, game.sim.state.map.h)
-		fog_view.levels = game.sim.state.map.levels
+		fog_view.map_size = game.view.map_size()
+		fog_view.levels = game.view.map().levels
 		add_child(fog_view)
 
 	var overlay := OverlayView.new()
@@ -121,7 +119,7 @@ func tile_changed(p: Vector2i) -> void:
 	game.hud.minimap.tile_changed(p)
 	if game.spectator != null:
 		game.spectator.tile_changed(p)
-	ground.set_tile(p, game.sim.state.map.tile(p.x, p.y))
+	ground.set_tile(p, game.view.map().tile(p.x, p.y))
 	remove_tile_objects(p)
 
 
@@ -266,7 +264,7 @@ func view_rect() -> Rect2:
 
 
 ## A building has fallen: it stays up, ablaze, for a few seconds (see `COLLAPSE`), then crumbles into ruins.
-func _on_building_destroyed(b: Building) -> void:
+func _on_building_destroyed(b: BuildingInfo) -> void:
 	if _building_views.has(b):
 		_collapsing[b] = COLLAPSE
 	else:
@@ -274,7 +272,7 @@ func _on_building_destroyed(b: Building) -> void:
 
 
 ## It has burned out: its view goes, leaving a patch of ash and flames that die down over a few seconds.
-func _ruin(b: Building) -> void:
+func _ruin(b: BuildingInfo) -> void:
 	var height := Art.building_anchor(b.sprite_key()).y
 	var ash := RuinView.new()
 	ash.tile = b.tile
@@ -293,21 +291,21 @@ func _ruin(b: Building) -> void:
 
 
 ## The panes of a spectator that can see `u` now: its own AI's, and any whose AI has it in sight (a bit each).
-func _seen_by(u: Unit) -> int:
+func _seen_by(u: UnitInfo) -> int:
 	var mask := 0
 	for i in game.viewers.size():
 		var ai: AI = game.viewers[i]
-		if u.owner == ai.owner or ai.fog.is_visible_now(Vector2i(u.pos)):
+		if u.owner == ai.owner or ai.view.is_visible(Vector2i(u.pos)):
 			mask |= Spectator.pane_bit(i)
 	return mask
 
 
 ## The panes whose AI has explored the ground `b` stands on, or owns it.
-func _explored_by(b: Building) -> int:
+func _explored_by(b: BuildingInfo) -> int:
 	var mask := 0
 	for i in game.viewers.size():
 		var ai: AI = game.viewers[i]
-		if b.owner == ai.owner or ai.fog.is_explored(Vector2i(b.center())):
+		if b.owner == ai.owner or ai.view.is_explored(Vector2i(b.center())):
 			mask |= Spectator.pane_bit(i)
 	return mask
 
@@ -354,7 +352,7 @@ func _stream_terrain(delta: float) -> void:
 		return
 	_stream_clock = 0.15
 	var views := view_rects()
-	var map: GameMap = game.sim.state.map
+	var map: GameMap = game.view.map()
 	var wanted: Array = []
 	for cy in ceili(float(map.h) / CHUNK):
 		for cx in ceili(float(map.w) / CHUNK):
@@ -380,7 +378,7 @@ func _unload_chunk(c: Vector2i) -> void:
 	for n in chunk["nodes"]:
 		if is_instance_valid(n):
 			n.queue_free()
-	var map: GameMap = game.sim.state.map
+	var map: GameMap = game.view.map()
 	for y in range(c.y * CHUNK, mini(map.h, (c.y + 1) * CHUNK)):
 		for x in range(c.x * CHUNK, mini(map.w, (c.x + 1) * CHUNK)):
 			_tile_objects.erase(Vector2i(x, y))
@@ -389,7 +387,7 @@ func _unload_chunk(c: Vector2i) -> void:
 
 
 func _build_chunk(c: Vector2i) -> void:
-	var map: GameMap = game.sim.state.map
+	var map: GameMap = game.view.map()
 	_building = {"nodes": [], "trees": []}
 	for y in range(c.y * CHUNK, mini(map.h, (c.y + 1) * CHUNK)):
 		for x in range(c.x * CHUNK, mini(map.w, (c.x + 1) * CHUNK)):
@@ -400,7 +398,7 @@ func _build_chunk(c: Vector2i) -> void:
 					for i in 3:
 						var foot := Iso.to_screen_on(Vector2(x + 0.2 + 0.6 * Pixel.hash2(x, y, 10 + i), y + 0.2 + 0.6 * Pixel.hash2(x, y, 20 + i)), Iso.level_of(p))
 						list.append(_tree(_forest_tree(map.biome_at(p), x, y, i), foot))
-				GameMap.Terrain.MARSH when game.sim.placement.building_at(p) == null:
+				GameMap.Terrain.MARSH when game.view.building_at(p) == null:
 					for i in 2:  # reeds in every tile...
 						var foot := Iso.to_screen_on(Vector2(x + 0.25 + 0.5 * Pixel.hash2(x, y, 90 + i), y + 0.25 + 0.5 * Pixel.hash2(x, y, 95 + i)), Iso.level_of(p))
 						list.append(_sprite("reeds:%d" % int(Pixel.hash2(x, y, 99 + i) * 2.0), foot))
@@ -409,7 +407,7 @@ func _build_chunk(c: Vector2i) -> void:
 						list.append(_sprite("snag:%d" % int(Pixel.hash2(x, y, 111) * 2.0), Iso.to_screen_on(Vector2(x + 0.3 + 0.4 * Pixel.hash2(x, y, 112), y + 0.3 + 0.4 * Pixel.hash2(x, y, 113)), Iso.level_of(p))))
 					elif bog < 0.26:
 						list.append(_tree("alder:1", Iso.to_screen_on(Vector2(x + 0.3 + 0.4 * Pixel.hash2(x, y, 112), y + 0.3 + 0.4 * Pixel.hash2(x, y, 113)), Iso.level_of(p))))
-				GameMap.Terrain.GRASS when game.sim.placement.building_at(p) == null:  # nothing grows under a building
+				GameMap.Terrain.GRASS when game.view.building_at(p) == null:  # nothing grows under a building
 					var scenery := _meadow_scenery(map.biome_at(p), x, y)
 					if scenery != "":  # a bush or two, scenery only; and wet edges get the odd willow or alder
 						var at := Iso.to_screen_on(Vector2(x + 0.25 + 0.5 * Pixel.hash2(x, y, 120), y + 0.25 + 0.5 * Pixel.hash2(x, y, 121)), Iso.level_of(p))
@@ -434,11 +432,11 @@ func _build_chunk(c: Vector2i) -> void:
 
 ## A building went up: whatever decorative scenery (bushes, reeds, willows) was already drawn on its
 ## footprint is cleared away, as a builder would.
-func _clear_scenery_under(b: Building) -> void:
+func _clear_scenery_under(b: BuildingInfo) -> void:
 	for y in range(b.tile.y, b.tile.y + b.size.y):
 		for x in range(b.tile.x, b.tile.x + b.size.x):
 			var p := Vector2i(x, y)
-			if game.sim.state.map.tile(x, y) == GameMap.Terrain.FOREST:
+			if game.view.map().tile(x, y) == GameMap.Terrain.FOREST:
 				continue  # woods are felled by the deposit system, not here
 			for n in _tile_objects.get(p, []):
 				if is_instance_valid(n):
@@ -457,7 +455,9 @@ func _process(delta: float) -> void:
 	ground.set_rain(game.weather.rain, delta)
 	var views := view_rects()  # things off the screen aren't animated or even redrawn
 	var alpha := game.sim_alpha()
-	for u: Unit in game.sim.state.units:
+	var known_units := {}  # who the client knows of now
+	for u in game.view.units():
+		known_units[u] = true
 		if not _unit_views.has(u):
 			var v := UnitView.new()
 			v.unit = u
@@ -465,7 +465,7 @@ func _process(delta: float) -> void:
 			_unit_views[u] = v
 		var view: UnitView = _unit_views[u]
 		var seen_by := _seen_by(u) if game.spectating else 1  # which panes see it (a spectator); otherwise just us
-		var on_screen: bool = _any_has(views, Iso.to_screen(u.pos), 48.0) and (seen_by != 0 if game.spectating else (u.owner == 0 or game.fog.is_visible_now(Vector2i(u.pos))))  # an AI's people show only while we can see them
+		var on_screen: bool = _any_has(views, Iso.to_screen(u.pos), 48.0) and (seen_by != 0 if game.spectating else true)  # (what the client knows of is what can be seen)
 		view.visible = on_screen
 		if on_screen:
 			if game.spectating:
@@ -479,7 +479,9 @@ func _process(delta: float) -> void:
 			_ghosts[u].visible = false
 			_rings[u].visible = false
 	Perf.stop("unit views", t0)
-	for b: Building in game.sim.state.buildings:
+	var known_buildings := {}
+	for b in game.view.buildings():
+		known_buildings[b] = true
 		if not _building_views.has(b):
 			var v := BuildingView.new()
 			v.building = b
@@ -489,7 +491,7 @@ func _process(delta: float) -> void:
 			_building_views[b] = v
 			_clear_scenery_under(b)
 		var seen_by := _explored_by(b) if game.spectating else 1
-		var seen: bool = seen_by != 0 if game.spectating else (b.owner == 0 or game.fog.is_explored(Vector2i(b.center())))  # an AI's town shows once discovered
+		var seen: bool = seen_by != 0 if game.spectating else true  # (an AI's town is known once discovered)
 		if game.spectating:
 			_building_views[b].set_layers(seen_by)
 		_building_views[b].set_seen(seen)
@@ -500,8 +502,8 @@ func _process(delta: float) -> void:
 	for v in _falling.duplicate():
 		if not is_instance_valid(v) or not v.update_death(delta):
 			_falling.erase(v)
-	for u: Unit in _unit_views.keys():  # things that no longer exist
-		if not game.sim.state.units.has(u):
+	for u: UnitInfo in _unit_views.keys():  # things that no longer exist, or are no longer known
+		if not known_units.has(u):
 			if u.dead and not u.absorbed and _unit_views[u].visible:  # a fighter that fell where we can see it: show it fall
 				_unit_views[u].start_death()
 				_falling.append(_unit_views[u])
@@ -524,14 +526,14 @@ func _process(delta: float) -> void:
 		if game.spectating:
 			var mask := 0
 			for i in game.viewers.size():
-				if game.viewers[i].fog.is_visible_now(tile):
+				if game.viewers[i].view.is_visible(tile):
 					mask |= Spectator.pane_bit(i)
 			node.visible = mask != 0
 			node.visibility_layer = mask
 		else:
-			node.visible = game.fog.is_visible_now(tile)
-	for b: Building in _building_views.keys():
-		if not game.sim.state.buildings.has(b):
+			node.visible = game.view.is_visible(tile)
+	for b: BuildingInfo in _building_views.keys():
+		if not known_buildings.has(b):
 			if b.dead and _collapsing.has(b):  # let it burn a moment before it falls
 				_collapsing[b] -= delta
 				if _collapsing[b] > 0.0:
@@ -541,7 +543,7 @@ func _process(delta: float) -> void:
 			_building_views[b].remove()
 			_building_views.erase(b)
 	for p: Vector2i in _deposit_nodes.keys():  # a mine or bush that got used up
-		if not game.sim.state.map.deposits.has(p):
+		if not game.view.map().deposits.has(p):
 			_deposit_nodes[p].queue_free()
 			_deposit_nodes.erase(p)
 	_update_herd_views(delta)
@@ -553,8 +555,8 @@ var _herd_nodes := {}  # Deposit -> Sprite2D: a herd moves, so it has a node of 
 ## Draws the herds: each walks, rather than jumps, to the next tile it grazes, and shows fewer animals as it is hunted.
 func _update_herd_views(delta: float) -> void:
 	var live := {}
-	for p: Vector2i in game.sim.state.map.herds:
-		var d: Deposit = game.sim.state.map.deposits.get(p)
+	for p: Vector2i in game.view.map().herds:
+		var d: Deposit = game.view.map().deposits.get(p)
 		if d == null:
 			continue
 		live[d] = true
@@ -573,7 +575,7 @@ func _update_herd_views(delta: float) -> void:
 		if node.get_meta("herd_n", -1) != n:
 			node.set_meta("herd_n", n)
 			node.texture = Art.tex("%s:%d" % [art, n])
-		node.visible = game.spectating or game.fog.is_explored(p)
+		node.visible = game.spectating or game.view.is_explored(p)
 	for d: Deposit in _herd_nodes.keys():
 		if not live.has(d):
 			if is_instance_valid(_herd_nodes[d]):
@@ -588,7 +590,7 @@ func _herd_size(d: Deposit) -> int:
 
 ## Trees, buildings and mountains can hide a villager. When most of them is covered, draw a flat
 ## tinted copy on top so they can still be found.
-func _update_ghost(u: Unit, view: UnitView, delta: float) -> void:
+func _update_ghost(u: UnitInfo, view: UnitView, delta: float) -> void:
 	if not _ghosts.has(u):
 		var g := Sprite2D.new()
 		g.centered = false

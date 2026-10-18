@@ -9,13 +9,15 @@ const STEP_BUDGET_USEC := 40000  # the most of a frame the simulation may take, 
 const TIP_WIDTH := 56  # tooltips are never one long line: they are broken into lines of about this many characters
 
 var sim: Simulation
-var fog: Fog  # what the player at this keyboard has seen (when spectating: a view that shows everything, which is not drawn)
+var client: HeadlessClient  # the player at this keyboard, with no screen of its own (null when spectating)
+var view: PlayerView  # what that player knows: everything the screen shows comes from here (when spectating: a view of the whole world)
+var fog: Fog  # what the player at this keyboard has seen, for drawing it (when spectating: a view that shows everything, which is not drawn)
 var hud: Hud
 var rig: CameraRig  # where the player is looking
 var person: Person  # the person's driver: mouse, keys, selection
 var era: int:  # the local player's era (the interface and the music follow this one)
 	get:
-		return sim.eras.of(LOCAL)
+		return view.era()
 	set(v):
 		sim.state.era_level[LOCAL] = v
 		_music_context()
@@ -164,11 +166,14 @@ func _ready() -> void:
 	if spectating:
 		fog = Fog.new(map.w, map.h)  # nobody plays the first town: this view shows everything, and is not drawn
 		fog.set_show_all(true)
+		view = PlayerView.god(sim)  # a spectator sees every people at once
 		var by_owner: Array[AI] = sim.ais.duplicate()
 		by_owner.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
 		viewers.assign(by_owner.slice(0, 4))
 	else:
-		fog = sim.state.fogs[LOCAL]
+		client = HeadlessClient.new(sim, LOCAL)  # the screen is wrapped round it: it knows what the player may know, and the person acts through it
+		view = client.view
+		fog = view.fog()
 	era_preview.game = self
 	debug.game = self
 
@@ -202,7 +207,7 @@ func _ready() -> void:
 	hud.settings_requested.connect(open_settings)
 	hud.train_requested.connect(person.train_unit)
 	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: rig.pos = Iso.to_screen(tile_pos))
-	_hear_sim()
+	_hear_view()
 	if net_seed >= 0:
 		hud.flash("Lusor %d ex %d." % [session.my_slot() + 1, GameSettings.players], "Multiplayer: you are player %d of %d, on the host's map (seed %d). Play is not synchronized between the machines yet." % [session.my_slot() + 1, GameSettings.players, net_seed])
 	elif replay != null:
@@ -217,6 +222,7 @@ func _ready() -> void:
 		add_child(spectator)
 	if Perf.on:
 		print("PERF startup: ready at ", Time.get_ticks_msec(), " ms")
+	view.refresh()
 	debug.apply(args, start)  # the --flags that set a scene up
 	_music_context()
 	if _record_dir != "":
@@ -405,12 +411,12 @@ func _update_world_tip() -> void:
 	if person.placing == "" and not person.dragging and get_viewport().gui_get_hovered_control() == null:
 		var mp := get_global_mouse_position()
 		var b := person.building_under(mp)
-		if b != null and fog.is_explored(b.tile):
+		if b != null and view.is_explored(b.tile):
 			tip = b.def()["english"] if not (b.kind in Defs.TOWNS) else "%s (%s)" % [b.building_name, b.def()["english"]]
 		else:
 			var t := person.deposit_near(mp)
 			if t.x >= 0:
-				var d: Deposit = sim.state.map.deposits[t]
+				var d := view.deposit_at(t)
 				var what: String = "Sheep" if d.herd else ("Fish" if d.fish else ("Field" if d.farm else Defs.DEPOSIT_ENGLISH[d.kind]))
 				tip = "%s: %d left" % [what, d.amount]
 	hud.set_world_tip(tip)
@@ -418,7 +424,7 @@ func _update_world_tip() -> void:
 
 ## English tooltip for the Advance button: what it gets you, what it costs, what's still missing.
 func advance_tooltip() -> String:
-	var data: Variant = sim.eras.data(LOCAL)
+	var data: Variant = view.advance_data()
 	if data == null:
 		return "No further advance is available yet."
 	var next: Dictionary = Defs.ERAS[era + 1]
@@ -430,7 +436,7 @@ func advance_tooltip() -> String:
 		"Advance to Era %s: %s (%s)" % [next["numeral"], next["english"], next["years"]],
 		"Cost: %s  -  takes %d seconds" % [", ".join(cost_parts), int(data["time"])],
 	]
-	for r: Array in sim.eras.requirements(LOCAL):
+	for r: Array in view.advance_requirements():
 		lines.append("  %s  %s" % ["[met]   " if r[1] else "[needed]", r[0]])
 	return "\n".join(lines)
 
@@ -472,26 +478,36 @@ func _report_replay() -> void:
 		hud.flash("Repetitio finita.", "The replay is over.")
 
 
-## What the simulation tells us, shown to the person it concerns.
-func _hear_sim() -> void:
-	sim.notice.connect(func(owner: int, key: String) -> void:
-		if owner == LOCAL and not spectating:
+## What the view tells us, shown to the person it concerns.
+func _hear_view() -> void:
+	view.notice.connect(func(key: String) -> void:
+		if not spectating:
 			hud.flash_key(key))
-	sim.building_completed.connect(func(b: Building) -> void:
-		if b.owner == LOCAL:
-			hud.flash("%s %s." % [b.def()["name"], b.def()["done"]], "%s complete." % b.def()["english"]))
-	sim.era_reached.connect(_on_era_reached)
-	sim.people_fell.connect(_on_people_fell)
-	sim.game_won.connect(func(winner: int) -> void:
+	view.building_completed.connect(func(b: BuildingInfo) -> void:
+		hud.flash("%s %s." % [b.def()["name"], b.def()["done"]], "%s complete." % b.def()["english"]))
+	view.era_reached.connect(_on_era_reached)
+	view.people_fell.connect(_on_people_fell)
+	view.game_won.connect(func(winner: int) -> void:
 		if not spectating:
 			hud.flash_key("msg.victory" if winner == LOCAL else "msg.defeat"))
-	sim.tile_changed.connect(_world.tile_changed)
-	sim.road_changed.connect(_world.road_changed)
+	view.tile_changed.connect(_world.tile_changed)
+	view.road_changed.connect(_world.road_changed)
 
 
-func _on_era_reached(owner: int, value: int) -> void:
-	if owner != LOCAL:
-		return
+## A debug aid: lay the whole map open, and back. (It changes what the player's fog holds, which is the game's: a replay of this game would not see what it saw.)
+func toggle_whole_map() -> void:
+	fog.set_show_all(not fog.show_all)
+	sim.taint("M (map laid open)")
+	hud.flash_key("msg.map_open" if fog.show_all else "msg.map_closed")
+
+
+## A debug aid: jump through the eras, dressing a town for each.
+func cycle_eras(step: int) -> void:
+	era_preview.cycle(step)
+	sim.taint("E (era preview)")
+
+
+func _on_era_reached(value: int) -> void:
 	_music_context()
 	if not spectating:
 		var e: Dictionary = Defs.ERAS[value]
@@ -515,6 +531,9 @@ func _process(delta: float) -> void:
 	rig.pan(delta)
 	Perf.stop("pan", t0)
 	_run_sim(delta)
+	t0 = Perf.start()
+	view.refresh()  # the client's picture of the world, as the last ticks left it
+	Perf.stop("view refresh", t0)
 	person.update(delta)
 	if debug.show_on:
 		debug.showcase_update(delta)

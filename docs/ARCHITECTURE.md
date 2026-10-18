@@ -19,10 +19,10 @@ in the code, or marked as not built.
 | `src/sim/` | **The simulation**: everything that decides what happens, and nothing that shows it. No scene, no window, no input, no clock. At the top, `Simulation` (the game loop, `step()`, and the owner of the parts) and `SimConfig` (the choices that shape a game). |
 | `src/sim/state/` | The **game state**, inert data: `Unit`, `Building`, `Deposit`, `GameMap` and `TerrainGen` (the ground), `Fog` (what each people has seen), and `Defs` (the rules' tables). |
 | `src/sim/systems/` | The **game systems**, which act on the state: `Commands`, `Orders`, `Movement` (with `UnitGrid`), `Economy`, `Production`, `Eras`, `Vision`, `Wildlife`, `UnitBehavior`, `Combat`, `Placement`, `Roads`, `Victory`, `WorldSetup`. |
-| `src/client/` | The **headless client**: `HeadlessClient` (a player's side of the game with no screen: what it knows and a way to act), `PlayerView` (the fog-filtered model: what the player may know), `UnitInfo` and `BuildingInfo` (what it knows of one unit or building). |
+| `src/client/` | The **headless client**: `HeadlessClient` (a player's side of the game with no screen: what it knows and a way to act), `PlayerView` (the fog-filtered model: what the player may know, and the news that concerns it), `UnitInfo` and `BuildingInfo` (a unit or building as the client knows it: kept up to date, carrying the client's own marks, selection included). A *god* view (`PlayerView.god`) knows everything, for a spectator. |
 | `src/ai/` | The computer players: `AI` and one class per goal. They read the game only through a `PlayerView` and act only through a `HeadlessClient`. See *The AIs*. |
 | `src/replay/` | `Replay` (the file), `Recorder`, `Replayer`. See *Headless play and replays*. |
-| `src/ui/` | **The UI, for humans only**: the HUD, menus, lobby, title and opening scroll. |
+| `src/ui/` | **The UI, for humans only**: the HUD, menus, lobby, title and opening scroll. Nothing under `src/ui/` names the simulation (`tools/check_members.py` fails if it does): it reads `game.view` and acts through `game.client`. |
 | `src/ui/views/` | Drawing the state: `World` and the unit, building, ground, fog, weather and overlay views, the minimap, `Iso` (tile and screen maths), `Weather` (cosmetic). Read the simulation, never change it. |
 | `src/ui/controls/` | `Person` (mouse, keys, selection, command targeting) and `CameraRig`. |
 | `src/app/` | The application: `Main` (starts the world, wires the parts, and is the **tick driver** in play) and the debug scaffolding (`DebugModes`, `EraPreview`). |
@@ -38,10 +38,10 @@ in the code, or marked as not built.
 | Box in the diagram | In the code |
 |---|---|
 | Person | the person |
-| Views | `src/ui/views/`, and the HUD's readouts in `src/ui/` |
-| Controls | `src/ui/controls/` (`Person`, `CameraRig`), and the HUD's buttons in `src/ui/` |
+| Views | `src/ui/views/`, and the HUD's readouts in `src/ui/`; they draw `game.view` (a `PlayerView`) |
+| Controls | `src/ui/controls/` (`Person`, `CameraRig`), and the HUD's buttons in `src/ui/`; commands go through `game.client` |
 | AIs | `src/ai/` |
-| Headless client | `src/client/`: built, and the AIs work through it; the UI does not yet (it still reads the `Simulation`) |
+| Headless client | `src/client/`: built; the AIs and the human UI both work through it (it reads the `Simulation` in place of the view channel) |
 | View channel, Command channel | not built (`src/net/` will hold them; today `NetSession` is the lobby only) |
 | View publisher, Command receiver | not built (today the simulation's signals reach `Main`, which shows them) |
 | Command interface, Command queue | not built (today `Commands.submit`, which validates and applies at once) |
@@ -254,8 +254,12 @@ and sends state back is still open, but the first no longer waits on the simulat
   a single `Viewer` object would unify the two.
 - **The headless client still reads the simulation.** `PlayerView.refresh` filters what it reads from the `Simulation` by the
   player's fog, which stands in for the view channel; and a few questions (stores, era, pop, `placement_error`) are answered
-  by asking the systems for that player. `Deposit`s are handed out as the live objects (for explored ground only), not copies.
-  The human UI (`Views`, `Controls`, the HUD) does not go through a client yet, and `AI.summary()` and `focus()` serve the spectator.
+  by asking the systems for that player. Not yet done: the terrain and deposits of unexplored ground are handed to the client
+  (`view.map()`, which the ground view and the minimap draw), and `Deposit`s are the live objects, not copies; `UnitInfo` and
+  `BuildingInfo` are-a `Unit` and `Building` so the views and the rules' helpers work on them, which carries every entity field
+  with it (only what the client may know is filled in); the animation timers (`anim`, `walk`, `hit_flash`, `bar_t`, `atk_t`,
+  `sdir`) are worked out by the simulation and copied. The debug scenes (`src/app/`) are god-mode scaffolding and still touch
+  the simulation directly, and a spectator watches through a god view and each AI's own view.
 - Saved games are not built. The pieces are there (the whole state is plain data), but a replay can only begin from the start.
 
 ## The AIs  (**built**)

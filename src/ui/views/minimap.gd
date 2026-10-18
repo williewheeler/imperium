@@ -13,8 +13,7 @@ const DESERT_COLORS := [Color("2c7db2"), Color("78cbe6"), Color("f2e4b0"), Color
 signal jump_requested(tile_pos: Vector2)
 
 var game: Main
-var fog: Fog  # what this map shows of the ground (the main fog if not set)
-var viewer := 0  # whose map it is: their own people always show
+var view: PlayerView  # whose map it is, and so what it shows of the ground (the main view if not set)
 var corners: Callable  # returns the tile-space quad of the area outlined (the main view if not set)
 var _colors := COLORS
 var _image: Image
@@ -26,7 +25,7 @@ var _dirty_timer := 0.0
 
 func setup(p_game) -> void:
 	game = p_game
-	var map: GameMap = game.sim.state.map
+	var map: GameMap = game.view.map()
 	_colors = [COLORS, SNOW_COLORS, DESERT_COLORS][GameSettings.terrain_info(GameSettings.terrain_id)["style"]]
 	_image = Image.create(map.w, map.h, false, Image.FORMAT_RGBA8)
 	for y in map.h:
@@ -51,16 +50,21 @@ func setup(p_game) -> void:
 
 ## A tile changed terrain (a felled forest, a drained marsh); the picture catches up shortly.
 func tile_changed(p: Vector2i) -> void:
-	_image.set_pixel(p.x, p.y, _colors[game.sim.state.map.tile(p.x, p.y)])
+	_image.set_pixel(p.x, p.y, _colors[game.view.map().tile(p.x, p.y)])
 	_dirty = true
 
 
 func _fog() -> Fog:
-	return fog if fog != null else game.fog
+	var f := _view().fog()
+	return f if f != null else game.fog  # (a view of the whole world has none: the main one shows everything)
+
+
+func _view() -> PlayerView:
+	return view if view != null else game.view
 
 
 func _k() -> float:  # minimap pixels per tile
-	return size.x / float(game.sim.state.map.w)
+	return size.x / float(game.view.map().w)
 
 
 ## Tile coordinates -> pixels inside this control.
@@ -78,14 +82,10 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	var map: GameMap = game.sim.state.map
-	for b: Building in game.sim.state.buildings:
-		if b.owner != viewer and not _fog().is_explored(Vector2i(b.center())):
-			continue  # an AI's town shows once we have seen it
+	var v := _view()
+	for b in v.buildings():  # (an AI's town shows once we have seen it: that is what the view holds)
 		draw_rect(Rect2(_to_mini(b.center()) - Vector2(2, 2), Vector2(4, 4)), b.team_color() if b.owner >= 0 else Color("ffd24a"))
-	for u: Unit in game.sim.state.units:
-		if u.owner != viewer and not _fog().is_visible_now(Vector2i(u.pos)):
-			continue
+	for u in v.units():
 		draw_rect(Rect2(_to_mini(u.pos) - Vector2(1.5, 1.5), Vector2(3, 3)), Defs.color_of(u.owner))
 	var pts := PackedVector2Array()  # what the main view shows: a slanted quad in tile space
 	for c: Vector2 in (corners.call() if corners.is_valid() else game.rig.view_corners()):
@@ -104,4 +104,4 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _jump(p: Vector2) -> void:
-	jump_requested.emit((p / _k()).clamp(Vector2.ZERO, Vector2(game.sim.state.map.w, game.sim.state.map.h)))
+	jump_requested.emit((p / _k()).clamp(Vector2.ZERO, Vector2(game.view.map().w, game.view.map().h)))

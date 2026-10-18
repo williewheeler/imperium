@@ -20,7 +20,7 @@ const FLEE_TIME := 7.0
 const BAR_TIME := 4.0  # seconds a health bar stays up after a hit
 const BURN_AT := 0.4  # a building at or below this share of its health catches fire
 const FIRE_RATE := 0.015  # share of its full health a burning building loses each second
-const TARGET_MARK := 0.9  # seconds an enemy stays ringed in red after we order an attack on it
+const TARGET_MARK := 0.9  # seconds an enemy stays ringed in red after the person orders an attack on it (the person's client keeps the timer)
 
 var sim: Simulation
 
@@ -149,8 +149,6 @@ func order_attack(u: Unit, t: Unit, auto := false) -> void:
 	u.atk_t = 0.0
 	u.struck = false
 	u.state = Unit.State.ATTACK_GO
-	if not auto:
-		t.targeted = TARGET_MARK
 
 
 ## Attack-move: walk to `goal` (a tile), fighting whatever is met on the way.
@@ -179,7 +177,6 @@ static func clear(u: Unit) -> void:
 func tick_unit(u: Unit, delta: float) -> void:
 	u.hit_flash = maxf(0.0, u.hit_flash - delta * 5.0)
 	u.bar_t = maxf(0.0, u.bar_t - delta)
-	u.targeted = maxf(0.0, u.targeted - delta)
 	if not fights(u):
 		return
 	if u.state == Unit.State.IDLE or (u.state == Unit.State.MOVE and u.amove):
@@ -360,7 +357,6 @@ func hurt(victim: Unit, amount: float, attacker: Unit) -> void:
 
 func _die(u: Unit) -> void:
 	u.dead = true
-	u.selected = false
 	u.state = Unit.State.IDLE
 	sim.roads.release(u)
 	sim.state.graveyard.append(u)
@@ -370,7 +366,6 @@ func _die(u: Unit) -> void:
 ## A villager that has gone into a building for good: out of the game, with nothing to show.
 func absorb(u: Unit) -> void:
 	sim.roads.release(u)
-	u.selected = false
 	u.state = Unit.State.IDLE
 	u.dead = true
 	u.absorbed = true
@@ -388,6 +383,7 @@ func flush_dead() -> void:
 		return
 	for u in sim.state.graveyard:
 		sim.state.units.erase(u)
+		sim.unit_removed.emit(u.id, u.absorbed)
 	sim.state.graveyard.clear()
 
 

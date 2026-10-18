@@ -108,8 +108,8 @@ func update() -> void:
 	_people_row.visible = false
 	for l in _stat_labels:
 		l.visible = false
-	var us: Array[Unit] = _game.person.selected_units()
-	var b: Building = _game.person.selected_building()
+	var us: Array[UnitInfo] = _game.person.selected_units()
+	var b: BuildingInfo = _game.person.selected_building()
 	if _game.person.placing_road:
 		_show_portrait(null)
 		_text(_name, "Via", "Road")
@@ -125,8 +125,8 @@ func update() -> void:
 		_show_group(us)
 	elif b != null:
 		_show_building(b)
-	elif _game.person.selected_deposit.x >= 0 and _game.sim.state.map.deposits.has(_game.person.selected_deposit):
-		_show_deposit(_game.sim.state.map.deposits[_game.person.selected_deposit])
+	elif _game.person.selected_deposit.x >= 0 and _game.view.deposit_at(_game.person.selected_deposit) != null:
+		_show_deposit(_game.view.deposit_at(_game.person.selected_deposit))
 	else:
 		_show_portrait(null)
 		_text(_name, "Nihil electum", "Nothing selected")
@@ -151,7 +151,7 @@ func _show_unit(u: Unit) -> void:
 			"Armor: turns aside %d%% of melee blows and %d%% of missiles" % [int(round(float(armor[0]) * 100.0)), int(round(float(armor[1]) * 100.0))])
 	if float(s["range"]) > 0.0:
 		n = _stat(n, "Iactus %d" % int(s["range"]), "Range: strikes from %d tiles away" % int(s["range"]))
-	var speed: float = _game.sim.movement.unit_speed(u)
+	var speed: float = _game.view.unit_speed(u)
 	n = _stat(n, "Celeritas %.1f" % speed, "Speed: %.1f tiles a second over open ground" % speed)
 	for kind: String in s["bonus"]:
 		var other: Dictionary = Defs.UNITS[kind]
@@ -167,7 +167,7 @@ func _show_unit(u: Unit) -> void:
 	_text(_state, latin, english)
 
 
-func _show_group(us: Array[Unit]) -> void:
+func _show_group(us: Array[UnitInfo]) -> void:
 	var counts := {}
 	var hp := 0.0
 	var max_hp := 0.0
@@ -214,7 +214,7 @@ func _show_building(b: Building) -> void:
 		var most := 0
 		var ripe := 0
 		for p in b.plot_tiles():
-			var plot: Deposit = _game.sim.state.map.deposits.get(p)
+			var plot: Deposit = _game.view.deposit_at(p)
 			if plot != null:
 				held += plot.amount
 				most += plot.max_amount
@@ -233,7 +233,7 @@ func _show_building(b: Building) -> void:
 		var held2 := 0
 		var most2 := 0
 		for p in b.plot_tiles():
-			var plot2: Deposit = _game.sim.state.map.deposits.get(p)
+			var plot2: Deposit = _game.view.deposit_at(p)
 			if plot2 != null:
 				held2 += plot2.amount
 				most2 += plot2.max_amount
@@ -331,7 +331,7 @@ func _show_portrait(tex: Texture2D, owner := -1) -> void:
 
 
 ## One tile per kind of unit selected, with its count and the group's health; a click keeps just that kind.
-func _show_tiles(us: Array[Unit], counts: Dictionary) -> void:
+func _show_tiles(us: Array[UnitInfo], counts: Dictionary) -> void:
 	_portrait_frame.visible = false
 	_tiles.visible = true
 	var sig := ",".join(counts.keys().map(func(k: String) -> String: return "%s%d" % [k, counts[k]]))

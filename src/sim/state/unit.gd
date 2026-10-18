@@ -16,7 +16,6 @@ var display := false  # a unit there for show: it takes no population
 var path: Array[Vector2] = []
 var detour_cooldown := 0.0  # seconds before another detour may be planned
 var detour := Vector2.INF  # temporary waypoint that steers around someone in the way
-var selected := false
 var state := State.IDLE
 var explore_goal := Vector2i(-1, -1)  # the unseen tile an explorer is heading for
 var explore_skip := {}  # unseen tiles this explorer found no route to
@@ -47,7 +46,6 @@ var flee_t := 0.0  # seconds left of running away
 var repath_t := 0.0  # seconds until a chase may plan a new path
 var dead := false
 var absorbed := false  # it went into a building for good (not dead: nothing to show)
-var targeted := 0.0  # seconds left of the red ring shown on a unit the player has ordered an attack on
 var bar_t := 0.0  # seconds the health bar stays up after a fight
 
 var target_tile := Vector2i(-1, -1)  # deposit being worked

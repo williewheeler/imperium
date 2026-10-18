@@ -13,7 +13,6 @@ var tile := Vector2i.ZERO  # top-left footprint tile
 var size := Vector2i.ONE
 var work := 0.0  # builder-seconds invested so far
 var complete := false
-var selected := false
 var train_queue: Array[String] = []  # the units waiting to be trained, in order (the first is in training)
 var train_progress := 0.0
 var citizens := 0  # villagers absorbed into it for good (settlements and towns)

@@ -32,6 +32,7 @@ const CITY_NAMES := [
 signal notice(owner: int, key: String)  # a message for one player, as a phrase key (Phrases)
 signal building_completed(b: Building)
 signal building_destroyed(b: Building)  # it fell: the view shows the ruin
+signal unit_removed(id: int, absorbed: bool)  # a unit left the game: it died, or (absorbed) went into a building for good
 signal era_reached(owner: int, era: int)
 signal people_fell(owner: int)
 signal game_won(winner: int)
@@ -204,7 +205,6 @@ func destroy_building(b: Building) -> void:
 	b.dead = true
 	b.burning = true  # it burns out its last moments on screen (see World)
 	b.hp = 0.0
-	b.selected = false
 	remove_building(b)
 	building_destroyed.emit(b)
 	notice.emit(b.owner, "msg.building_lost")

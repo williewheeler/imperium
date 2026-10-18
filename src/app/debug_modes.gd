@@ -45,7 +45,8 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 			game.era_preview.cycle(1)
 	if args.has("select") and args.has("cycle"):  # selection was cleared by the era jump
 		for u in game.sim.state.units:
-			u.selected = u.kind == "villager"
+			if u.owner == Main.LOCAL:
+				game.person.set_selected_unit(u.id, u.kind == "villager")
 	if args.has("look"):  # debug: aim the camera this many tiles (x,y) from the Forum
 		var off := String(args["look"]).split(",")
 		game.rig.pos = Iso.to_screen(game.sim.state.buildings[0].center() + Vector2(float(off[0]), float(off[1])))
@@ -54,7 +55,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 	if args.has("reveal"):  # debug: start with the whole map laid open (M toggles it)
 		game.fog.set_show_all(true)
 	if args.has("forum"):
-		game.sim.state.buildings[0].selected = true
+		game.person.set_selected_building(game.sim.state.buildings[0].id)
 	if args.has("builds"):  # debug: buildings at several stages of construction
 		var specs := [["house", 0.3], ["storehouse", 0.65], ["hut", 0.5], ["house", 1.0]]
 		var offs := [Vector2i(-6, 2), Vector2i(4, 4), Vector2i(-3, 6), Vector2i(6, -2)]
@@ -74,7 +75,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 				u.owner = side
 				u.display = true
 				u.pos = base + Vector2(side * float(args.get("gap", 6.5)), float(i) * 0.9 - 4.0)
-				game.sim.state.units.append(u)
+				game.sim.add_unit(u)
 		skirmish_look = Iso.to_screen(base + Vector2(float(args.get("gap", 6.5)) / 2.0, 0.0))
 	if args.has("select"):  # debug: --select selects all our people; --select=KIND,KIND:N only those kinds (N of each at most)
 		var counts := {}
@@ -83,13 +84,13 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 			if u.owner != 0:
 				continue
 			if wanted.is_empty():
-				u.selected = true
+				game.person.set_selected_unit(u.id)
 				continue
 			for w in wanted:
 				var kn := w.split(":")
 				if kn[0] == u.kind and int(counts.get(w, 0)) < (int(kn[1]) if kn.size() > 1 else 9999):
 					counts[w] = int(counts.get(w, 0)) + 1
-					u.selected = true
+					game.person.set_selected_unit(u.id)
 	if args.has("town"):  # debug: a built-up town round the Forum: one of most kinds of building, finished
 		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple", "settlement"]
 		for i in kinds.size():
@@ -119,7 +120,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 				var v := Unit.new()
 				v.pos = Vector2(farm.granary_tile()) + Vector2(0.5 + float(i % 3) * 0.6, 2.4)
 				game.sim.setup.assign_sex(v)
-				game.sim.state.units.append(v)
+				game.sim.add_unit(v)
 				game.sim.orders.gather(v, plots[i])
 		var s_site: Vector2i = game.sim.state.map.find_site(Vector2i(3, 3), start + Vector2i(16, -12), 0, 16, avoid, rects)
 		if s_site.x >= 0:
@@ -137,7 +138,8 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 		game.era_preview.cycle(1)
 	if args.has("select") and args.has("cycle"):  # selection was cleared by the era jump
 		for u in game.sim.state.units:
-			u.selected = u.kind == "villager"
+			if u.owner == Main.LOCAL:
+				game.person.set_selected_unit(u.id, u.kind == "villager")
 	if args.has("look"):  # debug: aim the camera this many tiles (x,y) from the Forum
 		var off := String(args["look"]).split(",")
 		game.rig.pos = Iso.to_screen(game.sim.state.buildings[0].center() + Vector2(float(off[0]), float(off[1])))
@@ -146,7 +148,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 	if args.has("reveal"):  # debug: start with the whole map laid open (M toggles it)
 		game.fog.set_show_all(true)
 	if args.has("forum"):
-		game.sim.state.buildings[0].selected = true
+		game.person.set_selected_building(game.sim.state.buildings[0].id)
 	if args.has("builds"):  # debug: buildings at several stages of construction
 		var specs := [["house", 0.3], ["storehouse", 0.65], ["hut", 0.5], ["house", 1.0]]
 		var offs := [Vector2i(-6, 2), Vector2i(4, 4), Vector2i(-3, 6), Vector2i(6, -2)]
@@ -166,7 +168,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 				u.owner = side
 				u.display = true
 				u.pos = base + Vector2(side * float(args.get("gap", 6.5)), float(i) * 0.9 - 4.0)
-				game.sim.state.units.append(u)
+				game.sim.add_unit(u)
 		skirmish_look = Iso.to_screen(base + Vector2(float(args.get("gap", 6.5)) / 2.0, 0.0))
 	if args.has("select"):  # debug: --select selects all our people; --select=KIND,KIND:N only those kinds (N of each at most)
 		var counts := {}
@@ -175,13 +177,13 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 			if u.owner != 0:
 				continue
 			if wanted.is_empty():
-				u.selected = true
+				game.person.set_selected_unit(u.id)
 				continue
 			for w in wanted:
 				var kn := w.split(":")
 				if kn[0] == u.kind and int(counts.get(w, 0)) < (int(kn[1]) if kn.size() > 1 else 9999):
 					counts[w] = int(counts.get(w, 0)) + 1
-					u.selected = true
+					game.person.set_selected_unit(u.id)
 	if args.has("town"):  # debug: a built-up town round the Forum: one of most kinds of building, finished
 		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple", "settlement"]
 		for i in kinds.size():
@@ -211,7 +213,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 				var v := Unit.new()
 				v.pos = Vector2(farm.granary_tile()) + Vector2(0.5 + float(i % 3) * 0.6, 2.4)
 				game.sim.setup.assign_sex(v)
-				game.sim.state.units.append(v)
+				game.sim.add_unit(v)
 				game.sim.orders.gather(v, plots[i])
 		var s_site: Vector2i = game.sim.state.map.find_site(Vector2i(3, 3), start + Vector2i(16, -12), 0, 16, avoid, rects)
 		if s_site.x >= 0:
@@ -270,7 +272,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 			var boat := Unit.new()
 			boat.kind = "fishing_boat"
 			boat.pos = Vector2(wet) + Vector2(0.5, 0.5)
-			game.sim.state.units.append(boat)
+			game.sim.add_unit(boat)
 			for r in range(3, 8):
 				for p in game.sim.state.map.ring(wet, r):
 					if game.sim.state.map.is_water(p) and not game.sim.state.map.deposits.has(p) and (p.x * 7 + p.y * 3) % 11 == 0:
@@ -288,16 +290,16 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 					fisher.pos = Vector2(p) + Vector2(2.5, 1.5)
 					if not game.sim.state.map.is_water(Vector2i(fisher.pos)):
 						fisher.pos = Vector2(p) + Vector2(0.5, 0.5)
-					game.sim.state.units.append(fisher)
+					game.sim.add_unit(fisher)
 					game.sim.orders.gather(fisher, p)
 					break
 			game.rig.pos = Iso.to_screen(dock.center())
 			skirmish_look = game.rig.pos
-			dock.selected = true
+			game.person.set_selected_building(dock.id)
 	if args.has("selectb"):  # debug: select the first building of this kind (to look at its command bar)
 		for b in game.sim.state.buildings:
 			if b.kind == str(args["selectb"]) and b.complete:
-				b.selected = true
+				game.person.set_selected_building(b.id)
 				game.rig.pos = Iso.to_screen(b.center())  # and the camera looks at it
 				skirmish_look = game.rig.pos
 				break
@@ -348,7 +350,8 @@ func showcase_setup() -> void:
 	_show_jobs[game.sim.state.units[2]] = forage
 	_show_jobs[game.sim.state.units[3]] = mine
 	for u in game.sim.state.units:
-		u.selected = true  # shows the command bar at the start
+		if u.owner == Main.LOCAL:
+			game.person.set_selected_unit(u.id)  # shows the command bar at the start
 	_show_events = [
 		[0.3, func() -> void: _show_start_field()],
 		[0.4, func() -> void: _show_train()],
@@ -456,8 +459,8 @@ func _demo_road(start: Vector2i) -> void:
 							ok = ok and game.sim.roads.tile_error(p) == "" and not game.sim.state.map.is_road(p)
 						if ok:
 							game.person.clear_selection()
-							game.sim.state.units[2].selected = true
-							game.sim.state.units[3].selected = true
+							game.person.set_selected_unit(game.sim.state.units[2].id)
+							game.person.set_selected_unit(game.sim.state.units[3].id)
 							game.person.commit_road(line)
 							game.person.clear_selection()
 							game.rig.pos = Iso.to_screen(Vector2(line[length / 2]) + Vector2(0.5, 0.5))  # so a screenshot shows it

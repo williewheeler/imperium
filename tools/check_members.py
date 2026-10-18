@@ -51,5 +51,13 @@ for f in glob.glob('src/ai/*.gd'):
             if re.search(word, code):
                 print('%s:%d: the AIs may not touch the simulation (%s); use ai.view and ai.client' % (f, n, code.strip()[:60])); bad += 1
                 break
+# the UI (the screens, the views, the controls) knows the game only through the player's view
+for f in glob.glob('src/ui/**/*.gd', recursive=True):
+    for n, line in enumerate(open(f).read().split('\n'), 1):
+        code = line.split('#')[0]
+        for word in [r'\.sim\b', r'\bSimulation\b', r'\bGameState\b', r'\.state\.(units|buildings|map|stocks|fogs)']:
+            if re.search(word, code):
+                print('%s:%d: the UI may not touch the simulation (%s); use game.view and game.client' % (f, n, code.strip()[:60])); bad += 1
+                break
 print('check_members: %d problems' % bad)
 sys.exit(1 if bad else 0)

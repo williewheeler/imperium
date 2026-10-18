@@ -137,8 +137,7 @@ func _make_pane(ai: AI, index: int) -> void:
 		labels.append(l)
 	var mini := Minimap.new()  # what this AI has seen of the map, with the area this pane shows outlined
 	mini.game = game
-	mini.fog = ai.fog
-	mini.viewer = ai.owner
+	mini.view = ai.view
 	var pane: Dictionary = {}
 	mini.corners = func() -> Array[Vector2]: return _corners(pane)
 	var frame := PanelContainer.new()
