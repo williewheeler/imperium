@@ -38,6 +38,7 @@ in the code, or marked as not built.
 | Box in the diagram | In the code |
 |---|---|
 | Person | the person |
+| UI | its two halves, below: Views (what the person sees) and Controls (what the person does) |
 | Views | `src/ui/views/`, and the HUD's readouts in `src/ui/`; they draw `game.view` (a `PlayerView`) |
 | Controls | `src/ui/controls/` (`Person`, `CameraRig`), and the HUD's buttons in `src/ui/`; commands go through `game.client` |
 | AIs | `src/ai/` |

@@ -40,8 +40,7 @@
   <!-- a local human, in the host's process -->
   <rect class="grp" x="470" y="370" width="400" height="270" rx="10"/><text class="h" x="485" y="392">A local human  (the host's own player)</text>
   <rect class="box" x="490" y="405" width="360" height="40" rx="6"/><text class="t" x="670" y="422" text-anchor="middle">Person</text><text class="s" x="670" y="437" text-anchor="middle">looks at the screen, uses the mouse and keyboard</text>
-  <rect class="box" x="490" y="470" width="165" height="55" rx="6"/><text class="t" x="572" y="492" text-anchor="middle">Views</text><text class="s" x="572" y="510" text-anchor="middle">what it sees</text>
-  <rect class="box" x="685" y="470" width="165" height="55" rx="6"/><text class="t" x="767" y="492" text-anchor="middle">Controls</text><text class="s" x="767" y="510" text-anchor="middle">make commands</text>
+  <rect class="box" x="490" y="470" width="360" height="55" rx="6"/><text class="t" x="670" y="492" text-anchor="middle">UI</text><text class="s" x="670" y="510" text-anchor="middle">Views and Controls</text>
   <rect class="box" x="490" y="555" width="360" height="66" rx="6"/><text class="t" x="670" y="577" text-anchor="middle">Headless client</text><text class="s" x="670" y="595" text-anchor="middle">fog-filtered model of the world; takes commands;</text><text class="s" x="670" y="610" text-anchor="middle">attaches to its queues directly</text>
   <path class="l" d="M572,470 L572,445"/><path class="l" d="M767,445 L767,470"/>
   <path class="l" d="M572,555 L572,525"/><path class="l" d="M767,525 L767,555"/>
