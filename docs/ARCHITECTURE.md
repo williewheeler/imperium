@@ -57,17 +57,24 @@ happened through signals, and the client reads its state to draw it.
 
 ![How the parts depend on each other](architecture.svg)
 
-*Solid arrows are calls and reads, dashed ones are signals and listeners or things not built yet; the yellow box is proposed.*
+*Solid arrows are calls, dashed ones are signals and listeners; yellow boxes are proposed, not built.*
 
-**The command channel (proposed).** The client should not know whether the simulation is in the same process.
-`Person` would hand commands to a *command channel*, one small interface (`submit(cmd)`, and a way to hear the
-answer) with two backends: a **direct** one that calls `Commands.submit` (single player, or the host's own
-player) and a **network** one that sends the command to the host over `NetSession`, stamped with a tick. The
-host feeds both through the same `Commands.submit`, as it already does for the AIs and for `Replayer`. One
-thing changes: today `submit` answers at once ("err.cant_afford" is flashed in the same frame), and a
-network channel answers later, so the interface has to be asynchronous (or the client has to check the
-cheap rules itself first). Today `Person` calls `Commands.submit` directly. The AIs and `Replayer` stay on the
-host side: they are not the person's, and in lockstep their commands have to come from one place.
+**The two channels (proposed).** The client should not know whether the simulation is in the same process. Between
+client and host there would be two channels side by side, each with an endpoint on either side, and each either
+a **direct call** (single player, or the host's own player) or **NetSession** (a joined player):
+
+- the **command channel**, client to host: the HUD tells `Person` what the person wants, `Person` makes a command,
+  and the command goes through the channel to `Commands.submit`, as the AIs' and `Replayer`'s already do on the host;
+- the **update channel**, host to client: what `Main`, the views and the interface need to show. Today that is the
+  simulation's signals plus the views reading its state directly, which only works in one process. For a
+  host that keeps the one simulation it would carry state and events; for lockstep (every machine runs its own copy)
+  it would carry the ordered commands of all the players, and the client would read its local copy as now.
+
+One thing changes with a network between them: today `submit` answers at once ("err.cant_afford" is flashed in the
+same frame), and a network channel answers later, so the command channel has to be asynchronous (or the client
+has to check the cheap rules itself first). Nothing of this is built: `Person` calls `Commands.submit` and the
+views read the `Simulation` directly. The AIs and `Replayer` stay on the host: they are not the person's, and
+in lockstep their commands have to come from one place.
 
 ## Players, drivers and commands  (**built**)
 
