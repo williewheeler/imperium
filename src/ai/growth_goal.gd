@@ -39,7 +39,7 @@ func _train(towns: Array[Building], hub_count: int) -> void:
 
 func _build(hubs: Array[Building]) -> void:
 	var open := 0
-	for kind in ["hut", "house", "farm", "vineyard", "storehouse", "aqueduct"]:
+	for kind in ["hut", "house", "farm", "vineyard", "storehouse", "aqueduct", "dock"]:
 		for b in ai.mine(kind):
 			if not b.complete:
 				open += 1

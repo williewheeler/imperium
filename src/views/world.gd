@@ -521,16 +521,17 @@ func _update_herd_views(delta: float) -> void:
 		live[d] = true
 		var target := Iso.to_screen_on(Vector2(p) + Vector2(0.5, 0.5), Iso.level_of(p)) + Vector2(0, 4)
 		var n := _herd_size(d)
+		var art := "fish" if d.fish else "herd"
 		var node: Sprite2D = _herd_nodes.get(d)
 		if node == null or not is_instance_valid(node):
-			node = _sprite("herd:%d" % n, target)
+			node = _sprite("%s:%d" % [art, n], target)
 			node.set_meta("herd_n", n)
 			_herd_nodes[d] = node
 		else:
 			node.position = node.position.lerp(target, 1.0 - exp(-delta * 1.5)).round()
 		if node.get_meta("herd_n", -1) != n:
 			node.set_meta("herd_n", n)
-			node.texture = Art.tex("herd:%d" % n)
+			node.texture = Art.tex("%s:%d" % [art, n])
 		node.visible = game.spectating or game.fog.is_explored(p)
 	for d: Deposit in _herd_nodes.keys():
 		if not live.has(d):

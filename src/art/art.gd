@@ -36,6 +36,7 @@ const ATTACK_FRAMES := 4
 const UNIT_LOOKS := {"soldier": 3, "spearman": 3, "slinger": 3, "horseman": 3}
 const HORSE_FEET := Vector2(18, 31)
 const DOG_FEET := Vector2(11, 14)
+const BOAT_FEET := Vector2(15, 15)
 ## Where the villager's feet are inside each villager image (for anchoring).
 const VILLAGER_FEET := Vector2(11, 20)
 
@@ -64,6 +65,7 @@ const BUILDING_GEOM := {
 	"hut": {"a": 1, "b": 1, "ridge": 22.0},
 	"regia": {"a": 3, "b": 3, "ridge": 30.0},
 	"settlement": {"a": 3, "b": 3, "ridge": 28.0},
+	"dock": {"a": 2, "b": 2, "ridge": 16.0},
 	"granary": {"a": 1, "b": 1, "ridge": 22.0},
 	"large_granary": {"a": 1, "b": 1, "ridge": 34.0},
 	"city_center": {"a": 3, "b": 3, "ridge": 55.0},
@@ -165,6 +167,12 @@ static func image(key: String) -> Image:
 			return _villager(parts[1], parts[2] == "b", int(parts[3]), parts[0], int(parts[4]) if parts.size() > 4 else 0)
 		"dog":  # dog:<anim>:<f|b>:<frame>; the dog always faces right
 			return _dog(parts[1], int(parts[3]))
+		"fishing_boat":  # fishing_boat:<anim>:<f|b>:<frame>; the boat always faces right
+			return _fishing_boat(parts[1], int(parts[3]))
+		"fish":  # fish:<n> one to four fish in the water
+			return _fish(variant)
+		"dock":
+			return _dock()
 		"horseman":  # horseman:<anim>:<f|b>:<frame>[:<look>]; the horse always faces right
 			return _horseman(parts[1], int(parts[3]), int(parts[4]) if parts.size() > 4 else 0)
 		"stabulum":
@@ -842,7 +850,7 @@ static func scenery_keys() -> Array[String]:
 
 
 static func building_keys() -> Array[String]:
-	return ["town_center", "regia", "settlement", "city_center", "granary", "large_granary", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
+	return ["town_center", "regia", "dock", "settlement", "city_center", "granary", "large_granary", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
 		"curia", "aqueduct", "castra", "arx", "stabulum", "circus", "aedes", "temple", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
 
 
@@ -1133,25 +1141,43 @@ static func _city_center() -> Image:
 			break
 	var add := Pixel.blank(w - 2, h - 2)  # what is added, drawn as the unoutlined picture is (one pixel in from `out`)
 	var cx := (w - 2) / 2
-	var ty := peak - 1
-	var drum_top := ty - 8
-	Pixel.rect(add, cx - 8, drum_top, 16, 12, Pixel.ramp(MARBLE, 0.7, 1, 1, 0.0))  # the drum
-	Pixel.rect(add, cx + 2, drum_top, 6, 12, Pixel.ramp(MARBLE, 0.38, 1, 2, 0.0))  # its shaded side
-	for k in 5:  # columns
-		Pixel.rect(add, cx - 7 + k * 3, drum_top + 2, 1, 9, MARBLE[2])
-	Pixel.rect(add, cx - 10, drum_top - 2, 20, 3, MARBLE[0])  # the cornice
-	Pixel.rect(add, cx - 10, drum_top, 20, 1, MARBLE[2])
-	for y in range(drum_top - 12, drum_top - 1):  # a gilded dome
-		for x in range(cx - 9, cx + 10):
-			var dx := (x + 0.5 - cx) / 9.0
-			var dy := (y + 0.5 - (drum_top - 2)) / 10.0
-			if dx * dx + dy * dy <= 1.0 and y < drum_top - 2:
-				Pixel.put(add, x, y, Pixel.ramp(GOLD, 0.62 - dx * 0.4 + (Pixel.hash2(x, y, 5) - 0.5) * 0.12, x, y, 0.1))
-	Pixel.rect(add, cx, drum_top - 18, 1, 7, GOLD[2])  # the spire
-	Pixel.put(add, cx, drum_top - 19, GOLD[0])
-	Pixel.put(add, cx - 1, drum_top - 18, GOLD[1])
-	for s in [-12, 11]:  # a gilded acroterion at each end of the roof
-		Pixel.rect(add, cx + s, ty + 8, 2, 4, GOLD[1])
+	# A tholos on the ridge, drawn as the ground is: a drum whose top and base are 2:1 ellipses (the isometric view of
+	# a circle), carrying a gilded hemisphere. Lit from the top left, like everything else.
+	var rx := 8.0
+	var ry := 4.0
+	var drum_h := 9.0
+	var yb := float(peak - 1) + 3.0  # the middle of the drum's base, sunk a little into the roof
+	var yt := yb - drum_h  # the middle of its top
+	for xi in range(int(cx - rx), int(cx + rx) + 1):  # the drum's side: from the top rim's front arc down to the base's
+		var dx := (xi + 0.5 - cx) / rx
+		if absf(dx) > 1.0:
+			continue
+		var sh := sqrt(1.0 - dx * dx)
+		var tone := 0.82 - (dx + 1.0) * 0.30
+		for yi in range(int(yt + ry * sh), int(yb + ry * sh) + 1):
+			var c := Pixel.ramp(MARBLE, tone + (Pixel.hash2(xi, yi, 6) - 0.5) * 0.06, xi, yi, 0.05)
+			if posmod(xi - int(cx - rx), 3) == 0:
+				c = c.darkened(0.14)  # the columns
+			Pixel.put(add, xi, yi, c)
+	Pixel.ellipse(add, float(cx), yt, rx + 1.2, ry + 0.8, MARBLE[0])  # the cornice, a ring just wider than the drum
+	Pixel.ellipse(add, float(cx), yt, rx - 0.6, ry - 0.5, MARBLE[1])  # and the drum's top inside it
+	var rh := 8.0  # the dome's height
+	for xi in range(int(cx - rx), int(cx + rx) + 1):  # the dome: a hemisphere rising from the drum's top
+		var dx := (xi + 0.5 - cx) / (rx - 0.6)
+		if absf(dx) > 1.0:
+			continue
+		var sh := sqrt(1.0 - dx * dx)
+		var top := yt - rh * sh
+		var bottom := yt + (ry - 0.5) * sh  # its base, the front arc of an ellipse
+		for yi in range(int(top), int(bottom) + 1):
+			var v := (float(yi) - top) / maxf(bottom - top, 1.0)  # 0 at the crown, 1 at the base
+			var tone := 0.78 - (dx + 1.0) * 0.34 - v * 0.16 + (Pixel.hash2(xi, yi, 5) - 0.5) * 0.08
+			if absf(dx + 0.35) < 0.2 and v < 0.35:
+				tone += 0.18  # the highlight, up on the lit side
+			Pixel.put(add, xi, yi, Pixel.ramp(GOLD, 1.0 - tone, xi, yi, 0.05))
+	Pixel.rect(add, cx, int(yt - rh) - 5, 1, 6, GOLD[2])  # the spire
+	Pixel.put(add, cx, int(yt - rh) - 6, GOLD[0])
+	Pixel.put(add, cx - 1, int(yt - rh) - 4, GOLD[1])
 	out.blend_rect(Pixel.outlined(add, OUT_WARM), Rect2i(0, 0, w, h), Vector2i(0, 0))
 	return out
 
@@ -1563,6 +1589,81 @@ static func _dog(anim: String, frame: int) -> Image:
 	Pixel.put(img, 19, int(cy) - 5, Color("2a1a10"))  # the eye
 	Pixel.poly(img, [Vector2(17.0, cy - 6.5), Vector2(18.0, cy - 9.5), Vector2(19.5, cy - 6.5)], coat[2])  # a pointed ear
 	return Pixel.outlined(img, OUT_VILLAGER)
+
+
+## A dock: a plank platform on posts at the water's edge with a mooring post, a stack of crates and a coil of rope.
+## 2x2 tiles.
+static func _dock() -> Image:
+	var n := 2.0
+	var hs := int(n * 16 + 16.0 + 8.0)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	_box(img, f, 0.05, n - 0.05, 0.05, n - 0.05, 0.0, 5.0,
+		func(x: int, y: int) -> Color: return Pixel.ramp(WOOD, 0.62 + (Pixel.hash2(x, y, 4) - 0.5) * 0.15 - (0.2 if posmod(x, 5) == 0 else 0.0), x, y, 0.1),
+		func(x: int, y: int) -> Color: return Pixel.ramp(WOOD, 0.34 + (Pixel.hash2(x, y, 5) - 0.5) * 0.15, x, y, 0.1),
+		func(x: int, y: int) -> Color: return Pixel.ramp(WOOD, 0.8 + (Pixel.hash2(x, y, 6) - 0.5) * 0.1 - (0.16 if posmod(y * 2 + x, 7) == 0 else 0.0), x, y, 0.1))  # the planks
+	for post in [Vector2(0.15, n - 0.15), Vector2(n - 0.15, n - 0.15), Vector2(n - 0.15, 0.15)]:  # posts at the edge
+		var p := f.p(post.x, post.y, 5.0)
+		Pixel.rect(img, int(p.x) - 1, int(p.y) - 6, 3, 8, WOOD[2])
+		Pixel.rect(img, int(p.x) - 1, int(p.y) - 6, 1, 8, WOOD[1])
+	for c in [Vector2(0.7, 0.7), Vector2(1.15, 0.9)]:  # crates
+		var q := f.p(c.x, c.y, 5.0)
+		Pixel.rect(img, int(q.x) - 4, int(q.y) - 7, 8, 7, WOOD[1])
+		Pixel.rect(img, int(q.x) - 4, int(q.y) - 7, 8, 1, WOOD[0])
+		Pixel.rect(img, int(q.x) - 4, int(q.y) - 4, 8, 1, WOOD[2])
+	var rope := f.p(1.35, 1.35, 5.0)
+	Pixel.ellipse(img, rope.x, rope.y - 1.0, 3.5, 1.8, Color("c9ad6a"))
+	Pixel.ellipse(img, rope.x, rope.y - 1.0, 1.6, 0.8, WOOD[2])
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## A fishing boat seen from the side, facing right: a plank hull with a high bow, a little square sail and a net
+## heaped aft. It bobs (2 frames at rest, 6 under way). 30x22.
+static func _fishing_boat(anim: String, frame: int) -> Image:
+	var img := Pixel.blank(30, 22)
+	var walking := anim == "walk"
+	var ph := float(frame) / float(VILLAGER_FRAMES["walk"]) if walking else 0.0
+	var bob := int(round(sin(ph * TAU * 2.0))) if walking else (1 if frame % 2 == 1 else 0)
+	var base := 15.0 + bob
+	Pixel.line(img, Vector2i(15, int(base) - 14), Vector2i(15, int(base) - 3), WOOD[2])  # the mast
+	Pixel.poly(img, [Vector2(16.0, base - 13.0), Vector2(25.0, base - 11.0), Vector2(25.0, base - 5.0), Vector2(16.0, base - 4.0)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(PLASTER, 0.78 - (x - 16.0) / 24.0 + (Pixel.hash2(x, y, 3) - 0.5) * 0.1, x, y, 0.1))  # the sail
+	Pixel.put(img, 20, int(base) - 9, TERRA[1])  # a patch on it
+	Pixel.poly(img, [Vector2(3.0, base - 4.0), Vector2(27.0, base - 4.0), Vector2(26.0, base - 3.0), Vector2(23.0, base + 1.0), Vector2(8.0, base + 1.0), Vector2(4.0, base - 2.0)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(WOOD, 0.55 - (y - (base - 4.0)) / 9.0 + (Pixel.hash2(x, y, 4) - 0.5) * 0.12, x, y, 0.15))  # the hull
+	Pixel.line(img, Vector2i(4, int(base) - 4), Vector2i(27, int(base) - 4), WOOD[0])  # the gunwale
+	Pixel.put(img, 28, int(base) - 6, WOOD[1])  # the high bow
+	Pixel.put(img, 27, int(base) - 5, WOOD[1])
+	Pixel.ellipse(img, 8.0, base - 5.0, 3.6, 2.0, Color("b8a46a"))  # the net, heaped aft
+	Pixel.put(img, 7, int(base) - 6, Color("e0cf94"))
+	if walking:  # the oars
+		var swing := int(round(sin(ph * TAU) * 2.0))
+		Pixel.line(img, Vector2i(12, int(base) - 3), Vector2i(10 + swing, int(base) + 4), WOOD[1])
+		Pixel.line(img, Vector2i(19, int(base) - 3), Vector2i(17 + swing, int(base) + 4), WOOD[1])
+	var wave := Color("a8d4ea")  # a ripple under the hull
+	for x in range(5, 26):
+		if (x + frame) % 4 == 0:
+			Pixel.put(img, x, int(base) + 2, wave)
+	return Pixel.outlined(img, OUT_VILLAGER)
+
+
+## Fish in the water: one to four small fish, each a silhouette just under the surface, with a ripple.
+static func _fish(n: int) -> Image:
+	var img := Pixel.blank(34, 22)
+	var spots: Array = [[Vector2(17, 11)], [Vector2(9, 9), Vector2(24, 14)], [Vector2(8, 8), Vector2(25, 9), Vector2(16, 16)],
+		[Vector2(7, 8), Vector2(24, 7), Vector2(12, 15), Vector2(28, 15)]][clampi(n, 1, 4) - 1]
+	for i in spots.size():
+		var at: Vector2 = spots[i]
+		var dir := 1.0 if i % 2 == 0 else -1.0
+		for rx in [-5, -2, 2, 5]:  # a few ripple dashes round it
+			if (rx + i) % 2 == 0:
+				Pixel.put(img, int(at.x) + rx, int(at.y) + 4, Color(0.75, 0.9, 0.97, 0.6))
+		Pixel.ellipse(img, at.x, at.y, 4.4, 1.8, Color("6f9cba"))  # the body
+		Pixel.ellipse(img, at.x + dir * 0.4, at.y - 0.7, 3.6, 0.9, Color("a9cde2"))  # a paler back
+		Pixel.poly(img, [Vector2(at.x - dir * 3.8, at.y), Vector2(at.x - dir * 7.0, at.y - 2.8), Vector2(at.x - dir * 6.2, at.y), Vector2(at.x - dir * 7.0, at.y + 2.8)], Color("4f7c9a"))  # a forked tail
+		Pixel.put(img, int(at.x), int(at.y) - 2, Color("4f7c9a"))  # a dorsal fin
+		Pixel.put(img, int(at.x) + int(dir * 3.0), int(at.y) - 1, Color("12222e"))  # the eye
+	return Pixel.outlined(img, Color("2c4a62"))
 
 
 static func _horseman(anim: String, frame: int, look: int) -> Image:

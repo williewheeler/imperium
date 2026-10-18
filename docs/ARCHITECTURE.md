@@ -156,6 +156,7 @@ it does is organized as **goals** (`AIGoal`, one file each), not one long script
 | `MilitaryGoal` | an army in proportion to its villagers (barracks as it grows, a stable, counters to what it has seen) |
 | `AttackGoal` | waves, attack-moving at the nearest enemy building it has explored; a force cut to 40% falls back |
 | `DefendGoal` | idle fighters march at enemy fighters near its buildings; a far-off wave is called home if needed |
+| `FishingGoal` | a dock on the shore beside fish near its towns, a few boats, kept at the fish |
 | `AdvanceGoal` | saves for and begins the next era once its requirements are met |
 
 `AI.towns()` are the buildings that make villagers (Town and City Centers); `AI.hubs()` also includes Settlements,
@@ -238,7 +239,7 @@ in `src/map/`) is different: it is per-player simulation state (`Main.fogs`, by 
 ## Tests
 
 - `just commands-test`: boots a real two-player game headless and submits commands: ownership, payment,
-  refusals, orders.
+  refusals, orders, the six-worker limit, the dog, and units not squeezing through a diagonal corner.
 - `just phrases-test`: every phrase has Latin and English, and every key named in the code exists.
 - `just siege-test`: attacking, burning and destroying a building, a people being defeated, and the last one winning.
 - `just war-test`: an AI wave marches across the map, burns the enemy town down and defeats the people.
@@ -248,6 +249,7 @@ in `src/map/`) is different: it is per-player simulation state (`Main.fogs`, by 
 - `just settlement-test`: a Settlement absorbing citizens, growing into a Town Center at 15 and a City Center at 30, and refusing more than 50.
 - `just farm-test`: a 9x9 farm's eight plots round a granary, one villager to a plot, bare plots growing only while tended, food reaching the granary, a Large Farm at 8 citizens.
 - `just herd-test`: the sparse start (a couple of berry bushes, herds, no gold or stone by the town) herds wandering within their range, breeding, capping and being hunted out, and gold spread thinly.
+- `just water-test`: a dock only in the shallows touching land, a boat made on water, fish only for boats, 15 a trip to the dock, boats stay on water.
 - `just net-test`: the lobby, host and client in two processes.
 - `--report` (see the justfile): runs a game headless and dumps the state, which is how AI behavior is
   checked.

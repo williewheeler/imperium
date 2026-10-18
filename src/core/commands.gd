@@ -167,7 +167,7 @@ func _gather(owner: int, cmd: Dictionary) -> String:
 		tile = plot if plot.x >= 0 else at.field_tile()
 	var any := false
 	for u in _units(owner, cmd):
-		if u.kind == "villager" and game.orders.gather(u, tile):
+		if (u.kind == "villager" or Defs.UNITS[u.kind].get("water", false)) and game.orders.gather(u, tile):
 			any = true
 	return "" if any else "err.no_route"
 
@@ -176,7 +176,7 @@ func _dropoff(owner: int, cmd: Dictionary) -> String:
 	var b := _building(owner, int(cmd.get("building", -1)))
 	if b == null or not b.complete:
 		return "err.not_allowed"
-	return _each(owner, cmd, func(u: Unit) -> void: game.orders.dropoff(u, b), true)
+	return _each(owner, cmd, func(u: Unit) -> void: game.orders.dropoff(u, b), true, true)
 
 
 ## Move (or attack-move) the group to `tile`, spread out so nobody lands on anyone.
@@ -185,14 +185,22 @@ func _move(owner: int, cmd: Dictionary, fighting: bool) -> String:
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
 	if us.is_empty() or not game.map.in_bounds(tile):
 		return "err.not_allowed"
-	var goals: Array = game.map.spread_goals(tile, us.size())
+	var walkers: Array[Unit] = []
+	for u in us:
+		if Defs.UNITS[u.kind].get("water", false):
+			game.orders.move(u, tile)  # a boat goes to the nearest water
+		else:
+			walkers.append(u)
+	if walkers.is_empty():
+		return ""
+	var goals: Array = game.map.spread_goals(tile, walkers.size())
 	if goals.is_empty():
 		return "err.no_route"
-	for i in us.size():
+	for i in walkers.size():
 		if fighting:
-			game.combat.order_attack_move(us[i], goals[i % goals.size()])
+			game.combat.order_attack_move(walkers[i], goals[i % goals.size()])
 		else:
-			game.orders.move(us[i], goals[i % goals.size()])
+			game.orders.move(walkers[i], goals[i % goals.size()])
 	return ""
 
 
@@ -224,10 +232,10 @@ func _attack_building(owner: int, cmd: Dictionary) -> String:
 
 
 ## Runs `order` on each of the named units (only the villagers, if `workers_only`).
-func _each(owner: int, cmd: Dictionary, order: Callable, workers_only := false) -> String:
+func _each(owner: int, cmd: Dictionary, order: Callable, workers_only := false, boats_too := false) -> String:
 	var any := false
 	for u in _units(owner, cmd):
-		if workers_only and u.kind != "villager":
+		if workers_only and u.kind != "villager" and not (boats_too and Defs.UNITS[u.kind].get("water", false)):
 			continue
 		order.call(u)
 		any = true

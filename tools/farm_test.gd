@@ -51,6 +51,8 @@ func _process(dt: float) -> bool:
 	match stage:
 		0:
 			Engine.time_scale = 10.0
+			for i in 4:
+				g.stocks[0][i] = 1000
 			g.ais.clear()
 			var spot: Vector2i = g.map.find_site(Vector2i(9, 9), Vector2i(g.units[0].pos) + Vector2i(18, 18), 0, 40, [])
 			farm = g._add_building("farm", spot, true, 0)
@@ -94,7 +96,7 @@ func _process(dt: float) -> bool:
 				t_stage = 0.0
 		2:
 			if t_stage > 60.0:
-				_check("they sow, grow and harvest by themselves, and the store grows", g.stock_of(0)[Defs.Res.FOOD] > 200, true)
+				_check("they sow, grow and harvest by themselves, and the store grows", g.stock_of(0)[Defs.Res.FOOD] > 1000, true)
 				# take eight into the granary
 				var eight := _spawn(g, 8, Vector2(farm.tile) + Vector2(10.5, 1.5))
 				_check("absorb into a farm", g.commands.submit({"type": "absorb", "owner": 0, "building": farm.id, "units": eight.map(func(u): return u.id)}), "")

@@ -23,6 +23,10 @@ func _process(_dt: float) -> bool:
 			quit(1)
 		return false
 	var g: Main = main
+	var people := g.units.filter(func(u): return u.owner == 0)
+	_check("a people starts with five citizens", people.filter(func(u): return u.kind == "villager").size(), 5)
+	_check("and nothing else: no army", people.size(), 5)
+	_check("with nothing in store", g.stock_of(0), [0, 0, 0, 0])
 	var tc: Building = g.buildings.filter(func(b): return b.owner == 0 and b.kind == "town_center")[0]
 	var c := tc.center()
 	var berries := 0

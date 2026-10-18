@@ -299,8 +299,6 @@ func _ready() -> void:
 	set_physics_process(true)
 	set_process_unhandled_input(not spectating)
 	Engine.time_scale = float(args.get("speed", GameSettings.speed))
-	if not (spectating or args.has("demo") or args.has("showcase") or args.has("ring") or args.has("skirmish")):
-		era_preview.place_display_army(start)
 	_screenshot_path = args.get("shot", "")
 	_report = args.has("report")
 	if args.has("pan"):
@@ -679,6 +677,15 @@ func _drain_zoom_accum() -> void:
 
 # ---------- Orders ----------
 
+## The selected boats.
+func selected_boats() -> Array[Unit]:
+	var out: Array[Unit] = []
+	for u in selected_units():
+		if Defs.UNITS[u.kind].get("water", false):
+			out.append(u)
+	return out
+
+
 func selected_workers() -> Array[Unit]:
 	var out: Array[Unit] = []
 	for u in selected_units():
@@ -777,6 +784,25 @@ func _command_at(mp: Vector2) -> void:
 		if villagers_here.is_empty():
 			return
 		us = villagers_here
+	var boats := selected_boats()
+	if not boats.is_empty():  # boats fish the schools, hand in at a dock, or sail to the spot
+		var fish := deposit_near(mp)
+		var dock := building_under(mp)
+		markers.append({"pos": pos, "t": 0.0})
+		if fish.x >= 0 and map.deposits[fish].fish:
+			_do({"type": "gather", "tile": fish, "units": _ids(boats)})
+		elif dock != null and dock.owner == LOCAL and dock.complete and dock.def().get("boats_only", false):
+			_do({"type": "dropoff", "building": dock.id, "units": _ids(boats)})
+		else:
+			_do({"type": "move", "tile": tile, "units": _ids(boats)})
+		var others_here: Array[Unit] = []
+		for u in us:
+			if not boats.has(u):
+				others_here.append(u)
+		if others_here.is_empty():
+			return
+		us = others_here
+		workers = selected_workers()
 	markers.append({"pos": pos, "t": 0.0})
 	var res := deposit_near(mp)
 	var b := building_under(mp)
@@ -1494,10 +1520,19 @@ func _yield_weight(u: Unit, other: Unit) -> float:
 
 ## Move a unit to `p`, sliding along obstacles but never into a blocked tile (water, mine, building).
 func _move_unit(u: Unit, p: Vector2) -> void:
+	var boat: bool = Defs.UNITS[u.kind].get("water", false)
+	var from := Vector2i(u.pos.floor())
 	for candidate in [p, Vector2(p.x, u.pos.y), Vector2(u.pos.x, p.y)]:
-		if map.is_walkable(Vector2i(candidate.floor())):
-			u.pos = candidate
-			return
+		var to := Vector2i(candidate.floor())
+		var open := func(q: Vector2i) -> bool: return map.can_sail(q) if boat else map.is_walkable(q)
+		if not open.call(to):
+			continue
+		# no squeezing through the corner between two diagonal obstacles (pathfinding never routes that way, but a
+		# shove from a crowd could carry a unit across onto ground it cannot really reach)
+		if to.x != from.x and to.y != from.y and not (open.call(Vector2i(to.x, from.y)) and open.call(Vector2i(from.x, to.y))):
+			continue
+		u.pos = candidate
+		return
 
 
 func _nudge(u: Unit, v: Vector2) -> void:
@@ -1519,6 +1554,8 @@ func select_only_kind(kind: String) -> void:
 
 
 func _walk_speed(u: Unit, cost: float) -> float:
+	if Defs.UNITS[u.kind].get("water", false):  # a boat has no ground to slow it
+		return VILLAGER_SPEED * float(Defs.UNITS[u.kind].get("speed", 1.0))
 	if Defs.UNITS[u.kind].get("rough", false):  # a dog is not slowed by forest, marsh or hills
 		return VILLAGER_SPEED * float(Defs.UNITS[u.kind].get("speed", 1.0))
 	if u.kind == "horseman":
@@ -1623,8 +1660,9 @@ func _gather(u: Unit, delta: float) -> void:
 func _return_to_dropsite(u: Unit) -> void:
 	var best: Building = null
 	var best_d := INF
+	var boat: bool = Defs.UNITS[u.kind].get("water", false)
 	for b in buildings:
-		if b.complete and b.owner == u.owner and u.carry_kind in b.def()["accepts"]:
+		if b.complete and b.owner == u.owner and u.carry_kind in b.def()["accepts"] and bool(b.def().get("boats_only", false)) == boat:  # a boat hands in at a dock, nobody else does
 			var dist := b.center().distance_to(u.pos)
 			if dist < best_d:
 				best_d = dist
@@ -1633,7 +1671,7 @@ func _return_to_dropsite(u: Unit) -> void:
 		u.state = Unit.State.IDLE
 		orders.note(u, "err.need_depot")
 		return
-	var stand := map.stand_tile(best.dropoff_rect(), u.pos)
+	var stand := map.water_next_to(best.rect(), u.pos) if boat else map.stand_tile(best.dropoff_rect(), u.pos)
 	if stand.x >= 0 and orders.set_path(u, stand):
 		u.state = Unit.State.RETURN
 	else:
@@ -1651,7 +1689,7 @@ func _retarget(u: Unit) -> bool:
 		for x in range(maxi(0, here.x - reach), mini(map.w, here.x + reach + 1)):
 			var p := Vector2i(x, y)
 			var d: Deposit = map.deposits.get(p)
-			if d == null or d.kind != u.gather_kind or (d.farm and d.owner != u.owner) or (u.owner == 0 and not fog.is_explored(p)):
+			if d == null or d.kind != u.gather_kind or (d.farm and d.owner != u.owner) or d.fish != bool(Defs.UNITS[u.kind].get("water", false)) or (u.owner == 0 and not fog.is_explored(p)):
 				continue
 			var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
 			if dist < best_d:
@@ -1675,7 +1713,7 @@ func _graze(p: Vector2i, d: Deposit, delta: float) -> void:
 	for dy in range(-1, 2):
 		for dx in range(-1, 2):
 			var q := p + Vector2i(dx, dy)
-			if q != p and Vector2(q).distance_to(Vector2(d.home)) <= Defs.HERD_RANGE and map.can_graze(q) and placement.building_at(q) == null:
+			if q != p and Vector2(q).distance_to(Vector2(d.home)) <= Defs.HERD_RANGE and not map.deposits.has(q) and ((map.is_water(q)) if d.fish else (map.can_graze(q) and placement.building_at(q) == null)):
 				options.append(q)
 	if options.is_empty():
 		return
@@ -1735,6 +1773,6 @@ func _update_building(b: Building, delta: float) -> void:
 		u.kind = trains
 		u.owner = b.owner
 		setup.assign_sex(u)
-		var spawn := map.stand_tile(b.rect(), b.center())
+		var spawn := map.water_next_to(b.rect(), b.center()) if Defs.UNITS[trains].get("water", false) else map.stand_tile(b.rect(), b.center())
 		u.pos = Vector2(spawn) + Vector2(0.5, 0.5)
 		units.append(u)

@@ -31,6 +31,8 @@ func _process(dt: float) -> bool:
 	match stage:
 		0:
 			Engine.time_scale = 10.0
+			for i in 4:
+				g.stocks[0][i] = 1000
 			g.ais.clear()  # no AI thinking: only what the test does
 			# four soldiers of ours beside a finished enemy hut
 			var base := Vector2(g.units[0].pos) + Vector2(12, 12)

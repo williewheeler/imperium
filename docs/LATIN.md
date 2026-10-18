@@ -37,6 +37,8 @@ Some buildings change name and picture between eras (`"early"` entry in `Defs.BU
 | Civitas | City Center | what a Town Center becomes at 30 citizens: the Forum crowned with a gilded tholos. *Civitas* is the community of citizens, and later a city. Not built, only grown |
 | Casa | Hut | the Era I house. `Casae` is the plural |
 | Ager | Farm | nine tiles across: a granary in the middle, framing eight 3x3 plots of wheat; one villager works a plot, standing on it, and it sows, grows and ripens automatically. *Ager Magnus*: the Large Farm (8 citizens) |
+| Portus | Dock | a pier in the shallows touching the shore; trains fishing boats and takes in the food they bring |
+| Navis Piscatoria | Fishing Boat | sails on water only; fishes the schools, 15 at a time, and brings them to a dock |
 | Pecus | Herd | grazing animals to hunt; they breed back slowly unless hunted out |
 | Horreum | Storehouse | a granary; takes wood, stone and gold |
 | Arx → Castra | Citadel → Barracks | a stockaded hilltop fortress, then the palisaded legionary camp. Trains Miles Gravis. *Arx* is a real term for Rome's citadel; using it for the Kingdom-era barracks is the game's choice |

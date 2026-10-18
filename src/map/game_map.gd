@@ -46,6 +46,8 @@ var slope_factor := PackedFloat32Array()  # per tile walking-cost multiplier fro
 var deposits := {}  # Vector2i -> Deposit
 var mines := {}  # kind -> Array[Vector2i]: where stone and gold lie, to keep them spread out
 var herds: Array[Vector2i] = []  # where the herds graze (see Defs.HERD_*)
+var blocked_water := {}  # water tiles with a dock over them: a boat cannot sail there
+var astar_water: AStarGrid2D  # for boats: open where there is water (see find_path_water)
 var astar_rough: AStarGrid2D  # built the first time a dog needs a route (see find_path_rough)
 var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 2 paved road
 var wear := PackedFloat32Array()  # distance walked over each tile so far
@@ -486,11 +488,20 @@ func elevation_at(pos: Vector2) -> float:
 	return elevation[clampi(p.y, 0, h - 1) * w + clampi(p.x, 0, w - 1)] if in_bounds(p) else SEA_LEVEL
 
 
-## Marks a tile solid (or open) for every grid that is kept.
+## Marks a tile solid (or open) for every grid that is kept. Water and mountains stay solid for walkers whatever
+## stands on them (a dock is built over water); for boats, a dock closes the water under it.
 func _set_solid_at(p: Vector2i, solid: bool) -> void:
-	astar.set_point_solid(p, solid)
+	var land_solid: bool = solid or is_inf(MOVE_COST[tile(p.x, p.y)])
+	astar.set_point_solid(p, land_solid)
 	if astar_rough != null:
-		astar_rough.set_point_solid(p, solid)
+		astar_rough.set_point_solid(p, land_solid)
+	if is_water(p):
+		if solid:
+			blocked_water[p] = true
+		else:
+			blocked_water.erase(p)
+		if astar_water != null:
+			astar_water.set_point_solid(p, solid)
 
 
 ## A route for a walker that terrain does not slow (a dog): the same obstacles, but every open tile costs the same.
@@ -518,14 +529,14 @@ func find_path_rough(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 
 ## Cuts a route down to the corners that matter: wherever a straight line between two of its points is clear of
 ## obstacles, everything between them is dropped, so a dog runs in long straight lines rather than stair-stepping.
-func _straighten(path: Array[Vector2i]) -> Array[Vector2i]:
+func _straighten(path: Array[Vector2i], water := false) -> Array[Vector2i]:
 	if path.size() < 3:
 		return path
 	var out: Array[Vector2i] = [path[0]]
 	var i := 0
 	while i < path.size() - 1:
 		var j := mini(path.size() - 1, i + 80)
-		while j > i + 1 and not _line_clear(path[i], path[j]):
+		while j > i + 1 and not _line_clear(path[i], path[j], water):
 			j -= 1
 		out.append(path[j])
 		i = j
@@ -533,18 +544,94 @@ func _straighten(path: Array[Vector2i]) -> Array[Vector2i]:
 
 
 ## Is the straight line between the centers of two tiles over open ground all the way?
-func _line_clear(a: Vector2i, b: Vector2i) -> bool:
+func _line_clear(a: Vector2i, b: Vector2i, water := false) -> bool:
 	var from := Vector2(a) + Vector2(0.5, 0.5)
 	var to := Vector2(b) + Vector2(0.5, 0.5)
 	var steps := int(ceil(from.distance_to(to) * 3.0))
 	for k in range(1, steps):
 		var p := from.lerp(to, float(k) / float(steps))
-		if not is_walkable(Vector2i(p.floor())):
+		var open := func(q: Vector2i) -> bool: return is_water(q) if water else is_walkable(q)
+		if not open.call(Vector2i(p.floor())):
 			return false
-		# no squeezing between two diagonal obstacles
-		if not is_walkable(Vector2i(int(floor(p.x - 0.2)), int(floor(p.y - 0.2)))) or not is_walkable(Vector2i(int(floor(p.x + 0.2)), int(floor(p.y + 0.2)))):
+		# no squeezing through the corner between two diagonal obstacles, whichever way they lie
+		if not open.call(Vector2i(int(floor(p.x - 0.2)), int(floor(p.y - 0.2)))) or not open.call(Vector2i(int(floor(p.x + 0.2)), int(floor(p.y + 0.2)))) \
+				or not open.call(Vector2i(int(floor(p.x + 0.2)), int(floor(p.y - 0.2)))) or not open.call(Vector2i(int(floor(p.x - 0.2)), int(floor(p.y + 0.2)))):
 			return false
 	return true
+
+
+## Is there water (deep or shallow) on this tile?
+func is_water(p: Vector2i) -> bool:
+	return in_bounds(p) and (tile(p.x, p.y) == Terrain.DEEP or tile(p.x, p.y) == Terrain.SHALLOW)
+
+
+## Can a boat be on this tile: water with no school of fish in the way.
+func can_sail(p: Vector2i) -> bool:
+	return is_water(p) and not blocked_water.has(p)
+
+
+## Is any tile touching (even diagonally) the rectangle `r` land that people can walk on?
+func land_adjacent(r: Rect2i) -> bool:
+	for y in range(r.position.y - 1, r.end.y + 1):
+		for x in range(r.position.x - 1, r.end.x + 1):
+			if not r.has_point(Vector2i(x, y)) and is_walkable(Vector2i(x, y)):
+				return true
+	return false
+
+
+## Is any tile touching (even diagonally) the rectangle `r` water?
+func water_adjacent(r: Rect2i) -> bool:
+	for y in range(r.position.y - 1, r.end.y + 1):
+		for x in range(r.position.x - 1, r.end.x + 1):
+			if not r.has_point(Vector2i(x, y)) and is_water(Vector2i(x, y)):
+				return true
+	return false
+
+
+## The water tile touching `r` nearest `from`: where a boat comes alongside a dock. (-1, -1) if none.
+func water_next_to(r: Rect2i, from: Vector2) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := INF
+	for y in range(r.position.y - 1, r.end.y + 1):
+		for x in range(r.position.x - 1, r.end.x + 1):
+			var p := Vector2i(x, y)
+			if r.has_point(p) or not can_sail(p):
+				continue
+			var d := (Vector2(p) + Vector2(0.5, 0.5)).distance_squared_to(from)
+			if d < best_d:
+				best_d = d
+				best = p
+	return best
+
+
+## The water tile nearest `goal` (itself, if it is water). (-1, -1) if none within 12 tiles.
+func nearest_water(goal: Vector2i) -> Vector2i:
+	if is_water(goal):
+		return goal
+	for r in range(1, 13):
+		for p in ring(goal, r):
+			if is_water(p):
+				return p
+	return Vector2i(-1, -1)
+
+
+## A route over water for a boat: straight runs wherever the line is all water.
+func find_path_water(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	if astar_water == null:
+		astar_water = AStarGrid2D.new()
+		astar_water.region = Rect2i(0, 0, w, h)
+		astar_water.cell_size = Vector2.ONE
+		astar_water.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+		astar_water.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+		astar_water.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+		astar_water.update()
+		for y in h:
+			for x in w:
+				if not can_sail(Vector2i(x, y)):
+					astar_water.set_point_solid(Vector2i(x, y), true)
+	if not can_sail(from) or not can_sail(to):
+		return []
+	return _straighten(astar_water.get_id_path(from, to), true)
 
 
 func _build_nav() -> void:
@@ -558,7 +645,7 @@ func _build_nav() -> void:
 		for x in w:
 			var cost: float = MOVE_COST[tile(x, y)]
 			if is_inf(cost):
-				_set_solid_at(Vector2i(x, y), true)
+				astar.set_point_solid(Vector2i(x, y), true)  # (water and mountains: not a building, so not blocked_water)
 			else:
 				astar.set_point_weight_scale(Vector2i(x, y), cost * slope_factor[y * w + x])
 
@@ -829,6 +916,38 @@ func _place_start_clusters(rng: RandomNumberGenerator, start: Vector2i, density:
 	for i in maxi(1, int(round(2.0 * density))):
 		_place_herd(rng, start, 6.0, 14.0)
 	_place_cluster(rng, start, 16.0, 24.0, Defs.Res.STONE, 2, 1)
+	_place_fish(rng, start, 26.0, 2)  # a school or two off the shore, if the town is near the sea
+
+
+## Schools of fish in the water: on a water tile with land within six tiles, where a boat from a dock can reach them.
+func _place_fish(rng: RandomNumberGenerator, near: Vector2i, radius: float, count: int) -> void:
+	var placed := 0
+	for attempt in 400:
+		if placed >= count:
+			break
+		var p := near
+		if radius > 0.0:
+			p += Vector2i((Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, radius)).round())
+		else:
+			p = Vector2i(rng.randi_range(2, w - 3), rng.randi_range(2, h - 3))
+		if not is_water(p) or deposits.has(p) or not _land_within(p, 6):
+			continue
+		var d := Deposit.new(Defs.Res.FOOD, Defs.FISH_AMOUNT)
+		d.fish = true
+		d.herd = true
+		d.home = p
+		d.move_t = rng.randf_range(0.0, Defs.HERD_MOVE_EVERY)
+		deposits[p] = d
+		herds.append(p)
+		placed += 1
+
+
+func _land_within(p: Vector2i, r: int) -> bool:
+	for y in range(p.y - r, p.y + r + 1):
+		for x in range(p.x - r, p.x + r + 1):
+			if in_bounds(Vector2i(x, y)) and not is_water(Vector2i(x, y)) and tile(x, y) != Terrain.MOUNTAIN:
+				return true
+	return false
 
 
 func _place_scattered(rng: RandomNumberGenerator, density: float) -> void:
@@ -847,6 +966,7 @@ func _place_scattered(rng: RandomNumberGenerator, density: float) -> void:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
 			if _place_cluster(rng, c, 0.0, 0.0, Defs.Res.FOOD, 5, 2):
 				break
+	_place_fish(rng, Vector2i.ZERO, 0.0, int(round(5 * blocks * density)))  # schools of fish along the coasts
 	for i in int(round(3 * blocks * density)):  # and herds
 		for attempt in 20:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))

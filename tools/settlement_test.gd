@@ -46,6 +46,8 @@ func _process(dt: float) -> bool:
 	match stage:
 		0:
 			Engine.time_scale = 10.0
+			for i in 4:
+				g.stocks[0][i] = 1000
 			g.ais.clear()
 			var spot: Vector2i = g.map.find_site(Vector2i(3, 3), Vector2i(g.units[0].pos) + Vector2i(14, 14), 0, 25, [])
 			_check("a Town Center cannot be built directly", g.commands.submit({"type": "place", "owner": 0, "kind": "town_center", "tile": spot, "units": []}), "err.not_allowed")

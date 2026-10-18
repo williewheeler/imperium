@@ -85,50 +85,7 @@ func _free_spot(at: Vector2) -> Vector2:
 
 ## Fighting men standing near the start, just to look at (they take no population): the kinds an early
 ## Roman army was made of, each in a mix of looks, since citizens armed themselves.
-func place_display_army(start: Vector2i) -> void:
-	var kinds := ["horseman", "horseman", "horseman", "soldier", "soldier", "soldier", "spearman", "spearman", "spearman", "spearman",
-		"slinger", "slinger", "slinger"]
-	var forum := game.buildings[0]
-	var open: Array[Vector2i] = []  # clear grass near the Forum
-	for y in range(start.y - 10, start.y + 11):
-		for x in range(start.x - 10, start.x + 11):
-			var p := Vector2i(x, y)
-			if game.map.in_bounds(p) and game.map.is_walkable(p) and game.map.tile(x, y) == GameMap.Terrain.GRASS and not game.map.deposits.has(p) \
-					and Vector2(p).distance_to(forum.center()) > 3.5:
-				open.append(p)
-	var best := Vector2i(-1, -1)
-	var best_n := 0
-	for p in open:  # the middle of the biggest stretch of open ground
-		var n := 0
-		for q in open:
-			if absi(p.x - q.x) <= 3 and absi(p.y - q.y) <= 3:
-				n += 1
-		if n > best_n:
-			best_n = n
-			best = p
-	if best.x < 0:
-		return
-	open.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(Vector2(best)) < Vector2(b).distance_squared_to(Vector2(best)))
-	# spaced out so the big horses don't sit on top of the men on foot
-	var spots: Array[Vector2] = []
-	for p in open:
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var clear := true
-		for o in spots:
-			if o.distance_to(at) < 1.9:
-				clear = false
-				break
-		if clear:
-			spots.append(at)
-		if spots.size() >= kinds.size():
-			break
-	for i in spots.size():
-		var u := Unit.new()
-		u.kind = kinds[i]
-		u.display = true
-		game.setup.assign_sex(u)
-		u.pos = spots[i]
-		game.units.append(u)
+
 
 
 func _dress_unit(kind: String, at: Vector2) -> Unit:

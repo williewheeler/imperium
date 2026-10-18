@@ -16,6 +16,9 @@ var _show_newcomer_jobs: Array = []  # jobs for the villagers the Forum trains, 
 
 ## Sets the scene the flags in `args` ask for, once the world is built. `start` is where the first town stands.
 func apply(args: Dictionary, start: Vector2i) -> void:
+	if args.has("rich") or args.has("town") or args.has("demo") or args.has("showcase") or args.has("builds") or args.has("era") or args.has("cycle"):
+		for i in 4:
+			game.stocks[0][i] = 1000  # the real game starts with nothing in store: scenes for looking at things do not
 	if args.has("demo"):
 		run_demo(start)
 	if args.has("weather"):  # debug: start in a given weather (clear, cloudy, fog, rain, storm), fully developed
@@ -107,6 +110,34 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 				game.cam_pos = Iso.to_screen(b.center())  # and the camera looks at it
 				skirmish_look = game.cam_pos
 				break
+	if args.has("dock"):  # debug: a dock on the nearest shore, a boat, and a school of fish off it
+		game.fog.reveal(Vector2(start), 300.0)
+		var found := Vector2i(-1, -1)
+		for r in range(4, 160):
+			for p in game.map.ring(start, r):
+				if found.x < 0 and game.placement.error("dock", p, 0) in ["", "err.cant_afford"]:
+					found = p
+			if found.x >= 0:
+				break
+		if found.x >= 0:
+			var dock := game._add_building("dock", found, true, 0)
+			var wet := game.map.water_next_to(dock.rect(), dock.center())
+			var boat := Unit.new()
+			boat.kind = "fishing_boat"
+			boat.pos = Vector2(wet) + Vector2(0.5, 0.5)
+			game.units.append(boat)
+			for r in range(3, 8):
+				for p in game.map.ring(wet, r):
+					if game.map.is_water(p) and not game.map.deposits.has(p) and (p.x * 7 + p.y * 3) % 11 == 0:
+						var school := Deposit.new(Defs.Res.FOOD, Defs.FISH_AMOUNT)
+						school.fish = true
+						school.herd = true
+						school.home = p
+						game.map.deposits[p] = school
+						game.map.herds.append(p)
+			game.cam_pos = Iso.to_screen(dock.center())
+			skirmish_look = game.cam_pos
+			dock.selected = true
 	if args.has("selectb"):  # debug: select the first building of this kind (to look at its command bar)
 		for b in game.buildings:
 			if b.kind == str(args["selectb"]) and b.complete:

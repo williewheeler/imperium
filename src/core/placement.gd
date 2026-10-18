@@ -38,6 +38,17 @@ func error(kind: String, tile: Vector2i, owner := 0) -> String:
 	for other: Building in game.buildings:  # checked first so the message says why (a field's crop tile isn't "free land")
 		if other.rect().intersects(rect):
 			return "err.spot_taken"
+	if def.get("shore", false):  # a dock stands in the shallows, touching the shore
+		for y in range(rect.position.y, rect.end.y):
+			for x in range(rect.position.x, rect.end.x):
+				var q := Vector2i(x, y)
+				if not game.fog_of(owner).is_explored(q):
+					return "err.unexplored"
+				if game.map.tile(x, y) != GameMap.Terrain.SHALLOW or game.map.deposits.has(q) or game.map.blocked_water.has(q):
+					return "err.need_shore"
+		if not game.map.land_adjacent(rect):
+			return "err.need_shore"
+		return "" if game.can_afford(def["cost"], owner) else "err.cant_afford"
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var p := Vector2i(x, y)

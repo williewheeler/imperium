@@ -26,6 +26,7 @@ const TABLE := {
 	"err.need_houses": ["Domus plures requiruntur.", "Population limit reached: build more Houses."],
 	"err.soldiers_cant_work": ["Milites laborare non possunt.", "Fighting men can't work: only villagers gather and build. They just walk to the spot."],
 	"err.full": ["Plena est.", "It is full: it holds no more than 50 citizens."],
+	"err.need_shore": ["Litus requiritur.", "A dock must stand in the shallows, touching the shore."],
 	"err.need_depot": ["Aedifica forum vel horreum.", "Build a Town Center or Storehouse to drop off resources."],
 	# --- what the game says
 	"msg.welcome": ["Elige colonos et iube eos laborare.", "Select villagers and order them to work: right-click a tree, berry bush or mine."],

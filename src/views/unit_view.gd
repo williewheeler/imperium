@@ -76,7 +76,7 @@ func update_view() -> void:
 	_body.texture = Art.tex(key)
 	_body.flip_h = flip
 	var w := _body.texture.get_width()
-	var feet := Art.HORSE_FEET if unit.kind == "horseman" else (Art.DOG_FEET if unit.kind == "dog" else Art.VILLAGER_FEET)
+	var feet := Art.HORSE_FEET if unit.kind == "horseman" else (Art.DOG_FEET if unit.kind == "dog" else (Art.BOAT_FEET if unit.kind == "fishing_boat" else Art.VILLAGER_FEET))
 	_body.offset = Vector2(-(w - feet.x) if flip else -feet.x, -feet.y)
 	_body.position = _lunge() if fighting else Vector2.ZERO
 	var glow := 1.0 + unit.hit_flash * 1.4  # a flash of white when hurt
@@ -94,6 +94,8 @@ func update_view() -> void:
 
 
 func _work_anim() -> String:
+	if unit.kind == "fishing_boat":
+		return ""  # a boat just rides at its fish
 	match unit.state:
 		Unit.State.BUILDING, Unit.State.PAVING:
 			return "build"
@@ -128,7 +130,8 @@ func _draw() -> void:
 		_ellipse(Vector2.ZERO, (6.5 + 9.0 * k) * (1.5 if big else 1.0), (3.0 + 4.0 * k) * (1.5 if big else 1.0), Color(0.85, 0.78, 0.6, 0.45 * (1.0 - k)), false)
 		_ellipse(Vector2(0, 0), 11.0 if big else 6.5, 4.0 if big else 3.0, Color(0, 0, 0, 0.28 * (1.0 - clampf(_death_t / DEATH_TIME, 0.0, 1.0))), true)
 		return
-	_ellipse(Vector2(0, 0), 11.0 if big else 6.5, 4.0 if big else 3.0, Color(0, 0, 0, 0.28), true)  # shadow
+	if unit.kind != "fishing_boat":
+		_ellipse(Vector2(0, 0), 11.0 if big else 6.5, 4.0 if big else 3.0, Color(0, 0, 0, 0.28), true)  # shadow (a boat has none on the water)
 	if unit.selected:
 		_ellipse(Vector2(0, 0), 15.0 if big else 9.5, 6.2 if big else 4.8, Color("7dff7d"), false)
 	if unit.targeted > 0.0:  # an enemy we have just been ordered to attack

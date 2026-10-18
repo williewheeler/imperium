@@ -7,6 +7,7 @@ var amount: int
 var max_amount: int
 var renews := false  # fields ripen again once emptied
 var farm := false
+var fish := false  # a school of fish in the water: only a fishing boat can harvest it
 var herd := false  # grazing animals: they breed back up if not hunted too hard (see Defs.HERD_*)
 var home := Vector2i.ZERO  # a herd grazes within Defs.HERD_RANGE of where it started
 var move_t := 0.0  # seconds before a herd takes its next step

@@ -94,9 +94,13 @@ func set_path(u: Unit, goal: Vector2i) -> bool:
 
 func _set_path_inner(u: Unit, goal: Vector2i) -> bool:
 	var from := Vector2i(u.pos)
-	if not game.map.is_walkable(from):  # shoved against an obstacle: start from the nearest open tile
-		from = game.map.nearest_walkable(from)
-	var ids: Array[Vector2i] = game.map.find_path_rough(from, goal) if Defs.UNITS[u.kind].get("rough", false) else game.map.find_path(from, goal)
+	var ids: Array[Vector2i]
+	if Defs.UNITS[u.kind].get("water", false):  # a boat: over water only
+		ids = game.map.find_path_water(from, game.map.nearest_water(goal))
+	else:
+		if not game.map.is_walkable(from):  # shoved against an obstacle: start from the nearest open tile
+			from = game.map.nearest_walkable(from)
+		ids = game.map.find_path_rough(from, goal) if Defs.UNITS[u.kind].get("rough", false) else game.map.find_path(from, goal)
 	if ids.is_empty():
 		return false
 	var path: Array[Vector2] = []
@@ -125,7 +129,8 @@ func move(u: Unit, goal: Vector2i) -> void:
 func dropoff(u: Unit, b: Building) -> void:
 	game.roads.release(u)
 	var was_working := u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]
-	var stand := game.map.stand_tile(b.dropoff_rect(), u.pos)
+	var boat: bool = Defs.UNITS[u.kind].get("water", false)
+	var stand := game.map.water_next_to(b.rect(), u.pos) if boat else game.map.stand_tile(b.dropoff_rect(), u.pos)
 	if stand.x < 0 or not set_path(u, stand):
 		note(u, "err.no_route")
 		return
@@ -140,12 +145,19 @@ func gather(u: Unit, tile: Vector2i) -> bool:
 	var d: Deposit = game.map.deposits.get(tile)
 	if d == null or (d.farm and d.owner != u.owner):  # nobody works another's field
 		return false
+	if d.fish != bool(Defs.UNITS[u.kind].get("water", false)):  # only a boat can fish, and a boat can do nothing else
+		return false
 	if d.plot_of != null:  # one villager to a plot: if this one is taken, the nearest free plot of the farm
 		tile = free_plot(d.plot_of, tile, u, false)
 		if tile.x < 0:
 			return false
 		d = game.map.deposits[tile]
-	var stand := plot_spot(d, u) if d.plot_of != null else game.map.stand_tile(Rect2i(tile, Vector2i.ONE), u.pos)  # (a plot is worked from on it)
+	elif workers_at(tile, u) >= Defs.MAX_WORKERS:  # six at most work one deposit: on to the nearest like it with room
+		tile = _deposit_with_room(u, d, tile)
+		if tile.x < 0:
+			return false
+		d = game.map.deposits[tile]
+	var stand := plot_spot(d, u) if d.plot_of != null else (tile if d.fish else game.map.stand_tile(Rect2i(tile, Vector2i.ONE), u.pos))  # (a plot is worked from on it; a boat fishes on the fish's own tile)
 	u.work_spot = stand
 	if stand.x < 0 or not set_path(u, stand):
 		note(u, "err.no_route")
@@ -160,6 +172,36 @@ func gather(u: Unit, tile: Vector2i) -> bool:
 	u.carry_kind = d.kind
 	u.target_building = null
 	return true
+
+
+## How many units other than `except` are working the deposit at `tile` (on their way to it or at it).
+func workers_at(tile: Vector2i, except: Unit) -> int:
+	var n := 0
+	for o: Unit in game.units:
+		if o != except and not o.dead and o.target_tile == tile and (o.state == Unit.State.GATHER_GO or o.state == Unit.State.GATHERING):
+			n += 1
+	return n
+
+
+## The nearest deposit of the same kind as `d`, within ten tiles of `tile`, with room for another worker.
+func _deposit_with_room(u: Unit, d: Deposit, tile: Vector2i) -> Vector2i:
+	var seen: Fog = game.fog_of(u.owner)
+	for r in range(1, 11):
+		var best := Vector2i(-1, -1)
+		var best_d := INF
+		for p in game.map.ring(tile, r):
+			var o: Deposit = game.map.deposits.get(p)
+			if o == null or o.kind != d.kind or o.farm or o.amount <= 0 or o.fish != d.fish or not seen.is_explored(p):
+				continue
+			if workers_at(p, u) >= Defs.MAX_WORKERS:
+				continue
+			var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
+			if dist < best_d:
+				best_d = dist
+				best = p
+		if best.x >= 0:
+			return best
+	return Vector2i(-1, -1)
 
 
 ## A plot of `farm` that `u` may work: `tile` if it has room (up to three workers to a plot), else the nearest that

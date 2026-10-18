@@ -87,6 +87,10 @@ farm-test:
 herd-test:
     {{godot}} --headless --path . --script tools/herd_test.gd -- --nosplash --seed=42 --players=3
 
+# Headless check of docks, fish and fishing boats
+water-test:
+    {{godot}} --headless --path . --script tools/water_test.gd -- --nosplash --seed=42 --players=3
+
 # Headless check of the phrase table: both languages present, every key used in the code exists
 phrases-test:
     {{godot}} --headless --path . --script tools/phrases_test.gd

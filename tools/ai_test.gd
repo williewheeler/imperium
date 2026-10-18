@@ -45,7 +45,7 @@ func _process(dt: float) -> bool:
 						if g.map.deposits.has(mp) and Vector2(mp).distance_to(b.center()) <= 16.0:
 							rich += 1
 							break
-			print("     storehouses=%d  hub-by-stone-or-gold=%d" % [ai.mine("storehouse").size(), rich])
+			print("     storehouses=%d  docks=%d boats=%d  hub-by-stone-or-gold=%d" % [ai.mine("storehouse").size(), ai.mine("dock").size(), ai.boats().size(), rich])
 			print("  AI %d %-9s era=%d hubs=%d citizens=%d explored=%2d%% villagers=%2d army=%2d buildings=%2d pop=%3d/%3d  %s  stock=%s" % [ai.owner, Defs.faction_of(ai.owner)["english"], s["era"], s["towns"], s["citizens"], int(float(s["explored"]) * 100.0), s["villagers"], s["army"], s["buildings"], s["pop"], s["cap"], s["status"].replace("spec.", ""), s["stock"]])
 	if elapsed >= limit:
 		quit(0)

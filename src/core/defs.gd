@@ -13,15 +13,17 @@ const GATHER_RATE := [1.0, 1.2, 0.8, 0.7]  # units per second
 # Herds: grazing animals, a food deposit that breeds. While at least HERD_BREED_MIN of it is left it gains
 # HERD_BREED_GAIN every HERD_BREED_EVERY seconds up to HERD_AMOUNT; hunt it to nothing and it is gone for good.
 const HERD_AMOUNT := 240
+const FISH_AMOUNT := 220  # a school of fish (they wander and breed like a herd, in the water)
 const HERD_BREED_MIN := 0.15
 const HERD_BREED_EVERY := 8.0
 const HERD_BREED_GAIN := 4
 const HERD_RANGE := 5.0  # tiles a herd grazes from where it started: it does not wander off
 const HERD_MOVE_EVERY := 7.0  # seconds between steps
 const CARRY_CAP := 15
+const MAX_WORKERS := 6  # most units that can work one deposit at a time (a farm plot takes one)
 
 # Costs are [wood, food, stone, gold].
-const START_STOCK := [300, 200, 100, 50]
+const START_STOCK := [0, 0, 0, 0]  # nobody starts with anything in store: the first food and wood are gathered
 const VILLAGER_COST := [0, 50, 0, 0]
 const VILLAGER_TRAIN_TIME := 8.0
 const DOG_COST := [0, 30, 0, 0]
@@ -47,6 +49,9 @@ const UNITS := {
 	"dog": {"name": "Canis", "english": "Dog", "cost": DOG_COST, "time": 10.0,
 		"hp": 22, "attack": 0.0, "cooldown": 1.0, "range": 0.0, "armor": [0.0, 0.0], "bonus": {}, "speed": 5.2, "sight": 9.0, "rough": true,
 		"about": "A fast, fragile scout: it cannot fight or work. Forest, marsh and hills do not slow it, but it cannot cross water or mountains."},
+	"fishing_boat": {"name": "Navis Piscatoria", "english": "Fishing Boat", "cost": [120, 0, 0, 0], "time": 15.0,
+		"hp": 40, "attack": 0.0, "cooldown": 1.0, "range": 0.0, "armor": [0.0, 0.0], "bonus": {}, "speed": 1.6, "sight": 8.0, "water": true,
+		"about": "A small boat that fishes the schools in the water and brings the catch (15 at a time) to a dock. It sails only on water."},
 	"soldier": {"name": "Miles Gravis", "english": "Heavy Infantry", "cost": SOLDIER_COST, "time": SOLDIER_TRAIN_TIME,
 		"hp": 80, "attack": 9.0, "cooldown": 1.1, "range": 0.0, "armor": [0.30, 0.10], "bonus": {"villager": 1.5, "spearman": 1.4}, "speed": 0.8,
 		"about": "Armored and sturdy. Crushes spearmen and villagers, but slingers wear it down from afar."},
@@ -65,7 +70,7 @@ const UNITS := {
 # most, spears and shot little, and a horse none to speak of. A building that falls to 40% health catches fire
 # and burns down on its own (see Combat).
 const BUILDING_HP := {"settlement": 500, "city_center": 1800, "town_center": 1200, "hut": 150, "house": 300, "storehouse": 250, "castra": 600, "stabulum": 500,
-	"temple": 450, "curia": 600, "aqueduct": 500, "farm": 0, "large_farm": 0, "large_vineyard": 0, "vineyard": 0, "circus": 0}
+	"temple": 450, "dock": 300, "curia": 600, "aqueduct": 500, "farm": 0, "large_farm": 0, "large_vineyard": 0, "vineyard": 0, "circus": 0}
 const SIEGE := {"soldier": 0.6, "spearman": 0.35, "slinger": 0.2, "horseman": 0.25}
 # Towns grow by taking in citizens. A villager sent into a Settlement, Town Center or City Center is absorbed for
 # good (the building counts how many, up to CITIZENS_MAX). A Settlement takes every resource but cannot make
@@ -137,7 +142,7 @@ const ERAS := [
 # Numbers are first guesses, to tune in play. The era you reach unlocks buildings: see "era"
 # on each building below and ROAD_ERA.
 const ERA_ADVANCE := [
-	{"cost": [300, 300, 100, 0], "time": 45.0, "needs": [["pop", 15], ["hut", 3], ["farm", 1], ["storehouse", 1]]},
+	{"cost": [600, 600, 200, 0], "time": 45.0, "needs": [["pop", 15], ["hut", 3], ["farm", 1], ["storehouse", 1]]},
 	null,
 	null,
 	null,
@@ -156,7 +161,7 @@ const BUILDINGS := {
 	},
 	"settlement": {
 		"name": "Vicus", "acc": "Vicum", "english": "Settlement", "done": "perfectus est", "ready": "Paratus",
-		"size": Vector2i(3, 3), "cost": [100, 0, 50, 0], "absorbs": true,
+		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "absorbs": true,
 		"build_time": 25.0, "sight": 8.0, "accepts": [0, 1, 2, 3], "pop": 5,
 		"about": "A village near the land you want to work. Takes every resource, but cannot make villagers: take 15 of them into it and it grows into a Town Center.",
 	},
@@ -165,19 +170,25 @@ const BUILDINGS := {
 		"size": Vector2i(3, 3), "cost": [0, 0, 0, 0], "trains": ["villager", "dog"], "absorbs": true, "upgrade_only": true,
 		"build_time": 40.0, "sight": 12.0, "accepts": [0, 1, 2, 3], "pop": 20,
 	},
+	"dock": {
+		"name": "Portus", "acc": "Portum", "english": "Dock", "done": "perfectus est", "ready": "Paratus",
+		"size": Vector2i(2, 2), "cost": [160, 0, 0, 0], "shore": true, "boats_only": true, "trains": ["fishing_boat"],
+		"build_time": 20.0, "sight": 6.0, "accepts": [1], "pop": 0,
+		"about": "Built in the shallows, touching the shore. It makes fishing boats and takes in the food they bring.",
+	},
 	"hut": {
 		"name": "Casa", "acc": "Casam", "english": "Hut", "done": "perfecta est", "ready": "Parata",
-		"size": Vector2i(1, 1), "cost": [25, 0, 0, 0],
+		"size": Vector2i(1, 1), "cost": [50, 0, 0, 0],
 		"build_time": 10.0, "sight": 4.0, "accepts": [], "pop": 3,
 	},
 	"house": {
 		"name": "Domus", "acc": "Domum", "english": "House", "done": "perfecta est", "ready": "Parata", "era": 1,
-		"size": Vector2i(2, 2), "cost": [50, 0, 0, 0],
+		"size": Vector2i(2, 2), "cost": [100, 0, 0, 0],
 		"build_time": 20.0, "sight": 4.0, "accepts": [], "pop": 5,
 	},
 	"farm": {
 		"name": "Ager", "acc": "Agrum", "english": "Farm", "done": "perfectus est", "ready": "Paratus", "look": "granary",
-		"size": Vector2i(9, 9), "cost": [100, 0, 0, 0], "walkable": true, "solid_center": true,
+		"size": Vector2i(9, 9), "cost": [200, 0, 0, 0], "walkable": true, "solid_center": true,
 		"plots": true, "plot_workers": 1, "crop": 250, "regrow": 20.0, "citizens_max": 8, "absorbs": true,
 		"build_time": 25.0, "sight": 6.0, "accepts": [1], "pop": 0,
 		"about": "A big field: a granary in the middle, framing eight plots round it. Building the granary lays out the plots; then send villagers onto them (one to a plot) and they sow, tend and harvest by themselves, carrying the crop to the granary. Take 8 villagers into the granary for good and it grows into a Large Farm with richer plots.",
@@ -190,7 +201,7 @@ const BUILDINGS := {
 	},
 	"vineyard": {
 		"name": "Vinea", "acc": "Vineam", "english": "Vineyard", "done": "perfecta est", "ready": "Parata", "era": 1, "look": "granary",
-		"size": Vector2i(9, 9), "cost": [150, 0, 0, 0], "walkable": true, "solid_center": true,
+		"size": Vector2i(9, 9), "cost": [300, 0, 0, 0], "walkable": true, "solid_center": true,
 		"plots": true, "plot_art": "vineyard", "res": Res.GOLD, "plot_workers": 1, "crop": 150, "regrow": 25.0, "citizens_max": 8, "absorbs": true,
 		"build_time": 30.0, "sight": 6.0, "accepts": [3], "pop": 0,
 		"about": "A farm of vines: eight plots round a press-house, worked like a farm's, but the crop is wine, sold for gold. Take 8 villagers into it for good and it grows into a Large Vineyard.",
@@ -203,29 +214,29 @@ const BUILDINGS := {
 	},
 	"storehouse": {
 		"name": "Horreum", "acc": "Horreum", "english": "Storehouse", "done": "perfectum est", "ready": "Paratum",
-		"size": Vector2i(2, 2), "cost": [60, 0, 0, 0],
+		"size": Vector2i(2, 2), "cost": [120, 0, 0, 0],
 		"build_time": 15.0, "sight": 5.0, "accepts": [0, 2, 3], "pop": 0,
 	},
 	"curia": {
 		"name": "Curia", "acc": "Curiam", "english": "Senate House", "done": "perfecta est", "ready": "Parata", "era": 1,
-		"size": Vector2i(3, 3), "cost": [100, 0, 150, 0],  # the Senate's powers come later; for now it's the seat of the Republic
+		"size": Vector2i(3, 3), "cost": [200, 0, 300, 0],  # the Senate's powers come later; for now it's the seat of the Republic
 		"build_time": 50.0, "sight": 9.0, "accepts": [], "pop": 0,
 	},
 	"aqueduct": {
 		"name": "Aquaeductus", "acc": "Aquaeductum", "english": "Aqueduct", "done": "perfectus est", "ready": "Paratus", "era": 1,
-		"size": Vector2i(4, 1), "cost": [0, 0, 160, 0], "walkable": true,  # people walk under the arches
+		"size": Vector2i(4, 1), "cost": [0, 0, 320, 0], "walkable": true,  # people walk under the arches
 		"build_time": 40.0, "sight": 4.0, "accepts": [], "pop": 8,  # fresh water lets a bigger town live here
 	},
 	"castra": {
 		"name": "Castra", "acc": "Castra", "english": "Barracks", "done": "perfecta sunt", "ready": "Parata",
-		"size": Vector2i(3, 3), "cost": [100, 0, 50, 0], "trains": ["soldier", "spearman", "slinger"],
+		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": ["soldier", "spearman", "slinger"],
 		"build_time": 35.0, "sight": 8.0, "accepts": [], "pop": 0,
 		# in the Kingdom the soldiers' base was the stockaded hilltop fortress
 		"early": {"name": "Arx", "acc": "Arcem", "english": "Citadel (Barracks)", "look": "arx", "done": "perfecta est", "ready": "Parata"},
 	},
 	"stabulum": {
 		"name": "Stabulum", "acc": "Stabulum", "english": "Stable", "done": "perfectum est", "ready": "Paratum",
-		"size": Vector2i(3, 3), "cost": [100, 0, 0, 0], "trains": ["horseman"],  # the Celeres, the wealthy citizens' horsemen
+		"size": Vector2i(3, 3), "cost": [200, 0, 0, 0], "trains": ["horseman"],  # the Celeres, the wealthy citizens' horsemen
 		"build_time": 30.0, "sight": 6.0, "accepts": [], "pop": 0,
 	},
 	"circus": {
@@ -235,7 +246,7 @@ const BUILDINGS := {
 	},
 	"temple": {
 		"name": "Templum", "acc": "Templum", "english": "Temple", "done": "perfectum est", "ready": "Paratum",
-		"size": Vector2i(2, 2), "cost": [80, 0, 100, 0],  # no powers yet: a place of worship and prestige
+		"size": Vector2i(2, 2), "cost": [160, 0, 200, 0],  # no powers yet: a place of worship and prestige
 		"build_time": 40.0, "sight": 6.0, "accepts": [], "pop": 0,
 		# early Rome's holiest shrine was Vesta's round thatched hut, with its eternal fire
 		"early": {"name": "Aedes", "acc": "Aedem", "english": "Shrine of Vesta (Temple)", "look": "aedes", "done": "perfecta est", "ready": "Parata"},

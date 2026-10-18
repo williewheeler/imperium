@@ -52,7 +52,7 @@ var _explored_clock := 0.0
 
 
 func _init() -> void:
-	for goal: AIGoal in [WorkersGoal.new(), GrowthGoal.new(), ExploreGoal.new(), ExpandGoal.new(), PopulateGoal.new(), MilitaryGoal.new(), AttackGoal.new(), DefendGoal.new(), AdvanceGoal.new()]:
+	for goal: AIGoal in [WorkersGoal.new(), GrowthGoal.new(), ExploreGoal.new(), FishingGoal.new(), ExpandGoal.new(), PopulateGoal.new(), MilitaryGoal.new(), AttackGoal.new(), DefendGoal.new(), AdvanceGoal.new()]:
 		goal.ai = self
 		goals.append(goal)
 
@@ -217,6 +217,15 @@ func army() -> Array[Unit]:
 	var out: Array[Unit] = []
 	for u: Unit in game.units:
 		if u.owner == owner and Combat.fights(u):
+			out.append(u)
+	return out
+
+
+## Its fishing boats.
+func boats() -> Array[Unit]:
+	var out: Array[Unit] = []
+	for u: Unit in game.units:
+		if u.owner == owner and u.kind == "fishing_boat" and not u.dead:
 			out.append(u)
 	return out
 
