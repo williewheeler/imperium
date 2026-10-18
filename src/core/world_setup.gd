@@ -22,6 +22,7 @@ func found_players(start: Vector2i) -> void:
 		game._add_building("town_center", site, true)
 	game.map.place_resources(start, float(GameSettings.resources_info(GameSettings.resources_id)["amount"]))  # after the Town Center, so berries and mines go around it
 	place_circus(start)
+	place_jupiter(start)
 	game._rome_start = start
 	place_ais(start)
 	if game.spectating:
@@ -49,6 +50,26 @@ func place_circus(start: Vector2i) -> void:
 		Iso.set_terrain(game.map.w, game.map.h, game.map.levels)
 		var circus := game._add_building("circus", site, true)
 		circus.work = 1.0
+
+
+## The Temple of Jupiter Optimus Maximus crowns a hill of its own near the city, as it did the Capitoline: a patch
+## of open ground a little further out than the Circus, raised three terraces on a platform.
+func place_jupiter(start: Vector2i) -> void:
+	var avoid: Array[Vector2i] = []
+	for off in GameMap.START_OFFSETS:
+		avoid.append(start + off)
+	var rects: Array = []
+	for b in game.buildings:
+		rects.append(b.rect().grow(2))
+	var size: Vector2i = Defs.BUILDINGS["jupiter"]["size"]
+	var site := game.map.find_site(size, start, 8, 40, avoid, rects, true)
+	if site.x >= 0:
+		var apron := Rect2i(site, size).grow(1)
+		game.map.clear_ground(apron)
+		game.map.level_ground(apron, 3)
+		Iso.set_terrain(game.map.w, game.map.h, game.map.levels)
+		var temple := game._add_building("jupiter", site, true)
+		temple.work = 1.0
 
 
 ## The other peoples each get a town of their own, spaced round the map like you (see

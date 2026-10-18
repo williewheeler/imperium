@@ -70,7 +70,7 @@ const UNITS := {
 # most, spears and shot little, and a horse none to speak of. A building that falls to 40% health catches fire
 # and burns down on its own (see Combat).
 const BUILDING_HP := {"settlement": 500, "city_center": 1800, "town_center": 1200, "hut": 150, "house": 300, "storehouse": 250, "castra": 600, "stabulum": 500,
-	"temple": 450, "jupiter": 1500, "dock": 300, "curia": 600, "aqueduct": 500, "farm": 0, "large_farm": 0, "large_vineyard": 0, "vineyard": 0, "circus": 0}
+	"temple": 450, "jupiter": 0, "dock": 300, "curia": 600, "aqueduct": 500, "farm": 0, "large_farm": 0, "large_vineyard": 0, "vineyard": 0, "circus": 0}
 const SIEGE := {"soldier": 0.6, "spearman": 0.35, "slinger": 0.2, "horseman": 0.25}
 # Towns grow by taking in citizens. A villager sent into a Settlement, Town Center or City Center is absorbed for
 # good (the building counts how many, up to CITIZENS_MAX). A Settlement takes every resource but cannot make
@@ -245,9 +245,9 @@ const BUILDINGS := {
 		"build_time": 1.0, "sight": 8.0, "accepts": [], "pop": 0,
 	},
 	"jupiter": {
-		"name": "Templum Iovis", "acc": "Templum Iovis", "english": "Temple of Jupiter Optimus Maximus", "done": "perfectum est", "ready": "Paratum", "era": 1,
-		"size": Vector2i(5, 5), "cost": [300, 0, 600, 300],  # the greatest temple of Rome, on a high podium; no powers yet, only prestige
-		"build_time": 90.0, "sight": 10.0, "accepts": [], "pop": 0,
+		"name": "Templum Iovis", "acc": "Templum Iovis", "english": "Temple of Jupiter Optimus Maximus", "done": "perfectum est", "ready": "Paratum",
+		"size": Vector2i(5, 5), "cost": [0, 0, 0, 0], "landmark": true,  # the greatest temple of Rome: it crowns the Capitoline from the start
+		"build_time": 1.0, "sight": 10.0, "accepts": [], "pop": 0,
 	},
 	"temple": {
 		"name": "Templum", "acc": "Templum", "english": "Temple", "done": "perfectum est", "ready": "Paratum",

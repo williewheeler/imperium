@@ -113,7 +113,7 @@ between players. See [Multiplayer](#multiplayer) below.
   that changes; villagers who hide behind trees (and show through as a silhouette when they do).
 - **Gathering and building.** Wood, food, stone and gold, taken from woods, berries, hunted herds, mines,
   farms and the sea; huts, houses, storehouses, Settlements that grow into towns, farms and vineyards,
-  docks, a citadel, a stable, Vesta's shrine and the great Temple of Jupiter.
+  docks, a citadel, a stable and Vesta's shrine. The great Temple of Jupiter and the Circus Maximus stand near Rome from the start.
 - **Computer players with goals.** Each AI explores with dogs, settles near stone and gold, farms and fishes,
   raises an army, advances an era and attacks; see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - **Team colors** on buildings and units, one per player.

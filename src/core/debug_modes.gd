@@ -85,7 +85,99 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 					counts[w] = int(counts.get(w, 0)) + 1
 					u.selected = true
 	if args.has("town"):  # debug: a built-up town round the Forum: one of most kinds of building, finished
-		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple", "settlement", "jupiter"]
+		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple", "settlement"]
+		for i in kinds.size():
+			var kind: String = kinds[i]
+			if not Defs.BUILDINGS.has(kind):
+				continue
+			var dir := Vector2.from_angle(float(i) * 2.399 + 0.4)  # round the Forum at the golden angle
+			var want := game.buildings[0].tile + Vector2i((dir * (7.0 + float(i % 4) * 3.0)).round())
+			var spot := game.map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8 + 2 * (Defs.BUILDINGS[kind]["size"] as Vector2i).x, [])
+			if spot.x >= 0:
+				game._add_building(kind, spot, true)
+	if args.has("buildout"):  # debug: a built-up Era II town for screenshots: a worked farm, a Settlement, a City Center
+		var rects: Array = game.placement.rects()
+		var avoid: Array[Vector2i] = []
+		var farm_site := Vector2i(-1, -1)
+		for off in [Vector2i(-17, 9), Vector2i(18, 10), Vector2i(-12, 20), Vector2i(8, 22), Vector2i(-24, -4)]:
+			if farm_site.x < 0:
+				farm_site = game.map.find_site(Vector2i(9, 9), start + off, 0, 24, avoid, rects)
+		if farm_site.x >= 0:
+			var farm := game._add_building("farm", farm_site, true, 0)
+			rects.append(farm.rect())
+			for p in farm.plot_tiles():
+				var plot: Deposit = game.map.deposits[p]
+				plot.amount = plot.max_amount  # ripe
+			var plots := farm.plot_tiles()
+			for i in plots.size():  # a villager on each plot, working it
+				var v := Unit.new()
+				v.pos = Vector2(farm.granary_tile()) + Vector2(0.5 + float(i % 3) * 0.6, 2.4)
+				game.setup.assign_sex(v)
+				game.units.append(v)
+				game.orders.gather(v, plots[i])
+		var s_site: Vector2i = game.map.find_site(Vector2i(3, 3), start + Vector2i(16, -12), 0, 16, avoid, rects)
+		if s_site.x >= 0:
+			var settlement := game._add_building("settlement", s_site, true, 0)
+			rects.append(settlement.rect())
+			settlement.citizens = 9
+		var c_site: Vector2i = game.map.find_site(Vector2i(3, 3), start + Vector2i(-6, -19), 0, 16, avoid, rects)
+		if c_site.x >= 0:
+			var city := game._add_building("settlement", c_site, true, 0)
+			city.citizens = 15
+			game.upgrade_building(city, "town_center")
+			city.citizens = 30
+			game.upgrade_building(city, "city_center")
+			rects.append(city.rect())
+		game.era_preview.cycle(1)
+	if args.has("select") and args.has("cycle"):  # selection was cleared by the era jump
+		for u in game.units:
+			u.selected = u.kind == "villager"
+	if args.has("look"):  # debug: aim the camera this many tiles (x,y) from the Forum
+		var off := String(args["look"]).split(",")
+		game.cam_pos = Iso.to_screen(game.buildings[0].center() + Vector2(float(off[0]), float(off[1])))
+	if skirmish_look != Vector2.INF and not args.has("look"):
+		game.cam_pos = skirmish_look
+	if args.has("reveal"):  # debug: start with the whole map laid open (M toggles it)
+		game.fog.set_show_all(true)
+	if args.has("forum"):
+		game.buildings[0].selected = true
+	if args.has("builds"):  # debug: buildings at several stages of construction
+		var specs := [["house", 0.3], ["storehouse", 0.65], ["hut", 0.5], ["house", 1.0]]
+		var offs := [Vector2i(-6, 2), Vector2i(4, 4), Vector2i(-3, 6), Vector2i(6, -2)]
+		for i in specs.size():
+			var spot := game.map.find_site(Defs.BUILDINGS[specs[i][0]]["size"], game.buildings[0].tile + offs[i], 0, 4, [])
+			if spot.x >= 0:
+				var b := game._add_building(specs[i][0], spot, specs[i][1] >= 1.0)
+				b.work = float(b.def()["build_time"]) * float(specs[i][1])
+	if args.has("skirmish"):  # debug: --skirmish=KIND:KIND (or just --skirmish): two small armies a few tiles apart, ours (purple) and the first AI's
+		var spec: Array = Array(str(args["skirmish"]).split(":")) if str(args["skirmish"]).contains(":") else ["soldier,spearman,slinger,horseman", "soldier,spearman,slinger,horseman"]
+		var base := Vector2(start) + Vector2(-9, 5)
+		for side in 2:
+			var kinds := String(spec[side]).split(",")
+			for i in kinds.size() * 3:
+				var u := Unit.new()
+				u.kind = kinds[i % kinds.size()]
+				u.owner = side
+				u.display = true
+				u.pos = base + Vector2(side * float(args.get("gap", 6.5)), float(i) * 0.9 - 4.0)
+				game.units.append(u)
+		skirmish_look = Iso.to_screen(base + Vector2(float(args.get("gap", 6.5)) / 2.0, 0.0))
+	if args.has("select"):  # debug: --select selects all our people; --select=KIND,KIND:N only those kinds (N of each at most)
+		var counts := {}
+		var wanted := String(args["select"]).split(",", false)
+		for u in game.units:
+			if u.owner != 0:
+				continue
+			if wanted.is_empty():
+				u.selected = true
+				continue
+			for w in wanted:
+				var kn := w.split(":")
+				if kn[0] == u.kind and int(counts.get(w, 0)) < (int(kn[1]) if kn.size() > 1 else 9999):
+					counts[w] = int(counts.get(w, 0)) + 1
+					u.selected = true
+	if args.has("town"):  # debug: a built-up town round the Forum: one of most kinds of building, finished
+		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple", "settlement"]
 		for i in kinds.size():
 			var kind: String = kinds[i]
 			if not Defs.BUILDINGS.has(kind):
@@ -134,7 +226,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 		game.era_preview.cycle(1)  # Era II, and its town dressed round what was put up
 		var focus := [Vector2(start)]  # the camera looks at the middle of all that was put up
 		for b in game.buildings:
-			if b.owner == 0 and b.kind in (["jupiter", "city_center"] if args.has("jupiter") else ["farm", "settlement", "city_center"]):
+			if b.owner == 0 and b.kind in ["farm", "settlement", "city_center"]:
 				focus.append(b.center())
 		var mid := Vector2.ZERO
 		for f in focus:
