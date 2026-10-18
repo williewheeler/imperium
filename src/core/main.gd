@@ -76,6 +76,8 @@ var _frame := 0
 var music: Music  # null in scripted runs
 var combat := Combat.new(self)  # who fights whom
 var placement := Placement.new()  # where things may go
+var spectating := false  # --spectate: every player is an AI, and the window shows them all (see Spectator)
+var spectator: Spectator
 var debug := DebugModes.new()  # the --flags that set a scene up
 var orders := Orders.new()  # what an order does to a unit
 var setup := WorldSetup.new()  # founding the players
@@ -150,6 +152,9 @@ func _ready() -> void:
 		GameSettings.difficulty_id = GameSettings.difficulty_info(String(args["difficulty"]))["id"]
 	if args.has("terrain"):
 		GameSettings.terrain_id = GameSettings.terrain_info(String(args["terrain"]))["id"]
+	spectating = args.has("spectate")
+	if spectating:
+		GameSettings.players = 4  # one pane each
 	Perf.on = args.has("perf")
 	_record_dir = String(args.get("record", ""))
 	if args.has("windowed") or args.has("showcase") or args.has("shot"):
@@ -255,6 +260,12 @@ func _ready() -> void:
 	else:
 		hud.flash_key("msg.welcome")
 
+	if spectating:
+		hud.visible = false
+		fog.set_show_all(true)  # panes show the whole map
+		spectator = Spectator.new()
+		spectator.game = self
+		add_child(spectator)
 	_update_fog()
 	if Perf.on:
 		print("PERF startup: ready at ", Time.get_ticks_msec(), " ms")
@@ -268,9 +279,9 @@ func _ready() -> void:
 		music.begin_map()  # the title music gives way to the map music
 	set_process(true)
 	set_physics_process(true)
-	set_process_unhandled_input(true)
+	set_process_unhandled_input(not spectating)
 	Engine.time_scale = float(args.get("speed", GameSettings.speed))
-	if not (args.has("demo") or args.has("showcase") or args.has("ring") or args.has("skirmish")):
+	if not (spectating or args.has("demo") or args.has("showcase") or args.has("ring") or args.has("skirmish")):
 		era_preview.place_display_army(start)
 	_screenshot_path = args.get("shot", "")
 	_report = args.has("report")
@@ -1098,6 +1109,8 @@ func _process(delta: float) -> void:
 
 ## English hover tip for buildings under the cursor (their Latin names are drawn in the world).
 func _update_world_tip() -> void:
+	if spectating:
+		return
 	var tip := ""
 	if placing == "" and not dragging and get_viewport().gui_get_hovered_control() == null:
 		var mp := get_global_mouse_position()
@@ -1113,6 +1126,8 @@ func _update_world_tip() -> void:
 
 
 func _pan_camera(delta: float) -> void:
+	if spectating:
+		return
 	var dir := Vector2(
 		int(Input.is_key_pressed(KEY_RIGHT)) - int(Input.is_key_pressed(KEY_LEFT)),
 		int(Input.is_key_pressed(KEY_DOWN)) - int(Input.is_key_pressed(KEY_UP)))

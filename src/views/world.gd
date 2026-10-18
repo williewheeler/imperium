@@ -203,6 +203,27 @@ func view_rect() -> Rect2:
 	return Rect2(game.cam_pos - half, half * 2.0)
 
 
+## Every area being looked at, in world pixels: the one screen, or each pane of a spectator.
+func view_rects() -> Array[Rect2]:
+	if game.spectator != null:
+		return game.spectator.view_rects()
+	return [view_rect()]
+
+
+func _any_has(rects: Array[Rect2], point: Vector2, margin: float) -> bool:
+	for r in rects:
+		if r.grow(margin).has_point(point):
+			return true
+	return false
+
+
+func _any_intersects(rects: Array[Rect2], box: Rect2, margin: float) -> bool:
+	for r in rects:
+		if r.grow(margin).intersects(box):
+			return true
+	return false
+
+
 ## World-pixel box of a chunk, with room above for terraces and tall sprites.
 func _chunk_box(c: Vector2i) -> Rect2:
 	if _boxes.has(c):
@@ -223,8 +244,7 @@ func _stream_terrain(delta: float) -> void:
 	if _stream_clock > 0.0 and _streamed:
 		return
 	_stream_clock = 0.15
-	var near := view_rect().grow(LOAD_MARGIN)
-	var far := view_rect().grow(KEEP_MARGIN)
+	var views := view_rects()
 	var map: GameMap = game.map
 	var wanted: Array = []
 	for cy in ceili(float(map.h) / CHUNK):
@@ -232,10 +252,13 @@ func _stream_terrain(delta: float) -> void:
 			var c := Vector2i(cx, cy)
 			var box := _chunk_box(c)
 			if _chunks.has(c):
-				if not box.intersects(far):
+				if not _any_intersects(views, box, KEEP_MARGIN):
 					_unload_chunk(c)
-			elif box.intersects(near):
-				wanted.append([box.get_center().distance_squared_to(game.cam_pos), c])
+			elif _any_intersects(views, box, LOAD_MARGIN):
+				var nearest := INF
+				for r in views:
+					nearest = minf(nearest, box.get_center().distance_squared_to(r.get_center()))
+				wanted.append([nearest, c])
 	wanted.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])  # nearest the middle first
 	var budget := wanted.size() if not _streamed else CHUNKS_PER_CHECK
 	for i in mini(budget, wanted.size()):
@@ -323,7 +346,7 @@ func _process(delta: float) -> void:
 	Perf.stop("tree sway", t0)
 	t0 = Perf.start()
 	ground.set_rain(game.weather.rain, delta)
-	var screen := view_rect().grow(48.0)  # things off the screen aren't animated or even redrawn
+	var views := view_rects()  # things off the screen aren't animated or even redrawn
 	for u: Unit in game.units:
 		if not _unit_views.has(u):
 			var v := UnitView.new()
@@ -331,7 +354,7 @@ func _process(delta: float) -> void:
 			objects.add_child(v)
 			_unit_views[u] = v
 		var view: UnitView = _unit_views[u]
-		var on_screen: bool = screen.has_point(Iso.to_screen(u.pos)) and (u.owner == 0 or game.fog.is_visible_now(Vector2i(u.pos)))  # an AI's people show only while we can see them
+		var on_screen: bool = _any_has(views, Iso.to_screen(u.pos), 48.0) and (u.owner == 0 or game.fog.is_visible_now(Vector2i(u.pos)))  # an AI's people show only while we can see them
 		view.visible = on_screen
 		if on_screen:
 			view.update_view()
@@ -340,7 +363,6 @@ func _process(delta: float) -> void:
 			_ghosts[u].visible = false
 			_rings[u].visible = false
 	Perf.stop("unit views", t0)
-	var wide := view_rect().grow(200.0)  # buildings are big
 	for b: Building in game.buildings:
 		if not _building_views.has(b):
 			var v := BuildingView.new()
@@ -351,7 +373,7 @@ func _process(delta: float) -> void:
 			_clear_scenery_under(b)
 		var seen: bool = b.owner == 0 or game.fog.is_explored(Vector2i(b.center()))  # an AI's town shows once discovered
 		_building_views[b].set_seen(seen)
-		if seen and wide.has_point(Iso.to_screen_flat(b.center())):
+		if seen and _any_has(views, Iso.to_screen_flat(b.center()), 200.0):  # buildings are big
 			_building_views[b].update_view()
 		else:
 			_building_views[b].go_quiet()

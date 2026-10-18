@@ -128,6 +128,8 @@ between machines. See DESIGN.md for the lobby itself.
   simulation out from the person's driver.
 - The era is one value for the whole game and belongs to player 0, so `advance` is refused for other
   players. Eras and the stuff they unlock should be per player.
+- The views are still tied to one viewer: `game.fog` and "owner 0 is mine" decide what is drawn and what is
+  shown on the minimap. A pane that shows one AI's own fog needs a viewer passed in.
 - Drivers read raw `Main.units` and `Main.buildings`. The `AI` filters by its own fog by discipline, not
   by construction. A per-player view (fog-filtered queries) would enforce it, and is what a remote client
   would receive.
@@ -161,6 +163,26 @@ from language, so an AI, a test or a remote client can act on a key without pars
 Names of buildings, units, resources and eras stay as data in `Defs`; one-word labels and text made up at
 the point of use (`"Aetas %s"`, panel readouts) stay where they are drawn. `Latin.t` only applies the
 lettering (capitals, V for U). See `LATIN.md` for the vocabulary.
+
+## Watching AIs: the spectator  (**built**)
+
+`just ai4` (or `--spectate`) starts a game with no human: all four players, the first included, are AIs
+(`WorldSetup._make_ai`), and the window shows four panes (`src/ui/spectator.gd`).
+
+- **One world, four cameras.** Each pane is a `SubViewport` that shares the main viewport's `World2D`, so
+  every pane draws the same scene nodes through its own `Camera2D`. The main window itself draws only
+  the panes: its `canvas_cull_mask` is set to a layer the world is not on. The panes render at the screen's
+  physical resolution, so the pixel art stays crisp.
+- **The views know about several screens.** `World.view_rects()` returns the rectangles being looked at (one
+  normally, one per pane when spectating); chunk streaming and unit/building culling use all of them.
+- **No fog, by design.** `Main.fog` is the *view's* fog and is switched to show everything. Each AI keeps
+  its own knowledge in its own `Fog` (`Main.fogs[owner]`), so the AIs still play with fog of war; you just see
+  through it. Showing a pane through one AI's fog would mean views taking a viewer, not `game.fog`
+  (see *Known debts*).
+- **Panes** follow the AI's town, or the army it has sent out (`AI.focus()`); drag to look around, wheel to
+  zoom, F to follow again, Q to quit. The text strip is `AI.summary()`: people, villagers, soldiers,
+  population, stocks, and what it is doing (a `spec.*` phrase).
+- The normal HUD is built but hidden, and input to `Main` is switched off.
 
 ## Weather and fog
 

@@ -8,7 +8,8 @@ extends RefCounted
 ## buildings, units, resources and eras are data in `Defs`, not here; so are one-word labels. See
 ## docs/LATIN.md for the vocabulary and its conventions.
 ##
-## Keys: `err.` a refusal of a command, `msg.` something the game says, `lobby.` the multiplayer hall.
+## Keys: `err.` a refusal of a command, `msg.` something the game says, `spec.` what an AI is doing, `lobby.` the
+## multiplayer hall.
 
 const TABLE := {
 	# --- why a command was refused
@@ -39,6 +40,12 @@ const TABLE := {
 	"msg.fog": ["Nebula oritur.", "Fog is rolling in."],
 	"msg.sun": ["Sol lucet.", "The sun shines."],
 	"msg.clouds": ["Caelum nubilum est.", "The sky clouds over."],
+	# --- what an AI is doing, shown over a spectator's pane
+	"spec.growing": ["Crescit.", "Growing: villagers, houses, fields"],
+	"spec.arming": ["Armat.", "Raising an army"],
+	"spec.marching": ["Procedit.", "Marching on an enemy"],
+	"spec.fighting": ["Pugnat.", "Fighting"],
+	"spec.beaten": ["Victus.", "Beaten: no town left"],
 	# --- the multiplayer hall
 	"lobby.host_left": ["Hospes abest.", "The host has left."],
 	"lobby.waiting": ["Exspectamus lusores.", "Waiting for players to join."],

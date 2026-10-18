@@ -22,6 +22,8 @@ func found_players(start: Vector2i) -> void:
 	place_circus(start)
 	game._rome_start = start
 	place_ais(start)
+	if game.spectating:
+		_make_ai(0, "romans", start)  # nobody plays the first town: it is an AI like the rest
 
 
 ## The Circus Maximus stands in the valley near the city from the start: the nearest level patch of
@@ -87,16 +89,7 @@ func place_ais(rome: Vector2i) -> void:
 		var town := game._add_building("town_center", site, true, owner_id)
 		town.building_name = info["town"]
 		game.map.place_start_resources(spot, float(GameSettings.resources_info(GameSettings.resources_id)["amount"]))
-		var ai := AI.new()
-		ai.game = game
-		ai.owner = owner_id
-		ai.faction = faction
-		ai.start = spot
-		ai.set_difficulty(GameSettings.difficulty_id)
-		ai.fog = Fog.new(game.map.w, game.map.h, true)
-		game.fogs[owner_id] = ai.fog
-		ai.see()  # it knows the ground round its town, and nothing else
-		game.ais.append(ai)
+		_make_ai(owner_id, faction, spot)
 
 
 ## Villagers alternate between men and women; fighting men take the kind's looks in turn.
@@ -108,3 +101,17 @@ func assign_sex(u: Unit) -> void:
 		var n: int = _looks_made.get(u.kind, 0)
 		u.look = n % int(Art.UNIT_LOOKS[u.kind])
 		_looks_made[u.kind] = n + 1
+
+
+## An AI to run player `owner_id`, whose town stands at `spot`. It knows only the ground its people have seen.
+func _make_ai(owner_id: int, faction: String, spot: Vector2i) -> void:
+	var ai := AI.new()
+	ai.game = game
+	ai.owner = owner_id
+	ai.faction = faction
+	ai.start = spot
+	ai.set_difficulty(GameSettings.difficulty_id)
+	ai.fog = Fog.new(game.map.w, game.map.h, true)
+	game.fogs[owner_id] = ai.fog
+	ai.see()  # it knows the ground round its town, and nothing else
+	game.ais.append(ai)

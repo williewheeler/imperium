@@ -11,7 +11,7 @@ func _init() -> void:
 			print("FAIL ", key, " needs both a Latin and an English text")
 			fails += 1
 	var used := {}
-	var re := RegEx.create_from_string("\"((?:err|msg|lobby)\\.[a-z_]+)\"")
+	var re := RegEx.create_from_string("\"((?:err|msg|spec|lobby)\\.[a-z_]+)\"")
 	for path in _scripts("res://src"):
 		if path.ends_with("phrases.gd"):
 			continue

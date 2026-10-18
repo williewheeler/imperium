@@ -18,13 +18,13 @@ var _show_newcomer_jobs: Array = []  # jobs for the villagers the Forum trains, 
 func apply(args: Dictionary, start: Vector2i) -> void:
 	if args.has("demo"):
 		run_demo(start)
-	if args.has("game.weather"):  # debug: start in a given weather (clear, cloudy, fog, rain, storm), fully developed
-		game.weather.set_state(Weather.NAMES.find(String(args["game.weather"])))
+	if args.has("weather"):  # debug: start in a given weather (clear, cloudy, fog, rain, storm), fully developed
+		game.weather.set_state(Weather.NAMES.find(String(args["weather"])))
 		var look: Dictionary = Weather.LOOK[game.weather.state]
 		game.weather.dark = look["dark"]
 		game.weather.shadow = look["shadow"]
 		game.weather.rain = look["rain"]
-		game.weather.fog = look["game.fog"]
+		game.weather.fog = look["fog"]
 		game.weather.flash = 1.0 if args.has("flash") else 0.0
 	if args.has("zoom"):  # debug: physical pixels per art pixel
 		game.zoom_px = int(args["zoom"])
@@ -111,7 +111,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 
 
 func report_text() -> String:
-	var lines: Array[String] = ["game.stock=%s" % [game.stock]]
+	var lines: Array[String] = ["stock=%s" % [game.stock]]
 	for u in game.units:
 		lines.append("unit pos=(%.2f, %.2f) state=%s carry=%d" % [u.pos.x, u.pos.y, Unit.State.keys()[u.state], u.carry])
 	for b in game.buildings:

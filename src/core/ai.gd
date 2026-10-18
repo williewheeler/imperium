@@ -47,6 +47,36 @@ func set_difficulty(id: String) -> void:
 	shares = [0.85 - food, food, 0.09, 0.06]
 
 
+## For a spectator: what this player is up to and how big it is.
+func summary() -> Dictionary:
+	var towns := _mine("town_center", true)
+	var status := "spec.growing"
+	if towns.is_empty():
+		status = "spec.beaten"
+	elif not _wave.is_empty():
+		status = "spec.marching"
+		for u in _wave:
+			if u.state == Unit.State.ATTACK_GO or u.state == Unit.State.ATTACKING:
+				status = "spec.fighting"
+				break
+	elif not _mine("castra", true).is_empty():
+		status = "spec.arming"
+	return {"villagers": _villagers().size(), "army": _army().size(), "buildings": game.buildings.filter(func(b: Building) -> bool: return b.owner == owner).size(),
+		"pop": game.pop_used(owner), "cap": game.pop_cap(owner), "stock": game.stock_of(owner), "status": status}
+
+
+## Where a spectator should look: the force it has sent out, else its town (tile coordinates).
+func focus() -> Vector2:
+	var live := _wave.filter(func(u: Unit) -> bool: return not u.dead)
+	if not live.is_empty():
+		var sum := Vector2.ZERO
+		for u: Unit in live:
+			sum += u.pos
+		return sum / float(live.size())
+	var town := _town()
+	return town.center() if town != null else Vector2(start)
+
+
 ## Gives the game a command as this player. The reason it was refused, or "" if it was carried out.
 func _do(cmd: Dictionary) -> String:
 	cmd["owner"] = owner

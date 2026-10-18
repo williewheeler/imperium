@@ -34,6 +34,10 @@ town *args:
 perf *args:
     {{godot}} --path . -- --windowed --nosplash --perf {{args}}
 
+# Watch four AIs play each other in four panes of one window (no human player)
+ai4 *args:
+    ./run.sh --windowed --nosplash --spectate --size=1600x900 {{args}}
+
 # Multiplayer: host a lobby in the title flow (127.0.0.1:7777)
 host *args:
     ./run.sh --windowed --splash --lobby=host {{args}}
