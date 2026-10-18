@@ -71,7 +71,7 @@ slingers wear down heavy infantry from out of reach, and heavy infantry crush sp
 enemy to attack it; after a kill a fighter goes after the next enemy nearby. A plain move order ignores
 the enemy, so you can pull units back, and **A** then a click sends them attack-moving. Slingers shoot
 from a distance, there are attack animations and health bars, and villagers run for the town when hurt.
-Buildings cannot be attacked yet.
+Fighters attack enemy buildings too (right-click one): a building that falls to 40% health catches fire and burns down, leaving ash. A people is out when it has no Town Center and no villagers left, and the last one standing wins.
 
 ![A skirmish: slingers whirling their slings, horsemen charging with lances, health bars over the wounded](docs/screenshots/combat.png)
 

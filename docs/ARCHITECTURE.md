@@ -148,6 +148,16 @@ Two small classes own the ground rules that used to live in `Main`, each holding
 `Combat` and the views call them as `game.placement` and `game.roads`. They still reach back into
 `Main` for pathing (`_set_path`) and the world view (`_world`).
 
+## Combat, destruction and victory  (**built**)
+
+`Combat` owns fighting: units attack units, or buildings (`Unit.atk_building`; `order_attack_building`).
+Damage to a building goes through `Combat.hurt_building`, and fire (`update_buildings`) is part of the same
+rules, not of the views. When a building falls `Main.destroy_building` removes it from the game and emits
+`building_destroyed`; the **view** decides how that looks (`World` keeps the burning building up for a few
+seconds, then spawns `RuinView` and `RuinFlames`). `Victory` (once a second) decides who is still in the
+game and burns the buildings of a people that has fallen. Player actions reach it only through
+`Commands` (`attack_building`).
+
 ## Scaffolding that is not the game  (**built**)
 
 `DebugModes` (`--demo`, `--showcase`, `--skirmish`, `--town`, ... and the headless `--report`) and
@@ -203,6 +213,8 @@ in `src/map/`) is different: it is per-player simulation state (`Main.fogs`, by 
 - `just commands-test`: boots a real two-player game headless and submits commands: ownership, payment,
   refusals, orders.
 - `just phrases-test`: every phrase has Latin and English, and every key named in the code exists.
+- `just siege-test`: attacking, burning and destroying a building, a people being defeated, and the last one winning.
+- `just war-test`: an AI wave marches across the map, burns the enemy town down and defeats the people.
 - `just net-test`: the lobby, host and client in two processes.
 - `--report` (see the justfile): runs a game headless and dumps the state, which is how AI behavior is
   checked.

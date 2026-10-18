@@ -27,6 +27,9 @@ var _tile_objects := {}  # Vector2i -> Array[Node2D]: a tile's trees / hill / mo
 var _deposit_nodes := {}  # Vector2i -> Sprite2D: berries, stone and gold
 var _unit_views := {}  # Unit -> UnitView
 var _falling: Array[UnitView] = []  # the fallen, playing their collapse
+const COLLAPSE := 3.0  # seconds a fallen building stands burning before it crumbles
+var _collapsing := {}  # Building -> seconds left
+var _ruin_flames: Array[Dictionary] = []  # burning ruins: {node, center}; shown only while the ground is in sight
 var _building_views := {}  # Building -> BuildingView
 var _ghosts := {}  # Unit -> Sprite2D: a see-through copy drawn over whatever hides the unit
 var _ghost_state := {}  # Unit -> {"wait", "ghost", "ring"}: the last occlusion result and when to redo it
@@ -45,6 +48,7 @@ const GHOST_TINT := Color(1.0, 0.93, 0.55, 0.8)
 
 func setup(p_game) -> void:
 	game = p_game
+	game.building_destroyed.connect(_on_building_destroyed)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # crisp pixels
 
 	ground = GroundView.new()
@@ -221,6 +225,33 @@ func _meadow_scenery(biome: int, x: int, y: int) -> String:
 func view_rect() -> Rect2:
 	var half: Vector2 = game.get_viewport_rect().size / game.camera.zoom.x / 2.0
 	return Rect2(game.cam_pos - half, half * 2.0)
+
+
+## A building has fallen: it stays up, ablaze, for a few seconds (see `COLLAPSE`), then crumbles into ruins.
+func _on_building_destroyed(b: Building) -> void:
+	if _building_views.has(b):
+		_collapsing[b] = COLLAPSE
+	else:
+		_ruin(b)  # it was never drawn: straight to the ruins
+
+
+## It has burned out: its view goes, leaving a patch of ash and flames that die down over a few seconds.
+func _ruin(b: Building) -> void:
+	var height := Art.building_anchor(b.sprite_key()).y
+	var ash := RuinView.new()
+	ash.tile = b.tile
+	ash.size = b.size
+	ash.height = height
+	ash.seed = b.id
+	decals.add_child(ash)
+	var flames := RuinFlames.new()
+	flames.tile = b.tile
+	flames.size = b.size
+	flames.height = height
+	flames.seed = b.id
+	flames.position = Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round()
+	objects.add_child(flames)
+	_ruin_flames.append({"node": flames, "center": b.center()})
 
 
 ## The panes of a spectator that can see `u` now: its own AI's, and any whose AI has it in sight (a bit each).
@@ -444,8 +475,29 @@ func _process(delta: float) -> void:
 				_rings.erase(u)
 			_ghost_state.erase(u)
 			_unit_views.erase(u)
+	for r in _ruin_flames.duplicate():
+		if not is_instance_valid(r["node"]):  # (before it is held in a typed variable: it has freed itself)
+			_ruin_flames.erase(r)
+			continue
+		var node: RuinFlames = r["node"]
+		var tile := Vector2i(r["center"] as Vector2)
+		if game.spectating:
+			var mask := 0
+			for i in game.viewers.size():
+				if game.viewers[i].fog.is_visible_now(tile):
+					mask |= Spectator.pane_bit(i)
+			node.visible = mask != 0
+			node.visibility_layer = mask
+		else:
+			node.visible = game.fog.is_visible_now(tile)
 	for b: Building in _building_views.keys():
 		if not game.buildings.has(b):
+			if b.dead and _collapsing.has(b):  # let it burn a moment before it falls
+				_collapsing[b] -= delta
+				if _collapsing[b] > 0.0:
+					continue
+				_collapsing.erase(b)
+				_ruin(b)
 			_building_views[b].remove()
 			_building_views.erase(b)
 	for p: Vector2i in _deposit_nodes.keys():  # a mine or bush that got used up

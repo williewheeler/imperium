@@ -18,6 +18,8 @@ const GIVE_UP := 3.0  # seconds out of sight before a chase is dropped
 const SCAN_EVERY := 0.35
 const FLEE_TIME := 7.0
 const BAR_TIME := 4.0  # seconds a health bar stays up after a hit
+const BURN_AT := 0.4  # a building at or below this share of its health catches fire
+const FIRE_RATE := 0.015  # share of its full health a burning building loses each second
 const TARGET_MARK := 0.9  # seconds an enemy stays ringed in red after we order an attack on it
 
 var game  # Main
@@ -92,7 +94,46 @@ func nearest_enemy(u: Unit, radius: float) -> Unit:
 	return best
 
 
+## The nearest enemy building within `radius` tiles that its people have explored (a building stays where it
+## was seen), or null. Fields and landmarks do not count.
+func nearest_enemy_building(u: Unit, radius: float) -> Building:
+	var best: Building = null
+	var best_d := radius
+	var seen: Fog = game.fog_of(u.owner)
+	for b: Building in game.buildings:
+		if b.owner == u.owner or not b.attackable() or not seen.is_explored(Vector2i(b.center())):
+			continue
+		var d := rect_distance(u.pos, b.rect())
+		if d < best_d:
+			best_d = d
+			best = b
+	return best
+
+
+## How far (tiles) `p` is from the nearest point of a building's footprint (0 inside it).
+static func rect_distance(p: Vector2, r: Rect2i) -> float:
+	var nearest := p.clamp(Vector2(r.position), Vector2(r.end))
+	return p.distance_to(nearest)
+
+
 # ---------------------------------------------------------------- orders
+
+## Sends `u` to attack the building `b`. `auto` means it picked the target itself, not the player.
+func order_attack_building(u: Unit, b: Building, auto := false) -> void:
+	if not fights(u) or b == null or not b.attackable() or b.owner == u.owner:
+		return
+	game.roads.release(u)
+	u.dropoff_only = false
+	u.target_building = null
+	u.target = null
+	u.atk_building = b
+	u.lost_for = 0.0
+	u.path.clear()
+	u.detour = Vector2.INF
+	u.repath_t = 0.0
+	u.atk_t = 0.0
+	u.struck = false
+	u.state = Unit.State.ATTACK_GO
 
 ## Sends `u` to fight `t`. `auto` means it picked the fight itself, not the player.
 func order_attack(u: Unit, t: Unit, auto := false) -> void:
@@ -101,6 +142,7 @@ func order_attack(u: Unit, t: Unit, auto := false) -> void:
 	game.roads.release(u)
 	u.dropoff_only = false
 	u.target_building = null
+	u.atk_building = null
 	u.target = t
 	u.target_seen_at = t.pos
 	u.lost_for = 0.0
@@ -127,6 +169,7 @@ func order_attack_move(u: Unit, goal: Vector2i) -> void:
 ## Drops any fight (a move, stop or other order).
 static func clear(u: Unit) -> void:
 	u.target = null
+	u.atk_building = null
 	u.amove = false
 	u.amove_goal = Vector2.INF
 	u.struck = false
@@ -149,10 +192,17 @@ func tick_unit(u: Unit, delta: float) -> void:
 			var foe := nearest_enemy(u, maxf(ACQUIRE, reach(u) + 1.5))
 			if foe != null:
 				order_attack(u, foe, true)
+			else:
+				var house := nearest_enemy_building(u, maxf(ACQUIRE, reach(u) + 1.5))
+				if house != null:
+					order_attack_building(u, house, true)
 
 
 ## Moves and fights for a unit in ATTACK_GO or ATTACKING.
 func update_fight(u: Unit, delta: float) -> void:
+	if u.target == null and u.atk_building != null:
+		_update_siege(u, delta)
+		return
 	var t := u.target
 	if t == null or t.dead:
 		_after_kill(u)
@@ -193,6 +243,78 @@ func update_fight(u: Unit, delta: float) -> void:
 	if u.atk_t >= cooldown:
 		u.atk_t = 0.0
 		u.struck = false
+
+
+## A unit attacking a building: walks up to it, then strikes it on the usual cycle.
+func _update_siege(u: Unit, delta: float) -> void:
+	var b := u.atk_building
+	if b == null or b.dead or not game.buildings.has(b):
+		_after_kill(u)
+		return
+	var d := rect_distance(u.pos, b.rect())
+	if u.state == Unit.State.ATTACK_GO:
+		if d <= reach(u):
+			u.state = Unit.State.ATTACKING
+			u.path.clear()
+			u.atk_t = 0.0
+			u.struck = false
+		else:
+			if u.path.is_empty():
+				var stand: Vector2i = game.map.stand_tile(b.rect(), u.pos)
+				if stand.x < 0 or not game.orders.set_path(u, stand):
+					_give_up(u)
+					return
+			game._follow(u, delta)
+			return
+	if d > reach(u) * 1.3:
+		u.state = Unit.State.ATTACK_GO
+		u.atk_t = 0.0
+		u.struck = false
+		return
+	game._face(u, b.center())
+	u.atk_t += delta
+	var cooldown := float(stats(u)["cooldown"])
+	if not u.struck and u.atk_t >= cooldown * (STRIKE_RANGED if is_ranged(u) else STRIKE_MELEE):
+		u.struck = true
+		hurt_building(b, float(stats(u)["attack"]) * float(Defs.SIEGE.get(u.kind, 0.0)), u)
+		if b.dead:
+			_after_kill(u)
+			return
+	if u.atk_t >= cooldown:
+		u.atk_t = 0.0
+		u.struck = false
+
+
+## `b` takes `amount` of damage; at 40% health it catches fire, at none it is destroyed.
+func hurt_building(b: Building, amount: float, _attacker: Unit) -> void:
+	if b.dead or not b.attackable():
+		return
+	b.hp -= amount
+	b.bar_t = BAR_TIME
+	if b.hp <= 0.0:
+		game.destroy_building(b)
+	elif b.hp <= b.max_hp() * BURN_AT:
+		b.burning = true
+
+
+## Burning buildings lose health until they fall. Called every frame.
+func update_buildings(delta: float) -> void:
+	var fallen: Array[Building] = []
+	for b: Building in game.buildings:
+		b.bar_t = maxf(0.0, b.bar_t - delta)
+		if b.burning and not b.dead:
+			b.hp -= b.max_hp() * FIRE_RATE * delta
+			if b.hp <= 0.0:
+				fallen.append(b)
+	for b in fallen:
+		game.destroy_building(b)
+
+
+## Sets `b` alight now (a people that has fallen: its buildings burn down).
+func ignite(b: Building) -> void:
+	if b.attackable():
+		b.hp = minf(b.hp, b.max_hp() * BURN_AT)
+		b.burning = true
 
 
 func _move_toward(u: Unit, aim: Vector2, delta: float) -> void:
@@ -248,6 +370,11 @@ func _die(u: Unit) -> void:
 	kills += 1
 
 
+## A fighter whose people has fallen: it disbands, leaving the game.
+func disband(u: Unit) -> void:
+	_die(u)
+
+
 ## Takes this frame's dead out of the game (done after all the loops over the units).
 func flush_dead() -> void:
 	if _graveyard.is_empty():
@@ -259,12 +386,17 @@ func flush_dead() -> void:
 
 func _after_kill(u: Unit) -> void:
 	u.target = null
+	u.atk_building = null
 	u.atk_t = 0.0
 	u.struck = false
 	u.lost_for = 0.0
 	var next := nearest_enemy(u, CHASE)
 	if next != null:
 		order_attack(u, next, true)
+		return
+	var house := nearest_enemy_building(u, CHASE)  # then the next building, if any is near
+	if house != null:
+		order_attack_building(u, house, true)
 		return
 	_resume(u)
 
@@ -283,6 +415,7 @@ func _resume(u: Unit) -> void:
 
 func _give_up(u: Unit) -> void:
 	u.target = null
+	u.atk_building = null
 	u.lost_for = 0.0
 	_resume(u)
 

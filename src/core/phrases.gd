@@ -35,6 +35,9 @@ const TABLE := {
 	"msg.quit_again": ["Iterum preme, ut exeas.", "Click Exi again to leave the game."],
 	"msg.map_open": ["Tota terra patet.", "The whole map is shown."],
 	"msg.map_closed": ["Terra iterum celatur.", "The fog returns."],
+	"msg.building_lost": ["Aedificium nostrum deletum est.", "One of your buildings has burned down."],
+	"msg.victory": ["Vicisti.", "Victory: every other people has fallen."],
+	"msg.defeat": ["Victus es.", "Defeat: no Town Center and no villagers left."],
 	"msg.rain": ["Pluit.", "It begins to rain."],
 	"msg.storm": ["Tonat.", "A storm breaks: thunder and heavy rain."],
 	"msg.fog": ["Nebula oritur.", "Fog is rolling in."],
@@ -45,6 +48,7 @@ const TABLE := {
 	"spec.arming": ["Armat.", "Raising an army"],
 	"spec.marching": ["Procedit.", "Marching on an enemy"],
 	"spec.fighting": ["Pugnat.", "Fighting"],
+	"spec.victor": ["Victor.", "The last people standing: victory"],
 	"spec.beaten": ["Victus.", "Beaten: no town left"],
 	# --- the multiplayer hall
 	"lobby.host_left": ["Hospes abest.", "The host has left."],

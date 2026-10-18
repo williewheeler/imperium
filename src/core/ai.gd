@@ -51,7 +51,9 @@ func set_difficulty(id: String) -> void:
 func summary() -> Dictionary:
 	var towns := _mine("town_center", true)
 	var status := "spec.growing"
-	if towns.is_empty():
+	if game.victory.winner == owner:
+		status = "spec.victor"
+	elif game.victory.defeated.has(owner) or towns.is_empty():
 		status = "spec.beaten"
 	elif not _wave.is_empty():
 		status = "spec.marching"

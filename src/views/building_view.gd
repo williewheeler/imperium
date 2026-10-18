@@ -25,6 +25,7 @@ var _sprites: Array[Sprite2D] = []
 var _fire: HearthFire  # the Casa Romuli's animated hearth
 var _banner: Node2D  # the owner's pennant, on the roof (child of the front-most strip, so it sorts over the whole building)
 var _cloth: Sprite2D
+var _burn: BurnView  # the health bar and flames of a building under attack
 var _life: CircusCrowd  # the Circus Maximus's animated crowd and flags
 var _banner_key := ""  # which picture the banner was placed for (the roof changes with the era)
 static var _peaks := {}  # sprite key -> Vector2: where the roof peaks in the picture, found once
@@ -66,6 +67,11 @@ func _ready() -> void:
 	if building.kind in ["town_center", "temple"]:
 		_fire = HearthFire.new()
 		objects.add_child(_fire)
+	if building.attackable():
+		_burn = BurnView.new()
+		_burn.building = building
+		_burn.position = position + Vector2(0, 1)  # in front of every strip of the building
+		objects.add_child(_burn)
 	if building.owner >= 0:
 		for sprite in _sprites:
 			sprite.material = Team.material_for(building.owner)  # paints the owner's color on any team marks in the art
@@ -98,6 +104,8 @@ func set_seen(seen: bool) -> void:
 	visible = seen
 	for node in _halves:
 		node.visible = seen
+	if _burn != null:
+		_burn.visible = seen
 
 
 ## Which panes of a spectator can see this building (a bit each; see Spectator): it is drawn only in those.
@@ -107,6 +115,8 @@ func set_layers(mask: int) -> void:
 		node.visibility_layer = mask
 	if _fire != null:
 		_fire.visibility_layer = mask
+	if _burn != null:
+		_burn.visibility_layer = mask
 
 
 ## Off the screen: nothing to animate, so the hearth fire stops until it is seen again.
@@ -128,6 +138,8 @@ func remove() -> void:
 		node.queue_free()
 	if _fire != null:
 		_fire.queue_free()
+	if _burn != null:
+		_burn.queue_free()
 	queue_free()
 
 
@@ -202,6 +214,9 @@ func update_view() -> void:
 	if not building.complete:
 		y0 = floorf(size.y * (1.0 - maxf(building.build_fraction(), 0.06)))
 	var tint := Color.WHITE if building.complete else Color(1, 1, 1, 0.9)
+	if building.attackable() and building.hp < building.max_hp():  # scorched as it weakens
+		var char_amount := clampf((1.0 - building.hp / building.max_hp()) * (1.6 if building.burning else 0.8), 0.0, 0.8)
+		tint = tint.lerp(Color(0.2, 0.16, 0.15, tint.a), char_amount)
 	if _flat != null:
 		_flat.region_enabled = not building.complete
 		if not building.complete:

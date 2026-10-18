@@ -48,6 +48,13 @@ const UNITS := {
 		"hp": 70, "attack": 8.0, "cooldown": 1.0, "range": 0.0, "armor": [0.10, 0.15], "bonus": {"slinger": 2.0, "villager": 1.5},
 		"about": "Fast. Rides down slingers and villagers. Spearmen are its death."},
 }
+# How tough each building is (0: it cannot be attacked: fields, and the Circus landmark), and how well each kind
+# of fighter works against buildings (a blow's attack times this; villagers do nothing). Swords and axes do the
+# most, spears and shot little, and a horse none to speak of. A building that falls to 40% health catches fire
+# and burns down on its own (see Combat).
+const BUILDING_HP := {"town_center": 1200, "hut": 150, "house": 300, "storehouse": 250, "castra": 600, "stabulum": 500,
+	"temple": 450, "curia": 600, "aqueduct": 500, "farm": 0, "vineyard": 0, "circus": 0}
+const SIEGE := {"soldier": 0.6, "spearman": 0.35, "slinger": 0.2, "horseman": 0.25}
 const MELEE_REACH := 0.9  # tiles between centers for a melee blow (a horseman reaches a little farther)
 
 # Paved Roman road ("via"): cost per tile and the time one villager needs to lay a tile.

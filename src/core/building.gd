@@ -25,6 +25,20 @@ var complete := false
 var selected := false
 var train_queue: Array[String] = []  # the units waiting to be trained, in order (the first is in training)
 var train_progress := 0.0
+var dead := false  # destroyed (burned down): no longer in the game
+var burning := false  # on fire: it takes damage until it falls
+var bar_t := 0.0  # seconds its health bar stays up after a hit
+var _hp := 0.0
+var _hp_set := false
+var hp: float:  # health; starts full
+	get:
+		if not _hp_set:
+			_hp = max_hp()
+			_hp_set = true
+		return _hp
+	set(v):
+		_hp = v
+		_hp_set = true
 var stage := 0  # fields: 0 ripe .. 3 freshly sown
 var regrow := 0.0  # fields: seconds since they were emptied
 
@@ -73,6 +87,15 @@ func sprite_key() -> String:
 ## The tile at the middle of the footprint (where a field's crop lives).
 func field_tile() -> Vector2i:
 	return tile + size / 2
+
+
+func max_hp() -> float:
+	return float(Defs.BUILDING_HP.get(kind, 0))
+
+
+## Can it be attacked? Fields and landmarks cannot.
+func attackable() -> bool:
+	return owner >= 0 and not dead and max_hp() > 0.0
 
 
 func rect() -> Rect2i:

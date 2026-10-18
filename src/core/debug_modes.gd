@@ -92,6 +92,21 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 			var spot := game.map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8, [])
 			if spot.x >= 0:
 				game._add_building(kind, spot, true)
+	if args.has("burn"):  # debug: buildings at stages of damage, the last few burning, one just fallen (use with --town)
+		var shares := [0.85, 0.6, 0.38, 0.25, 0.12, 0.05]
+		var i := 0
+		for b in game.buildings:
+			if b.owner == 0 and b.attackable() and b.complete:
+				b.hp = b.max_hp() * float(shares[i % shares.size()])
+				b.bar_t = 99.0
+				b.burning = b.hp <= b.max_hp() * Combat.BURN_AT
+				i += 1
+		for b in game.buildings:
+			if b.owner == 0 and b.kind == "castra":
+				game.destroy_building(b)  # the barracks has just burned down
+				game.cam_pos = Iso.to_screen(b.center())  # and the camera looks at it
+				skirmish_look = game.cam_pos
+				break
 	if args.has("selectb"):  # debug: select the first building of this kind (to look at its command bar)
 		for b in game.buildings:
 			if b.kind == str(args["selectb"]) and b.complete:
@@ -111,7 +126,10 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 
 
 func report_text() -> String:
-	var lines: Array[String] = ["stock=%s" % [game.stock]]
+	var lines: Array[String] = ["stock=%s" % [game.stock], "buildings lost=%d kills=%d defeated=%s winner=%d" % [game.buildings_lost, game.combat.kills, game.victory.defeated.keys(), game.victory.winner]]
+	for ai: AI in game.ais:
+		var sm := ai.summary()
+		lines.append("AI %d: villagers=%d army=%d buildings=%d pop=%d/%d status=%s wave=%d age=%.0f" % [ai.owner, sm["villagers"], sm["army"], sm["buildings"], sm["pop"], sm["cap"], sm["status"], ai._wave.size(), ai._age])
 	for u in game.units:
 		lines.append("unit pos=(%.2f, %.2f) state=%s carry=%d" % [u.pos.x, u.pos.y, Unit.State.keys()[u.state], u.carry])
 	for b in game.buildings:

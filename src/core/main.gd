@@ -84,7 +84,10 @@ var orders := Orders.new()  # what an order does to a unit
 var setup := WorldSetup.new()  # founding the players
 var era_preview := EraPreview.new()  # debug: the E key
 var roads := Roads.new()  # the paved roads laid and planned
+var buildings_lost := 0  # buildings that have burned down (for tests and reports)
+var victory := Victory.new()  # who is still in the game
 var commands := Commands.new()  # how a player acts on the game: every driver submits to it (see docs/ARCHITECTURE.md)
+signal building_destroyed(b: Building)  # it fell: the view shows the ruin
 const LOCAL := 0  # the player at this keyboard
 var attack_move_mode := false  # the next left click sends the selected fighters there to fight on the way (key A)
 
@@ -213,6 +216,7 @@ func _ready() -> void:
 	fog = Fog.new(map.w, map.h)
 	fogs = {LOCAL: fog}
 	commands.game = self
+	victory.game = self
 	placement.game = self
 	roads.game = self
 	era_preview.game = self
@@ -724,6 +728,17 @@ func _command_at(mp: Vector2) -> void:
 		if others.is_empty():
 			return
 		us = others  # the villagers in the group just go to the spot
+	var enemy_building := building_under(mp)
+	if enemy_building != null and enemy_building.owner != LOCAL and enemy_building.attackable() and not fighters.is_empty() and fog.is_explored(Vector2i(enemy_building.center())):
+		markers.append({"pos": enemy_building.center(), "t": 0.0, "attack": true})  # right click on an enemy building: the fighters attack it
+		_do({"type": "attack_building", "building": enemy_building.id, "units": _ids(fighters)})
+		var villagers_here: Array[Unit] = []
+		for u in us:
+			if not Combat.fights(u):
+				villagers_here.append(u)
+		if villagers_here.is_empty():
+			return
+		us = villagers_here
 	markers.append({"pos": pos, "t": 0.0})
 	var res := deposit_near(mp)
 	var b := building_under(mp)
@@ -863,6 +878,21 @@ func _drain_marshes() -> void:
 		_world.tile_changed(p)
 	if not changed.is_empty():
 		hud.flash_key("msg.marsh_drained")
+
+
+## `b` is destroyed (burned down): out of the game, leaving a ruin for the view to show.
+func destroy_building(b: Building) -> void:
+	if b.dead:
+		return
+	buildings_lost += 1
+	b.dead = true
+	b.burning = true  # it burns out its last moments on screen (see World)
+	b.hp = 0.0
+	b.selected = false
+	_remove_building(b)
+	building_destroyed.emit(b)
+	if b.owner == LOCAL and not spectating and hud != null:
+		hud.flash_key("msg.building_lost")
 
 
 func _remove_building(b: Building) -> void:
@@ -1062,6 +1092,8 @@ func _process(delta: float) -> void:
 	Perf.stop("buildings", t0)
 	t0 = Perf.start()
 	combat.update_projectiles(delta)
+	combat.update_buildings(delta)
+	victory.tick(delta)
 	combat.flush_dead()  # the dead leave the game now that the loops over the units are done
 	Perf.stop("combat", t0)
 	for i in range(markers.size() - 1, -1, -1):

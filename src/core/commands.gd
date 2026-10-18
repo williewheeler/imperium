@@ -15,6 +15,7 @@ extends RefCounted
 ##   move         tile, units                     walk there (the group spreads out round the tile)
 ##   attack_move  tile, units                     walk there, fighting whatever is met on the way
 ##   attack       target, units                   fight one enemy unit
+##   attack_building building, units              attack an enemy building (it burns down in the end)
 ##   stop         units
 ##   explore      units                           go and look at ground nobody has seen
 ##   pave         tiles, units                    pay for roads on `tiles`; `units` go and lay them
@@ -49,6 +50,8 @@ func submit(cmd: Dictionary) -> String:
 			return _move(owner, cmd, true)
 		"attack":
 			return _attack(owner, cmd)
+		"attack_building":
+			return _attack_building(owner, cmd)
 		"stop":
 			return _each(owner, cmd, game.orders.stop)
 		"explore":
@@ -174,6 +177,21 @@ func _attack(owner: int, cmd: Dictionary) -> String:
 	for u in _units(owner, cmd):
 		if Combat.fights(u):
 			game.combat.order_attack(u, foe)
+			any = true
+	return "" if any else "err.not_allowed"
+
+
+func _attack_building(owner: int, cmd: Dictionary) -> String:
+	var target: Building = null
+	for b: Building in game.buildings:
+		if b.id == int(cmd.get("building", -1)):
+			target = b
+	if target == null or not target.attackable() or target.owner == owner:
+		return "err.not_allowed"
+	var any := false
+	for u in _units(owner, cmd):
+		if Combat.fights(u):
+			game.combat.order_attack_building(u, target)
 			any = true
 	return "" if any else "err.not_allowed"
 

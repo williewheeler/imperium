@@ -61,6 +61,14 @@ net-test:
     echo "--- host"; cat ${TMPDIR:-/tmp}/imperium-host.log; echo "--- join"; cat ${TMPDIR:-/tmp}/imperium-join.log
     grep -q "JOIN starting slot=1" ${TMPDIR:-/tmp}/imperium-join.log && echo PASS || { echo FAIL; exit 1; }
 
+# Headless check of attacking, burning and destroying buildings, and of a people being defeated
+siege-test:
+    {{godot}} --headless --path . --script tools/siege_test.gd -- --nosplash --seed=42 --players=3
+
+# Headless check that an AI wave marches on an enemy town and burns its buildings down
+war-test:
+    {{godot}} --headless --path . --script tools/war_test.gd -- --nosplash --spectate --seed=3 --size=small --map=continens --terrain=temperate
+
 # Headless check of the phrase table: both languages present, every key used in the code exists
 phrases-test:
     {{godot}} --headless --path . --script tools/phrases_test.gd

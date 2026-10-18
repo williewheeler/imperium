@@ -42,6 +42,7 @@ var hp: float:  # health; starts full
 		_hp = v
 		_hp_set = true
 var target: Unit  # the enemy being fought
+var atk_building: Building  # the enemy building being attacked (when `target` is null)
 var target_seen_at := Vector2.INF  # where the target was last seen, so a chase can go on a little after it slips from sight
 var lost_for := 0.0  # seconds the target has been out of sight
 var atk_t := 0.0  # seconds into the current blow's wind-up and recovery
