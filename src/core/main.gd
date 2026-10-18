@@ -169,6 +169,7 @@ func _ready() -> void:
 		GameSettings.difficulty_id = GameSettings.difficulty_info(String(args["difficulty"]))["id"]
 	if args.has("terrain"):
 		GameSettings.terrain_id = GameSettings.terrain_info(String(args["terrain"]))["id"]
+	Hud.quiet = args.has("shot")  # a screenshot has no banners over it
 	spectating = args.has("spectate")
 	if spectating:
 		GameSettings.players = 4  # one pane each

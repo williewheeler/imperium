@@ -234,7 +234,12 @@ func flash_key(key: String, args: Array = []) -> void:
 
 
 ## A message that is made up as it is shown. Anything fixed belongs in Phrases.
+static var quiet := false  # no banners (for screenshots)
+
+
 func flash(latin: String, english := "") -> void:
+	if quiet:
+		return
 	var translation := english
 	_msg_latin.text = Latin.t(latin)
 	_msg_english.text = translation  # in small letters below, since the message is gone before a tooltip could be read

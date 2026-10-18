@@ -79,6 +79,7 @@ const BUILDING_GEOM := {
 	"stabulum": {"a": 3, "b": 3, "ridge": 26.0},
 	"aedes": {"a": 2, "b": 2, "ridge": 28.0},
 	"temple": {"a": 2, "b": 2, "ridge": 30.0},
+	"jupiter": {"a": 5, "b": 5, "ridge": 84.0},
 }
 
 static var _cache := {}
@@ -199,6 +200,8 @@ static func image(key: String) -> Image:
 			return _hut()
 		"regia":
 			return _regia()
+		"jupiter":
+			return _jupiter()
 		"settlement":
 			return _settlement()
 		"herd":  # herd:<n> one to four grazing animals
@@ -850,7 +853,7 @@ static func scenery_keys() -> Array[String]:
 
 
 static func building_keys() -> Array[String]:
-	return ["town_center", "regia", "dock", "settlement", "city_center", "granary", "large_granary", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
+	return ["town_center", "regia", "jupiter", "dock", "settlement", "city_center", "granary", "large_granary", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
 		"curia", "aqueduct", "castra", "arx", "stabulum", "circus", "aedes", "temple", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
 
 
@@ -1096,6 +1099,88 @@ static func _granary(large: bool) -> Image:
 		_gable_roof(img, f, 0.1, n - 0.1, 0.1, n - 0.1, wall_h + 7.0, ridge_h, func(x: int, y: int) -> Color: return Pixel.ramp(TERRA, 0.55 + (Pixel.hash2(x, y, 8) - 0.5) * 0.2, x, y, 0.1))
 	else:
 		_gable_roof(img, f, 0.0, n, 0.0, n, wall_h, ridge_h, func(x: int, y: int) -> Color: return Pixel.ramp(THATCH, 0.55 + (Pixel.hash2(x, y, 6) - 0.5) * 0.2, x, y, 0.15))
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## The Temple of Jupiter Optimus Maximus on the Capitoline (art key "jupiter"): the greatest temple of early Rome,
+## a Tuscan temple on a high stepped podium. The porch is deep, three ranks of tall pale columns across the front,
+## under a wide, low pediment and a heavy wooden entablature; a bronze quadriga (the four-horse chariot of Jupiter)
+## rides the apex. 5x5 tiles, the largest building in the game apart from the Circus.
+static func _jupiter() -> Image:
+	var n := 5.0
+	var podium_h := 7.0
+	var col_h := 34.0
+	var beam_h := 4.0
+	var wall_top := podium_h + col_h + beam_h
+	var ridge_h := wall_top + 16.0
+	var top := ridge_h + 16.0  # the quadriga stands above the ridge
+	var hs := int(n * 16 + top + 8)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	var stone_lit := func(x: int, y: int) -> Color: return Pixel.ramp(PLASTER, 0.2 + (Pixel.hash2(x, y, 8) - 0.5) * 0.18, x, y, 0.12)
+	var stone_shade := func(x: int, y: int) -> Color: return Pixel.ramp(PLASTER, 0.62 + (Pixel.hash2(x, y, 9) - 0.5) * 0.18, x, y, 0.12)
+	var stone_top := func(x: int, y: int) -> Color: return Pixel.ramp(PLASTER, 0.1 + (Pixel.hash2(x, y, 3) - 0.5) * 0.2, x, y, 0.25)
+	# a high podium of two courses, with a broad stair across the front (the right-hand face)
+	_box(img, f, 0.0, n, 0.0, n, 0.0, 3.5, stone_lit, stone_shade, stone_top)
+	_box(img, f, 0.3, n - 0.7, 0.3, n - 0.3, 3.5, podium_h, stone_lit, stone_shade, stone_top)
+	for s in 3:  # the steps, each a little higher and further back
+		_box(img, f, n - 0.7 + 0.7 * float(2 - s) / 2.0, n - 0.7 + 0.7 * float(3 - s) / 3.0 + 0.0, 1.0, n - 1.0, 0.0, 1.2 * float(s + 1), stone_lit, stone_shade, stone_top)
+	# the cella: three chambers behind the porch, a plain plastered block
+	_box(img, f, 1.0, n - 2.1, 0.95, n - 0.95, podium_h, wall_top,
+		func(x: int, y: int) -> Color: return _plaster(x, y, true, 21),
+		func(x: int, y: int) -> Color: return _plaster(x, y, false, 22), PLASTER[1])
+	Pixel.poly(img, [f.p(n - 2.1, 1.9, podium_h), f.p(n - 2.1, 2.5, podium_h), f.p(n - 2.1, 2.5, podium_h + 11), f.p(n - 2.1, 1.9, podium_h + 11)], WOOD[2])
+	Pixel.poly(img, [f.p(n - 2.1, n - 2.5, podium_h), f.p(n - 2.1, n - 1.9, podium_h), f.p(n - 2.1, n - 1.9, podium_h + 11), f.p(n - 2.1, n - 2.5, podium_h + 11)], WOOD[2])
+	# columns: two ranks across the front (the porch), and a rank down the long side, drawn back to front
+	var cols: Array[Vector2] = []
+	for i in 6:
+		var t := 0.55 + (n - 1.1) * float(i) / 5.0
+		cols.append(Vector2(n - 0.95, t))  # the front rank
+		cols.append(Vector2(n - 1.95, t))  # the second rank
+	for i in 5:
+		cols.append(Vector2(0.9 + (n - 3.0) * float(i) / 4.0, n - 0.55))  # down the long side
+	cols.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x + a.y < b.x + b.y)
+	for c in cols:
+		var a := f.p(c.x, c.y, podium_h)
+		var cx := int(a.x)
+		var cy := int(a.y)
+		Pixel.rect(img, cx - 2, cy - 1, 5, 1, PLASTER[2])  # the base
+		Pixel.rect(img, cx - 1, cy - int(col_h), 2, int(col_h), PLASTER[0])  # the lit half of the shaft
+		Pixel.rect(img, cx + 1, cy - int(col_h), 1, int(col_h), PLASTER[1])
+		Pixel.rect(img, cx + 2, cy - int(col_h), 1, int(col_h), PLASTER[2])  # the shaded edge
+		Pixel.rect(img, cx - 2, cy - int(col_h) - 2, 6, 2, PLASTER[1])  # the capital
+		Pixel.rect(img, cx - 3, cy - int(col_h) - 3, 7, 1, PLASTER[0])  # and its abacus
+	# the heavy wooden entablature, then the wide, low pediment (the gable end faces the right-hand side)
+	_box(img, f, 0.25, n - 0.1, 0.25, n - 0.1, podium_h + col_h, wall_top,
+		func(x: int, y: int) -> Color: return Pixel.ramp(WOOD, 0.66 + (Pixel.hash2(x, y, 4) - 0.5) * 0.12, x, y, 0.1),
+		func(x: int, y: int) -> Color: return Pixel.ramp(WOOD, 0.34 + (Pixel.hash2(x, y, 5) - 0.5) * 0.12, x, y, 0.1), WOOD[0])
+	_gable_roof(img, f, 0.35, n - 0.05, 0.35, n - 0.3, wall_top, ridge_h,
+		func(x: int, y: int) -> Color: return _plaster(x, y, false, 24))
+	# terracotta figures in the pediment, and antefixes along the eave
+	for k in 5:
+		var fig := f.p(n, 1.2 + 0.65 * k, wall_top + 3.0 + (2.0 if k == 2 else 0.0))
+		Pixel.rect(img, int(fig.x) - 1, int(fig.y) - 4, 2, 5, TERRA[1])
+		Pixel.put(img, int(fig.x), int(fig.y) - 5, TERRA[0])
+	for k in 14:
+		var e := f.p(0.2 + (n - 0.4) * float(k) / 13.0, n - 0.05, wall_top)
+		Pixel.put(img, int(e.x), int(e.y) + 1, TERRA[0])
+	# the quadriga on the apex: a dark bronze chariot and four horses abreast, gilt on their backs
+	var apex := f.p(n - 0.25, n / 2.0, ridge_h)
+	var ax := int(apex.x)
+	var ay := int(apex.y)
+	var bronze := Color("46341f")
+	var k := 1
+	Pixel.rect(img, ax - 9 * k, ay - 2 * k, 20 * k, 2 * k, bronze)  # the plinth
+	Pixel.ellipse(img, float(ax - 7 * k), float(ay - 5 * k), 2.6 * k, 2.6 * k, bronze)  # a wheel
+	Pixel.rect(img, ax - 9 * k, ay - 8 * k, 6 * k, 3 * k, bronze)  # the car
+	Pixel.rect(img, ax - 6 * k, ay - 13 * k, 2 * k, 5 * k, bronze)  # Jupiter standing in it
+	Pixel.rect(img, ax - 6 * k, ay - 15 * k, 2 * k, 2 * k, GOLD[1])
+	for h in 4:
+		var hx := ax + (h * 3 - 1) * k
+		Pixel.rect(img, hx - k, ay - 8 * k, 3 * k, 4 * k, bronze)  # a body
+		Pixel.rect(img, hx + k, ay - 11 * k, k, 4 * k, bronze)  # a raised neck
+		Pixel.rect(img, hx + k, ay - 12 * k, 2 * k, k, bronze)  # a head
+		Pixel.rect(img, hx, ay - 8 * k, k, 1, GOLD[2])
 	return Pixel.outlined(img, OUT_WARM)
 
 
@@ -1655,15 +1740,14 @@ static func _fish(n: int) -> Image:
 	for i in spots.size():
 		var at: Vector2 = spots[i]
 		var dir := 1.0 if i % 2 == 0 else -1.0
-		for rx in [-5, -2, 2, 5]:  # a few ripple dashes round it
+		for rx in [-4, 0, 4]:  # a few ripple dashes where it stirs the surface
 			if (rx + i) % 2 == 0:
-				Pixel.put(img, int(at.x) + rx, int(at.y) + 4, Color(0.75, 0.9, 0.97, 0.6))
-		Pixel.ellipse(img, at.x, at.y, 4.4, 1.8, Color("6f9cba"))  # the body
-		Pixel.ellipse(img, at.x + dir * 0.4, at.y - 0.7, 3.6, 0.9, Color("a9cde2"))  # a paler back
-		Pixel.poly(img, [Vector2(at.x - dir * 3.8, at.y), Vector2(at.x - dir * 7.0, at.y - 2.8), Vector2(at.x - dir * 6.2, at.y), Vector2(at.x - dir * 7.0, at.y + 2.8)], Color("4f7c9a"))  # a forked tail
-		Pixel.put(img, int(at.x), int(at.y) - 2, Color("4f7c9a"))  # a dorsal fin
-		Pixel.put(img, int(at.x) + int(dir * 3.0), int(at.y) - 1, Color("12222e"))  # the eye
-	return Pixel.outlined(img, Color("2c4a62"))
+				Pixel.put(img, int(at.x) + rx, int(at.y) + 4, Color(0.8, 0.92, 0.98, 0.35))
+		Pixel.ellipse(img, at.x, at.y, 4.2, 1.7, Color("4e7894"))  # the body, as seen through water: dark and bluish
+		Pixel.ellipse(img, at.x + dir * 0.4, at.y - 0.6, 3.4, 0.8, Color("6f97b0"))  # a paler back
+		Pixel.poly(img, [Vector2(at.x - dir * 3.6, at.y), Vector2(at.x - dir * 6.4, at.y - 2.4), Vector2(at.x - dir * 5.8, at.y), Vector2(at.x - dir * 6.4, at.y + 2.4)], Color("3f6682"))  # a forked tail
+		Pixel.put(img, int(at.x), int(at.y) - 2, Color("3f6682"))  # a dorsal fin
+	return Pixel.outlined(img, Color(0.1, 0.24, 0.36, 0.45))
 
 
 static func _horseman(anim: String, frame: int, look: int) -> Image:

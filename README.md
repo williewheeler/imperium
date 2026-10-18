@@ -22,10 +22,12 @@ get free resources, on any setting.
 
 ![The peoples page: choose who plays and in what colors](docs/screenshots/settings_players.png)
 
-**A village on the Palatine.** The Casa Romuli, the hut of Romulus, is your first town center. Its
-hearth burns, the trees sway in the wind, and everything of yours flies the Roman purple.
+**A village on the Palatine.** The Casa Romuli, the hut of Romulus, is your first town center. You start
+with five citizens, no army and nothing in store: a couple of berry bushes and a herd of sheep by the
+town are the first food, the woods the first wood, and everything else must be saved for. Its hearth
+burns, the trees sway in the wind, and everything of yours flies the Roman purple.
 
-![The Casa Romuli and its villagers, the command bar flanked by columns and the minimap on a parchment scroll](docs/screenshots/village.png)
+![The Casa Romuli at the start: five citizens, nothing in store, a few berry bushes, the sea and the Circus beyond](docs/screenshots/village.png)
 
 **The Circus Maximus.** A landmark stadium stands in the valley near the city: four tiers of timber
 seating, a sand track, a ring of arches round the base, and a crowd that cheers in waves.
@@ -36,16 +38,28 @@ seating, a sand track, a ring of arches round the base, and a crowd that cheers 
 a violet-and-white border, the hut of Romulus gives way to a marble Forum with a tiled roof, and
 houses, vineyards, an aqueduct, the Senate House (*Curia*) and barracks become available.
 
-![A Republican town: a marble Forum, an aqueduct, a house and a vineyard, under the violet border of Era II](docs/screenshots/republic.png)
+![A built-up Republican town: a ripe farm worked by villagers, a Settlement, a City Center with its gilded tholos, the Forum, an aqueduct and houses, under the violet border of Era II](docs/screenshots/republic.png)
+
+**Towns grow.** You do not build new town centers: you build a **Settlement** beside land worth working,
+and send villagers into it (**Incorpora**, key I). Each is absorbed for good as one of its citizens
+(`Cives 23/50`). At 15 it becomes a Town Center, which makes villagers; at 30 a City Center, crowned with a
+gilded tholos. **Farms** are nine tiles across: a granary framing eight plots, each worked by one villager
+standing on it (it sows, grows and ripens by itself); eight citizens in the granary make a Large Farm. Herds
+of sheep wander near the town and breed back slowly unless hunted out. At most six units work one deposit.
+
+**The sea.** Schools of fish swim in the water near the coasts. A **Dock** is a pier in the shallows; it
+makes fishing boats, which sail only on water, fish 15 at a time and bring the catch back to the dock.
+
+![A dock in the shallows with a boat alongside and another out at the fish](docs/screenshots/dock.png)
 
 **Many kinds of ground.** The ground is chosen apart from the shape of the land, so the same coast can
 be green, snowy or sand. Snow whitens the grass, pines and hills; the desert parches them; marshlands
-are reeds and pools; hilly maps rise into terraces; wooded maps are thick with forest. The minimap is an
-isometric diamond of parchment that fills in as you explore.
+are reeds and pools; hilly maps rise into terraces; wooded maps are thick with forest. The minimap is a
+parchment scroll that fills in as you explore.
 
 | Snow | Desert |
 |---|---|
-| ![A Republican town in the snow, beside the Circus Maximus](docs/screenshots/republic-snow.png) | ![A Republican town on dry sand](docs/screenshots/republic-desert.png) |
+| ![A built-up Republican town in the snow: a ripe farm, a Settlement and a City Center](docs/screenshots/republic-snow.png) | ![A built-up Republican town on dry sand](docs/screenshots/republic-desert.png) |
 | **Marshland** | **Hills** |
 | ![Reed beds and pools beside the Circus Maximus](docs/screenshots/biome-marsh.png) | ![Terraced hills rising from open meadow](docs/screenshots/biome-hills.png) |
 
@@ -97,8 +111,11 @@ between players. See [Multiplayer](#multiplayer) below.
   is in [`docs/LATIN.md`](docs/LATIN.md).
 - **A living world.** A map up to 480x480 with terraced hills, marsh, woods, mountains and coast; weather
   that changes; villagers who hide behind trees (and show through as a silhouette when they do).
-- **Gathering and building.** Wood, food, stone and gold; huts, fields, granaries, a citadel, a
-  stable and Vesta's shrine.
+- **Gathering and building.** Wood, food, stone and gold, taken from woods, berries, hunted herds, mines,
+  farms and the sea; huts, houses, storehouses, Settlements that grow into towns, farms and vineyards,
+  docks, a citadel, a stable, Vesta's shrine and the great Temple of Jupiter.
+- **Computer players with goals.** Each AI explores with dogs, settles near stone and gold, farms and fishes,
+  raises an army, advances an era and attacks; see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - **Team colors** on buildings and units, one per player.
 - **Multiplayer lobby** over a local network, the internet or one computer (host or join by IP); in-game
   sync is still to come.

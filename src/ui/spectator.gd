@@ -141,19 +141,22 @@ func _make_pane(ai: AI, index: int) -> void:
 	mini.viewer = ai.owner
 	var pane: Dictionary = {}
 	mini.corners = func() -> Array[Vector2]: return _corners(pane)
-	var frame := MapScroll.new()  # the same diamond of parchment as the game's own minimap
+	var frame := PanelContainer.new()
+	var fsb := StyleBoxFlat.new()
+	fsb.bg_color = Color("c9b27a")
+	fsb.set_border_width_all(3)
+	fsb.border_color = color
+	fsb.set_content_margin_all(3)
+	frame.add_theme_stylebox_override("panel", fsb)
 	frame.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	frame.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	frame.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	frame.offset_left = -(GAP + 6.0) - MapScroll.SIZE.x
-	frame.offset_top = -(GAP + 6.0) - MapScroll.SIZE.y
 	frame.offset_right = -(GAP + 6.0)
 	frame.offset_bottom = -(GAP + 6.0)
 	frame.add_child(mini)
-	mini.position = Vector2(MapScroll.PAD_X, MapScroll.PAD_TOP)
 	cell.add_child(frame)
 	mini.setup(game)
-	mini.custom_minimum_size = Minimap.SIZE
+	mini.custom_minimum_size = Vector2(MINIMAP, MINIMAP)
 	mini.jump_requested.connect(func(tile_pos: Vector2) -> void:
 		pane["follow"] = false
 		pane["pos"] = Iso.to_screen(tile_pos))

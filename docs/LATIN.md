@@ -48,6 +48,7 @@ Some buildings change name and picture between eras (`"early"` entry in `Defs.BU
 | Domus | House | stone house, Era II |
 | Vinea | Vineyard | Era II; a farm variant: vines in the plots, wine sold for gold. *Vinea Magna*: the Large Vineyard (8 citizens) |
 | Curia | Senate house | Era II; prestige only for now |
+| Templum Iovis | Temple of Jupiter Optimus Maximus | Era II; 5x5, the greatest temple on the Capitoline, with a quadriga on its roof. Prestige only for now |
 | Aquaeductus | Aqueduct | Era II; raises the population limit |
 | Via | Road | a paved road, Era II (`Viae` is the plural); dirt roads wear into the ground in Era I |
 

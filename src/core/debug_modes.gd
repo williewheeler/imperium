@@ -16,7 +16,7 @@ var _show_newcomer_jobs: Array = []  # jobs for the villagers the Forum trains, 
 
 ## Sets the scene the flags in `args` ask for, once the world is built. `start` is where the first town stands.
 func apply(args: Dictionary, start: Vector2i) -> void:
-	if args.has("rich") or args.has("town") or args.has("demo") or args.has("showcase") or args.has("builds") or args.has("era") or args.has("cycle"):
+	if args.has("rich") or args.has("buildout") or args.has("town") or args.has("demo") or args.has("showcase") or args.has("builds") or args.has("era") or args.has("cycle"):
 		for i in 4:
 			game.stocks[0][i] = 1000  # the real game starts with nothing in store: scenes for looking at things do not
 	if args.has("demo"):
@@ -85,7 +85,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 					counts[w] = int(counts.get(w, 0)) + 1
 					u.selected = true
 	if args.has("town"):  # debug: a built-up town round the Forum: one of most kinds of building, finished
-		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple", "settlement"]
+		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple", "settlement", "jupiter"]
 		for i in kinds.size():
 			var kind: String = kinds[i]
 			if not Defs.BUILDINGS.has(kind):
@@ -95,6 +95,49 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 			var spot := game.map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8 + 2 * (Defs.BUILDINGS[kind]["size"] as Vector2i).x, [])
 			if spot.x >= 0:
 				game._add_building(kind, spot, true)
+	if args.has("buildout"):  # debug: a built-up Era II town for screenshots: a worked farm, a Settlement, a City Center
+		var rects: Array = game.placement.rects()
+		var avoid: Array[Vector2i] = []
+		var farm_site := Vector2i(-1, -1)
+		for off in [Vector2i(-17, 9), Vector2i(18, 10), Vector2i(-12, 20), Vector2i(8, 22), Vector2i(-24, -4)]:
+			if farm_site.x < 0:
+				farm_site = game.map.find_site(Vector2i(9, 9), start + off, 0, 24, avoid, rects)
+		if farm_site.x >= 0:
+			var farm := game._add_building("farm", farm_site, true, 0)
+			rects.append(farm.rect())
+			for p in farm.plot_tiles():
+				var plot: Deposit = game.map.deposits[p]
+				plot.amount = plot.max_amount  # ripe
+			var plots := farm.plot_tiles()
+			for i in plots.size():  # a villager on each plot, working it
+				var v := Unit.new()
+				v.pos = Vector2(farm.granary_tile()) + Vector2(0.5 + float(i % 3) * 0.6, 2.4)
+				game.setup.assign_sex(v)
+				game.units.append(v)
+				game.orders.gather(v, plots[i])
+		var s_site: Vector2i = game.map.find_site(Vector2i(3, 3), start + Vector2i(16, -12), 0, 16, avoid, rects)
+		if s_site.x >= 0:
+			var settlement := game._add_building("settlement", s_site, true, 0)
+			rects.append(settlement.rect())
+			settlement.citizens = 9
+		var c_site: Vector2i = game.map.find_site(Vector2i(3, 3), start + Vector2i(-6, -19), 0, 16, avoid, rects)
+		if c_site.x >= 0:
+			var city := game._add_building("settlement", c_site, true, 0)
+			city.citizens = 15
+			game.upgrade_building(city, "town_center")
+			city.citizens = 30
+			game.upgrade_building(city, "city_center")
+			rects.append(city.rect())
+		game.era_preview.cycle(1)  # Era II, and its town dressed round what was put up
+		var focus := [Vector2(start)]  # the camera looks at the middle of all that was put up
+		for b in game.buildings:
+			if b.owner == 0 and b.kind in ["farm", "settlement", "city_center"]:
+				focus.append(b.center())
+		var mid := Vector2.ZERO
+		for f in focus:
+			mid += f
+		game.cam_pos = Iso.to_screen(mid / float(focus.size()))
+		skirmish_look = game.cam_pos
 	if args.has("burn"):  # debug: buildings at stages of damage, the last few burning, one just fallen (use with --town)
 		var shares := [0.85, 0.6, 0.38, 0.25, 0.12, 0.05]
 		var i := 0
@@ -107,8 +150,9 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 		for b in game.buildings:
 			if b.owner == 0 and b.kind == "castra":
 				game.destroy_building(b)  # the barracks has just burned down
-				game.cam_pos = Iso.to_screen(b.center())  # and the camera looks at it
-				skirmish_look = game.cam_pos
+				if not args.has("look"):
+					game.cam_pos = Iso.to_screen(b.center())  # and the camera looks at it
+					skirmish_look = game.cam_pos
 				break
 	if args.has("dock"):  # debug: a dock on the nearest shore, a boat, and a school of fish off it
 		game.fog.reveal(Vector2(start), 300.0)
@@ -135,6 +179,17 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 						school.home = p
 						game.map.deposits[p] = school
 						game.map.herds.append(p)
+			var fisher := Unit.new()  # a second boat, out at the fish
+			fisher.kind = "fishing_boat"
+			for p in game.map.herds:
+				var d: Deposit = game.map.deposits.get(p)
+				if d != null and d.fish and not game.map.is_water(Vector2i(-1, -1)):
+					fisher.pos = Vector2(p) + Vector2(2.5, 1.5)
+					if not game.map.is_water(Vector2i(fisher.pos)):
+						fisher.pos = Vector2(p) + Vector2(0.5, 0.5)
+					game.units.append(fisher)
+					game.orders.gather(fisher, p)
+					break
 			game.cam_pos = Iso.to_screen(dock.center())
 			skirmish_look = game.cam_pos
 			dock.selected = true

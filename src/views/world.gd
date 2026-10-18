@@ -132,6 +132,35 @@ func remove_tile_objects(p: Vector2i) -> void:
 	_tile_objects.erase(p)
 
 
+static var _shadow_cache := {}
+
+
+## The half-width and half-height (pixels) of the shadow under a scenery sprite, or zero for none (trees and hills
+## bring theirs in their pictures).
+func _shadow_size(key: String) -> Vector2i:
+	if key.begins_with("berries"):
+		return Vector2i(8, 3)
+	if key.begins_with("stone") or key.begins_with("gold"):
+		return Vector2i(10, 4)
+	if key.begins_with("herd"):
+		return Vector2i(16, 5)
+	return Vector2i.ZERO
+
+
+## A flat ellipse of the same soft black as the units' shadows.
+func _shadow_tex(half: Vector2i) -> ImageTexture:
+	if not _shadow_cache.has(half):
+		var img := Image.create(half.x * 2 + 1, half.y * 2 + 1, false, Image.FORMAT_RGBA8)
+		for y in img.get_height():
+			for x in img.get_width():
+				var dx := (x - half.x) / float(half.x)
+				var dy := (y - half.y) / float(half.y)
+				if dx * dx + dy * dy <= 1.0:
+					img.set_pixel(x, y, Color(0, 0, 0, 0.28))
+		_shadow_cache[half] = ImageTexture.create_from_image(img)
+	return _shadow_cache[half]
+
+
 func _sprite(key: String, foot: Vector2) -> Sprite2D:
 	var s := Sprite2D.new()
 	if key.begins_with("scrub"):
@@ -142,6 +171,12 @@ func _sprite(key: String, foot: Vector2) -> Sprite2D:
 	s.centered = false
 	s.offset = Vector2(-s.texture.get_width() / 2.0, -(s.texture.get_height() - 1.0))
 	s.position = foot.round()
+	var shadow := _shadow_size(key)
+	if shadow != Vector2i.ZERO:  # bushes, mines and herds stand on the ground like units do: a soft shadow under them
+		var sh := Sprite2D.new()
+		sh.texture = _shadow_tex(shadow)
+		sh.show_behind_parent = true
+		s.add_child(sh)
 	objects.add_child(s)
 	if not _building.is_empty():
 		_building["nodes"].append(s)
@@ -525,6 +560,8 @@ func _update_herd_views(delta: float) -> void:
 		var node: Sprite2D = _herd_nodes.get(d)
 		if node == null or not is_instance_valid(node):
 			node = _sprite("%s:%d" % [art, n], target)
+			if d.fish:
+				node.modulate = Color(1, 1, 1, 0.55)  # swimming under the surface, not on top of it
 			node.set_meta("herd_n", n)
 			_herd_nodes[d] = node
 		else:
