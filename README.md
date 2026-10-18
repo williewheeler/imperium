@@ -142,6 +142,18 @@ The first run imports the project, which takes a moment. Other options include `
 `--zoom=N`, `--weather=rain|fog|storm|cloudy|clear`, and `--shot=FILE` to save a screenshot. There is
 a demo video in [`media/`](media/imperium-demo.mp4).
 
+### Headless play and replays
+
+The rules live in a `Simulation` that needs no window, so a whole game can be played in a terminal, written down, and played back exactly:
+
+```
+just sim 600 --seed=7 --out=game.replay    # four AIs play ten game minutes, as fast as the machine allows
+just replay-check game.replay              # play it back with the AIs off; every checksum must match the original's
+just replay game.replay --speed=8          # watch it in the window
+```
+
+A game played by a person is recorded with `./run.sh --replay-out=game.replay`. A replay holds the settings of the game and every command given (a few tens of kilobytes for ten minutes), and works because the simulation is deterministic: see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ### Multiplayer
 
 Click *Plures* on the title screen, type a name, then either:
@@ -182,7 +194,10 @@ in `src/net/net_session.gd` and the lobby screen in `src/ui/lobby_screen.gd`.
 
 | Folder | What is in it |
 |---|---|
-| `src/core/` | game state and rules: the map, units, buildings, weather, fog, and the command layer (`commands.gd`) |
+| `src/sim/` | the simulation: the tick, units, buildings, combat, economy, eras, vision and the command layer (`commands.gd`). No scene or window; it runs headless and deterministically |
+| `src/map/`, `src/ai/` | the ground, fog and tile maths; the computer players |
+| `src/replay/` | writing a game down as it is played, and playing it back |
+| `src/client/` | the game as a person plays it: the scene root, the mouse and keyboard, the camera, weather, debug scenes |
 | `src/art/` | the drawing code that makes every sprite, and team colors |
 | `src/views/` | everything drawn from the game state: world, buildings, units, fog, weather |
 | `src/ui/` | the HUD, buttons, the title screen, the multiplayer lobby and the opening scroll |
@@ -190,7 +205,8 @@ in `src/net/net_session.gd` and the lobby screen in `src/ui/lobby_screen.gd`.
 | `shaders/` | the ground, fog, weather and team-color shaders |
 | `assets/` | the art sheets (PNG) and fonts |
 | `docs/` | [`DESIGN.md`](docs/DESIGN.md) (game design and what is built), [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) (technical design), [`LATIN.md`](docs/LATIN.md), [`PERFORMANCE.md`](docs/PERFORMANCE.md) |
-| `tools/` | `export_art.sh` regenerates the art sheets from the drawing code; `net_test.gd` and `commands_test.gd` are the headless network and command-layer checks |
+| `src/infra/`, `src/audio/`, `src/text/` | settings and the profiler; music; the game's words (Latin and English) |
+| `tools/` | `export_art.sh` regenerates the art sheets from the drawing code; `sim_run.gd` plays a whole game headless and writes it down, `replay_check.gd` plays one back and checks it; the `*_test.gd` scripts are the headless checks |
 | `justfile` | recipes for running, testing and screenshots (`just` lists them) |
 
 See [`assets/art/README.md`](assets/art/README.md) for the art rules. Note that `tools/export_art.sh`

@@ -17,8 +17,8 @@ func priority() -> float:
 func _schools() -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	var hubs := ai.hubs()
-	for p: Vector2i in ai.game.map.herds:
-		var d: Deposit = ai.game.map.deposits.get(p)
+	for p: Vector2i in ai.sim.map.herds:
+		var d: Deposit = ai.sim.map.deposits.get(p)
 		if d == null or not d.fish or d.amount <= 0 or not ai.fog.is_explored(p):
 			continue
 		for h in hubs:
@@ -61,8 +61,8 @@ func act() -> void:
 func _build_dock(fish: Vector2i) -> void:
 	var cost: Array = Defs.BUILDINGS["dock"]["cost"]
 	for r in range(2, 13):
-		for p in ai.game.map.ring(fish, r):
-			var err: String = ai.game.placement.error("dock", p, ai.owner)
+		for p in ai.sim.map.ring(fish, r):
+			var err: String = ai.sim.placement.error("dock", p, ai.owner)
 			if err == "" or err == "err.cant_afford":
 				if not ai.afford(cost):
 					ai.reserve(cost)

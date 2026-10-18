@@ -88,7 +88,8 @@ func reveal(center: Vector2, radius: float) -> void:
 			var i := y * w + x
 			if state[i] == HIDDEN and Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius:
 				state[i] = EXPLORED
-				_bytes[i * 4 + 3] = ALPHA[EXPLORED]
+				if not _headless:
+					_bytes[i * 4 + 3] = ALPHA[EXPLORED]
 	_upload()
 
 

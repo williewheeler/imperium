@@ -3,20 +3,12 @@ extends RefCounted
 
 enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING, EXPLORE, ATTACK_GO, ATTACKING, FLEE, ABSORB_GO }
 
-static var _made := 0
-
-
-## A number no other unit has had: commands name units by it.
-static func _next_id() -> int:
-	_made += 1
-	return _made
-
-
-var id := _next_id()
+var id := 0  # a number no other unit in the game has: commands name units by it (Simulation.add_unit hands it out)
 
 ## Position in tile coordinates (tile centers are at +0.5).
 var kind := "villager"  # "villager", or a fighting man: "soldier", "spearman", "slinger", "horseman"
 var pos := Vector2.ZERO
+var prev_pos := Vector2.ZERO  # where it stood when the last tick began, so a view can draw it between two ticks
 var owner := 0  # which player: 0 is you, 1 and up the computer-run peoples (Defs.color_of gives the color)
 var female := false  # villagers only: picks the sprite
 var look := 0  # fighting men: which of the kind's looks (tunic, armor) they wear
@@ -50,7 +42,7 @@ var struck := false  # this cycle's blow has landed
 var hit_flash := 0.0  # a brief white flash when hurt
 var amove := false  # attack-moving: fights whatever it meets on the way to `amove_goal`
 var amove_goal := Vector2.INF
-var scan_t := randf() * 0.4  # seconds until the next look round for enemies
+var scan_t := 0.0  # seconds until the next look round for enemies
 var flee_t := 0.0  # seconds left of running away
 var repath_t := 0.0  # seconds until a chase may plan a new path
 var dead := false
@@ -73,7 +65,17 @@ var work := 0.0  # fractional progress toward the next gathered unit
 var sdir := Vector2(1, 1)  # which way they face on screen: x -1/+1 = left/right, y +1 = toward the camera
 var moving := false  # moved this frame
 var stuck := 0.0  # seconds spent blocked while trying to walk
+var intended := 0.0  # how far it meant to walk this tick
 var best_goal_dist := INF  # closest this unit has got to the end of its path
 var stall := 0.0  # seconds without getting meaningfully closer to it
-var walk := randf() * TAU  # walk-cycle phase, advances with distance traveled; each starts at a random point so a crowd doesn't move in step
-var anim := randf() * 30.0  # seconds alive (plus a random head start); drives work swings and idle breathing
+var walk := 0.0  # walk-cycle phase, advances with distance traveled; each starts at a different point so a crowd doesn't move in step
+var anim := 0.0  # seconds alive (plus a head start); drives work swings and idle breathing
+
+
+## Gives a newcomer its own point in the cycles that would otherwise keep a crowd in step (looking round for
+## enemies, the walk, the breathing). Spread by the golden ratio from its number, so no dice are needed.
+func stagger() -> void:
+	var f := fposmod(float(id) * 0.6180339887, 1.0)
+	scan_t = f * 0.4
+	walk = f * TAU
+	anim = fposmod(float(id) * 0.7548776662, 1.0) * 30.0

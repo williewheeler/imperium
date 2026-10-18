@@ -1,0 +1,290 @@
+class_name Simulation
+extends RefCounted
+## The game itself: the map, the peoples, their units and buildings, and the rules that move them on. It is
+## a plain object with no scene, window, input, clock or settings screen behind it, so it runs the same in
+## the game, in a headless check and in a replay.
+##
+## **Time is the tick.** `step()` moves the game on by exactly `TICK` seconds, whatever the frame rate. A
+## client that draws the game calls it as often as real time asks (see Main); a headless run calls it as fast
+## as it can.
+##
+## **Players act through commands.** Anything a player does (a person, an AI, a replay) is a `Commands.submit`
+## made *between* ticks, or by an AI at the start of one, and nothing else changes the game from outside.
+## With the same `SimConfig` and the same commands at the same ticks, a game always comes out the same: that
+## is what makes replays possible (see Replay). So inside the simulation:
+##   - randomness comes only from `rng`, and only the rules draw from it (an AI has a generator of its own);
+##   - nothing reads the wall clock, the frame rate, the settings screen, the mouse or the scene tree;
+##   - what the simulation wants the person to hear or see is told by a signal, never done itself.
+##
+## The parts, one file each: Movement, Economy, Production, Eras, Vision, Wildlife, UnitBehavior (what a unit
+## does each tick), Combat, Orders, Commands, Placement, Roads, Victory, WorldSetup, and the AIs.
+
+const TICKS_PER_SECOND := 30
+const TICK := 1.0 / TICKS_PER_SECOND  # seconds of game time one step covers
+const CITY_NAMES := [
+	"Roma", "Ostia", "Veii", "Tibur", "Praeneste", "Alba Longa",
+	"Ardea", "Lanuvium", "Cora", "Signia", "Fidenae", "Gabii",
+]
+
+# What the client is told. (Nothing in here waits for an answer.)
+signal notice(owner: int, key: String)  # a message for one player, as a phrase key (Phrases)
+signal building_completed(b: Building)
+signal building_destroyed(b: Building)  # it fell: the view shows the ruin
+signal era_reached(owner: int, era: int)
+signal people_fell(owner: int)
+signal game_won(winner: int)
+signal tile_changed(p: Vector2i)  # the ground there is different (a deposit used up, marsh drained)
+signal road_changed(p: Vector2i)
+signal stepped  # a tick has been taken (a recorder listens)
+signal tainted_by(why: String)  # something other than commands has changed the game (see `taint`)
+
+var config: SimConfig
+var map: GameMap
+var units: Array[Unit] = []
+var buildings: Array[Building] = []
+var stocks: Array = []  # every player's resources, by owner (null for a slot nobody plays)
+var fogs := {}  # owner -> the Fog that player has built up: what it has seen, and nothing more
+var ais: Array[AI] = []
+var start := Vector2i.ZERO  # where the first player's town stands
+var tick := 0  # steps taken so far
+var rng := RandomNumberGenerator.new()  # the rules' dice: Wildlife, and whatever else the rules leave to chance
+var buildings_lost := 0  # buildings that have burned down (for tests and reports)
+var tainted: Array[String] = []  # what has changed the game other than by commands, so that a replay of it cannot be trusted
+var ai_enabled := true  # false when the commands come from somewhere else (a replay), so the AIs stay quiet
+var drawn_fogs: Array = []  # the players whose Fog also keeps a picture of itself (set by a client that draws them)
+
+var movement := Movement.new()
+var economy := Economy.new()
+var production := Production.new()
+var eras := Eras.new()
+var vision := Vision.new()
+var wildlife := Wildlife.new()
+var behavior := UnitBehavior.new()
+var combat := Combat.new(self)  # who fights whom
+var orders := Orders.new()  # what an order does to a unit
+var commands := Commands.new()  # how a player acts on the game: every driver submits to it
+var placement := Placement.new()  # where things may go
+var roads := Roads.new()  # the paved roads laid and planned
+var victory := Victory.new()  # who is still in the game
+var setup := WorldSetup.new()  # founding the players
+
+var _next_unit_id := 1
+var _next_building_id := 1
+var _cities := 0  # towns named so far (they take their names from CITY_NAMES in turn)
+
+
+func _init(p_config: SimConfig, p_map: GameMap) -> void:
+	config = p_config
+	map = p_map
+	rng.seed = config.seed_value * 2654435761 + 9176
+	for part: Variant in [movement, economy, production, eras, vision, wildlife, behavior, orders, commands, placement, roads, victory, setup]:
+		part.sim = self
+
+
+## Founds the players on the map. Call once, before the first step.
+func begin() -> void:
+	start = map.find_start(Vector2i((map.homes[0] * map.w).round()), Vector2i(-1, -1), 0)  # the first player starts on the ring round the map like everyone else
+	setup.found_players(start)
+	vision.update(true)
+
+
+# ---------------------------------------------------------------- the clock
+
+## Time in the game, in seconds.
+func time() -> float:
+	return tick * TICK
+
+
+## One tick: everything that happens in the world in the next 1/30 second.
+func step() -> void:
+	var dt := TICK
+	for u in units:
+		u.prev_pos = u.pos
+	var t0 := Perf.start()
+	if ai_enabled:
+		for ai in ais:
+			ai.tick(dt)
+	Perf.stop("ais", t0)
+	t0 = Perf.start()
+	for u in units:
+		if Perf.trace:  # name the state, so a slow tick says which kind of work was slow
+			var ts := Perf.start()
+			behavior.update_unit(u, dt)
+			Perf.stop("unit_%s_p%d" % [Unit.State.keys()[u.state].to_lower(), u.owner], ts)
+		else:
+			behavior.update_unit(u, dt)
+	Perf.stop("unit logic", t0)
+	t0 = Perf.start()
+	movement.separate_units()
+	movement.settle_stuck(dt)
+	Perf.stop("separate units", t0)
+	t0 = Perf.start()
+	for b in buildings:
+		production.update_building(b, dt)
+	Perf.stop("buildings", t0)
+	t0 = Perf.start()
+	combat.update_projectiles(dt)
+	combat.update_buildings(dt)
+	wildlife.update(dt)
+	victory.tick(dt)
+	combat.flush_dead()  # the dead leave the game now that the loops over the units are done
+	Perf.stop("combat", t0)
+	eras.update(dt)
+	t0 = Perf.start()
+	vision.update()
+	Perf.stop("fog", t0)
+	tick += 1
+	stepped.emit()
+
+
+# ---------------------------------------------------------------- queries
+
+## What the given player has explored (an AI knows only what its own people have seen).
+func fog_of(owner: int) -> Fog:
+	return fogs[owner]
+
+
+func stock_of(owner: int) -> Array[int]:
+	return stocks[owner]
+
+
+## The era `owner` is in.
+func era_of(owner: int) -> int:
+	return eras.of(owner)
+
+
+## Says that the game has been changed from outside, by something that is not a command: a debug aid that lays
+## the map open or dresses a scene. The game goes on as before, but a replay of it will not play out the same.
+func taint(why: String) -> void:
+	if not tainted.has(why):
+		tainted.append(why)
+		tainted_by.emit(why)
+
+
+# ---------------------------------------------------------------- units and buildings
+
+## Puts a unit into the game and gives it the number commands will call it by.
+func add_unit(u: Unit) -> Unit:
+	u.id = _next_unit_id
+	_next_unit_id += 1
+	u.stagger()
+	u.prev_pos = u.pos
+	units.append(u)
+	return u
+
+
+func add_building(kind: String, tile: Vector2i, complete: bool, owner := 0) -> Building:
+	var b := Building.new()
+	b.id = _next_building_id
+	_next_building_id += 1
+	b.eras = eras
+	b.kind = kind
+	b.tile = tile
+	b.size = Defs.BUILDINGS[kind]["size"]
+	b.owner = owner  # 0 is the first player's (purple), landmarks included
+	b.complete = complete
+	b.building_name = CITY_NAMES[_cities % CITY_NAMES.size()] if kind == "town_center" else Defs.BUILDINGS[kind]["name"]
+	if kind == "town_center":
+		_cities += 1
+	buildings.append(b)
+	if not Defs.BUILDINGS[kind].get("walkable", false):
+		map.set_solid(b.rect(), true)
+	elif Defs.BUILDINGS[kind].get("solid_center", false):
+		map.set_solid(Rect2i(b.granary_tile(), Vector2i.ONE), true)  # a farm's granary stands among its plots
+	if complete:
+		production.on_complete(b)
+	return b
+
+
+## The next name for a town, so that no two share one.
+func next_city_name() -> String:
+	var name: String = CITY_NAMES[_cities % CITY_NAMES.size()]
+	_cities += 1
+	return name
+
+
+## `b` is destroyed (burned down): out of the game, leaving a ruin for the view to show.
+func destroy_building(b: Building) -> void:
+	if b.dead:
+		return
+	buildings_lost += 1
+	b.dead = true
+	b.burning = true  # it burns out its last moments on screen (see World)
+	b.hp = 0.0
+	b.selected = false
+	remove_building(b)
+	building_destroyed.emit(b)
+	notice.emit(b.owner, "msg.building_lost")
+
+
+func remove_building(b: Building) -> void:
+	buildings.erase(b)
+	if not b.def().get("walkable", false):
+		map.set_solid(b.rect(), false)
+	elif b.def().get("solid_center", false):
+		map.set_solid(Rect2i(b.granary_tile(), Vector2i.ONE), false)
+	if b.has_plots():
+		for p in b.plot_tiles():
+			map.deposits.erase(p)
+	for u in units:
+		if u.target_building == b:
+			u.target_building = null
+			u.state = Unit.State.IDLE
+
+
+# ---------------------------------------------------------------- the checksum
+
+## A fingerprint of the whole game as it stands: two games that have played the same have the same one. A
+## replay carries these to show it has not strayed from the game it records.
+func checksum() -> String:
+	var buf := StreamPeerBuffer.new()
+	buf.put_64(tick)
+	buf.put_64(rng.state)
+	for s: Variant in stocks:
+		if s == null:
+			buf.put_8(0)
+			continue
+		for n: int in s:
+			buf.put_32(n)
+	for owner: int in eras.level:
+		buf.put_32(owner)
+		buf.put_32(int(eras.level[owner]))
+		buf.put_8(1 if eras.advancing.get(owner, false) else 0)
+		buf.put_double(float(eras.progress.get(owner, 0.0)))
+	for u in units:
+		buf.put_32(u.id)
+		buf.put_data(u.kind.to_utf8_buffer())
+		buf.put_8(u.owner)
+		buf.put_double(u.pos.x)
+		buf.put_double(u.pos.y)
+		buf.put_double(u.hp)
+		buf.put_8(u.state)
+		buf.put_32(u.carry)
+		buf.put_32(u.path.size())
+		buf.put_32(u.target.id if u.target != null else 0)
+	for b in buildings:
+		buf.put_32(b.id)
+		buf.put_data(b.kind.to_utf8_buffer())
+		buf.put_8(b.owner)
+		buf.put_32(b.tile.x)
+		buf.put_32(b.tile.y)
+		buf.put_double(b.hp)
+		buf.put_double(b.work)
+		buf.put_8(1 if b.complete else 0)
+		buf.put_double(b.train_progress)
+		buf.put_32(b.train_queue.size())
+		buf.put_32(b.citizens)
+	for p: Vector2i in map.deposits:
+		var d: Deposit = map.deposits[p]
+		buf.put_32(p.x)
+		buf.put_32(p.y)
+		buf.put_32(d.amount)
+	buf.put_32(roads.plans.size())
+	buf.put_32(victory.defeated.size())
+	buf.put_32(combat.kills)
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	ctx.update(buf.data_array)
+	for owner: int in fogs:  # and what each people has seen
+		ctx.update((fogs[owner] as Fog).state)
+	return ctx.finish().hex_encode().substr(0, 16)

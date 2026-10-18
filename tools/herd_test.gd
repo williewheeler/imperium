@@ -17,24 +17,24 @@ func _process(_dt: float) -> bool:
 	if frames == 1:
 		main = load("res://main.tscn").instantiate()
 		root.add_child(main)
-	if frames < 5 or main.commands.game == null or main.hud == null:
+	if frames < 5 or main.sim == null or main.hud == null:
 		if Time.get_ticks_msec() > 90000:
 			print("FAIL game never became ready")
 			quit(1)
 		return false
 	var g: Main = main
-	var people := g.units.filter(func(u): return u.owner == 0)
+	var people := g.sim.units.filter(func(u): return u.owner == 0)
 	_check("a people starts with five citizens", people.filter(func(u): return u.kind == "villager").size(), 5)
 	_check("and nothing else: no army", people.size(), 5)
-	_check("with nothing in store", g.stock_of(0), [0, 0, 0, 0])
-	var tc: Building = g.buildings.filter(func(b): return b.owner == 0 and b.kind == "town_center")[0]
+	_check("with nothing in store", g.sim.stock_of(0), [0, 0, 0, 0])
+	var tc: Building = g.sim.buildings.filter(func(b): return b.owner == 0 and b.kind == "town_center")[0]
 	var c := tc.center()
 	var berries := 0
 	var herds := 0
 	var stone_near := 0
 	var gold_near := 0
-	for p: Vector2i in g.map.deposits:
-		var d: Deposit = g.map.deposits[p]
+	for p: Vector2i in g.sim.map.deposits:
+		var d: Deposit = g.sim.map.deposits[p]
 		var dist := Vector2(p).distance_to(c)
 		if d.farm:
 			continue
@@ -52,7 +52,7 @@ func _process(_dt: float) -> bool:
 	_check("no stone right at the town", stone_near, 0)
 	_check("and no gold", gold_near, 0)
 	# gold is spread out: no mine with two others close by
-	var gold: Array = g.map.mines.get(Defs.Res.GOLD, [])
+	var gold: Array = g.sim.map.mines.get(Defs.Res.GOLD, [])
 	var crowded := 0
 	var nearest_pair := INF
 	for i in gold.size():
@@ -71,19 +71,19 @@ func _process(_dt: float) -> bool:
 	_check("separate gold is far apart", nearest_pair >= 20.0, true)
 	# a herd breeds, up to a limit
 	var spot := Vector2i(-1, -1)
-	for p: Vector2i in g.map.herds:
+	for p: Vector2i in g.sim.map.herds:
 		spot = p
 		break
-	var herd: Deposit = g.map.deposits[spot]
+	var herd: Deposit = g.sim.map.deposits[spot]
 	# a herd wanders, but only within its range of where it began
 	var farthest := 0.0
 	var moved := false
 	var at := spot
 	for i in 400:
 		herd.move_t = 0.0
-		g._graze(at, herd, 0.1)
-		for p: Vector2i in g.map.herds:
-			if g.map.deposits.get(p) == herd:
+		g.sim.wildlife._graze(at, herd, 0.1)
+		for p: Vector2i in g.sim.map.herds:
+			if g.sim.map.deposits.get(p) == herd:
 				if p != at:
 					moved = true
 				at = p
@@ -93,25 +93,25 @@ func _process(_dt: float) -> bool:
 	spot = at
 	herd.amount = 100
 	for i in 200:
-		g._update_herds(1.0)
+		g.sim.wildlife.update(1.0)
 	_check("a herd breeds back", herd.amount > 100, true)
 	_check("up to a limit", herd.amount <= herd.max_amount, true)
 	herd.amount = 40  # just over the breeding minimum (15%)
 	var before := herd.amount
 	for i in 100:
-		g._update_herds(1.0)
+		g.sim.wildlife.update(1.0)
 	_check("a hunted-down herd breeds on while enough is left", herd.amount > before, true)
 	herd.amount = 10  # under the breeding minimum
 	for i in 100:
-		g._update_herds(1.0)
+		g.sim.wildlife.update(1.0)
 	_check("one too small does not recover", herd.amount, 10)
-	for p: Vector2i in g.map.herds:
-		if g.map.deposits.get(p) == herd:
+	for p: Vector2i in g.sim.map.herds:
+		if g.sim.map.deposits.get(p) == herd:
 			spot = p
 	herd.amount = 0
-	g.map.remove_deposit(spot)
-	g._update_herds(1.0)
-	_check("a herd hunted to nothing is gone for good", g.map.deposits.has(spot) or g.map.herds.has(spot), false)
+	g.sim.map.remove_deposit(spot)
+	g.sim.wildlife.update(1.0)
+	_check("a herd hunted to nothing is gone for good", g.sim.map.deposits.has(spot) or g.sim.map.herds.has(spot), false)
 	print("DONE fails=", fails)
 	quit(1 if fails > 0 else 0)
 	return false

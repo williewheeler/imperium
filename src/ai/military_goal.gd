@@ -52,7 +52,7 @@ func _pick_kind() -> String:
 	var total := 0.0
 	for k: String in w:
 		total += float(w[k])
-	var roll := randf() * total
+	var roll := ai.rng.randf() * total
 	for k: String in w:
 		roll -= float(w[k])
 		if roll <= 0.0:

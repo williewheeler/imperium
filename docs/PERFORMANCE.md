@@ -22,7 +22,7 @@ count or memory at the stall; none of the stalls below did.
   `~/Library/Application Support/Godot/app_userdata/Imperium/stutter.log`), with the three slowest parts of the
   game code in that frame. Columns are in the file's header line.
   - `--stutter` logs from the start without the panel; `--stutter=all` logs every frame.
-- **Per-part timing** (`src/core/perf.gd`): `Perf.start()` / `Perf.stop("name", t0)` marks. With `Perf.trace` on
+- **Per-part timing** (`src/infra/perf.gd`): `Perf.start()` / `Perf.stop("name", t0)` marks. With `Perf.trace` on
   (the monitor turns it on when logging) each frame's time per part is kept. Marked: pan, ais, unit logic
   (split per state and player, e.g. `unit_explore_p3`), separate units, buildings, world tip, fog, hud,
   scenery streaming, tree sway, unit views, pathfinding, `set_path`, `retarget scan`.

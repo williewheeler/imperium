@@ -7,13 +7,13 @@ extends RefCounted
 const EXPLORE_TRIES := 8  # how many of the nearest unseen spots an explorer tries for a route
 const EXPLORE_SPREAD := 10.0  # tiles: explorers pick targets at least this far apart
 
-var game: Main
+var sim: Simulation
 
 
 func stop(u: Unit) -> void:
 	Combat.clear(u)
 	u.dropoff_only = false
-	game.roads.release(u)
+	sim.roads.release(u)
 	u.path.clear()
 	u.detour = Vector2.INF
 	u.target_building = null
@@ -23,30 +23,29 @@ func stop(u: Unit) -> void:
 func explore(u: Unit) -> void:
 	Combat.clear(u)
 	u.dropoff_only = false
-	game.roads.release(u)
+	sim.roads.release(u)
 	u.explore_skip.clear()
 	u.target_building = null
 	if explore_next(u):
 		u.state = Unit.State.EXPLORE
 	else:
 		u.state = Unit.State.IDLE
-		if u.owner == 0:
-			game.hud.flash_key("msg.nothing_to_explore")
+		sim.notice.emit(u.owner, "msg.nothing_to_explore")
 
 
 ## Heads for the nearest unseen, walkable tile that no other explorer is already going to.
 ## Tiles with no route (across water, say) are remembered and skipped.
 func explore_next(u: Unit) -> bool:
-	var seen := game.fog_of(u.owner)
+	var seen := sim.fog_of(u.owner)
 	var taken: Array[Vector2i] = []
-	for o in game.units:
+	for o in sim.units:
 		if o != u and o.owner == u.owner and o.state == Unit.State.EXPLORE:
 			taken.append(o.explore_goal)
 	var best: Array[Vector2i] = []  # the nearest few candidates, kept in order as the map is scanned
 	var best_d: Array[float] = []
-	var width := game.map.w
+	var width := sim.map.w
 	var here := u.pos
-	for y in range(0, game.map.h, 3):  # every third tile is plenty to find the nearest unseen ground
+	for y in range(0, sim.map.h, 3):  # every third tile is plenty to find the nearest unseen ground
 		for x in range(0, width, 3):
 			if seen.state[y * width + x] != Fog.HIDDEN:
 				continue
@@ -54,7 +53,7 @@ func explore_next(u: Unit) -> bool:
 			if best.size() == EXPLORE_TRIES and d >= best_d[EXPLORE_TRIES - 1]:
 				continue  # farther than the ones already found
 			var p := Vector2i(x, y)
-			if not game.map.is_walkable(p) or u.explore_skip.has(p):
+			if not sim.map.is_walkable(p) or u.explore_skip.has(p):
 				continue
 			var crowded := false
 			for t in taken:
@@ -79,10 +78,9 @@ func explore_next(u: Unit) -> bool:
 	return false
 
 
-## A message about one of our own units (AIs' troubles are not ours to hear).
+## A message about one of a player's units (whoever is that player's person hears it; AIs' troubles are not ours to hear).
 func note(u: Unit, key: String) -> void:
-	if u.owner == 0:
-		game.hud.flash_key(key)
+	sim.notice.emit(u.owner, key)
 
 
 func set_path(u: Unit, goal: Vector2i) -> bool:
@@ -96,11 +94,11 @@ func _set_path_inner(u: Unit, goal: Vector2i) -> bool:
 	var from := Vector2i(u.pos)
 	var ids: Array[Vector2i]
 	if Defs.UNITS[u.kind].get("water", false):  # a boat: over water only
-		ids = game.map.find_path_water(from, game.map.nearest_water(goal))
+		ids = sim.map.find_path_water(from, sim.map.nearest_water(goal))
 	else:
-		if not game.map.is_walkable(from):  # shoved against an obstacle: start from the nearest open tile
-			from = game.map.nearest_walkable(from)
-		ids = game.map.find_path_rough(from, goal) if Defs.UNITS[u.kind].get("rough", false) else game.map.find_path(from, goal)
+		if not sim.map.is_walkable(from):  # shoved against an obstacle: start from the nearest open tile
+			from = sim.map.nearest_walkable(from)
+		ids = sim.map.find_path_rough(from, goal) if Defs.UNITS[u.kind].get("rough", false) else sim.map.find_path(from, goal)
 	if ids.is_empty():
 		return false
 	var path: Array[Vector2] = []
@@ -116,7 +114,7 @@ func _set_path_inner(u: Unit, goal: Vector2i) -> bool:
 func move(u: Unit, goal: Vector2i) -> void:
 	Combat.clear(u)  # a plain move order ignores the enemy until arrival: pull back, regroup
 	u.dropoff_only = false
-	game.roads.release(u)
+	sim.roads.release(u)
 	if set_path(u, goal):
 		u.state = Unit.State.MOVE
 		u.target_building = null
@@ -127,10 +125,10 @@ func move(u: Unit, goal: Vector2i) -> void:
 ## Walk to `b` and hand over what the villager carries. If they were working, they then go back
 ## to it; otherwise they stand idle by the depot.
 func dropoff(u: Unit, b: Building) -> void:
-	game.roads.release(u)
+	sim.roads.release(u)
 	var was_working := u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]
 	var boat: bool = Defs.UNITS[u.kind].get("water", false)
-	var stand := game.map.water_next_to(b.rect(), u.pos) if boat else game.map.stand_tile(b.dropoff_rect(), u.pos)
+	var stand := sim.map.water_next_to(b.rect(), u.pos) if boat else sim.map.stand_tile(b.dropoff_rect(), u.pos)
 	if stand.x < 0 or not set_path(u, stand):
 		note(u, "err.no_route")
 		return
@@ -141,8 +139,8 @@ func dropoff(u: Unit, b: Building) -> void:
 
 func gather(u: Unit, tile: Vector2i) -> bool:
 	u.dropoff_only = false
-	game.roads.release(u)
-	var d: Deposit = game.map.deposits.get(tile)
+	sim.roads.release(u)
+	var d: Deposit = sim.map.deposits.get(tile)
 	if d == null or (d.farm and d.owner != u.owner):  # nobody works another's field
 		return false
 	if d.fish != bool(Defs.UNITS[u.kind].get("water", false)):  # only a boat can fish, and a boat can do nothing else
@@ -151,13 +149,13 @@ func gather(u: Unit, tile: Vector2i) -> bool:
 		tile = free_plot(d.plot_of, tile, u, false)
 		if tile.x < 0:
 			return false
-		d = game.map.deposits[tile]
+		d = sim.map.deposits[tile]
 	elif workers_at(tile, u) >= Defs.MAX_WORKERS:  # six at most work one deposit: on to the nearest like it with room
 		tile = _deposit_with_room(u, d, tile)
 		if tile.x < 0:
 			return false
-		d = game.map.deposits[tile]
-	var stand := plot_spot(d, u) if d.plot_of != null else (tile if d.fish else game.map.stand_tile(Rect2i(tile, Vector2i.ONE), u.pos))  # (a plot is worked from on it; a boat fishes on the fish's own tile)
+		d = sim.map.deposits[tile]
+	var stand := plot_spot(d, u) if d.plot_of != null else (tile if d.fish else sim.map.stand_tile(Rect2i(tile, Vector2i.ONE), u.pos))  # (a plot is worked from on it; a boat fishes on the fish's own tile)
 	u.work_spot = stand
 	if stand.x < 0 or not set_path(u, stand):
 		note(u, "err.no_route")
@@ -177,7 +175,7 @@ func gather(u: Unit, tile: Vector2i) -> bool:
 ## How many units other than `except` are working the deposit at `tile` (on their way to it or at it).
 func workers_at(tile: Vector2i, except: Unit) -> int:
 	var n := 0
-	for o: Unit in game.units:
+	for o: Unit in sim.units:
 		if o != except and not o.dead and o.target_tile == tile and (o.state == Unit.State.GATHER_GO or o.state == Unit.State.GATHERING):
 			n += 1
 	return n
@@ -185,12 +183,12 @@ func workers_at(tile: Vector2i, except: Unit) -> int:
 
 ## The nearest deposit of the same kind as `d`, within ten tiles of `tile`, with room for another worker.
 func _deposit_with_room(u: Unit, d: Deposit, tile: Vector2i) -> Vector2i:
-	var seen: Fog = game.fog_of(u.owner)
+	var seen: Fog = sim.fog_of(u.owner)
 	for r in range(1, 11):
 		var best := Vector2i(-1, -1)
 		var best_d := INF
-		for p in game.map.ring(tile, r):
-			var o: Deposit = game.map.deposits.get(p)
+		for p in sim.map.ring(tile, r):
+			var o: Deposit = sim.map.deposits.get(p)
 			if o == null or o.kind != d.kind or o.farm or o.amount <= 0 or o.fish != d.fish or not seen.is_explored(p):
 				continue
 			if workers_at(p, u) >= Defs.MAX_WORKERS:
@@ -208,7 +206,7 @@ func _deposit_with_room(u: Unit, d: Deposit, tile: Vector2i) -> Vector2i:
 ## has. A ripe plot is preferred (`ripe_only` takes no other). (-1, -1) if there is none.
 func free_plot(farm: Building, tile: Vector2i, u: Unit, ripe_only: bool) -> Vector2i:
 	var crowd := {}  # plot -> how many others work it
-	for o: Unit in game.units:
+	for o: Unit in sim.units:
 		if o != u and not o.dead and o.owner == u.owner and o.working_farm and o.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]:
 			crowd[o.target_tile] = int(crowd.get(o.target_tile, 0)) + 1
 	var room := int(farm.def().get("plot_workers", 3))
@@ -218,7 +216,7 @@ func free_plot(farm: Building, tile: Vector2i, u: Unit, ripe_only: bool) -> Vect
 		if not pass_ripe and ripe_only:
 			break
 		for p in farm.plot_tiles():
-			var d: Deposit = game.map.deposits.get(p)
+			var d: Deposit = sim.map.deposits.get(p)
 			if d == null or int(crowd.get(p, 0)) >= room or (pass_ripe and d.amount <= 0):
 				continue
 			var dist := (0.0 if p == tile else 1.0) * 1000.0 + (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
@@ -233,7 +231,7 @@ func free_plot(farm: Building, tile: Vector2i, u: Unit, ripe_only: bool) -> Vect
 ## A tile of the plot `d` that no other worker is standing on, the nearest to `u`.
 func plot_spot(d: Deposit, u: Unit) -> Vector2i:
 	var taken := {}
-	for o: Unit in game.units:
+	for o: Unit in sim.units:
 		if o != u and not o.dead and o.working_farm and o.state in [Unit.State.GATHER_GO, Unit.State.GATHERING]:
 			taken[o.work_spot] = true
 	var best := d.plot_rect.position + Vector2i.ONE
@@ -241,7 +239,7 @@ func plot_spot(d: Deposit, u: Unit) -> Vector2i:
 	for y in range(d.plot_rect.position.y, d.plot_rect.end.y):
 		for x in range(d.plot_rect.position.x, d.plot_rect.end.x):
 			var p := Vector2i(x, y)
-			if taken.has(p) or not game.map.is_walkable(p):
+			if taken.has(p) or not sim.map.is_walkable(p):
 				continue
 			var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
 			if dist < best_d:
@@ -252,7 +250,7 @@ func plot_spot(d: Deposit, u: Unit) -> Vector2i:
 
 ## `u` is standing on an emptied plot: on to another plot of its farm that has ripened, if there is one.
 func next_plot(u: Unit) -> bool:
-	var d: Deposit = game.map.deposits.get(u.target_tile)
+	var d: Deposit = sim.map.deposits.get(u.target_tile)
 	if d == null or d.plot_of == null:
 		return false
 	var spot := free_plot(d.plot_of, u.target_tile, u, true)
@@ -261,8 +259,8 @@ func next_plot(u: Unit) -> bool:
 
 func build(u: Unit, b: Building) -> void:
 	u.dropoff_only = false
-	game.roads.release(u)
-	var stand := game.map.stand_tile(b.rect(), u.pos)
+	sim.roads.release(u)
+	var stand := sim.map.stand_tile(b.rect(), u.pos)
 	if stand.x < 0 or not set_path(u, stand):
 		note(u, "err.no_route")
 		return
@@ -274,8 +272,8 @@ func build(u: Unit, b: Building) -> void:
 func absorb(u: Unit, b: Building) -> void:
 	Combat.clear(u)
 	u.dropoff_only = false
-	game.roads.release(u)
-	var stand: Vector2i = game.map.stand_tile(b.rect(), u.pos)
+	sim.roads.release(u)
+	var stand: Vector2i = sim.map.stand_tile(b.rect(), u.pos)
 	if stand.x < 0 or not set_path(u, stand):
 		note(u, "err.no_route")
 		return

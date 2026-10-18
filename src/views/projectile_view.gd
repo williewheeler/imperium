@@ -3,7 +3,7 @@ extends Node2D
 ## Draws the shots in flight (a slinger's lead bullet): a small dark pebble that arcs from the slinger to its
 ## target, with a shadow on the ground. Shots between ground we cannot see are not drawn.
 
-var game  # Main
+var game: Main
 var fog: Fog  # what the viewer has seen (the main fog if not set)
 var viewer := 0  # the player looking: their own shots always show
 
@@ -13,7 +13,7 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	for p in game.combat.projectiles:
+	for p in game.sim.combat.projectiles:
 		var t: Unit = p["target"]
 		var k := clampf(float(p["t"]) / float(p["dur"]), 0.0, 1.0)
 		var tile: Vector2 = (p["from"] as Vector2).lerp(t.pos, k)

@@ -2,6 +2,7 @@
 extends SceneTree
 var main: Node
 var frames := 0
+var _last_sim_t := 0.0
 var stage := 0
 var t_stage := 0.0
 var fails := 0
@@ -20,7 +21,7 @@ func _walkable(g: Main, r: Rect2i) -> int:
 	var n := 0
 	for y in range(r.position.y, r.end.y):
 		for x in range(r.position.x, r.end.x):
-			if g.map.is_walkable(Vector2i(x, y)):
+			if g.sim.map.is_walkable(Vector2i(x, y)):
 				n += 1
 	return n
 
@@ -31,7 +32,7 @@ func _spawn(g: Main, n: int, near: Vector2) -> Array[Unit]:
 		var u := Unit.new()
 		u.owner = 0
 		u.pos = near + Vector2(float(i % 5) * 0.6, float(i / 5) * 0.6)
-		g.units.append(u)
+		g.sim.add_unit(u)
 		out.append(u)
 	return out
 
@@ -41,39 +42,41 @@ func _process(dt: float) -> bool:
 	if frames == 1:
 		main = load("res://main.tscn").instantiate()
 		root.add_child(main)
-	if frames < 5 or main.commands.game == null or main.hud == null:
+	if frames < 5 or main.sim == null or main.hud == null:
 		if Time.get_ticks_msec() > 90000:
 			print("FAIL game never became ready")
 			quit(1)
 		return false
 	var g: Main = main
+	dt = g.sim.time() - _last_sim_t  # game time, not frame time: the simulation takes a few ticks a frame, as many as the machine can
+	_last_sim_t = g.sim.time()
 	t_stage += dt
 	match stage:
 		0:
 			Engine.time_scale = 10.0
 			for i in 4:
-				g.stocks[0][i] = 1000
-			g.ais.clear()
-			var spot: Vector2i = g.map.find_site(Vector2i(9, 9), Vector2i(g.units[0].pos) + Vector2i(18, 18), 0, 40, [])
-			farm = g._add_building("farm", spot, true, 0)
+				g.sim.stocks[0][i] = 1000
+			g.sim.ais.clear()
+			var spot: Vector2i = g.sim.map.find_site(Vector2i(9, 9), Vector2i(g.sim.units[0].pos) + Vector2i(18, 18), 0, 40, [])
+			farm = g.sim.add_building("farm", spot, true, 0)
 			var plots := farm.plot_tiles()
 			_check("a farm is nine tiles across", farm.size, Vector2i(9, 9))
 			_check("with eight plots", plots.size(), 8)
 			_check("each a 3x3 field", farm.plot_rects().all(func(r): return r.size == Vector2i(3, 3)), true)
 			_check("round a 3x3 yard in the middle", farm.plot_rects().all(func(r): return not r.intersects(Rect2i(farm.tile + Vector2i(3, 3), Vector2i(3, 3)))), true)
-			_check("each plot is a food deposit", plots.all(func(p): return g.map.deposits.has(p) and g.map.deposits[p].kind == Defs.Res.FOOD), true)
-			_check("bare until it is sown", plots.all(func(p): return g.map.deposits[p].amount == 0), true)
-			_check("the granary is not one of them", g.map.deposits.has(farm.granary_tile()), false)
-			_check("the granary blocks movement", g.map.is_walkable(farm.granary_tile()), false)
+			_check("each plot is a food deposit", plots.all(func(p): return g.sim.map.deposits.has(p) and g.sim.map.deposits[p].kind == Defs.Res.FOOD), true)
+			_check("bare until it is sown", plots.all(func(p): return g.sim.map.deposits[p].amount == 0), true)
+			_check("the granary is not one of them", g.sim.map.deposits.has(farm.granary_tile()), false)
+			_check("the granary blocks movement", g.sim.map.is_walkable(farm.granary_tile()), false)
 			_check("the rest of the farm can be walked on", farm.rect().get_area() - 1 == _walkable(g, farm.rect()), true)
 			_check("the granary takes food", farm.def()["accepts"], [1])
 			for i in 30:
-				g._update_plots(farm, 1.0)
-			_check("an untended plot grows nothing", plots.all(func(p): return g.map.deposits[p].amount == 0), true)
+				g.sim.economy.update_plots(farm, 1.0)
+			_check("an untended plot grows nothing", plots.all(func(p): return g.sim.map.deposits[p].amount == 0), true)
 			crew = _spawn(g, 12, Vector2(spot) + Vector2(10.5, 1.5))
 			var sent := 0
 			for u in crew:
-				if g.orders.gather(u, farm.field_tile()):
+				if g.sim.orders.gather(u, farm.field_tile()):
 					sent += 1
 			_check("one villager to a plot: eight can work a farm", sent, 8)
 			var per_plot := {}
@@ -85,33 +88,33 @@ func _process(dt: float) -> bool:
 			_check("no plot has more than one", per_plot.values().all(func(n): return n <= 1), true)
 			_check("they use every plot", per_plot.size(), 8)
 			_check("each stands on a tile of its own", spots.size(), 8)
-			_check("and on its plot", crew.all(func(u): return u.state != Unit.State.GATHER_GO or g.map.deposits[u.target_tile].plot_rect.has_point(u.work_spot)), true)
+			_check("and on its plot", crew.all(func(u): return u.state != Unit.State.GATHER_GO or g.sim.map.deposits[u.target_tile].plot_rect.has_point(u.work_spot)), true)
 			stage = 1
 			t_stage = 0.0
 		1:
 			var working := crew.filter(func(u): return u.state == Unit.State.GATHERING or u.carry > 0 or u.state == Unit.State.RETURN)
 			if working.size() >= 8 and t_stage > 25.0:
-				print("working: ", working.size(), " food in store ", g.stock_of(0)[Defs.Res.FOOD])
+				print("working: ", working.size(), " food in store ", g.sim.stock_of(0)[Defs.Res.FOOD])
 				stage = 2
 				t_stage = 0.0
 		2:
 			if t_stage > 60.0:
-				_check("they sow, grow and harvest by themselves, and the store grows", g.stock_of(0)[Defs.Res.FOOD] > 1000, true)
+				_check("they sow, grow and harvest by themselves, and the store grows", g.sim.stock_of(0)[Defs.Res.FOOD] > 1000, true)
 				# take eight into the granary
 				var eight := _spawn(g, 8, Vector2(farm.tile) + Vector2(10.5, 1.5))
-				_check("absorb into a farm", g.commands.submit({"type": "absorb", "owner": 0, "building": farm.id, "units": eight.map(func(u): return u.id)}), "")
+				_check("absorb into a farm", g.sim.commands.submit({"type": "absorb", "owner": 0, "building": farm.id, "units": eight.map(func(u): return u.id)}), "")
 				stage = 3
 				t_stage = 0.0
 		3:
 			if farm.kind != "farm" or t_stage > 60.0:
 				_check("eight citizens make it a Large Farm", farm.kind, "large_farm")
 				_check("it holds eight", farm.citizens, 8)
-				var plot: Deposit = g.map.deposits[farm.plot_tiles()[0]]
+				var plot: Deposit = g.sim.map.deposits[farm.plot_tiles()[0]]
 				_check("richer plots", plot.max_amount, 375)
-				_check("the granary is still solid", g.map.is_walkable(farm.granary_tile()), false)
+				_check("the granary is still solid", g.sim.map.is_walkable(farm.granary_tile()), false)
 				var more := _spawn(g, 1, Vector2(farm.tile) + Vector2(10.5, 1.5))
-				_check("a full granary refuses more", g.commands.submit({"type": "absorb", "owner": 0, "building": farm.id, "units": more.map(func(u): return u.id)}), "err.full")
-				_check("a Large Farm cannot be built directly", g.commands.submit({"type": "place", "owner": 0, "kind": "large_farm", "tile": Vector2i(1, 1), "units": []}), "err.not_allowed")
+				_check("a full granary refuses more", g.sim.commands.submit({"type": "absorb", "owner": 0, "building": farm.id, "units": more.map(func(u): return u.id)}), "err.full")
+				_check("a Large Farm cannot be built directly", g.sim.commands.submit({"type": "place", "owner": 0, "kind": "large_farm", "tile": Vector2i(1, 1), "units": []}), "err.not_allowed")
 				print("DONE fails=", fails)
 				quit(1 if fails > 0 else 0)
 	return false

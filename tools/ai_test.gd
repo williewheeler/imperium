@@ -2,6 +2,7 @@
 extends SceneTree
 var main: Node
 var frames := 0
+var _last_sim_t := 0.0
 var started := false
 var elapsed := 0.0
 var next_report := 150.0
@@ -16,7 +17,7 @@ func _process(dt: float) -> bool:
 		for a in OS.get_cmdline_user_args():
 			if a.is_valid_float():
 				limit = float(a)
-	if frames < 5 or main.commands.game == null or main.hud == null:
+	if frames < 5 or main.sim == null or main.hud == null:
 		if Time.get_ticks_msec() > 90000:
 			print("FAIL game never became ready")
 			quit(1)
@@ -26,10 +27,12 @@ func _process(dt: float) -> bool:
 		Engine.time_scale = 10.0
 	elapsed += dt
 	var g: Main = main
+	dt = g.sim.time() - _last_sim_t  # game time, not frame time: the simulation takes a few ticks a frame, as many as the machine can
+	_last_sim_t = g.sim.time()
 	if elapsed >= next_report or elapsed >= limit:
 		next_report += 150.0
-		print("--- %.0f game seconds: buildings lost=%d kills=%d defeated=%s winner=%d" % [elapsed, g.buildings_lost, g.combat.kills, g.victory.defeated.keys(), g.victory.winner])
-		for ai: AI in g.ais:
+		print("--- %.0f game seconds: buildings lost=%d kills=%d defeated=%s winner=%d" % [elapsed, g.sim.buildings_lost, g.sim.combat.kills, g.sim.victory.defeated.keys(), g.sim.victory.winner])
+		for ai: AI in g.sim.ais:
 			var s := ai.summary()
 			var states := {}
 			for u in ai.wave:
@@ -41,8 +44,8 @@ func _process(dt: float) -> bool:
 			var rich := 0
 			for b in ai.hubs():
 				for kind in [Defs.Res.STONE, Defs.Res.GOLD]:
-					for mp: Vector2i in g.map.mines.get(kind, []):
-						if g.map.deposits.has(mp) and Vector2(mp).distance_to(b.center()) <= 16.0:
+					for mp: Vector2i in g.sim.map.mines.get(kind, []):
+						if g.sim.map.deposits.has(mp) and Vector2(mp).distance_to(b.center()) <= 16.0:
 							rich += 1
 							break
 			print("     storehouses=%d  docks=%d boats=%d  hub-by-stone-or-gold=%d" % [ai.mine("storehouse").size(), ai.mine("dock").size(), ai.boats().size(), rich])

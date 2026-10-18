@@ -10,6 +10,8 @@ const FILL := {
 	"pressed": Color("5e1414"), "disabled": Color("2c1c1a"),
 }
 
+static var era := 0  # the era the interface shows (the buttons for buildings are drawn as that era's look)
+
 var icon_kind := ""  # "town_center", "house", "storehouse" or "villager"
 var caption := ""  # already in Roman lettering (see Latin.t)
 var cost: Array = []
@@ -102,7 +104,7 @@ func _draw_icon(c: Vector2) -> void:
 		_draw_action_icon(c)
 		return
 	var key := icon_kind + ":idle:f:0" if icon_kind in UNIT_ICONS else icon_kind
-	var t: Texture2D = Art.tex(key) if icon_kind in UNIT_ICONS else Art.icon(Building.look_key(key), 17 if compact else 30)
+	var t: Texture2D = Art.tex(key) if icon_kind in UNIT_ICONS else Art.icon(Building.look_key(key, era), 17 if compact else 30)
 	var scale := 2.0
 	var sz := t.get_size() * scale
 	var at := Rect2(c - Vector2(sz.x / 2.0, sz.y / 2.0 - 2.0), sz)

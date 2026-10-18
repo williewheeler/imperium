@@ -33,7 +33,7 @@ const VILLAGER_FRAMES := {"idle": 2, "walk": 6, "chop": 6, "mine": 6, "forage": 
 ## Frames in a fighting man's attack: wind-up, the blow, the follow-through and recovery. (Only the fighting men have
 ## this animation; the picture is wider to leave room for the weapon reaching out.)
 const ATTACK_FRAMES := 4
-const UNIT_LOOKS := {"soldier": 3, "spearman": 3, "slinger": 3, "horseman": 3}
+const UNIT_LOOKS := Defs.UNIT_LOOKS
 const HORSE_FEET := Vector2(18, 31)
 const DOG_FEET := Vector2(11, 14)
 const BOAT_FEET := Vector2(15, 15)

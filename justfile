@@ -95,6 +95,32 @@ water-test:
 phrases-test:
     {{godot}} --headless --path . --script tools/phrases_test.gd
 
+# Play a whole game of AIs with no window and write it down: just sim 600 --seed=7 --out=game.replay
+# (options: --seed --players --size --map --terrain --resources --difficulty --report=N --perf; see tools/sim_run.gd)
+sim seconds="300" *args:
+    {{godot}} --headless --path . --script tools/sim_run.gd -- --seconds={{seconds}} {{args}}
+
+# Play a recorded game back headless and check it comes out the same, checksum by checksum
+replay-check file:
+    {{godot}} --headless --path . --script tools/replay_check.gd -- --replay={{file}}
+
+# Watch a recorded game in the window (speed it up with --speed=8). Nobody plays: the commands come from the file.
+replay file *args:
+    ./run.sh --windowed --nosplash --replay={{file}} {{args}}
+
+# Headless check of the person's driver (selecting, ordering, the keys) on a real game
+person-test:
+    {{godot}} --headless --path . --script tools/person_test.gd -- --nosplash --seed=42 --players=3
+
+# Headless check of determinism: two runs of one game agree, a replay of it agrees, a doctored replay does not
+replay-test:
+    {{godot}} --headless --path . --script tools/replay_test.gd
+
+# Parse every script, and check that every member named on the simulation and on Main exists
+lint:
+    {{godot}} --headless --path . --script tools/lint.gd
+    python3 tools/check_members.py
+
 # Headless check of the command layer (ownership, payment, orders) on a real game
 commands-test:
     {{godot}} --headless --path . --script tools/commands_test.gd -- --nosplash --seed=42 --players=2

@@ -7,7 +7,7 @@ const GOLD := Color("e8c766")
 const CREAM := Color("f3e6c4")
 const MARKER_LIFE := 0.7
 
-var game  # Main
+var game: Main
 
 
 func _process(_delta: float) -> void:
@@ -23,14 +23,14 @@ func _diamond(tile: Vector2, size: Vector2) -> PackedVector2Array:
 
 
 func _draw() -> void:
-	for u: Unit in game.units:
+	for u: Unit in game.sim.units:
 		if u.selected and not u.path.is_empty():
 			var prev := Iso.to_screen(u.pos)
 			for wp in u.path:
 				var nxt := Iso.to_screen(wp)
 				draw_dashed_line(prev, nxt, Color(0.49, 1, 0.49, 0.55), 1.0, 3.0)
 				prev = nxt
-	for m in game.markers:
+	for m in game.person.markers:
 		var k: float = m.t / MARKER_LIFE
 		var c := Iso.to_screen(m.pos)
 		var pts := PackedVector2Array()
@@ -39,19 +39,19 @@ func _draw() -> void:
 			pts.append(c + Vector2(cos(a) * (5 + 11 * k), sin(a) * (2.5 + 5.5 * k)))
 		draw_polyline(pts, (Color(1.0, 0.35, 0.3, 1 - k) if m.get("attack", false) else Color(0.49, 1, 0.49, 1 - k)), 1.0)
 
-	if game.selected_deposit.x >= 0:
-		var d := _diamond(Vector2(game.selected_deposit), Vector2.ONE)
+	if game.person.selected_deposit.x >= 0:
+		var d := _diamond(Vector2(game.person.selected_deposit), Vector2.ONE)
 		d.append(d[0])
 		draw_polyline(d, GOLD, 1.0)
 
-	for p: Vector2i in game.roads.plans:  # road tiles waiting to be paved
+	for p: Vector2i in game.sim.roads.plans:  # road tiles waiting to be paved
 		var pts := _diamond(Vector2(p), Vector2.ONE)
 		draw_colored_polygon(pts, Color(0.85, 0.78, 0.55, 0.28))
 		pts.append(pts[0])
 		draw_polyline(pts, Color(0.95, 0.88, 0.6, 0.8), 1.0)
-	if game.placing_road:
+	if game.person.placing_road:
 		_draw_road_ghost()
-	for b: Building in game.buildings:
+	for b: Building in game.sim.buildings:
 		if b.owner != 0 and not game.fog.is_explored(Vector2i(b.center())):
 			continue
 		var origin := Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round()
@@ -78,12 +78,12 @@ func _draw() -> void:
 			draw_string_outline(Latin.FONT, pos, label, HORIZONTAL_ALIGNMENT_CENTER, 200, 9, 4, Color(0, 0, 0, 0.75))
 			draw_string(Latin.FONT, pos, label, HORIZONTAL_ALIGNMENT_CENTER, 200, 9, CREAM)
 
-	if game.placing != "":
+	if game.person.placing != "":
 		_draw_ghost()
-	var zoom: float = game.camera.zoom.x
-	if game.dragging and game.drag_rect.size.length() * zoom > 6.0:
-		draw_rect(game.drag_rect, Color(0.49, 1, 0.49, 0.12))
-		draw_rect(game.drag_rect, Color(0.49, 1, 0.49, 0.9), false, 1.0 / zoom)
+	var zoom: float = game.rig.camera.zoom.x
+	if game.person.dragging and game.person.drag_rect.size.length() * zoom > 6.0:
+		draw_rect(game.person.drag_rect, Color(0.49, 1, 0.49, 0.12))
+		draw_rect(game.person.drag_rect, Color(0.49, 1, 0.49, 0.9), false, 1.0 / zoom)
 
 
 func _bar(at: Vector2, width: float, frac: float, color: Color) -> void:
@@ -93,16 +93,16 @@ func _bar(at: Vector2, width: float, frac: float, color: Color) -> void:
 
 func _draw_road_ghost() -> void:
 	var good := 0
-	for p in game.road_drag:
-		var ok: bool = game.roads.tile_error(p) == ""
+	for p in game.person.road_drag:
+		var ok: bool = game.sim.roads.tile_error(p) == ""
 		good += 1 if ok else 0
 		var tint := Color(0.35, 1, 0.35) if ok else Color(1, 0.3, 0.3)
 		var pts := _diamond(Vector2(p), Vector2.ONE)
 		draw_colored_polygon(pts, Color(tint, 0.38))
 		pts.append(pts[0])
 		draw_polyline(pts, Color(tint, 0.95), 1.0)
-	if game.road_drag.size() > 1:
-		var last: Vector2i = game.road_drag[-1]
+	if game.person.road_drag.size() > 1:
+		var last: Vector2i = game.person.road_drag[-1]
 		var text := Latin.t("Via: %d  ·  Lapis %d" % [good, good * Defs.ROAD_COST[Defs.Res.STONE]])
 		var at := Iso.to_screen(Vector2(last) + Vector2(0.5, 0.5)) + Vector2(-100, -12)
 		draw_string_outline(Latin.FONT, at, text, HORIZONTAL_ALIGNMENT_CENTER, 200, 9, 4, Color(0, 0, 0, 0.8))
@@ -110,13 +110,13 @@ func _draw_road_ghost() -> void:
 
 
 func _draw_ghost() -> void:
-	var def: Dictionary = Defs.BUILDINGS[game.placing]
-	var tile: Vector2i = game.placing_tile()
-	var ok: bool = game.placement.error(game.placing, tile) == ""
+	var def: Dictionary = Defs.BUILDINGS[game.person.placing]
+	var tile: Vector2i = game.person.placing_tile()
+	var ok: bool = game.sim.placement.error(game.person.placing, tile) == ""
 	var tint := Color(0.35, 1, 0.35) if ok else Color(1, 0.3, 0.3)
 	var pts := _diamond(Vector2(tile), Vector2(def["size"]))
 	draw_colored_polygon(pts, Color(tint, 0.35))
 	pts.append(pts[0])
 	draw_polyline(pts, Color(tint, 0.95), 1.0)
 	var origin := Iso.to_screen_on(Vector2(tile + def["size"]), Iso.level_of(tile)).round()
-	draw_texture(Art.tex(Building.look_key(game.placing)), origin - Art.building_anchor(Building.look_key(game.placing)), Color(1, 1, 1, 0.6))
+	draw_texture(Art.tex(Building.look_key(game.person.placing, game.era)), origin - Art.building_anchor(Building.look_key(game.person.placing, game.era)), Color(1, 1, 1, 0.6))

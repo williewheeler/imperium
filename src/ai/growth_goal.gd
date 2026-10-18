@@ -49,13 +49,13 @@ func _build(hubs: Array[Building]) -> void:
 	if villagers.size() < 3:
 		return
 	var queued := 0
-	for b: Building in ai.game.buildings:
+	for b: Building in ai.sim.buildings:
 		if b.owner == ai.owner:
 			queued += b.train_queue.size()
-	var headroom := ai.game.pop_cap(ai.owner) - ai.game.pop_used(ai.owner) - queued
+	var headroom := ai.sim.economy.pop_cap(ai.owner) - ai.sim.economy.pop_used(ai.owner) - queued
 	var home := hubs[_round % hubs.size()]
-	var capped := ai.game.pop_cap(ai.owner) >= ai.game.pop_limit()  # no more houses will help
-	if not capped and (headroom < maxi(6, ai.game.pop_cap(ai.owner) / 8) or ai.need_housing):  # keep a tenth or so free: an army fills it fast
+	var capped := ai.sim.economy.pop_cap(ai.owner) >= ai.sim.economy.pop_limit()  # no more houses will help
+	if not capped and (headroom < maxi(6, ai.sim.economy.pop_cap(ai.owner) / 8) or ai.need_housing):  # keep a tenth or so free: an army fills it fast
 		_round += 1
 		_house(home)
 		return
@@ -71,12 +71,12 @@ func _build(hubs: Array[Building]) -> void:
 		if here < clampi(villagers.size() / hubs.size() / 12 + short_of_food, 1, 4):
 			if ai.place("farm", t.center(), 4, 2, 30):
 				return
-	if ai.game.era_of(ai.owner) >= 1 and int(ai.stock()[Defs.Res.GOLD]) < 250 and ai.mine_of(["vineyard", "large_vineyard"]).size() < hubs.size():
+	if ai.sim.era_of(ai.owner) >= 1 and int(ai.stock()[Defs.Res.GOLD]) < 250 and ai.mine_of(["vineyard", "large_vineyard"]).size() < hubs.size():
 		ai.place("vineyard", home.center(), 4, 2, 30)  # wine is sold: it brings in gold
 
 
 func _house(home: Building) -> void:
-	if ai.game.era_of(ai.owner) >= 1:
+	if ai.sim.era_of(ai.owner) >= 1:
 		if int(ai.stock()[Defs.Res.STONE]) >= 260 and ai.mine("aqueduct").size() < 2 and ai.place("aqueduct", home.center(), 4):
 			return  # fresh water lets a bigger town live here
 		ai.place("house", home.center(), 3)

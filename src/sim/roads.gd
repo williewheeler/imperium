@@ -2,7 +2,7 @@ class_name Roads
 extends RefCounted
 ## Paved roads: the tiles planned for paving (paid for, waiting for a villager) and who is working on each.
 
-var game  # Main
+var sim: Simulation
 var plans := {}  # Vector2i -> Unit or null: tiles queued for paving, and who is on the job
 
 
@@ -31,9 +31,9 @@ static func line(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 
 ## Empty if `owner` can have a paved road laid on `p`, otherwise the reason it can't.
 func tile_error(p: Vector2i, owner := 0) -> String:
-	if not game.fog_of(owner).is_explored(p):
+	if not sim.fog_of(owner).is_explored(p):
 		return "err.unexplored"
-	if not game.map.can_pave(p) or game.placement.building_at(p) != null:
+	if not sim.map.can_pave(p) or sim.placement.building_at(p) != null:
 		return "err.need_level"
 	if plans.has(p):
 		return "err.spot_taken"
@@ -49,7 +49,7 @@ func assign_work(u: Unit) -> bool:
 	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(u.pos) < Vector2(b).distance_squared_to(u.pos))
 	for p in candidates:
 		release(u)
-		if game.orders.set_path(u, p):
+		if sim.orders.set_path(u, p):
 			plans[p] = u
 			u.road_tile = p
 			u.state = Unit.State.ROAD_GO
@@ -68,8 +68,8 @@ func release(u: Unit) -> void:
 ## `u` has paved its tile: make it a road, and on to the next one.
 func finish_tile(u: Unit) -> void:
 	var p := u.road_tile
-	if game.map.make_paved(p) and game._world != null:
-		game._world.road_changed(p)
+	if sim.map.make_paved(p):
+		sim.road_changed.emit(p)
 	plans.erase(p)
 	u.road_tile = Vector2i(-1, -1)
 	if not assign_work(u):

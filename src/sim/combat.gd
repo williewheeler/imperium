@@ -22,14 +22,14 @@ const BURN_AT := 0.4  # a building at or below this share of its health catches 
 const FIRE_RATE := 0.015  # share of its full health a burning building loses each second
 const TARGET_MARK := 0.9  # seconds an enemy stays ringed in red after we order an attack on it
 
-var game  # Main
+var sim: Simulation
 var projectiles: Array[Dictionary] = []  # shots in flight: {from, target, attacker, damage, t, dur}
 var kills := 0  # how many units have died (for tests and reports)
 var _graveyard: Array[Unit] = []  # the dead, removed from the game at the end of the frame
 
 
-func _init(p_game) -> void:
-	game = p_game
+func _init(p_sim) -> void:
+	sim = p_sim
 
 
 # ---------------------------------------------------------------- rules
@@ -70,7 +70,7 @@ static func hostile(a: Unit, b: Unit) -> bool:
 
 ## Can `owner`'s people see `t` right now?
 func can_see(owner: int, t: Unit) -> bool:
-	return game.fog_of(owner).is_visible_now(Vector2i(t.pos))
+	return sim.fog_of(owner).is_visible_now(Vector2i(t.pos))
 
 
 ## The enemy `u` would go for within `radius` tiles that its people can see: the nearest, with fighters
@@ -79,7 +79,7 @@ func nearest_enemy(u: Unit, radius: float) -> Unit:
 	var best: Unit = null
 	var best_score := INF
 	var r2 := radius * radius
-	for t: Unit in game.units:
+	for t: Unit in sim.units:
 		if t.dead or t.owner == u.owner:
 			continue
 		var d2 := u.pos.distance_squared_to(t.pos)
@@ -99,8 +99,8 @@ func nearest_enemy(u: Unit, radius: float) -> Unit:
 func nearest_enemy_building(u: Unit, radius: float) -> Building:
 	var best: Building = null
 	var best_d := radius
-	var seen: Fog = game.fog_of(u.owner)
-	for b: Building in game.buildings:
+	var seen: Fog = sim.fog_of(u.owner)
+	for b: Building in sim.buildings:
 		if b.owner == u.owner or not b.attackable() or not seen.is_explored(Vector2i(b.center())):
 			continue
 		var d := rect_distance(u.pos, b.rect())
@@ -122,7 +122,7 @@ static func rect_distance(p: Vector2, r: Rect2i) -> float:
 func order_attack_building(u: Unit, b: Building, auto := false) -> void:
 	if not fights(u) or b == null or not b.attackable() or b.owner == u.owner:
 		return
-	game.roads.release(u)
+	sim.roads.release(u)
 	u.dropoff_only = false
 	u.target_building = null
 	u.target = null
@@ -139,7 +139,7 @@ func order_attack_building(u: Unit, b: Building, auto := false) -> void:
 func order_attack(u: Unit, t: Unit, auto := false) -> void:
 	if not fights(u) or t == null or t.dead or t.owner == u.owner:
 		return
-	game.roads.release(u)
+	sim.roads.release(u)
 	u.dropoff_only = false
 	u.target_building = null
 	u.atk_building = null
@@ -159,9 +159,9 @@ func order_attack(u: Unit, t: Unit, auto := false) -> void:
 ## Attack-move: walk to `goal` (a tile), fighting whatever is met on the way.
 func order_attack_move(u: Unit, goal: Vector2i) -> void:
 	if not fights(u):
-		game.orders.move(u, goal)
+		sim.orders.move(u, goal)
 		return
-	game.orders.move(u, goal)
+	sim.orders.move(u, goal)
 	u.amove = true
 	u.amove_goal = Vector2(goal) + Vector2(0.5, 0.5)
 
@@ -233,7 +233,7 @@ func update_fight(u: Unit, delta: float) -> void:
 		u.atk_t = 0.0
 		u.struck = false
 		return
-	game._face(u, t.pos)
+	sim.movement.face(u, t.pos)
 	u.atk_t += delta
 	var s := stats(u)
 	var cooldown := float(s["cooldown"])
@@ -248,7 +248,7 @@ func update_fight(u: Unit, delta: float) -> void:
 ## A unit attacking a building: walks up to it, then strikes it on the usual cycle.
 func _update_siege(u: Unit, delta: float) -> void:
 	var b := u.atk_building
-	if b == null or b.dead or not game.buildings.has(b):
+	if b == null or b.dead or not sim.buildings.has(b):
 		_after_kill(u)
 		return
 	var d := rect_distance(u.pos, b.rect())
@@ -260,18 +260,18 @@ func _update_siege(u: Unit, delta: float) -> void:
 			u.struck = false
 		else:
 			if u.path.is_empty():
-				var stand: Vector2i = game.map.stand_tile(b.rect(), u.pos)
-				if stand.x < 0 or not game.orders.set_path(u, stand):
+				var stand: Vector2i = sim.map.stand_tile(b.rect(), u.pos)
+				if stand.x < 0 or not sim.orders.set_path(u, stand):
 					_give_up(u)
 					return
-			game._follow(u, delta)
+			sim.movement.follow(u, delta)
 			return
 	if d > reach(u) * 1.3:
 		u.state = Unit.State.ATTACK_GO
 		u.atk_t = 0.0
 		u.struck = false
 		return
-	game._face(u, b.center())
+	sim.movement.face(u, b.center())
 	u.atk_t += delta
 	var cooldown := float(stats(u)["cooldown"])
 	if not u.struck and u.atk_t >= cooldown * (STRIKE_RANGED if is_ranged(u) else STRIKE_MELEE):
@@ -292,7 +292,7 @@ func hurt_building(b: Building, amount: float, _attacker: Unit) -> void:
 	b.hp -= amount
 	b.bar_t = BAR_TIME
 	if b.hp <= 0.0:
-		game.destroy_building(b)
+		sim.destroy_building(b)
 	elif b.hp <= b.max_hp() * BURN_AT:
 		b.burning = true
 
@@ -300,14 +300,14 @@ func hurt_building(b: Building, amount: float, _attacker: Unit) -> void:
 ## Burning buildings lose health until they fall. Called every frame.
 func update_buildings(delta: float) -> void:
 	var fallen: Array[Building] = []
-	for b: Building in game.buildings:
+	for b: Building in sim.buildings:
 		b.bar_t = maxf(0.0, b.bar_t - delta)
 		if b.burning and not b.dead:
 			b.hp -= b.max_hp() * FIRE_RATE * delta
 			if b.hp <= 0.0:
 				fallen.append(b)
 	for b in fallen:
-		game.destroy_building(b)
+		sim.destroy_building(b)
 
 
 ## Sets `b` alight now (a people that has fallen: its buildings burn down).
@@ -322,13 +322,13 @@ func _move_toward(u: Unit, aim: Vector2, delta: float) -> void:
 	var goal := Vector2i(aim)
 	if u.path.is_empty() or (u.repath_t <= 0.0 and u.path.back().distance_to(aim) > 1.2):
 		u.repath_t = 0.5
-		if not game.orders.set_path(u, goal):
+		if not sim.orders.set_path(u, goal):
 			u.repath_t = 1.0
 			u.lost_for += 0.5  # no way to it: a target across the water is soon given up
 			if u.lost_for > GIVE_UP:
 				_give_up(u)
 			return
-	game._follow(u, delta)
+	sim.movement.follow(u, delta)
 
 
 func _strike(u: Unit, t: Unit) -> void:
@@ -365,14 +365,14 @@ func _die(u: Unit) -> void:
 	u.dead = true
 	u.selected = false
 	u.state = Unit.State.IDLE
-	game.roads.release(u)
+	sim.roads.release(u)
 	_graveyard.append(u)
 	kills += 1
 
 
 ## A villager that has gone into a building for good: out of the game, with nothing to show.
 func absorb(u: Unit) -> void:
-	game.roads.release(u)
+	sim.roads.release(u)
 	u.selected = false
 	u.state = Unit.State.IDLE
 	u.dead = true
@@ -390,7 +390,7 @@ func flush_dead() -> void:
 	if _graveyard.is_empty():
 		return
 	for u in _graveyard:
-		game.units.erase(u)
+		sim.units.erase(u)
 	_graveyard.clear()
 
 
@@ -416,7 +416,7 @@ func _resume(u: Unit) -> void:
 	u.target = null
 	u.path.clear()
 	if u.amove and u.amove_goal != Vector2.INF and u.pos.distance_to(u.amove_goal) > 1.0:
-		if game.orders.set_path(u, Vector2i(u.amove_goal)):
+		if sim.orders.set_path(u, Vector2i(u.amove_goal)):
 			u.state = Unit.State.MOVE
 			return
 	u.amove = false
@@ -432,13 +432,13 @@ func _give_up(u: Unit) -> void:
 
 ## A villager that is hit runs for the nearest of its own town centers (or just away from whoever hit it).
 func _flee(v: Unit, from: Unit) -> void:
-	game.roads.release(v)
+	sim.roads.release(v)
 	v.dropoff_only = false
 	v.target_building = null
 	v.flee_t = FLEE_TIME
 	var home: Building = null
 	var best := INF
-	for b: Building in game.buildings:
+	for b: Building in sim.buildings:
 		if b.owner == v.owner and b.complete and b.kind in Defs.HUBS:
 			var d := v.pos.distance_squared_to(b.center())
 			if d < best:
@@ -446,18 +446,18 @@ func _flee(v: Unit, from: Unit) -> void:
 				home = b
 	var goal := Vector2i(-1, -1)
 	if home != null:
-		goal = game.map.stand_tile(home.rect(), v.pos)
+		goal = sim.map.stand_tile(home.rect(), v.pos)
 	else:
 		var away := (v.pos - from.pos).normalized() * 10.0
-		goal = Vector2i((v.pos + away).clamp(Vector2(1, 1), Vector2(game.map.w - 2, game.map.h - 2)))
-	if goal.x >= 0 and game.orders.set_path(v, goal):
+		goal = Vector2i((v.pos + away).clamp(Vector2(1, 1), Vector2(sim.map.w - 2, sim.map.h - 2)))
+	if goal.x >= 0 and sim.orders.set_path(v, goal):
 		v.state = Unit.State.FLEE
 
 
 ## A fleeing villager runs until it gets there or the time is up.
 func update_flee(u: Unit, delta: float) -> void:
 	u.flee_t -= delta
-	if game._follow(u, delta) or u.flee_t <= 0.0:
+	if sim.movement.follow(u, delta) or u.flee_t <= 0.0:
 		u.path.clear()
 		u.state = Unit.State.IDLE
 

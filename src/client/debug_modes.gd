@@ -3,6 +3,9 @@ extends RefCounted
 ## The command-line scenes: `--demo`, `--showcase`, `--skirmish`, `--town` and the other debug flags that set a
 ## game up for a screenshot, a recording or a headless check. None of it is part of the rules.
 
+## The flags that change the game itself (the others only move the camera, the weather and the selection).
+const SCENE_FLAGS := ["buildout", "builds", "burn", "cycle", "demo", "dock", "era", "jupiter", "reveal", "rich", "ring", "showcase", "skirmish", "town"]
+
 var game: Main
 var show_on := false  # --showcase: a scripted run that plays like a person would, for recording
 var skirmish_look := Vector2.INF  # --skirmish: where the camera goes
@@ -16,9 +19,12 @@ var _show_newcomer_jobs: Array = []  # jobs for the villagers the Forum trains, 
 
 ## Sets the scene the flags in `args` ask for, once the world is built. `start` is where the first town stands.
 func apply(args: Dictionary, start: Vector2i) -> void:
+	for flag: String in SCENE_FLAGS:  # these put things into the game that no command did: a replay of it would not be the same game
+		if args.has(flag):
+			game.sim.taint("--" + flag)
 	if args.has("rich") or args.has("buildout") or args.has("town") or args.has("demo") or args.has("showcase") or args.has("builds") or args.has("era") or args.has("cycle"):
 		for i in 4:
-			game.stocks[0][i] = 1000  # the real game starts with nothing in store: scenes for looking at things do not
+			game.sim.stocks[0][i] = 1000  # the real game starts with nothing in store: scenes for looking at things do not
 	if args.has("demo"):
 		run_demo(start)
 	if args.has("weather"):  # debug: start in a given weather (clear, cloudy, fog, rain, storm), fully developed
@@ -30,32 +36,32 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 		game.weather.fog = look["fog"]
 		game.weather.flash = 1.0 if args.has("flash") else 0.0
 	if args.has("zoom"):  # debug: physical pixels per art pixel
-		game.zoom_px = int(args["zoom"])
-		game._apply_zoom()
+		game.rig.zoom_px = int(args["zoom"])
+		game.rig.apply_zoom()
 	if args.has("era"):
 		game.era = int(args["era"])
 	if args.has("cycle"):  # debug: press E this many times at startup
 		for i in int(args["cycle"]):
 			game.era_preview.cycle(1)
 	if args.has("select") and args.has("cycle"):  # selection was cleared by the era jump
-		for u in game.units:
+		for u in game.sim.units:
 			u.selected = u.kind == "villager"
 	if args.has("look"):  # debug: aim the camera this many tiles (x,y) from the Forum
 		var off := String(args["look"]).split(",")
-		game.cam_pos = Iso.to_screen(game.buildings[0].center() + Vector2(float(off[0]), float(off[1])))
+		game.rig.pos = Iso.to_screen(game.sim.buildings[0].center() + Vector2(float(off[0]), float(off[1])))
 	if skirmish_look != Vector2.INF and not args.has("look"):
-		game.cam_pos = skirmish_look
+		game.rig.pos = skirmish_look
 	if args.has("reveal"):  # debug: start with the whole map laid open (M toggles it)
 		game.fog.set_show_all(true)
 	if args.has("forum"):
-		game.buildings[0].selected = true
+		game.sim.buildings[0].selected = true
 	if args.has("builds"):  # debug: buildings at several stages of construction
 		var specs := [["house", 0.3], ["storehouse", 0.65], ["hut", 0.5], ["house", 1.0]]
 		var offs := [Vector2i(-6, 2), Vector2i(4, 4), Vector2i(-3, 6), Vector2i(6, -2)]
 		for i in specs.size():
-			var spot := game.map.find_site(Defs.BUILDINGS[specs[i][0]]["size"], game.buildings[0].tile + offs[i], 0, 4, [])
+			var spot := game.sim.map.find_site(Defs.BUILDINGS[specs[i][0]]["size"], game.sim.buildings[0].tile + offs[i], 0, 4, [])
 			if spot.x >= 0:
-				var b := game._add_building(specs[i][0], spot, specs[i][1] >= 1.0)
+				var b := game.sim.add_building(specs[i][0], spot, specs[i][1] >= 1.0)
 				b.work = float(b.def()["build_time"]) * float(specs[i][1])
 	if args.has("skirmish"):  # debug: --skirmish=KIND:KIND (or just --skirmish): two small armies a few tiles apart, ours (purple) and the first AI's
 		var spec: Array = Array(str(args["skirmish"]).split(":")) if str(args["skirmish"]).contains(":") else ["soldier,spearman,slinger,horseman", "soldier,spearman,slinger,horseman"]
@@ -68,12 +74,12 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 				u.owner = side
 				u.display = true
 				u.pos = base + Vector2(side * float(args.get("gap", 6.5)), float(i) * 0.9 - 4.0)
-				game.units.append(u)
+				game.sim.units.append(u)
 		skirmish_look = Iso.to_screen(base + Vector2(float(args.get("gap", 6.5)) / 2.0, 0.0))
 	if args.has("select"):  # debug: --select selects all our people; --select=KIND,KIND:N only those kinds (N of each at most)
 		var counts := {}
 		var wanted := String(args["select"]).split(",", false)
-		for u in game.units:
+		for u in game.sim.units:
 			if u.owner != 0:
 				continue
 			if wanted.is_empty():
@@ -91,63 +97,63 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 			if not Defs.BUILDINGS.has(kind):
 				continue
 			var dir := Vector2.from_angle(float(i) * 2.399 + 0.4)  # round the Forum at the golden angle
-			var want := game.buildings[0].tile + Vector2i((dir * (7.0 + float(i % 4) * 3.0)).round())
-			var spot := game.map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8 + 2 * (Defs.BUILDINGS[kind]["size"] as Vector2i).x, [])
+			var want := game.sim.buildings[0].tile + Vector2i((dir * (7.0 + float(i % 4) * 3.0)).round())
+			var spot := game.sim.map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8 + 2 * (Defs.BUILDINGS[kind]["size"] as Vector2i).x, [])
 			if spot.x >= 0:
-				game._add_building(kind, spot, true)
+				game.sim.add_building(kind, spot, true)
 	if args.has("buildout"):  # debug: a built-up Era II town for screenshots: a worked farm, a Settlement, a City Center
-		var rects: Array = game.placement.rects()
+		var rects: Array = game.sim.placement.rects()
 		var avoid: Array[Vector2i] = []
 		var farm_site := Vector2i(-1, -1)
 		for off in [Vector2i(-17, 9), Vector2i(18, 10), Vector2i(-12, 20), Vector2i(8, 22), Vector2i(-24, -4)]:
 			if farm_site.x < 0:
-				farm_site = game.map.find_site(Vector2i(9, 9), start + off, 0, 24, avoid, rects)
+				farm_site = game.sim.map.find_site(Vector2i(9, 9), start + off, 0, 24, avoid, rects)
 		if farm_site.x >= 0:
-			var farm := game._add_building("farm", farm_site, true, 0)
+			var farm := game.sim.add_building("farm", farm_site, true, 0)
 			rects.append(farm.rect())
 			for p in farm.plot_tiles():
-				var plot: Deposit = game.map.deposits[p]
+				var plot: Deposit = game.sim.map.deposits[p]
 				plot.amount = plot.max_amount  # ripe
 			var plots := farm.plot_tiles()
 			for i in plots.size():  # a villager on each plot, working it
 				var v := Unit.new()
 				v.pos = Vector2(farm.granary_tile()) + Vector2(0.5 + float(i % 3) * 0.6, 2.4)
-				game.setup.assign_sex(v)
-				game.units.append(v)
-				game.orders.gather(v, plots[i])
-		var s_site: Vector2i = game.map.find_site(Vector2i(3, 3), start + Vector2i(16, -12), 0, 16, avoid, rects)
+				game.sim.setup.assign_sex(v)
+				game.sim.units.append(v)
+				game.sim.orders.gather(v, plots[i])
+		var s_site: Vector2i = game.sim.map.find_site(Vector2i(3, 3), start + Vector2i(16, -12), 0, 16, avoid, rects)
 		if s_site.x >= 0:
-			var settlement := game._add_building("settlement", s_site, true, 0)
+			var settlement := game.sim.add_building("settlement", s_site, true, 0)
 			rects.append(settlement.rect())
 			settlement.citizens = 9
-		var c_site: Vector2i = game.map.find_site(Vector2i(3, 3), start + Vector2i(-6, -19), 0, 16, avoid, rects)
+		var c_site: Vector2i = game.sim.map.find_site(Vector2i(3, 3), start + Vector2i(-6, -19), 0, 16, avoid, rects)
 		if c_site.x >= 0:
-			var city := game._add_building("settlement", c_site, true, 0)
+			var city := game.sim.add_building("settlement", c_site, true, 0)
 			city.citizens = 15
-			game.upgrade_building(city, "town_center")
+			game.sim.production.upgrade_building(city, "town_center")
 			city.citizens = 30
-			game.upgrade_building(city, "city_center")
+			game.sim.production.upgrade_building(city, "city_center")
 			rects.append(city.rect())
 		game.era_preview.cycle(1)
 	if args.has("select") and args.has("cycle"):  # selection was cleared by the era jump
-		for u in game.units:
+		for u in game.sim.units:
 			u.selected = u.kind == "villager"
 	if args.has("look"):  # debug: aim the camera this many tiles (x,y) from the Forum
 		var off := String(args["look"]).split(",")
-		game.cam_pos = Iso.to_screen(game.buildings[0].center() + Vector2(float(off[0]), float(off[1])))
+		game.rig.pos = Iso.to_screen(game.sim.buildings[0].center() + Vector2(float(off[0]), float(off[1])))
 	if skirmish_look != Vector2.INF and not args.has("look"):
-		game.cam_pos = skirmish_look
+		game.rig.pos = skirmish_look
 	if args.has("reveal"):  # debug: start with the whole map laid open (M toggles it)
 		game.fog.set_show_all(true)
 	if args.has("forum"):
-		game.buildings[0].selected = true
+		game.sim.buildings[0].selected = true
 	if args.has("builds"):  # debug: buildings at several stages of construction
 		var specs := [["house", 0.3], ["storehouse", 0.65], ["hut", 0.5], ["house", 1.0]]
 		var offs := [Vector2i(-6, 2), Vector2i(4, 4), Vector2i(-3, 6), Vector2i(6, -2)]
 		for i in specs.size():
-			var spot := game.map.find_site(Defs.BUILDINGS[specs[i][0]]["size"], game.buildings[0].tile + offs[i], 0, 4, [])
+			var spot := game.sim.map.find_site(Defs.BUILDINGS[specs[i][0]]["size"], game.sim.buildings[0].tile + offs[i], 0, 4, [])
 			if spot.x >= 0:
-				var b := game._add_building(specs[i][0], spot, specs[i][1] >= 1.0)
+				var b := game.sim.add_building(specs[i][0], spot, specs[i][1] >= 1.0)
 				b.work = float(b.def()["build_time"]) * float(specs[i][1])
 	if args.has("skirmish"):  # debug: --skirmish=KIND:KIND (or just --skirmish): two small armies a few tiles apart, ours (purple) and the first AI's
 		var spec: Array = Array(str(args["skirmish"]).split(":")) if str(args["skirmish"]).contains(":") else ["soldier,spearman,slinger,horseman", "soldier,spearman,slinger,horseman"]
@@ -160,12 +166,12 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 				u.owner = side
 				u.display = true
 				u.pos = base + Vector2(side * float(args.get("gap", 6.5)), float(i) * 0.9 - 4.0)
-				game.units.append(u)
+				game.sim.units.append(u)
 		skirmish_look = Iso.to_screen(base + Vector2(float(args.get("gap", 6.5)) / 2.0, 0.0))
 	if args.has("select"):  # debug: --select selects all our people; --select=KIND,KIND:N only those kinds (N of each at most)
 		var counts := {}
 		var wanted := String(args["select"]).split(",", false)
-		for u in game.units:
+		for u in game.sim.units:
 			if u.owner != 0:
 				continue
 			if wanted.is_empty():
@@ -183,125 +189,125 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 			if not Defs.BUILDINGS.has(kind):
 				continue
 			var dir := Vector2.from_angle(float(i) * 2.399 + 0.4)  # round the Forum at the golden angle
-			var want := game.buildings[0].tile + Vector2i((dir * (7.0 + float(i % 4) * 3.0)).round())
-			var spot := game.map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8 + 2 * (Defs.BUILDINGS[kind]["size"] as Vector2i).x, [])
+			var want := game.sim.buildings[0].tile + Vector2i((dir * (7.0 + float(i % 4) * 3.0)).round())
+			var spot := game.sim.map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8 + 2 * (Defs.BUILDINGS[kind]["size"] as Vector2i).x, [])
 			if spot.x >= 0:
-				game._add_building(kind, spot, true)
+				game.sim.add_building(kind, spot, true)
 	if args.has("buildout"):  # debug: a built-up Era II town for screenshots: a worked farm, a Settlement, a City Center
-		var rects: Array = game.placement.rects()
+		var rects: Array = game.sim.placement.rects()
 		var avoid: Array[Vector2i] = []
 		var farm_site := Vector2i(-1, -1)
 		for off in [Vector2i(-17, 9), Vector2i(18, 10), Vector2i(-12, 20), Vector2i(8, 22), Vector2i(-24, -4)]:
 			if farm_site.x < 0:
-				farm_site = game.map.find_site(Vector2i(9, 9), start + off, 0, 24, avoid, rects)
+				farm_site = game.sim.map.find_site(Vector2i(9, 9), start + off, 0, 24, avoid, rects)
 		if farm_site.x >= 0:
-			var farm := game._add_building("farm", farm_site, true, 0)
+			var farm := game.sim.add_building("farm", farm_site, true, 0)
 			rects.append(farm.rect())
 			for p in farm.plot_tiles():
-				var plot: Deposit = game.map.deposits[p]
+				var plot: Deposit = game.sim.map.deposits[p]
 				plot.amount = plot.max_amount  # ripe
 			var plots := farm.plot_tiles()
 			for i in plots.size():  # a villager on each plot, working it
 				var v := Unit.new()
 				v.pos = Vector2(farm.granary_tile()) + Vector2(0.5 + float(i % 3) * 0.6, 2.4)
-				game.setup.assign_sex(v)
-				game.units.append(v)
-				game.orders.gather(v, plots[i])
-		var s_site: Vector2i = game.map.find_site(Vector2i(3, 3), start + Vector2i(16, -12), 0, 16, avoid, rects)
+				game.sim.setup.assign_sex(v)
+				game.sim.units.append(v)
+				game.sim.orders.gather(v, plots[i])
+		var s_site: Vector2i = game.sim.map.find_site(Vector2i(3, 3), start + Vector2i(16, -12), 0, 16, avoid, rects)
 		if s_site.x >= 0:
-			var settlement := game._add_building("settlement", s_site, true, 0)
+			var settlement := game.sim.add_building("settlement", s_site, true, 0)
 			rects.append(settlement.rect())
 			settlement.citizens = 9
-		var c_site: Vector2i = game.map.find_site(Vector2i(3, 3), start + Vector2i(-6, -19), 0, 16, avoid, rects)
+		var c_site: Vector2i = game.sim.map.find_site(Vector2i(3, 3), start + Vector2i(-6, -19), 0, 16, avoid, rects)
 		if c_site.x >= 0:
-			var city := game._add_building("settlement", c_site, true, 0)
+			var city := game.sim.add_building("settlement", c_site, true, 0)
 			city.citizens = 15
-			game.upgrade_building(city, "town_center")
+			game.sim.production.upgrade_building(city, "town_center")
 			city.citizens = 30
-			game.upgrade_building(city, "city_center")
+			game.sim.production.upgrade_building(city, "city_center")
 			rects.append(city.rect())
-		var j_site: Vector2i = game.map.find_site(Vector2i(5, 5), start + Vector2i(4, -14), 0, 16, avoid, rects)
+		var j_site: Vector2i = game.sim.map.find_site(Vector2i(5, 5), start + Vector2i(4, -14), 0, 16, avoid, rects)
 		if args.has("jupiter") and j_site.x >= 0:  # --jupiter: the great temple, beside the City Center
-			rects.append(game._add_building("jupiter", j_site, true, 0).rect())
+			rects.append(game.sim.add_building("jupiter", j_site, true, 0).rect())
 		game.era_preview.cycle(1)  # Era II, and its town dressed round what was put up
 		var focus := [Vector2(start)]  # the camera looks at the middle of all that was put up
-		for b in game.buildings:
+		for b in game.sim.buildings:
 			if b.owner == 0 and b.kind in ["farm", "settlement", "city_center"]:
 				focus.append(b.center())
 		var mid := Vector2.ZERO
 		for f in focus:
 			mid += f
-		game.cam_pos = Iso.to_screen(mid / float(focus.size()))
-		skirmish_look = game.cam_pos
+		game.rig.pos = Iso.to_screen(mid / float(focus.size()))
+		skirmish_look = game.rig.pos
 	if args.has("burn"):  # debug: buildings at stages of damage, the last few burning, one just fallen (use with --town)
 		var shares := [0.85, 0.6, 0.38, 0.25, 0.12, 0.05]
 		var i := 0
-		for b in game.buildings:
+		for b in game.sim.buildings:
 			if b.owner == 0 and b.attackable() and b.complete:
 				b.hp = b.max_hp() * float(shares[i % shares.size()])
 				b.bar_t = 99.0
 				b.burning = b.hp <= b.max_hp() * Combat.BURN_AT
 				i += 1
-		for b in game.buildings:
+		for b in game.sim.buildings:
 			if b.owner == 0 and b.kind == "castra":
-				game.destroy_building(b)  # the barracks has just burned down
+				game.sim.destroy_building(b)  # the barracks has just burned down
 				if not args.has("look"):
-					game.cam_pos = Iso.to_screen(b.center())  # and the camera looks at it
-					skirmish_look = game.cam_pos
+					game.rig.pos = Iso.to_screen(b.center())  # and the camera looks at it
+					skirmish_look = game.rig.pos
 				break
 	if args.has("dock"):  # debug: a dock on the nearest shore, a boat, and a school of fish off it
 		game.fog.reveal(Vector2(start), 300.0)
 		var found := Vector2i(-1, -1)
 		for r in range(4, 160):
-			for p in game.map.ring(start, r):
-				if found.x < 0 and game.placement.error("dock", p, 0) in ["", "err.cant_afford"]:
+			for p in game.sim.map.ring(start, r):
+				if found.x < 0 and game.sim.placement.error("dock", p, 0) in ["", "err.cant_afford"]:
 					found = p
 			if found.x >= 0:
 				break
 		if found.x >= 0:
-			var dock := game._add_building("dock", found, true, 0)
-			var wet := game.map.water_next_to(dock.rect(), dock.center())
+			var dock := game.sim.add_building("dock", found, true, 0)
+			var wet := game.sim.map.water_next_to(dock.rect(), dock.center())
 			var boat := Unit.new()
 			boat.kind = "fishing_boat"
 			boat.pos = Vector2(wet) + Vector2(0.5, 0.5)
-			game.units.append(boat)
+			game.sim.units.append(boat)
 			for r in range(3, 8):
-				for p in game.map.ring(wet, r):
-					if game.map.is_water(p) and not game.map.deposits.has(p) and (p.x * 7 + p.y * 3) % 11 == 0:
+				for p in game.sim.map.ring(wet, r):
+					if game.sim.map.is_water(p) and not game.sim.map.deposits.has(p) and (p.x * 7 + p.y * 3) % 11 == 0:
 						var school := Deposit.new(Defs.Res.FOOD, Defs.FISH_AMOUNT)
 						school.fish = true
 						school.herd = true
 						school.home = p
-						game.map.deposits[p] = school
-						game.map.herds.append(p)
+						game.sim.map.deposits[p] = school
+						game.sim.map.herds.append(p)
 			var fisher := Unit.new()  # a second boat, out at the fish
 			fisher.kind = "fishing_boat"
-			for p in game.map.herds:
-				var d: Deposit = game.map.deposits.get(p)
-				if d != null and d.fish and not game.map.is_water(Vector2i(-1, -1)):
+			for p in game.sim.map.herds:
+				var d: Deposit = game.sim.map.deposits.get(p)
+				if d != null and d.fish and not game.sim.map.is_water(Vector2i(-1, -1)):
 					fisher.pos = Vector2(p) + Vector2(2.5, 1.5)
-					if not game.map.is_water(Vector2i(fisher.pos)):
+					if not game.sim.map.is_water(Vector2i(fisher.pos)):
 						fisher.pos = Vector2(p) + Vector2(0.5, 0.5)
-					game.units.append(fisher)
-					game.orders.gather(fisher, p)
+					game.sim.units.append(fisher)
+					game.sim.orders.gather(fisher, p)
 					break
-			game.cam_pos = Iso.to_screen(dock.center())
-			skirmish_look = game.cam_pos
+			game.rig.pos = Iso.to_screen(dock.center())
+			skirmish_look = game.rig.pos
 			dock.selected = true
 	if args.has("selectb"):  # debug: select the first building of this kind (to look at its command bar)
-		for b in game.buildings:
+		for b in game.sim.buildings:
 			if b.kind == str(args["selectb"]) and b.complete:
 				b.selected = true
-				game.cam_pos = Iso.to_screen(b.center())  # and the camera looks at it
-				skirmish_look = game.cam_pos
+				game.rig.pos = Iso.to_screen(b.center())  # and the camera looks at it
+				skirmish_look = game.rig.pos
 				break
 	if args.has("ring"):  # debug: villagers standing around the Forum's walls, to check drawing order
-		var r := game.buildings[0].rect()
+		var r := game.sim.buildings[0].rect()
 		var spots := [Vector2(r.position.x + 0.6, r.end.y + 0.5), Vector2(r.position.x + 1.6, r.end.y + 0.5),
 			Vector2(r.end.x + 0.5, r.position.y + 1.6), Vector2(r.end.x + 0.5, r.position.y + 0.6),
 			Vector2(r.position.x - 0.5, r.position.y + 1.5)]
-		for i in game.units.size():
-			game.units[i].pos = spots[i]
+		for i in game.sim.units.size():
+			game.sim.units[i].pos = spots[i]
 	if args.has("showcase"):
 		_show_duration = float(args.get("duration", 60.0))
 		showcase_setup()
@@ -309,13 +315,13 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 
 
 func report_text() -> String:
-	var lines: Array[String] = ["stock=%s" % [game.stock], "buildings lost=%d kills=%d defeated=%s winner=%d" % [game.buildings_lost, game.combat.kills, game.victory.defeated.keys(), game.victory.winner]]
-	for ai: AI in game.ais:
+	var lines: Array[String] = ["stock=%s" % [game.sim.stock_of(Main.LOCAL)], "buildings lost=%d kills=%d defeated=%s winner=%d" % [game.sim.buildings_lost, game.sim.combat.kills, game.sim.victory.defeated.keys(), game.sim.victory.winner]]
+	for ai: AI in game.sim.ais:
 		var sm := ai.summary()
 		lines.append("AI %d: era=%d towns=%d explored=%d%% villagers=%d army=%d buildings=%d pop=%d/%d status=%s wave=%d" % [ai.owner, sm["era"], sm["towns"], int(float(sm["explored"]) * 100.0), sm["villagers"], sm["army"], sm["buildings"], sm["pop"], sm["cap"], sm["status"], ai.wave.size()])
-	for u in game.units:
+	for u in game.sim.units:
 		lines.append("unit pos=(%.2f, %.2f) state=%s carry=%d" % [u.pos.x, u.pos.y, Unit.State.keys()[u.state], u.carry])
-	for b in game.buildings:
+	for b in game.sim.buildings:
 		lines.append("building %s complete=%s queue=%d" % [b.kind, b.complete, b.train_queue.size()])
 	return "\n".join(lines)
 
@@ -324,35 +330,35 @@ func report_text() -> String:
 ## field and huts, till the field, and the Forum trains new villagers. Only Era I things.
 func showcase_setup() -> void:
 	show_on = true
-	game.zoom_px = 3
-	game._apply_zoom()
-	var tc := game.buildings[0]
+	game.rig.zoom_px = 3
+	game.rig.apply_zoom()
+	var tc := game.sim.buildings[0]
 	var forum := tc.center()
 	# each villager gets a standing job; when they go idle they're sent back to it
-	var chop := func(u: Unit) -> void: game.orders.gather(u, _show_pick(Defs.Res.WOOD, forum, 12.0, u.pos))
-	var forage := func(u: Unit) -> void: game.orders.gather(u, _show_pick(Defs.Res.FOOD, forum, 16.0, u.pos))
-	var mine := func(u: Unit) -> void: game.orders.gather(u, _show_pick(Defs.Res.STONE, forum, 18.0, u.pos))
+	var chop := func(u: Unit) -> void: game.sim.orders.gather(u, _show_pick(Defs.Res.WOOD, forum, 12.0, u.pos))
+	var forage := func(u: Unit) -> void: game.sim.orders.gather(u, _show_pick(Defs.Res.FOOD, forum, 16.0, u.pos))
+	var mine := func(u: Unit) -> void: game.sim.orders.gather(u, _show_pick(Defs.Res.STONE, forum, 18.0, u.pos))
 	var till := func(u: Unit) -> void:
 		if _show_farm != null and _show_farm.complete:
-			game.orders.gather(u, _show_farm.field_tile())
+			game.sim.orders.gather(u, _show_farm.field_tile())
 		else:
 			chop.call(u)
-	_show_jobs[game.units[0]] = chop
-	_show_jobs[game.units[1]] = chop
-	_show_jobs[game.units[2]] = forage
-	_show_jobs[game.units[3]] = mine
-	for u in game.units:
+	_show_jobs[game.sim.units[0]] = chop
+	_show_jobs[game.sim.units[1]] = chop
+	_show_jobs[game.sim.units[2]] = forage
+	_show_jobs[game.sim.units[3]] = mine
+	for u in game.sim.units:
 		u.selected = true  # shows the command bar at the start
 	_show_events = [
 		[0.3, func() -> void: _show_start_field()],
 		[0.4, func() -> void: _show_train()],
-		[5.0, func() -> void: game._clear_selection()],
-		[18.0, func() -> void: _show_hut(game.units[0], chop)],
+		[5.0, func() -> void: game.person.clear_selection()],
+		[18.0, func() -> void: _show_hut(game.sim.units[0], chop)],
 		[26.0, func() -> void: _show_train()],
-		[40.0, func() -> void: _show_hut(game.units[1], chop)],
+		[40.0, func() -> void: _show_hut(game.sim.units[1], chop)],
 		[44.0, func() -> void: _show_train()],
 	]
-	_show_jobs[game.units[4]] = till
+	_show_jobs[game.sim.units[4]] = till
 	_show_newcomer_jobs = [till, chop, forage]
 
 
@@ -360,16 +366,16 @@ func showcase_setup() -> void:
 func _show_pick(kind: int, center: Vector2, max_dist: float, from: Vector2) -> Vector2i:
 	var best := Vector2i(-1, -1)
 	var best_d := INF
-	for p: Vector2i in game.map.deposits:
-		var d: Deposit = game.map.deposits[p]
+	for p: Vector2i in game.sim.map.deposits:
+		var d: Deposit = game.sim.map.deposits[p]
 		if d.kind != kind or d.farm:
 			continue
 		var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(from)
 		if (Vector2(p) + Vector2(0.5, 0.5)).distance_to(center) > max_dist or dist >= best_d:
 			continue
-		if game.building_under(Iso.to_screen(Vector2(p) + Vector2(0.5, 0.5))) != null:
+		if game.person.building_under(Iso.to_screen(Vector2(p) + Vector2(0.5, 0.5))) != null:
 			continue
-		if game.map.find_path(Vector2i(from), game.map.stand_tile(Rect2i(p, Vector2i.ONE), from)).is_empty():
+		if game.sim.map.find_path(Vector2i(from), game.sim.map.stand_tile(Rect2i(p, Vector2i.ONE), from)).is_empty():
 			continue
 		best_d = dist
 		best = p
@@ -380,10 +386,10 @@ func _show_pick(kind: int, center: Vector2, max_dist: float, from: Vector2) -> V
 ## +x runs down-right on screen, +y down-left) and takes the first that has room nearby.
 func _show_site(kind: String, offsets: Array) -> Vector2i:
 	var avoid: Array[Vector2i] = []
-	for u in game.units:
+	for u in game.sim.units:
 		avoid.append(Vector2i(u.pos))
 	for off: Vector2i in offsets:
-		var site := game.map.find_site(Defs.BUILDINGS[kind]["size"], game.buildings[0].tile + off, 0, 3, avoid)
+		var site := game.sim.map.find_site(Defs.BUILDINGS[kind]["size"], game.sim.buildings[0].tile + off, 0, 3, avoid)
 		if site.x >= 0:
 			return site
 	return Vector2i(-1, -1)
@@ -391,26 +397,26 @@ func _show_site(kind: String, offsets: Array) -> Vector2i:
 
 func _show_start_field() -> void:
 	var site := _show_site("farm", [Vector2i(5, -3), Vector2i(-4, 5), Vector2i(0, -6)])
-	if site.x < 0 or not game.can_afford(Defs.BUILDINGS["farm"]["cost"]):
+	if site.x < 0 or not game.sim.economy.can_afford(Defs.BUILDINGS["farm"]["cost"]):
 		return
-	game._pay(Defs.BUILDINGS["farm"]["cost"])
-	_show_farm = game._add_building("farm", site, false)
-	game.orders.build(game.units[4], _show_farm)
+	game.sim.economy.pay(Defs.BUILDINGS["farm"]["cost"])
+	_show_farm = game.sim.add_building("farm", site, false)
+	game.sim.orders.build(game.sim.units[4], _show_farm)
 
 
 func _show_train() -> void:
-	if game.can_afford(Defs.VILLAGER_COST) and game.has_pop_room():
-		game._pay(Defs.VILLAGER_COST)
-		game.buildings[0].train_queue.append("villager")
+	if game.sim.economy.can_afford(Defs.VILLAGER_COST) and game.sim.economy.has_pop_room():
+		game.sim.economy.pay(Defs.VILLAGER_COST)
+		game.sim.buildings[0].train_queue.append("villager")
 
 
 func _show_hut(builder: Unit, then: Callable) -> void:
-	var site := _show_site("hut", [Vector2i(-2, 5), Vector2i(-4, 3)] if builder == game.units[0] else [Vector2i(5, 1), Vector2i(4, -5)])
-	if site.x < 0 or not game.can_afford(Defs.BUILDINGS["hut"]["cost"]):
+	var site := _show_site("hut", [Vector2i(-2, 5), Vector2i(-4, 3)] if builder == game.sim.units[0] else [Vector2i(5, 1), Vector2i(4, -5)])
+	if site.x < 0 or not game.sim.economy.can_afford(Defs.BUILDINGS["hut"]["cost"]):
 		return
-	game._pay(Defs.BUILDINGS["hut"]["cost"])
-	var hut := game._add_building("hut", site, false)
-	game.orders.build(builder, hut)  # when they finish they go idle and return to their job
+	game.sim.economy.pay(Defs.BUILDINGS["hut"]["cost"])
+	var hut := game.sim.add_building("hut", site, false)
+	game.sim.orders.build(builder, hut)  # when they finish they go idle and return to their job
 
 
 func showcase_update(delta: float) -> void:
@@ -419,20 +425,20 @@ func showcase_update(delta: float) -> void:
 	_show_t += delta
 	while not _show_events.is_empty() and _show_events[0][0] <= _show_t:
 		_show_events.pop_front()[1].call()
-	for u in game.units:  # newly trained villagers get the next job on the list
+	for u in game.sim.units:  # newly trained villagers get the next job on the list
 		if not _show_jobs.has(u):
 			_show_jobs[u] = _show_newcomer_jobs.pop_front() if not _show_newcomer_jobs.is_empty() else _show_jobs.values()[0]
 	for u: Unit in _show_jobs.keys():
 		if u.state == Unit.State.IDLE and _show_t > 1.0:
 			_show_jobs[u].call(u)
 	# the camera drifts gently to keep the action centerd
-	var focus := game.buildings[0].center()
+	var focus := game.sim.buildings[0].center()
 	var n := 1.0
-	for u in game.units:
-		if u.pos.distance_to(game.buildings[0].center()) < 12.0:
+	for u in game.sim.units:
+		if u.pos.distance_to(game.sim.buildings[0].center()) < 12.0:
 			focus += u.pos
 			n += 1.0
-	game.cam_pos = game.cam_pos.lerp(Iso.to_screen(focus / n), 1.0 - exp(-delta * 0.6)) if _show_t > 1.0 else game.cam_pos
+	game.rig.pos = game.rig.pos.lerp(Iso.to_screen(focus / n), 1.0 - exp(-delta * 0.6)) if _show_t > 1.0 else game.rig.pos
 	if _show_t >= _show_duration:
 		game.get_tree().quit()
 
@@ -447,39 +453,39 @@ func _demo_road(start: Vector2i) -> void:
 						var line := Roads.line(Vector2i(x, y), Vector2i(x, y) + dir * (length - 1))
 						var ok := line.size() == length
 						for p in line:
-							ok = ok and game.roads.tile_error(p) == "" and not game.map.is_road(p)
+							ok = ok and game.sim.roads.tile_error(p) == "" and not game.sim.map.is_road(p)
 						if ok:
-							game._clear_selection()
-							game.units[2].selected = true
-							game.units[3].selected = true
-							game._commit_road(line)
-							game._clear_selection()
-							game.cam_pos = Iso.to_screen(Vector2(line[length / 2]) + Vector2(0.5, 0.5))  # so a screenshot shows it
+							game.person.clear_selection()
+							game.sim.units[2].selected = true
+							game.sim.units[3].selected = true
+							game.person.commit_road(line)
+							game.person.clear_selection()
+							game.rig.pos = Iso.to_screen(Vector2(line[length / 2]) + Vector2(0.5, 0.5))  # so a screenshot shows it
 							return
 
 
 ## --demo: put every villager to work on a different resource.
 func run_demo(start: Vector2i) -> void:
-	game._clear_selection()
+	game.person.clear_selection()
 	var field: Building = null
 	for kind in ["farm", "hut", "hut", "house", "hut"]:
-		var site := game.placement.find_site(kind, start, 3)
+		var site := game.sim.placement.find_site(kind, start, 3)
 		if site.x >= 0:
-			var b := game._add_building(kind, site, true)
+			var b := game.sim.add_building(kind, site, true)
 			if kind == "farm":
 				field = b
 	_demo_road(start)
 	var kinds := [Defs.Res.WOOD, Defs.Res.FOOD, Defs.Res.WOOD, Defs.Res.STONE, Defs.Res.GOLD]
-	for i in game.units.size():
-		if (i == 2 or i == 3) and not game.roads.plans.is_empty():
+	for i in game.sim.units.size():
+		if (i == 2 or i == 3) and not game.sim.roads.plans.is_empty():
 			continue  # these two are paving the road
 		var best := Vector2i(-1, -1)
 		var best_d := INF
-		for p: Vector2i in game.map.deposits:
-			if game.map.deposits[p].kind == kinds[i] and (Vector2(p) + Vector2(0.5, 0.5)).distance_to(game.units[i].pos) < best_d:
-				best_d = (Vector2(p) + Vector2(0.5, 0.5)).distance_to(game.units[i].pos)
+		for p: Vector2i in game.sim.map.deposits:
+			if game.sim.map.deposits[p].kind == kinds[i] and (Vector2(p) + Vector2(0.5, 0.5)).distance_to(game.sim.units[i].pos) < best_d:
+				best_d = (Vector2(p) + Vector2(0.5, 0.5)).distance_to(game.sim.units[i].pos)
 				best = p
 		if i < 2 and field != null:  # the first two villagers work the wheat field
-			game.orders.gather(game.units[i], field.field_tile())
+			game.sim.orders.gather(game.sim.units[i], field.field_tile())
 		elif best.x >= 0:
-			game.orders.gather(game.units[i], best)
+			game.sim.orders.gather(game.sim.units[i], best)

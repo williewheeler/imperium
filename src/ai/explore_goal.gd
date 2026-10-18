@@ -13,7 +13,7 @@ func priority() -> float:
 
 func act() -> void:
 	_cooldown -= ai.think_interval
-	ai.scouts = ai.scouts.filter(func(u: Unit) -> bool: return not u.dead and ai.game.units.has(u))
+	ai.scouts = ai.scouts.filter(func(u: Unit) -> bool: return not u.dead and ai.sim.units.has(u))
 	var villagers := ai.villagers().size()
 	var share := ai.explored_share()
 	var want := 0

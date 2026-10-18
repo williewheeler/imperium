@@ -48,8 +48,10 @@ func update_death(delta: float) -> bool:
 	return true
 
 
-func update_view() -> void:
-	position = Iso.to_screen(unit.pos).round()
+## `alpha` is how far real time has got into the next tick (0 to 1): a unit is drawn that far between where it
+## stood at the start of the last tick and where it stands now, so it glides instead of stepping.
+func update_view(alpha := 1.0) -> void:
+	position = Iso.to_screen(unit.prev_pos.lerp(unit.pos, alpha)).round()
 	var anim := "idle"
 	var frames: int = Art.VILLAGER_FRAMES["idle"]
 	var frame := int(unit.anim * 0.7) % frames

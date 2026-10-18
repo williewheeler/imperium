@@ -2,6 +2,7 @@
 extends SceneTree
 var main: Node
 var frames := 0
+var _last_sim_t := 0.0
 var stage := 0
 var t_stage := 0.0
 var fails := 0
@@ -21,33 +22,35 @@ func _process(dt: float) -> bool:
 	if frames == 1:
 		main = load("res://main.tscn").instantiate()
 		root.add_child(main)
-	if frames < 5 or main.commands.game == null or main.hud == null:
+	if frames < 5 or main.sim == null or main.hud == null:
 		if Time.get_ticks_msec() > 90000:
 			print("FAIL game never became ready")
 			quit(1)
 		return false
 	var g: Main = main
+	dt = g.sim.time() - _last_sim_t  # game time, not frame time: the simulation takes a few ticks a frame, as many as the machine can
+	_last_sim_t = g.sim.time()
 	t_stage += dt  # already scaled by the engine
 	match stage:
 		0:
 			Engine.time_scale = 10.0
 			for i in 4:
-				g.stocks[0][i] = 1000
-			g.ais.clear()  # no AI thinking: only what the test does
+				g.sim.stocks[0][i] = 1000
+			g.sim.ais.clear()  # no AI thinking: only what the test does
 			# four soldiers of ours beside a finished enemy hut
-			var base := Vector2(g.units[0].pos) + Vector2(12, 12)
-			var site: Vector2i = g.map.find_site(Vector2i(1, 1), Vector2i(base), 0, 20, [])
-			hut = g._add_building("hut", site, true, 1)
+			var base := Vector2(g.sim.units[0].pos) + Vector2(12, 12)
+			var site: Vector2i = g.sim.map.find_site(Vector2i(1, 1), Vector2i(base), 0, 20, [])
+			hut = g.sim.add_building("hut", site, true, 1)
 			for i in 4:
 				var u := Unit.new()
 				u.kind = "soldier"
 				u.owner = 0
 				u.pos = Vector2(site) + Vector2(3 + i * 0.6, 1.5)
-				g.units.append(u)
+				g.sim.add_unit(u)
 				troops.append(u)
 			var ids: Array = troops.map(func(u): return u.id)
-			_check("attack own building is refused", g.commands.submit({"type": "attack_building", "owner": 1, "building": hut.id, "units": ids}), "err.not_allowed")
-			_check("attack the enemy hut", g.commands.submit({"type": "attack_building", "owner": 0, "building": hut.id, "units": ids}), "")
+			_check("attack own building is refused", g.sim.commands.submit({"type": "attack_building", "owner": 1, "building": hut.id, "units": ids}), "err.not_allowed")
+			_check("attack the enemy hut", g.sim.commands.submit({"type": "attack_building", "owner": 0, "building": hut.id, "units": ids}), "")
 			_check("fields cannot be attacked", Defs.BUILDING_HP["farm"], 0)
 			stage = 1
 			t_stage = 0.0
@@ -61,29 +64,29 @@ func _process(dt: float) -> bool:
 		2:
 			if hut.dead or t_stage > 180.0:
 				_check("the hut was destroyed", hut.dead, true)
-				_check("and removed from the game", g.buildings.has(hut), false)
+				_check("and removed from the game", g.sim.buildings.has(hut), false)
 				# now defeat a people: take away player 1's town and villagers
-				var gone := g.units.filter(func(u): return u.owner == 1)
+				var gone := g.sim.units.filter(func(u): return u.owner == 1)
 				for u in gone:
-					g.units.erase(u)
-				var town: Building = g.buildings.filter(func(b): return b.owner == 1 and b.kind == "town_center")[0]
-				g.destroy_building(town)
-				g.victory.check()
-				_check("a people with no town and no villagers is defeated", g.victory.defeated.has(1), true)
-				_check("the game goes on while two peoples stand", g.victory.winner, -1)
-				for u in g.units.filter(func(u): return u.owner == 2):
-					g.units.erase(u)
-				for b in g.buildings.filter(func(b): return b.owner == 2 and b.kind == "town_center"):
-					g.destroy_building(b)
-				g.victory.check()
-				_check("the last people standing wins", g.victory.winner, 0)
+					g.sim.units.erase(u)
+				var town: Building = g.sim.buildings.filter(func(b): return b.owner == 1 and b.kind == "town_center")[0]
+				g.sim.destroy_building(town)
+				g.sim.victory.check()
+				_check("a people with no town and no villagers is defeated", g.sim.victory.defeated.has(1), true)
+				_check("the game goes on while two peoples stand", g.sim.victory.winner, -1)
+				for u in g.sim.units.filter(func(u): return u.owner == 2):
+					g.sim.units.erase(u)
+				for b in g.sim.buildings.filter(func(b): return b.owner == 2 and b.kind == "town_center"):
+					g.sim.destroy_building(b)
+				g.sim.victory.check()
+				_check("the last people standing wins", g.sim.victory.winner, 0)
 				stage = 3
 				t_stage = 0.0
 		3:
 			if t_stage > 10.0:
 				_check("nobody is still attacking the fallen hut", troops.all(func(u): return u.atk_building != hut), true)
-				g.victory.check()
-				print("winner: ", g.victory.winner, " defeated: ", g.victory.defeated.keys())
+				g.sim.victory.check()
+				print("winner: ", g.sim.victory.winner, " defeated: ", g.sim.victory.defeated.keys())
 				print("DONE fails=", fails)
 				quit(1 if fails > 0 else 0)
 	return false

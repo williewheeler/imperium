@@ -77,7 +77,7 @@ func _find_site() -> Vector2i:
 		foes.append(b.center())
 	var have := ai.stock()
 	var per_kind := {}  # cell -> [worth of wood, of food, of stone, of gold]
-	var deposits: Dictionary = ai.game.map.deposits
+	var deposits: Dictionary = ai.sim.map.deposits
 	for p: Vector2i in deposits:
 		var d: Deposit = deposits[p]
 		if d.amount <= 0 or d.farm or not ai.fog.is_explored(p):
@@ -95,9 +95,9 @@ func _find_site() -> Vector2i:
 		worth[c] = total
 	var tried: Array = worth.keys()
 	tried.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return worth[a] > worth[b])
-	var rects: Array = ai.game.placement.rects()
+	var rects: Array = ai.sim.placement.rects()
 	var avoid: Array[Vector2i] = []
-	for u: Unit in ai.game.units:
+	for u: Unit in ai.sim.units:
 		avoid.append(Vector2i(u.pos))
 	for c: Vector2i in tried.slice(0, 12):
 		if float(_rejected.get(c, 0.0)) > ai.age:
@@ -113,11 +113,11 @@ func _find_site() -> Vector2i:
 			d_foe = minf(d_foe, f.distance_to(center))
 		if d_foe < MIN_FROM_ENEMY:
 			continue
-		var site: Vector2i = ai.game.map.find_site(Defs.BUILDINGS["settlement"]["size"], Vector2i(center), 0, 8, avoid, rects)
+		var site: Vector2i = ai.sim.map.find_site(Defs.BUILDINGS["settlement"]["size"], Vector2i(center), 0, 8, avoid, rects)
 		if site.x < 0:
 			_rejected[c] = ai.age + 90.0
 			continue
-		var err: String = ai.game.placement.error("settlement", site, ai.owner)
+		var err: String = ai.sim.placement.error("settlement", site, ai.owner)
 		if err == "" or err == "err.cant_afford":
 			return site
 		_rejected[c] = ai.age + 90.0

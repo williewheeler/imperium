@@ -125,6 +125,10 @@ static func faction_of(owner: int) -> Dictionary:
 	return FACTIONS["romans"]
 
 
+# How many looks (tunics, armor) each kind of fighting man has; the art draws one picture for each, and the
+# founding of the players hands them out in turn.
+const UNIT_LOOKS := {"soldier": 3, "spearman": 3, "slinger": 3, "horseman": 3}
+
 # Who joins first when more peoples play: the neighbors of early Rome, then the south.
 const AI_ORDER := ["etruscans", "sabines", "latins", "greeks", "samnites", "volsci", "aequi"]
 

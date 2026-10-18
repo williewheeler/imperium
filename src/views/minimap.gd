@@ -12,7 +12,7 @@ const DESERT_COLORS := [Color("2c7db2"), Color("78cbe6"), Color("f2e4b0"), Color
 
 signal jump_requested(tile_pos: Vector2)
 
-var game  # Main
+var game: Main
 var fog: Fog  # what this map shows of the ground (the main fog if not set)
 var viewer := 0  # whose map it is: their own people always show
 var corners: Callable  # returns the tile-space quad of the area outlined (the main view if not set)
@@ -26,7 +26,7 @@ var _dirty_timer := 0.0
 
 func setup(p_game) -> void:
 	game = p_game
-	var map: GameMap = game.map
+	var map: GameMap = game.sim.map
 	_colors = [COLORS, SNOW_COLORS, DESERT_COLORS][GameSettings.terrain_info(GameSettings.terrain_id)["style"]]
 	_image = Image.create(map.w, map.h, false, Image.FORMAT_RGBA8)
 	for y in map.h:
@@ -51,7 +51,7 @@ func setup(p_game) -> void:
 
 ## A tile changed terrain (a felled forest, a drained marsh); the picture catches up shortly.
 func tile_changed(p: Vector2i) -> void:
-	_image.set_pixel(p.x, p.y, _colors[game.map.tile(p.x, p.y)])
+	_image.set_pixel(p.x, p.y, _colors[game.sim.map.tile(p.x, p.y)])
 	_dirty = true
 
 
@@ -60,7 +60,7 @@ func _fog() -> Fog:
 
 
 func _k() -> float:  # minimap pixels per tile
-	return size.x / float(game.map.w)
+	return size.x / float(game.sim.map.w)
 
 
 ## Tile coordinates -> pixels inside this control.
@@ -78,17 +78,17 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	var map: GameMap = game.map
-	for b: Building in game.buildings:
+	var map: GameMap = game.sim.map
+	for b: Building in game.sim.buildings:
 		if b.owner != viewer and not _fog().is_explored(Vector2i(b.center())):
 			continue  # an AI's town shows once we have seen it
 		draw_rect(Rect2(_to_mini(b.center()) - Vector2(2, 2), Vector2(4, 4)), b.team_color() if b.owner >= 0 else Color("ffd24a"))
-	for u: Unit in game.units:
+	for u: Unit in game.sim.units:
 		if u.owner != viewer and not _fog().is_visible_now(Vector2i(u.pos)):
 			continue
 		draw_rect(Rect2(_to_mini(u.pos) - Vector2(1.5, 1.5), Vector2(3, 3)), Defs.color_of(u.owner))
 	var pts := PackedVector2Array()  # what the main view shows: a slanted quad in tile space
-	for c: Vector2 in (corners.call() if corners.is_valid() else game.view_corners()):
+	for c: Vector2 in (corners.call() if corners.is_valid() else game.rig.view_corners()):
 		pts.append(_to_mini(c))
 	pts.append(pts[0])
 	draw_polyline(pts, Color.WHITE, 1.0)
@@ -104,4 +104,4 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _jump(p: Vector2) -> void:
-	jump_requested.emit((p / _k()).clamp(Vector2.ZERO, Vector2(game.map.w, game.map.h)))
+	jump_requested.emit((p / _k()).clamp(Vector2.ZERO, Vector2(game.sim.map.w, game.sim.map.h)))

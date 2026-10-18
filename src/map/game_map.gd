@@ -64,11 +64,11 @@ static var stage := ""
 ## `p_size` is the map's side in tiles, `p_type` one of GameSettings.MAP_TYPES and `p_players` how many
 ## peoples play (the map is shaped so each has somewhere to start). With `p_preview_px` only the land
 ## shape is laid, on a grid that size, for drawing a thumbnail with `preview` (no map is built).
-func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview_px := 0, p_players := 4) -> void:
+func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview_px := 0, p_players := 4, p_terrain := "temperate") -> void:
 	seed_value = p_seed
 	w = p_size
 	h = p_size
-	_gen = TerrainGen.new(p_seed, p_size, p_type, p_preview_px if p_preview_px > 0 else p_size, home_points(p_players, p_type, p_seed))
+	_gen = TerrainGen.new(p_seed, p_size, p_type, p_preview_px if p_preview_px > 0 else p_size, home_points(p_players, p_type, p_seed), p_terrain)
 	homes = _gen.homes
 	if p_preview_px > 0:
 		return
@@ -88,7 +88,7 @@ func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview_px := 0,
 ## A small picture of what a kind of map looks like (one pixel per terrain sample, in the minimap's
 ## colors), made from the same land-shaping as the real thing on a notional 320-tile map.
 static func preview(type_id: String, px: int, preview_seed := 7) -> Image:
-	var m := GameMap.new(preview_seed, 320, type_id, px, 8)
+	var m := GameMap.new(preview_seed, 320, type_id, px, 8, GameSettings.terrain_id)
 	var grid := PackedByteArray()
 	grid.resize(px * px)
 	for y in px:

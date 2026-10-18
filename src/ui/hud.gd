@@ -45,7 +45,7 @@ var minimap: Minimap
 var _panels: Array[FramedPanel] = []
 var _chrome_era := 0
 
-var _game  # Main
+var _game: Main
 var _theme := Theme.new()
 var _era_num: Label
 var _era_name: Label
@@ -79,7 +79,7 @@ func setup(game) -> void:
 	var tv := VBoxContainer.new()
 	top.add_child(tv)
 	var title := _label("", 12, GOLD)
-	_say(title, "Imperium  ·  sors %d" % _game.map.seed_value, "Empire  ·  map seed %d" % _game.map.seed_value)
+	_say(title, "Imperium  ·  sors %d" % _game.sim.map.seed_value, "Empire  ·  map seed %d" % _game.sim.map.seed_value)
 	tv.add_child(title)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 22)
@@ -263,14 +263,15 @@ func set_world_tip(text: String) -> void:
 
 
 func refresh() -> void:
-	var stock: Array[int] = _game.stock
+	CommandButton.era = _game.era
+	var stock: Array[int] = _game.sim.stock_of(Main.LOCAL)
 	for i in 4:
 		var tip := "%s (%s): %d" % [Defs.RES_NAMES[i], Defs.RES_ENGLISH[i].to_lower(), stock[i]]
 		_say(_res_labels[i], "%d" % stock[i], tip)
 		_res_icons[i].tooltip_text = tip
-	var pop: int = _game.pop_used()
-	var cap: int = _game.pop_cap()
-	var pop_tip := "Populus (population): %d of %d people (build Casae and Domus to raise the limit; no one may have more than %d, the game's %d shared out between the peoples)" % [pop, cap, _game.pop_limit(), Defs.POP_LIMIT]
+	var pop: int = _game.sim.economy.pop_used()
+	var cap: int = _game.sim.economy.pop_cap()
+	var pop_tip := "Populus (population): %d of %d people (build Casae and Domus to raise the limit; no one may have more than %d, the game's %d shared out between the peoples)" % [pop, cap, _game.sim.economy.pop_limit(), Defs.POP_LIMIT]
 	_say(_pop_label, "%d/%d" % [pop, cap], pop_tip)
 	_res_icons[4].tooltip_text = pop_tip
 
@@ -282,17 +283,17 @@ func refresh() -> void:
 	var era: Dictionary = Defs.ERAS[_game.era]
 	_say(_era_num, "Aetas %s" % era["numeral"], "Era %s" % era["numeral"])
 	_say(_era_name, era["latin"], "%s  (%s)" % [era["english"], era["years"]])
-	_era_prog.visible = _game.advancing
-	if _game.advancing:
-		var pct := int(_game.advance_progress / float(_game.advance_data()["time"]) * 100.0)
+	_era_prog.visible = _game.sim.eras.is_advancing(Main.LOCAL)
+	if _game.sim.eras.is_advancing(Main.LOCAL):
+		var pct := int(_game.sim.eras.progress_of(Main.LOCAL) / float(_game.sim.eras.data(Main.LOCAL)["time"]) * 100.0)
 		_say(_era_prog, "Progreditur %d%%" % pct, "Advancing to the next era: %d%% done" % pct)
 
-	var us: Array[Unit] = _game.selected_units()
-	var b: Building = _game.selected_building()
+	var us: Array[Unit] = _game.person.selected_units()
+	var b: Building = _game.person.selected_building()
 	var mode := "none"
 	if not us.is_empty():
-		mode = "villagers" if not _game.selected_workers().is_empty() else "soldiers"
-		if not _game.selected_fighters().is_empty():
+		mode = "villagers" if not _game.person.selected_workers().is_empty() else "soldiers"
+		if not _game.person.selected_fighters().is_empty():
 			mode += ":f"  # there are fighting men among them: they get the attack order too
 	elif b != null and b.complete and not b.trains().is_empty():
 		mode = "trainer:" + b.kind
@@ -301,15 +302,15 @@ func refresh() -> void:
 		_rebuild_buttons(mode)
 	for btn in _buttons:
 		if btn.get_meta("advance", false):  # the era-advance button explains itself in full
-			btn.disabled = not _game.can_advance()
+			btn.disabled = not _game.sim.eras.can_advance(Main.LOCAL)
 			btn.tooltip_text = Main.wrap_tip(_game.advance_tooltip())
 			continue
 		var base: String = btn.get_meta("tip")
 		var need_era: int = btn.get_meta("era", 0)
 		var locked: bool = need_era > _game.era
 		btn.visible = not locked  # later eras' buildings stay out of sight until they unlock
-		var poor: bool = not _game.can_afford(btn.get_meta("cost"))
-		var full: bool = btn.get_meta("train", false) and not _game.has_pop_room()
+		var poor: bool = not _game.sim.economy.can_afford(btn.get_meta("cost"))
+		var full: bool = btn.get_meta("train", false) and not _game.sim.economy.has_pop_room()
 		btn.lock_numeral = Defs.ERAS[need_era]["numeral"] if locked else ""
 		btn.disabled = locked or poor or full
 		var why := ""
@@ -341,7 +342,7 @@ func _rebuild_buttons(mode: String) -> void:
 			for kind: String in Defs.BUILDINGS:
 				if Defs.BUILDINGS[kind].get("landmark", false) or Defs.BUILDINGS[kind].get("upgrade_only", false):
 					continue  # landmarks aren't something the player builds, and towns are grown from Settlements
-				var def: Dictionary = Building.def_for(kind)
+				var def: Dictionary = Building.def_for(kind, _game.era)
 				_add_button(kind, def["name"], "Build a %s (%s)%s" % [def["english"], _cost_text(def["cost"]), (". " + String(def["about"])) if def.has("about") else ""],
 					def["cost"], func() -> void: build_requested.emit(kind))
 				_buttons[-1].set_meta("era", def.get("era", 0))
@@ -359,7 +360,7 @@ func _rebuild_buttons(mode: String) -> void:
 				_add_button(unit_kind, unit["name"], tip, unit["cost"], func() -> void: train_requested.emit(unit_kind))
 				_buttons[-1].set_meta("train", true)
 			if parts[1] in Defs.TOWNS:
-				var adv: Variant = _game.advance_data()
+				var adv: Variant = _game.sim.eras.data(Main.LOCAL)
 				_add_button("advance", "Progredere", "", adv["cost"] if adv != null else [0, 0, 0, 0], func() -> void: advance_requested.emit())
 				_buttons[-1].set_meta("advance", true)
 
@@ -447,7 +448,7 @@ func _say(c: Control, latin: String, english: String) -> void:
 
 
 func map_deposit_for(b: Building) -> Deposit:
-	return _game.map.deposits.get(b.field_tile())
+	return _game.sim.map.deposits.get(b.field_tile())
 
 
 ## Pins a control to a screen corner (ax, ay in {0, 1}), growing inward.

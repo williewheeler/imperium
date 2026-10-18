@@ -1,21 +1,11 @@
 class_name Building
 extends RefCounted
 
-## The era the game is in. The town center changes from the Casa Romuli (the hut village) to the marble Forum in Era II.
-static var era := 0  # the local player's era (the interface shows this one)
-static var eras := {}  # owner -> era, for every player: a building looks as its owner's era makes it
+## The town center changes from the Casa Romuli (the hut village) to the marble Forum in Era II.
 static var _early_defs := {}  # kind -> its Era I definition (name and picture differ)
 
-static var _made := 0
-
-
-## A number no other building has had: commands name buildings by it.
-static func _next_id() -> int:
-	_made += 1
-	return _made
-
-
-var id := _next_id()
+var id := 0  # a number no other building in the game has: commands name buildings by it (Simulation.add_building hands it out)
+var eras: Eras  # the game's eras: a building looks as its owner's era makes it
 var kind: String
 var owner := 0  # which player's: a player number (0 is you), or -1 for a landmark nobody owns
 var building_name := ""
@@ -43,9 +33,9 @@ var hp: float:  # health; starts full
 		_hp_set = true
 
 
-## The era this building's owner is in (a landmark: the local player's).
+## The era this building's owner is in.
 func owner_era() -> int:
-	return int(eras.get(owner, era))
+	return eras.of(owner) if eras != null else 0
 
 
 func def() -> Dictionary:
@@ -64,19 +54,19 @@ func team_color() -> Color:
 
 ## Building data. Some buildings look and read differently in Era I: the town center is the
 ## Casa Romuli (then the Forum), the barracks the Arx (then the Castra), the temple the Aedes (then the Templum).
-static func def_for(k: String, at_era := -1) -> Dictionary:
+static func def_for(k: String, at_era: int) -> Dictionary:
 	var d: Dictionary = Defs.BUILDINGS[k]
-	if (era if at_era < 0 else at_era) < 1 and d.has("early"):
+	if at_era < 1 and d.has("early"):
 		if not _early_defs.has(k):
 			_early_defs[k] = d.merged(d["early"], true)
 		return _early_defs[k]
 	return d
 
 
-## Sprite key for a building kind in the current era.
-static func look_key(k: String, at_era := -1) -> String:
+## Sprite key for a building kind in the given era.
+static func look_key(k: String, at_era: int) -> String:
 	var d: Dictionary = Defs.BUILDINGS[k] if Defs.BUILDINGS.has(k) else {}
-	return d["early"]["look"] if (era if at_era < 0 else at_era) < 1 and d.has("early") else String(d.get("look", k))
+	return d["early"]["look"] if at_era < 1 and d.has("early") else String(d.get("look", k))
 
 
 ## A farm: eight plots of wheat round a granary (the middle tile), each plot worked by one villager standing on it.

@@ -20,7 +20,7 @@ var meadow := PackedFloat32Array()  # 0 to 1: how firmly the cell is kept clear 
 var params: Dictionary
 var homes: Array[Vector2] = []  # where each people starts, as map fractions (Rome first)
 var kind := ""
-var terrain: Dictionary  # the ground chosen on the settings screen (GameSettings.TERRAINS)
+var terrain: Dictionary  # the kind of ground (one of GameSettings.TERRAINS)
 
 var _rng := RandomNumberGenerator.new()
 var _warp: FastNoiseLite  # wobbles the edge of every stamp, so coasts are ragged but smooth
@@ -30,12 +30,12 @@ var _wood: FastNoiseLite
 var _scale := 1.0  # (side / 320) squared: how many more scattered stamps a bigger map has
 
 
-func _init(p_seed: int, p_side: int, p_type: String, p_n: int, p_homes: Array[Vector2]) -> void:
+func _init(p_seed: int, p_side: int, p_type: String, p_n: int, p_homes: Array[Vector2], p_terrain: String) -> void:
 	side = p_side
 	n = p_n
 	params = GameSettings.type_info(p_type).duplicate()
 	kind = String(params["id"])
-	terrain = GameSettings.terrain_info(GameSettings.terrain_id)
+	terrain = GameSettings.terrain_info(p_terrain)
 	for key in ["wet", "forest", "marsh"]:  # the ground's character adds to the map type's
 		params[key] = float(params[key]) + float(terrain[key])
 	homes = p_homes

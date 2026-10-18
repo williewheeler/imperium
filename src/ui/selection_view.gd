@@ -14,7 +14,7 @@ const INFO_W := 246.0
 const TILE := Vector2(62, 84)
 const STAT_COLORS := {"vita": Color("5aa65a"), "work": Color("c9a24a")}
 
-var _game  # Main
+var _game: Main
 var _portrait_frame: PanelContainer
 var _portrait: TextureRect
 var _tiles: HFlowContainer
@@ -108,15 +108,15 @@ func update() -> void:
 	_people_row.visible = false
 	for l in _stat_labels:
 		l.visible = false
-	var us: Array[Unit] = _game.selected_units()
-	var b: Building = _game.selected_building()
-	if _game.placing_road:
+	var us: Array[Unit] = _game.person.selected_units()
+	var b: Building = _game.person.selected_building()
+	if _game.person.placing_road:
 		_show_portrait(null)
 		_text(_name, "Via", "Road")
 		_text(_state, "Sinistra: trahe  ·  Dextra: abroga", "Left click and drag to lay a road  ·  Right click to stop")
-	elif _game.placing != "":
-		var def: Dictionary = Building.def_for(_game.placing)
-		_show_portrait(Art.icon(Building.look_key(_game.placing), 84))
+	elif _game.person.placing != "":
+		var def: Dictionary = Building.def_for(_game.person.placing, _game.era)
+		_show_portrait(Art.icon(Building.look_key(_game.person.placing, _game.era), 84))
 		_text(_name, "Pone %s" % def["acc"], "Place %s" % def["english"])
 		_text(_state, "Sinistra: pone  ·  Dextra: abroga", "Left click: place  ·  Right click: cancel")
 	elif us.size() == 1:
@@ -125,8 +125,8 @@ func update() -> void:
 		_show_group(us)
 	elif b != null:
 		_show_building(b)
-	elif _game.selected_deposit.x >= 0 and _game.map.deposits.has(_game.selected_deposit):
-		_show_deposit(_game.map.deposits[_game.selected_deposit])
+	elif _game.person.selected_deposit.x >= 0 and _game.sim.map.deposits.has(_game.person.selected_deposit):
+		_show_deposit(_game.sim.map.deposits[_game.person.selected_deposit])
 	else:
 		_show_portrait(null)
 		_text(_name, "Nihil electum", "Nothing selected")
@@ -151,7 +151,7 @@ func _show_unit(u: Unit) -> void:
 			"Armor: turns aside %d%% of melee blows and %d%% of missiles" % [int(round(float(armor[0]) * 100.0)), int(round(float(armor[1]) * 100.0))])
 	if float(s["range"]) > 0.0:
 		n = _stat(n, "Iactus %d" % int(s["range"]), "Range: strikes from %d tiles away" % int(s["range"]))
-	var speed: float = _game.unit_speed(u)
+	var speed: float = _game.sim.movement.unit_speed(u)
 	n = _stat(n, "Celeritas %.1f" % speed, "Speed: %.1f tiles a second over open ground" % speed)
 	for kind: String in s["bonus"]:
 		var other: Dictionary = Defs.UNITS[kind]
@@ -214,7 +214,7 @@ func _show_building(b: Building) -> void:
 		var most := 0
 		var ripe := 0
 		for p in b.plot_tiles():
-			var plot: Deposit = _game.map.deposits.get(p)
+			var plot: Deposit = _game.sim.map.deposits.get(p)
 			if plot != null:
 				held += plot.amount
 				most += plot.max_amount
@@ -233,7 +233,7 @@ func _show_building(b: Building) -> void:
 		var held2 := 0
 		var most2 := 0
 		for p in b.plot_tiles():
-			var plot2: Deposit = _game.map.deposits.get(p)
+			var plot2: Deposit = _game.sim.map.deposits.get(p)
 			if plot2 != null:
 				held2 += plot2.amount
 				most2 += plot2.max_amount

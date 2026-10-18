@@ -218,7 +218,7 @@ func update_view() -> void:
 		for sprite in _sprites:
 			sprite.texture = tex
 	for i in _plots.size():  # each plot shows how ripe it is
-		var plot: Deposit = game.map.deposits.get(_plot_tiles[i]) if building.complete else null
+		var plot: Deposit = game.sim.map.deposits.get(_plot_tiles[i]) if building.complete else null
 		var stage := 3
 		if plot != null:
 			var frac := float(plot.amount) / float(maxi(1, plot.max_amount))
