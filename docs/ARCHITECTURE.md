@@ -43,15 +43,14 @@ in the code, or marked as not built.
 | AIs | `src/ai/` |
 | Headless client (the person's, inside the UI) | `src/client/`, made once in `Main` (`Main.client`, `Main.view`); built. It reads the `Simulation` in place of the view link |
 | Headless client (the AIs') | `src/client/`, made for each AI in `WorldSetup` (`AI.client`, `AI.view`); built, as above |
-| The links (view and command) | not built, and not boxes: a link is a client's end and the host's end of an asynchronous transport, an in-process queue or `NetSession` (`src/net/`; today `NetSession` is the lobby only) |
-| View publisher, Command receiver | not built (today the simulation's signals reach `Main`, which shows them) |
-| Command interface, Command queue | not built (today `Commands.submit`, which validates and applies at once) |
-| Game loop | `Simulation.step()` in `src/sim/simulation.gd` |
+| Networking | not built (`src/net/`: today `NetSession` is the lobby only): the host's end of a link to a client on another machine; it talks to that player's two queues |
+| View queue, Command queue (one pair for each player) | not built: they are the simulation's interface. Today a client calls `Commands.submit` (validates and applies at once) and reads the `Simulation` as it filters, and the simulation's signals reach `Main`, which shows them |
+| Simulation step | `Simulation.step()` in `src/sim/simulation.gd`: today it runs the AIs and the systems; it does not yet drain command queues or publish views |
 | Game state | `GameState` (`src/sim/state/game_state.gd`), held as `Simulation.state`: the map, units, buildings, stocks, fogs, tick, rng, eras, road plans, shots in flight, who has fallen. Inert; see *Known debts* for what is still not |
 | Game systems | `src/sim/systems/`: they hold no game state of their own (only the `Movement` grid, which is rebuilt each tick) |
 | Tick driver | `Main._run_sim` (`src/app/main.gd`); `tools/sim_run.gd` and `tools/replay_check.gd` headless |
-| Recorder | `src/replay/recorder.gd` (taps `Commands.submitted` today) |
-| Replayer | `src/replay/replayer.gd` (calls `Commands.submit` today) |
+| Recorder | `src/replay/recorder.gd` (taps `Commands.submitted` today; snapshots are not built) |
+| Replayer | `src/replay/replayer.gd` (calls `Commands.submit` today; restoring a snapshot is not built) |
 
 ### How the parts depend on each other
 
@@ -67,36 +66,44 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 
 - **A headless client per player, human or AI.** It holds the player's fog-filtered model of the world and takes their
   commands. The person's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
-  and keys) are wrapped round it. Each AI has a client of its own, the same class, in the AIs' part of the picture. Each client has its
-  own link to the host (the AIs' in process). So a human and an AI see and do exactly the same things, and
+  and keys) are wrapped round it. Each AI has a client of its own, the same class, in the AIs' part of the picture. Each client attaches to its
+  player's pair of queues. So a human and an AI see and do exactly the same things, and
   neither can look at the real state. (Today the AIs read `Simulation.units` and the like directly, and only
   discipline keeps them to their own fog.)
 - **The AIs run in the host**, in the game server's process, as they do now: in principle an AI could run elsewhere and
   talk to the host as a person's client does, but the usual deployment is in the server. Each has its own headless client.
-- **Clients talk to the host through asynchronous links**, not through channel components: a client has its end of the
-  link, and the host's end is a *command receiver* (it takes each player's commands) and a *view publisher* (it sends each
-  player what it may see, from the game state). A link is an in-process queue or `NetSession`, whichever suits the game: a
-  person joining over the network uses `NetSession`, and the AIs and a person playing on the host use in-process queues.
-- **A command interface and queue in the simulation.** Commands from every source enter through the interface, which is
-  the only thing that writes to the queue. When a command arrives is up to the world; at the interface it is stamped
-  with the tick it is due (a live command for the next tick, a lockstep peer's for an agreed one, a replay's for the tick it
-  was recorded at) and its place in the order. The queue holds them in that order. That is where an inherently
-  asynchronous transport meets a simulation that consumes input at fixed ticks, and it is the one place where
-  the nondeterminism ends.
-- **The game loop is the heart, a little like a rules engine.** The **game state** is inert data; the loop invokes the
-  **game systems**, which read it and update it. Each tick (one step of the *tick driver*, which turns wall-clock time into ticks): drain
-  the commands now due from the queue and have the **game systems** validate and apply them; run the systems over the state, which is what makes the world
-  move with nobody issuing anything (a fire burns down, a dog walks towards its goal); and let the state publish
-  what changed. The clock reaches the world through the loop, and commands reach it through the drain.
-- **Recorder and Replayer are tools, not part of the core, and two sides of one coin.** Whatever is tapped on the way out is what
-  is driven on the way back, so that nothing between them can drift. That point is the command interface: it is where
-  everything the world tells the simulation arrives, already stamped with its due tick and order. The Recorder writes each
-  command there, with a checksum every 5 s. The Replayer loads the recording back through the interface, with the people and AIs
-  switched off, so the queue, the drain and the validation run exactly as they did live. A game is then its config (the seed and
-  settings) plus that list, nothing more. Everything inside the loop, such as a gatherer picking a new tree or a path being
-  worked out, is recomputed, never recorded. Validation happens when a command is applied, so the interface does not
-  know its answer (invalid commands are recorded too, and rejected the same way on replay); recording the answers as well, as a check, would be a passive tap in the loop, and the checksums catch the rest. Recording
+- **The simulation's interface is queues: each player has a pair**, a *command queue* (what the player sends) and a *view queue*
+  (what it is sent). A client, human or AI, attaches to its player's pair directly; that is all it speaks. A command is
+  stamped with the tick it is due when it is put on the queue (the next tick for a live command, an agreed one for a
+  lockstep peer's, the recorded one for a replay's). That is where an inherently asynchronous world meets a simulation that
+  consumes input at fixed ticks, and the one place where the nondeterminism ends: what is drained, in what order, is what
+  the game is made of. The view queue holds only the player's *latest* view, so a slow reader (an AI that acts once a second)
+  skips what it missed, and the host does not build more than is read.
+- **Networking is only a wrapper.** A client on another machine talks to a Networking box (`NetSession`), which talks to its
+  player's two queues. The AIs, and a person playing in the host's own process, attach to the queues directly. There are no
+  separate receiver, publisher or channel components.
+- **The simulation step is where it all happens**, and *the loop* is the tick driver running one step after another. A step:
+  **(1)** for each player in order, drain its command queue and have the game systems validate and apply the commands that
+  are due; **(2)** run the systems over the **game state**, which is what makes the world move with nobody issuing
+  anything (a fire burns down, a dog walks towards its goal); **(3)** for each player, build its view (this is where the
+  fog filter is: a view is made from what that player may know) and put it on its view queue. The **game state** is inert
+  data and the **game systems** act on it, a little like a rules engine. The clock reaches the world through the step, and
+  commands reach it through the drain.
+- **Recorder and Replayer are tools, not part of the core, and two sides of one coin.** The Recorder taps each player's
+  command queue as the step drains it, so it writes down what the game was told from outside, with the tick it was applied at
+  and in what order, and a checksum every 5 s. The Replayer puts the recorded commands on the command queues, with the people
+  and AIs switched off, so the drain, the validation and the systems run exactly as they did live. A game is then its config (the
+  seed and settings) plus that list. Everything the step works out for itself, such as a gatherer picking a new tree or a
+  path, is recomputed, never recorded. Invalid commands are recorded too and rejected the same way on replay. Recording
   commands, not their effects, keeps this compatible with lockstep, where machines exchange commands.
+  **Proposed addition: state snapshots as keyframes.** Both also attach to the game state. The Recorder takes a snapshot every
+  30 to 60 game seconds, and the Replayer restores one into the state and then replays the commands from there. That gives random access
+  (jump to tick T: restore the nearest snapshot and simulate forward, a few seconds at 5 to 25 times real time), saved games, and a way to
+  bring a desynchronized machine back. It is a supplement, not a replacement for the commands: a snapshot is 1 to 3 MB (deposits and the
+  per-player fogs dominate) and tens of milliseconds to take in GDScript, which is fine a few times a minute and far too heavy every tick, and
+  snapshots alone would record the states but not the play between them. The cost is in restoring: every reference between
+  objects (a unit's target, a farm's plots, road plans, shots in flight) has to be rebuilt from numbers. The checksum is the test: restore,
+  carry on, and compare.
 
 Two consequences. A command no longer gets an answer at once ("err.cant_afford" is flashed in the same frame today), so
 the `Controls` show a refusal when it comes back and the AIs, whose `buy` logic reads the answer, need late answers or a
