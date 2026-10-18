@@ -19,6 +19,50 @@ can move between folders freely. Only `res://` paths (the scene, shaders, assets
 | `src/art/` | Sprite drawing code; baked into PNG sheets by `tools/`. |
 | `src/net/` | Lobby networking (`NetSession`). |
 
+### How the parts depend on each other
+
+Arrows mean "calls or reads". (Godot has no module or package concept for GDScript: these boxes are
+groups of classes, `class_name` scripts, and the folders are only folders. "Module" in Godot means a
+C++ engine extension.)
+
+```mermaid
+flowchart TD
+    subgraph drivers [Drivers: decide what to ask for]
+        person["Person's driver<br/>(input section of Main)"]
+        rival["Rival<br/>(computer player)"]
+        remote["Remote peer<br/>(decided, not built)"]
+    end
+
+    commands["Commands.submit<br/>validate, pay, apply"]
+
+    subgraph sim [Game state and rules: src/core]
+        main["Main<br/>units, buildings, stocks, fogs"]
+        combat["Combat"]
+        map["GameMap, Fog, Defs"]
+    end
+
+    subgraph present [Presentation]
+        views["views/<br/>draws the state"]
+        ui["ui/<br/>HUD, menus"]
+        art["art/<br/>sprites"]
+    end
+
+    net["net/NetSession<br/>lobby only today"]
+
+    person --> commands
+    rival --> commands
+    remote -.-> commands
+    commands --> main
+    main --> combat
+    main --> map
+    rival -. "reads, through its own Fog" .-> main
+    views -- "reads" --> main
+    ui -- "reads" --> main
+    ui -- "signals: train, build, advance" --> person
+    views --> art
+    net -- "settings and seed at start" --> main
+```
+
 ## Players, drivers and commands  (**built**, except where marked)
 
 The central rule: **a player acts on the game only by submitting a command, and the game cannot tell who
