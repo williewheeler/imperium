@@ -44,8 +44,8 @@ in the code, or marked as not built.
 | Headless client (a local human's, inside the UI) | `src/client/`, made once in `Main` (`Main.client`, `Main.view`); built. It reads the `Simulation` in place of the view queue |
 | Headless client (a remote human's, on another machine) | not built: the same client, on the other machine, speaking queue through Networking |
 | Headless client (the AIs') | `src/client/`, made for each AI in `WorldSetup` (`AI.client`, `AI.view`); built, as above |
-| Networking | not built (`src/net/`: today `NetSession` is the lobby only): the host's end of the connection to a remote human's client; it talks to that player's two queues |
-| View queue, Command queue (one pair for each player) | not built: they are the simulation's interface. Today a client calls `Commands.submit` (validates and applies at once) and reads the `Simulation` as it filters, and the simulation's signals reach `Main`, which shows them |
+| Networking | not built (`src/net/`: today `NetSession` is the lobby only): the host's end of the connection to a remote human's client; it puts its commands on the command queue and reads that player's view queue |
+| View queue (one for each player), Command queue (one for all) | not built: they are the simulation's interface. Today a client calls `Commands.submit` (validates and applies at once) and reads the `Simulation` as it filters, and the simulation's signals reach `Main`, which shows them |
 | Simulation step | `Simulation.step()` in `src/sim/simulation.gd`: today it runs the AIs and the systems; it does not yet drain command queues or publish views |
 | Game state | `GameState` (`src/sim/state/game_state.gd`), held as `Simulation.state`: the map, units, buildings, stocks, fogs, tick, rng, eras, road plans, shots in flight, who has fallen. Inert; see *Known debts* for what is still not |
 | Game systems | `src/sim/systems/`: they hold no game state of their own (only the `Movement` grid, which is rebuilt each tick) |
@@ -66,24 +66,26 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 - **A headless client per player, human or AI.** It holds the player's fog-filtered model of the world and takes their
   commands. A human's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
   and keys) are wrapped round it. Each AI has a client of its own, the same class, in the AIs' part of the picture. Each client attaches to its
-  player's pair of queues. So a human and an AI see and do exactly the same things, and
+  the queues. So a human and an AI see and do exactly the same things, and
   neither can look at the real state. (Today the AIs read `Simulation.units` and the like directly, and only
   discipline keeps them to their own fog.)
 - **The AIs run in the host**, in the game server's process, as they do now: in principle an AI could run elsewhere and
   talk to the host as a person's client does, but the usual deployment is in the server. Each has its own headless client.
-- **The simulation's interface is queues: each player has a pair**, a *command queue* (what the player sends) and a *view queue*
-  (what it is sent). A client, human or AI, attaches to its player's pair directly; that is all it speaks. A command is
-  stamped with the tick it is due when it is put on the queue (the next tick for a live command, an agreed one for a
-  lockstep peer's, the recorded one for a replay's). That is where an inherently asynchronous world meets a simulation that
-  consumes input at fixed ticks, and the one place where the nondeterminism ends: what is drained, in what order, is what
-  the game is made of. The view queue holds only the player's *latest* view, so a slow reader (an AI that acts once a second)
-  skips what it missed, and the host does not build more than is read.
-- **Networking is only a wrapper.** A client on another machine talks to a Networking box (`NetSession`), which talks to its
-  player's two queues. The AIs, and a person playing in the host's own process, attach to the queues directly. There are no
+- **The simulation's interface is queues.** Each player has a *view queue* (what it is sent); there is one *command queue*
+  for everyone. A client, human or AI, attaches to them directly; that is all it speaks. Views are per player because each
+  player may see only part of the world: the step filters the state for each player and puts the result on that player's
+  queue, so what is on a queue is already what that player may know, and no queue holds the whole state. A view queue keeps only the
+  player's *latest* view, so a slow reader (an AI that acts once a second) skips what it missed. Commands share a queue
+  because only their order within one player matters. Each carries its player, which the host side sets (Networking from the
+  connection, never from what a remote client claims), and the tick it is due: the next tick for a live command, an agreed
+  one for a lockstep peer's. That is where an inherently asynchronous world meets a simulation that consumes input at fixed
+  ticks, and the one place where the nondeterminism ends: what is drained, in what order, is what the game is made of.
+- **Networking is only a wrapper.** A client on another machine talks to a Networking box (`NetSession`), which talks to the
+  command queue and its player's view queue. The AIs, and a person playing in the host's own process, attach to the queues directly. There are no
   separate receiver, publisher or channel components.
 - **The simulation step is where it all happens**, and *the loop* is the tick driver running one step after another. A step:
-  **(1)** for each player in order, drain its command queue and have the game systems validate and apply the commands that
-  are due; **(2)** run the systems over the **game state**, which is what makes the world move with nobody issuing
+  **(1)** drain the command queue: the game systems validate and apply the commands that
+  are due, in player order (two players' commands for the same tick can compete for a tile or for stock, so the order is a rule, not arrival order), each for its player; **(2)** run the systems over the **game state**, which is what makes the world move with nobody issuing
   anything (a fire burns down, a dog walks towards its goal); **(3)** for each player, build its view (this is where the
   fog filter is: a view is made from what that player may know) and put it on its view queue. The **game state** is inert
   data and the **game systems** act on it, a little like a rules engine. The clock reaches the world through the step, and
