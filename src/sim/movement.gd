@@ -17,9 +17,16 @@ const WAYPOINT_REACH := 0.3  # how close counts as "at" an intermediate waypoint
 const STUCK_TIME := 1.2  # a walker blocked this long is allowed to push through
 
 var sim: Simulation
+var grid := UnitGrid.new()  # who stands where (see begin_tick)
 
 
 ## Walks along the unit's path, steering around other villagers instead of shoving them.
+## Once a tick, before anyone moves: notes who stands where, so that the questions below about who is near
+## look at a handful of units instead of all of them.
+func begin_tick() -> void:
+	grid.rebuild(sim.units)
+
+
 func follow(u: Unit, delta: float) -> bool:
 	if u.path.is_empty():
 		u.stuck = 0.0
@@ -91,7 +98,8 @@ func follow(u: Unit, delta: float) -> bool:
 func _avoidance(u: Unit, dir: Vector2) -> Vector2:
 	var side := dir.rotated(PI / 2.0)
 	var steer := Vector2.ZERO
-	for o in sim.units:
+	for i in grid.near(u.pos):
+		var o := sim.units[i]
 		if o == u:
 			continue
 		var r := o.pos - u.pos
@@ -113,7 +121,8 @@ func _detour_around(u: Unit, dir: Vector2) -> Vector2:
 	var side := dir.rotated(PI / 2.0)
 	var blocker: Unit = null
 	var blocker_ahead := DETOUR_LOOK
-	for o in sim.units:
+	for i in grid.near(u.pos):
+		var o := sim.units[i]
 		if o == u:
 			continue
 		var r := o.pos - u.pos
@@ -134,7 +143,8 @@ func _detour_around(u: Unit, dir: Vector2) -> Vector2:
 
 ## Is another villager already standing on (or right beside) this spot?
 func _spot_taken(u: Unit, spot: Vector2) -> bool:
-	for o in sim.units:
+	for i in grid.near(spot):
+		var o := sim.units[i]
 		if o != u and not o.moving and o.pos.distance_to(spot) < UNIT_SPACING:
 			return true
 	return false
@@ -167,10 +177,13 @@ func settle_stuck(delta: float) -> void:
 ## Last-resort overlap fix (steering handles almost everything). A walker gives way to anyone
 ## standing still and never shoves them, unless it has been blocked for a while.
 func separate_units() -> void:
+	grid.rebuild(sim.units)
 	for _pass in 2:
 		for i in sim.units.size():
 			var a := sim.units[i]
-			for j in range(i + 1, sim.units.size()):
+			for j in grid.near(a.pos):  # (ascending, so the pairs come in the order a full loop gives them)
+				if j <= i:
+					continue
 				var b := sim.units[j]
 				var d := b.pos - a.pos
 				var dist := d.length()

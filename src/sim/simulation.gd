@@ -106,6 +106,7 @@ func step() -> void:
 			ai.tick(dt)
 	Perf.stop("ais", t0)
 	t0 = Perf.start()
+	movement.begin_tick()
 	for u in units:
 		if Perf.trace:  # name the state, so a slow tick says which kind of work was slow
 			var ts := Perf.start()
