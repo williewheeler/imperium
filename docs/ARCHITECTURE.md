@@ -71,18 +71,23 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 - **Two asynchronous channels between client and host**, each an in-process queue or `NetSession`: the **command
   channel** (client to host) and the **view channel** (host to client). On the host a *command receiver* takes commands
   off the first, and a *view publisher* sends each player what it may see, from the game state, on the second.
-- **A command interface and queue in the simulation.** Commands from every player enter through the interface, which is
-  the only thing that writes to the queue. The queue is drained at the start of each tick, in order. That is where an
-  inherently asynchronous transport meets a simulation that consumes input at fixed ticks.
+- **A command interface, queue and consumer in the simulation.** Commands from every source enter through the
+  interface, which is the only thing that writes to the queue. Each entry carries the tick it is due (a live command is
+  stamped for the next tick; a lockstep peer's for an agreed one; a replay's for the tick it was recorded at). The
+  *command consumer* takes the commands due this tick, in order, and validates and applies them through `Commands`.
+  That is where an inherently asynchronous transport meets a simulation that consumes input at fixed ticks, and it
+  means the loop has one source of commands, whoever they come from.
 - **The game loop is the heart.** Each tick (one step of the *tick driver*, which turns wall-clock time into ticks): apply
   the drained commands to the **game state**; run the **game systems** over the state, which is what makes the world
   move with nobody issuing anything (a fire burns down, a dog walks towards its goal); and let the state publish
   what changed. The clock reaches the world through the loop, and commands reach it through the drain.
-- **Recorder and Replayer are tools, not part of the core.** The Recorder taps the drain and writes down what came out
-  of it. The Replayer plays a recording in place of the queue, so it bypasses the interface and the validation. What is
-  recorded is what the world was told from outside the loop (here, the commands, which keeps recording compatible with
-  lockstep, where machines exchange commands); everything inside the loop, such as a gatherer picking a new tree or a
-  path being worked out, is recomputed, not recorded.
+- **Recorder and Replayer are tools, not part of the core.** The Recorder taps the consumer: what it takes off the queue, in
+  order, with the game's answer to each. The Replayer loads a recording into the queue through the interface, with the
+  recorded due ticks and the AIs and people switched off, so it needs no tie to the tick driver, and the commands go
+  through validation again (which checks the answers match). What is recorded is what the world was told from
+  outside the loop, here the commands, which keeps recording compatible with lockstep, where machines exchange
+  commands; everything inside the loop, such as a gatherer picking a new tree or a path being worked out, is
+  recomputed, not recorded.
 
 Two consequences. A command no longer gets an answer at once ("err.cant_afford" is flashed in the same frame today), so
 the `Controls` show a refusal when it comes back and the AIs, whose `buy` logic reads the answer, need late answers or a
