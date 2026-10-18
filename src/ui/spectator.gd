@@ -26,6 +26,7 @@ var _panes: Array[Dictionary] = []
 var _grid: GridContainer
 var _clock := 0.0
 var _speed_label: Label
+var _overlays := true  # the panes' stats and minimaps are shown (H toggles them, to see the action behind)
 var _stats := {}  # the middle cell of a 3x3 grid: {clock, rows (each a row of labels), foot}
 
 
@@ -75,7 +76,7 @@ func _change_speed(step: int) -> void:
 
 
 func _show_speed() -> void:
-	_speed_label.text = Latin.t("Celeritas x%d   ·   + / - speed   ·   F follow   ·   wheel zoom   ·   drag look   ·   Q quit" % int(Engine.time_scale))
+	_speed_label.text = Latin.t("Celeritas x%d   ·   + / - speed   ·   F follow   ·   H hide panels   ·   wheel zoom   ·   drag look   ·   Q quit" % int(Engine.time_scale))
 
 
 ## The bit a pane's own things are on. Bit 1 is the world every pane shares.
@@ -165,7 +166,7 @@ func _make_pane(ai: AI, index: int) -> void:
 		pane["follow"] = false
 		pane["pos"] = Iso.to_screen(tile_pos))
 	pane.merge({"ai": ai, "cell": cell, "box": box, "vp": vp, "cam": cam, "panel": panel, "labels": labels,
-		"pos": Iso.to_screen(ai.focus()), "zoom": 2, "follow": true, "mini": mini})
+		"pos": Iso.to_screen(ai.focus()), "zoom": 2, "follow": true, "mini": mini, "frame": frame})
 	_panes.append(pane)
 
 
@@ -343,6 +344,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				_change_speed(1)
 			KEY_MINUS, KEY_KP_SUBTRACT:
 				_change_speed(-1)
+			KEY_H:
+				_overlays = not _overlays
+				for q in _panes:
+					(q["panel"] as Control).visible = _overlays
+					(q["frame"] as Control).visible = _overlays
 			KEY_F:
 				var p := _pane_at(get_viewport().get_mouse_position())
 				for q in (_panes if p.is_empty() else [p]):
