@@ -128,10 +128,13 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 			city.citizens = 30
 			game.upgrade_building(city, "city_center")
 			rects.append(city.rect())
+		var j_site: Vector2i = game.map.find_site(Vector2i(5, 5), start + Vector2i(4, -14), 0, 16, avoid, rects)
+		if args.has("jupiter") and j_site.x >= 0:  # --jupiter: the great temple, beside the City Center
+			rects.append(game._add_building("jupiter", j_site, true, 0).rect())
 		game.era_preview.cycle(1)  # Era II, and its town dressed round what was put up
 		var focus := [Vector2(start)]  # the camera looks at the middle of all that was put up
 		for b in game.buildings:
-			if b.owner == 0 and b.kind in ["farm", "settlement", "city_center"]:
+			if b.owner == 0 and b.kind in (["jupiter", "city_center"] if args.has("jupiter") else ["farm", "settlement", "city_center"]):
 				focus.append(b.center())
 		var mid := Vector2.ZERO
 		for f in focus:
