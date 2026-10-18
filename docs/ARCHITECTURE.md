@@ -41,7 +41,9 @@ in the code, or marked as not built.
 | Views | `src/ui/views/`, and the HUD's readouts in `src/ui/`; they draw `game.view` (a `PlayerView`) |
 | Controls | `src/ui/controls/` (`Person`, `CameraRig`), and the HUD's buttons in `src/ui/`; commands go through `game.client` |
 | AIs | `src/ai/` |
-| Headless client | `src/client/`: built; the AIs and the human UI both work through it (it reads the `Simulation` in place of the view channel) |
+| Headless client (the person's, inside the UI) | `src/client/`, made once in `Main` (`Main.client`, `Main.view`); built. It reads the `Simulation` in place of the view channel |
+| Headless client (the AIs') | `src/client/`, made for each AI in `WorldSetup` (`AI.client`, `AI.view`); built, as above |
+| The AIs' channels and endpoints | not built: the same pair of channels, receiver and publisher as for the person, one set for each AI, in process |
 | View channel, Command channel | not built (`src/net/` will hold them; today `NetSession` is the lobby only) |
 | View publisher, Command receiver | not built (today the simulation's signals reach `Main`, which shows them) |
 | Command interface, Command queue | not built (today `Commands.submit`, which validates and applies at once) |
@@ -65,8 +67,9 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 **The end state (proposed; the picture above).** None of the yellow boxes exist yet. They are where the design is going:
 
 - **A headless client per player, human or AI.** It holds the player's fog-filtered model of the world and takes their
-  commands. The human UI (`Views` and `Controls`, with `Person` as the thing that handles the mouse and keys) is a
-  front end wrapped round it, and an AI is another. So a human and an AI see and do exactly the same things, and
+  commands. The person's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
+  and keys) are wrapped round it. Each AI has a client of its own, the same class, in the AIs' part of the picture. Each client has its
+  own pair of channels (the AIs' in process). So a human and an AI see and do exactly the same things, and
   neither can look at the real state. (Today the AIs read `Simulation.units` and the like directly, and only
   discipline keeps them to their own fog.)
 - **Two asynchronous channels between client and host**, each an in-process queue or `NetSession`: the **command
