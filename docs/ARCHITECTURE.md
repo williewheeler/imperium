@@ -61,20 +61,25 @@ reads its state to draw it.
 *The key is in the picture. The client is `Views` (the world, the minimap, the HUD's readouts) and `Controls` (the mouse
 and keys, which `Person` handles, and the buttons); yellow boxes are proposed, not built.*
 
-**The two channels (proposed).** The client should not know whether the simulation is in the same process. Between
-client and host there would be two channels side by side, each an in-process queue or `NetSession`, and each
-**asynchronous**, with a consumer or publisher on the host side:
+**The two channels and the command queue (proposed).** The client should not know whether the simulation is in the same
+process. Between client and host there would be two channels side by side, each an in-process queue or `NetSession`,
+and each **asynchronous**:
 
-- the **command channel**, client to host: `Controls` make commands, the channel carries them, and a *command consumer*
-  takes them off in order and gives them to `Commands.submit`, as the AIs and `Replayer` already do on the host;
+- the **command channel**, client to host: `Controls` make commands, the channel carries them, and a *command receiver*
+  on the host takes them off and gives them to the simulation's command interface;
 - the **view channel**, host to client: a *view publisher* puts what the views need on the channel (today the
   simulation's signals; later state, or for lockstep, where every machine runs its own copy, the ordered commands of
   all the players). The `Views` read it. Today they read the `Simulation` directly, which only works in one process.
 
-Asynchronous means a command is queued and answered later, where today `submit` answers at once ("err.cant_afford"
-is flashed in the same frame). The `Controls` would show a refusal when it arrives (or check the cheap rules
-themselves first). Nothing of this is built. The AIs and `Replayer` stay on the host: they are not the person's, and
-in lockstep their commands have to come from one place.
+The simulation's **command interface** is the one way in, and everything that gives the simulation commands goes through
+it: the command receiver, the AIs and `Replayer` (the AIs submit to the simulation, not to a transport). Behind the
+interface is a **command queue**, written only by the interface, and drained at the start of each tick, in order, into
+`Commands` (validate, pay, apply). That is what lets an inherently asynchronous transport meet a simulation that
+consumes input at fixed ticks, gives one deterministic order, one place to record, and room to batch commands later.
+
+The cost is that `submit` stops answering at once ("err.cant_afford" is flashed in the same frame today). The `Controls`
+would show a refusal when it arrives; the AIs, whose `buy` logic reads the answer, would need either late answers or a
+synchronous "would this be allowed?" check beside the queued submit. Nothing of this is built.
 
 ## Players, drivers and commands  (**built**)
 
