@@ -1231,8 +1231,19 @@ static func _city_center() -> Image:
 	var rx := 8.0
 	var ry := 4.0
 	var drum_h := 9.0
-	# the ridge slopes down toward the front, and the tholos belongs at its middle, 12 pixels below the topmost point
-	var yb := float(peak - 1) + 3.0 + 12.0  # the middle of the drum's base, sunk a little into the roof
+	# the tholos stands at the visual middle of the roof: the center of its terracotta pixels (its height; across, the building's middle)
+	var sx := 0.0
+	var sy := 0.0
+	var count := 0
+	for y in base.get_height():
+		for x in w:
+			var c := base.get_pixel(x, y)
+			if c.a > 0.5 and c.r > c.g * 1.3 and c.r > c.b * 1.6:
+				sx += x
+				sy += y
+				count += 1
+	var mid := Vector2(sx / maxf(count, 1), sy / maxf(count, 1) + extra)
+	var yb := mid.y + 1.0  # the middle of the drum's base, sunk a little into the roof
 	var yt := yb - drum_h  # the middle of its top
 	for xi in range(int(cx - rx), int(cx + rx) + 1):  # the drum's side: from the top rim's front arc down to the base's
 		var dx := (xi + 0.5 - cx) / rx
