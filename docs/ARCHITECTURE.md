@@ -53,27 +53,27 @@ can move between folders freely. Only `res://` paths (the scene, shaders, assets
 
 ### How the parts depend on each other
 
-Arrows mean "calls or reads". The simulation depends on none of the client: it tells the client what
-happened through signals, and the client reads its state to draw it.
+The simulation depends on none of the client: it tells the client what happened through signals, and the client
+reads its state to draw it.
 
 ![How the parts depend on each other](architecture.svg)
 
-*Solid arrows are calls, dashed ones are signals and listeners; yellow boxes are proposed, not built.*
+*The key is in the picture. The client is `Views` (the world, the minimap, the HUD's readouts) and `Controls` (the mouse
+and keys, which `Person` handles, and the buttons); yellow boxes are proposed, not built.*
 
 **The two channels (proposed).** The client should not know whether the simulation is in the same process. Between
-client and host there would be two channels side by side, each with an endpoint on either side, and each either
-a **direct call** (single player, or the host's own player) or **NetSession** (a joined player):
+client and host there would be two channels side by side, each an in-process queue or `NetSession`, and each
+**asynchronous**, with a consumer or publisher on the host side:
 
-- the **command channel**, client to host: `Person` (the mouse and keys) and the UI (its buttons) make commands, and they go through the channel to `Commands.submit`, as the AIs' and `Replayer`'s already do on the host;
-- the **view channel**, host to client: what the views (and the HUD's readouts) need to show. Today that is the
-  simulation's signals plus the views reading its state directly, which only works in one process. For a
-  host that keeps the one simulation it would carry state and events; for lockstep (every machine runs its own copy)
-  it would carry the ordered commands of all the players, and the client would read its local copy as now.
+- the **command channel**, client to host: `Controls` make commands, the channel carries them, and a *command consumer*
+  takes them off in order and gives them to `Commands.submit`, as the AIs and `Replayer` already do on the host;
+- the **view channel**, host to client: a *view publisher* puts what the views need on the channel (today the
+  simulation's signals; later state, or for lockstep, where every machine runs its own copy, the ordered commands of
+  all the players). The `Views` read it. Today they read the `Simulation` directly, which only works in one process.
 
-One thing changes with a network between them: today `submit` answers at once ("err.cant_afford" is flashed in the
-same frame), and a network channel answers later, so the command channel has to be asynchronous (or the client
-has to check the cheap rules itself first). Nothing of this is built: `Person` calls `Commands.submit` and the
-views read the `Simulation` directly. The AIs and `Replayer` stay on the host: they are not the person's, and
+Asynchronous means a command is queued and answered later, where today `submit` answers at once ("err.cant_afford"
+is flashed in the same frame). The `Controls` would show a refusal when it arrives (or check the cheap rules
+themselves first). Nothing of this is built. The AIs and `Replayer` stay on the host: they are not the person's, and
 in lockstep their commands have to come from one place.
 
 ## Players, drivers and commands  (**built**)
