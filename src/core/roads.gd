@@ -49,7 +49,7 @@ func assign_work(u: Unit) -> bool:
 	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(u.pos) < Vector2(b).distance_squared_to(u.pos))
 	for p in candidates:
 		release(u)
-		if game._set_path(u, p):
+		if game.orders.set_path(u, p):
 			plans[p] = u
 			u.road_tile = p
 			u.state = Unit.State.ROAD_GO

@@ -17,8 +17,6 @@ const DETOUR_SKIP := 1.3  # waypoints this close to a finished detour are skippe
 const STALL_TIME := 2.5  # no progress for this long near the goal: settle where you are
 const WAYPOINT_REACH := 0.3  # how close counts as "at" an intermediate waypoint
 const STUCK_TIME := 1.2  # a walker blocked this long is allowed to push through
-const EXPLORE_TRIES := 8  # how many of the nearest unseen spots an explorer tries for a route
-const EXPLORE_SPREAD := 10.0  # tiles: explorers pick targets at least this far apart
 const PAN_SPEED := 700.0  # screen pixels per second
 const EDGE_PAN_MARGIN := 8.0  # screen pixels from the edge that trigger scrolling
 const EDGE_PAN_MARGIN_BOTTOM := 28.0  # wider at the bottom: macOS pops up the Dock when the pointer touches that edge, which steals the mouse
@@ -81,6 +79,7 @@ var music: Music  # null in scripted runs
 var combat := Combat.new(self)  # who fights whom
 var placement := Placement.new()  # where things may go
 var debug := DebugModes.new()  # the --flags that set a scene up
+var orders := Orders.new()  # what an order does to a unit
 var era_preview := EraPreview.new()  # debug: the E key
 var roads := Roads.new()  # the paved roads laid and planned
 var commands := Commands.new()  # how a player acts on the game: every driver submits to it (see docs/ARCHITECTURE.md)
@@ -212,6 +211,7 @@ func _ready() -> void:
 	placement.game = self
 	roads.game = self
 	era_preview.game = self
+	orders.game = self
 	debug.game = self
 	stock.assign(Defs.START_STOCK)
 	stocks = [stock]
@@ -701,75 +701,6 @@ func _attack_move_to(mp: Vector2) -> void:
 	_do({"type": "attack_move", "tile": tile, "units": _ids(fighters)})
 
 
-func _order_stop(u: Unit) -> void:
-	Combat.clear(u)
-	u.dropoff_only = false
-	roads.release(u)
-	u.path.clear()
-	u.detour = Vector2.INF
-	u.target_building = null
-	u.state = Unit.State.IDLE
-
-
-func _order_explore(u: Unit) -> void:
-	Combat.clear(u)
-	u.dropoff_only = false
-	roads.release(u)
-	u.explore_skip.clear()
-	u.target_building = null
-	if _explore_next(u):
-		u.state = Unit.State.EXPLORE
-	else:
-		u.state = Unit.State.IDLE
-		if u.owner == 0:
-			hud.flash("Nihil ultra explorandum.", "Nothing reachable is left to explore.")
-
-
-## Heads for the nearest unseen, walkable tile that no other explorer is already going to.
-## Tiles with no route (across water, say) are remembered and skipped.
-func _explore_next(u: Unit) -> bool:
-	var seen := fog_of(u.owner)
-	var taken: Array[Vector2i] = []
-	for o in units:
-		if o != u and o.owner == u.owner and o.state == Unit.State.EXPLORE:
-			taken.append(o.explore_goal)
-	var best: Array[Vector2i] = []  # the nearest few candidates, kept in order as the map is scanned
-	var best_d: Array[float] = []
-	var width := map.w
-	var here := u.pos
-	for y in range(0, map.h, 3):  # every third tile is plenty to find the nearest unseen ground
-		for x in range(0, width, 3):
-			if seen.state[y * width + x] != Fog.HIDDEN:
-				continue
-			var d := (Vector2(x + 0.5, y + 0.5) - here).length_squared()
-			if best.size() == EXPLORE_TRIES and d >= best_d[EXPLORE_TRIES - 1]:
-				continue  # farther than the ones already found
-			var p := Vector2i(x, y)
-			if not map.is_walkable(p) or u.explore_skip.has(p):
-				continue
-			var crowded := false
-			for t in taken:
-				if Vector2(t - p).length() < EXPLORE_SPREAD:
-					crowded = true
-					break
-			if crowded:
-				continue
-			var at := best.size()
-			while at > 0 and best_d[at - 1] > d:
-				at -= 1
-			best.insert(at, p)
-			best_d.insert(at, d)
-			if best.size() > EXPLORE_TRIES:
-				best.pop_back()
-				best_d.pop_back()
-	for p in best:
-		if _set_path(u, p):
-			u.explore_goal = p
-			return true
-		u.explore_skip[p] = true
-	return false
-
-
 func _command_at(mp: Vector2) -> void:
 	var us := selected_units()
 	if us.is_empty():
@@ -834,94 +765,6 @@ func _command_at(mp: Vector2) -> void:
 	if movers.is_empty():
 		return
 	_do({"type": "move", "tile": tile, "units": _ids(movers)})
-
-
-## A message about one of our own units (AIs' troubles are not ours to hear).
-func _note(u: Unit, latin: String) -> void:
-	if u.owner == 0:
-		hud.flash(latin)
-
-
-func _set_path(u: Unit, goal: Vector2i) -> bool:
-	var t0 := Perf.start()
-	var ok := _set_path_inner(u, goal)
-	Perf.stop("set_path", t0)
-	return ok
-
-
-func _set_path_inner(u: Unit, goal: Vector2i) -> bool:
-	var from := Vector2i(u.pos)
-	if not map.is_walkable(from):  # shoved against an obstacle: start from the nearest open tile
-		from = map.nearest_walkable(from)
-	var ids := map.find_path(from, goal)
-	if ids.is_empty():
-		return false
-	var path: Array[Vector2] = []
-	for i in range(1, ids.size()):
-		path.append(Vector2(ids[i]) + Vector2(0.5, 0.5))
-	u.path = path
-	u.detour = Vector2.INF
-	u.best_goal_dist = INF
-	u.stall = 0.0
-	return true
-
-
-func _order_move(u: Unit, goal: Vector2i) -> void:
-	Combat.clear(u)  # a plain move order ignores the enemy until arrival: pull back, regroup
-	u.dropoff_only = false
-	roads.release(u)
-	if _set_path(u, goal):
-		u.state = Unit.State.MOVE
-		u.target_building = null
-	else:
-		_note(u, "Iter nullum est.")
-
-
-## Walk to `b` and hand over what the villager carries. If they were working, they then go back
-## to it; otherwise they stand idle by the depot.
-func _order_dropoff(u: Unit, b: Building) -> void:
-	roads.release(u)
-	var was_working := u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]
-	var stand := map.stand_tile(b.rect(), u.pos)
-	if stand.x < 0 or not _set_path(u, stand):
-		_note(u, "Iter nullum est.")
-		return
-	u.state = Unit.State.RETURN
-	u.target_building = null
-	u.dropoff_only = not was_working
-
-
-func _order_gather(u: Unit, tile: Vector2i) -> bool:
-	u.dropoff_only = false
-	roads.release(u)
-	var d: Deposit = map.deposits.get(tile)
-	if d == null or (d.farm and d.owner != u.owner):  # nobody works another's field
-		return false
-	var stand := map.stand_tile(Rect2i(tile, Vector2i.ONE), u.pos)
-	if stand.x < 0 or not _set_path(u, stand):
-		_note(u, "Iter nullum est.")
-		u.state = Unit.State.IDLE
-		return false
-	if u.carry_kind != d.kind:
-		u.carry = 0
-	u.state = Unit.State.GATHER_GO
-	u.target_tile = tile
-	u.working_farm = d.farm
-	u.gather_kind = d.kind
-	u.carry_kind = d.kind
-	u.target_building = null
-	return true
-
-
-func _order_build(u: Unit, b: Building) -> void:
-	u.dropoff_only = false
-	roads.release(u)
-	var stand := map.stand_tile(b.rect(), u.pos)
-	if stand.x < 0 or not _set_path(u, stand):
-		_note(u, "Iter nullum est.")
-		return
-	u.state = Unit.State.BUILD_GO
-	u.target_building = b
 
 
 func _try_place() -> void:
@@ -1621,7 +1464,7 @@ func _update_unit(u: Unit, delta: float) -> void:
 			combat.update_flee(u, delta)
 		Unit.State.EXPLORE:
 			if _follow(u, delta) or fog_of(u.owner).is_explored(u.explore_goal):
-				if not _explore_next(u):
+				if not orders.explore_next(u):
 					u.path.clear()
 					u.state = Unit.State.IDLE
 		Unit.State.GATHER_GO:
@@ -1640,7 +1483,7 @@ func _update_unit(u: Unit, delta: float) -> void:
 				if u.dropoff_only:
 					u.dropoff_only = false
 					u.state = Unit.State.IDLE
-				elif not (map.deposits.has(u.target_tile) and _order_gather(u, u.target_tile)) and not _retarget(u):
+				elif not (map.deposits.has(u.target_tile) and orders.gather(u, u.target_tile)) and not _retarget(u):
 					u.state = Unit.State.IDLE
 		Unit.State.ROAD_GO:
 			if _follow(u, delta):
@@ -1704,10 +1547,10 @@ func _return_to_dropsite(u: Unit) -> void:
 				best = b
 	if best == null:
 		u.state = Unit.State.IDLE
-		_note(u, "Aedifica forum vel horreum.")
+		orders.note(u, "Aedifica forum vel horreum.")
 		return
 	var stand := map.stand_tile(best.rect(), u.pos)
-	if stand.x >= 0 and _set_path(u, stand):
+	if stand.x >= 0 and orders.set_path(u, stand):
 		u.state = Unit.State.RETURN
 	else:
 		u.state = Unit.State.IDLE
@@ -1731,7 +1574,7 @@ func _retarget(u: Unit) -> bool:
 				best_d = dist
 				best = p
 	Perf.stop("retarget scan", t0)
-	return best.x >= 0 and _order_gather(u, best)
+	return best.x >= 0 and orders.gather(u, best)
 
 
 func _update_farm(b: Building, delta: float) -> void:

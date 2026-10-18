@@ -50,9 +50,9 @@ func submit(cmd: Dictionary) -> String:
 		"attack":
 			return _attack(owner, cmd)
 		"stop":
-			return _each(owner, cmd, game._order_stop)
+			return _each(owner, cmd, game.orders.stop)
 		"explore":
-			return _each(owner, cmd, game._order_explore)
+			return _each(owner, cmd, game.orders.explore)
 		"pave":
 			return _pave(owner, cmd)
 		"pave_work":
@@ -122,7 +122,7 @@ func _place(owner: int, cmd: Dictionary) -> String:
 	var b: Building = game._add_building(kind, tile, false, owner)
 	for u in _units(owner, cmd):
 		if u.kind == "villager":
-			game._order_build(u, b)
+			game.orders.build(u, b)
 	return ""
 
 
@@ -130,14 +130,14 @@ func _build(owner: int, cmd: Dictionary) -> String:
 	var b := _building(owner, int(cmd.get("building", -1)))
 	if b == null:
 		return "Non licet."
-	return _each(owner, cmd, func(u: Unit) -> void: game._order_build(u, b), true)
+	return _each(owner, cmd, func(u: Unit) -> void: game.orders.build(u, b), true)
 
 
 func _gather(owner: int, cmd: Dictionary) -> String:
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
 	var any := false
 	for u in _units(owner, cmd):
-		if u.kind == "villager" and game._order_gather(u, tile):
+		if u.kind == "villager" and game.orders.gather(u, tile):
 			any = true
 	return "" if any else "Iter nullum est."
 
@@ -146,7 +146,7 @@ func _dropoff(owner: int, cmd: Dictionary) -> String:
 	var b := _building(owner, int(cmd.get("building", -1)))
 	if b == null or not b.complete:
 		return "Non licet."
-	return _each(owner, cmd, func(u: Unit) -> void: game._order_dropoff(u, b), true)
+	return _each(owner, cmd, func(u: Unit) -> void: game.orders.dropoff(u, b), true)
 
 
 ## Move (or attack-move) the group to `tile`, spread out so nobody lands on anyone.
@@ -162,7 +162,7 @@ func _move(owner: int, cmd: Dictionary, fighting: bool) -> String:
 		if fighting:
 			game.combat.order_attack_move(us[i], goals[i % goals.size()])
 		else:
-			game._order_move(us[i], goals[i % goals.size()])
+			game.orders.move(us[i], goals[i % goals.size()])
 	return ""
 
 

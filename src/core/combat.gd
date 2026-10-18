@@ -117,9 +117,9 @@ func order_attack(u: Unit, t: Unit, auto := false) -> void:
 ## Attack-move: walk to `goal` (a tile), fighting whatever is met on the way.
 func order_attack_move(u: Unit, goal: Vector2i) -> void:
 	if not fights(u):
-		game._order_move(u, goal)
+		game.orders.move(u, goal)
 		return
-	game._order_move(u, goal)
+	game.orders.move(u, goal)
 	u.amove = true
 	u.amove_goal = Vector2(goal) + Vector2(0.5, 0.5)
 
@@ -200,7 +200,7 @@ func _move_toward(u: Unit, aim: Vector2, delta: float) -> void:
 	var goal := Vector2i(aim)
 	if u.path.is_empty() or (u.repath_t <= 0.0 and u.path.back().distance_to(aim) > 1.2):
 		u.repath_t = 0.5
-		if not game._set_path(u, goal):
+		if not game.orders.set_path(u, goal):
 			u.repath_t = 1.0
 			u.lost_for += 0.5  # no way to it: a target across the water is soon given up
 			if u.lost_for > GIVE_UP:
@@ -274,7 +274,7 @@ func _resume(u: Unit) -> void:
 	u.target = null
 	u.path.clear()
 	if u.amove and u.amove_goal != Vector2.INF and u.pos.distance_to(u.amove_goal) > 1.0:
-		if game._set_path(u, Vector2i(u.amove_goal)):
+		if game.orders.set_path(u, Vector2i(u.amove_goal)):
 			u.state = Unit.State.MOVE
 			return
 	u.amove = false
@@ -307,7 +307,7 @@ func _flee(v: Unit, from: Unit) -> void:
 	else:
 		var away := (v.pos - from.pos).normalized() * 10.0
 		goal = Vector2i((v.pos + away).clamp(Vector2(1, 1), Vector2(game.map.w - 2, game.map.h - 2)))
-	if goal.x >= 0 and game._set_path(v, goal):
+	if goal.x >= 0 and game.orders.set_path(v, goal):
 		v.state = Unit.State.FLEE
 
 

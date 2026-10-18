@@ -128,12 +128,12 @@ func showcase_setup() -> void:
 	var tc := game.buildings[0]
 	var forum := tc.center()
 	# each villager gets a standing job; when they go idle they're sent back to it
-	var chop := func(u: Unit) -> void: game._order_gather(u, _show_pick(Defs.Res.WOOD, forum, 12.0, u.pos))
-	var forage := func(u: Unit) -> void: game._order_gather(u, _show_pick(Defs.Res.FOOD, forum, 16.0, u.pos))
-	var mine := func(u: Unit) -> void: game._order_gather(u, _show_pick(Defs.Res.STONE, forum, 18.0, u.pos))
+	var chop := func(u: Unit) -> void: game.orders.gather(u, _show_pick(Defs.Res.WOOD, forum, 12.0, u.pos))
+	var forage := func(u: Unit) -> void: game.orders.gather(u, _show_pick(Defs.Res.FOOD, forum, 16.0, u.pos))
+	var mine := func(u: Unit) -> void: game.orders.gather(u, _show_pick(Defs.Res.STONE, forum, 18.0, u.pos))
 	var till := func(u: Unit) -> void:
 		if _show_farm != null and _show_farm.complete:
-			game._order_gather(u, _show_farm.field_tile())
+			game.orders.gather(u, _show_farm.field_tile())
 		else:
 			chop.call(u)
 	_show_jobs[game.units[0]] = chop
@@ -194,7 +194,7 @@ func _show_start_field() -> void:
 		return
 	game._pay(Defs.BUILDINGS["farm"]["cost"])
 	_show_farm = game._add_building("farm", site, false)
-	game._order_build(game.units[4], _show_farm)
+	game.orders.build(game.units[4], _show_farm)
 
 
 func _show_train() -> void:
@@ -209,7 +209,7 @@ func _show_hut(builder: Unit, then: Callable) -> void:
 		return
 	game._pay(Defs.BUILDINGS["hut"]["cost"])
 	var hut := game._add_building("hut", site, false)
-	game._order_build(builder, hut)  # when they finish they go idle and return to their job
+	game.orders.build(builder, hut)  # when they finish they go idle and return to their job
 
 
 func showcase_update(delta: float) -> void:
@@ -279,6 +279,6 @@ func run_demo(start: Vector2i) -> void:
 				best_d = (Vector2(p) + Vector2(0.5, 0.5)).distance_to(game.units[i].pos)
 				best = p
 		if i < 2 and field != null:  # the first two villagers work the wheat field
-			game._order_gather(game.units[i], field.field_tile())
+			game.orders.gather(game.units[i], field.field_tile())
 		elif best.x >= 0:
-			game._order_gather(game.units[i], best)
+			game.orders.gather(game.units[i], best)
