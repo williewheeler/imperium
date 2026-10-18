@@ -52,39 +52,38 @@ can move between folders freely. Only `res://` paths (the scene, shaders, assets
 
 ### How the parts depend on each other
 
-Arrows mean "calls or reads". The simulation depends on none of what is below it: it tells the client what
+Arrows mean "calls or reads". The simulation depends on none of the client: it tells the client what
 happened through signals, and the client reads its state to draw it.
 
 ```mermaid
 flowchart TD
-    subgraph drivers [Drivers: decide what to ask for]
-        person["Person<br/>(mouse, keys, selection)"]
-        AI["AIs"]
-        replayer["Replayer<br/>(a recorded game)"]
-        remote["Remote peer<br/>(decided, not built)"]
-    end
-
-    commands["Commands.submit<br/>validate, pay, apply"]
-
-    subgraph sim [Simulation: src/sim, no scene and no clock]
-        simulation["Simulation.step()<br/>units, buildings, stocks, fogs, rng"]
-        parts["Movement, Economy, Production, Eras,<br/>Vision, Wildlife, UnitBehavior,<br/>Combat, Orders, Placement, Roads, Victory"]
-        map["GameMap, Fog, Defs"]
-    end
-
-    subgraph client [Client]
+    subgraph client [Client: src/client, views, ui]
+        person["Person<br/>mouse, keys, selection"]
         main["Main<br/>gives the simulation time"]
         views["views/ and ui/<br/>draw the state"]
-        art["art/"]
+        channel["Command channel<br/>(proposed: today Person calls<br/>Commands.submit directly)"]
     end
 
-    recorder["Recorder<br/>writes commands and checksums"]
-    net["net/NetSession<br/>lobby only today"]
+    subgraph host [Host: where the one simulation runs]
+        AI["AIs"]
+        replayer["Replayer<br/>(a recorded game)"]
+        commands["Commands.submit<br/>validate, pay, apply"]
+        subgraph sim [Simulation: src/sim, no scene and no clock]
+            simulation["Simulation.step()"]
+            parts["Movement, Economy, Production, Eras, Vision,<br/>Wildlife, UnitBehavior, Combat, Orders,<br/>Placement, Roads, Victory"]
+            map["GameMap, Fog, Defs"]
+        end
+    end
 
-    person --> commands
+    net["NetSession<br/>(lobby only today)"]
+    recorder["Recorder<br/>(a side tool)"]
+
+    person --> channel
+    channel -- "single player or host:<br/>direct call" --> commands
+    channel -. "joined player:<br/>over the network (decided, not built)" .-> net
+    net -.-> commands
     AI --> commands
     replayer --> commands
-    remote -.-> commands
     commands --> simulation
     simulation --> parts
     parts --> map
@@ -92,11 +91,19 @@ flowchart TD
     main -- "step()" --> simulation
     simulation -. "signals: notice, building_destroyed, ..." .-> main
     views -- "reads" --> simulation
-    views --> art
-    commands -. "submitted" .-> recorder
-    simulation -. "stepped" .-> recorder
-    net -- "config and seed at start" --> main
+    recorder -. "listens: submitted, stepped" .-> commands
+    recorder -.-> simulation
 ```
+
+**The command channel (proposed).** The client should not know whether the simulation is in the same process.
+`Person` would hand commands to a *command channel*, one small interface (`submit(cmd)`, and a way to hear the
+answer) with two backends: a **direct** one that calls `Commands.submit` (single player, or the host's own
+player) and a **network** one that sends the command to the host over `NetSession`, stamped with a tick. The
+host feeds both through the same `Commands.submit`, as it already does for the AIs and for `Replayer`. One
+thing changes: today `submit` answers at once ("err.cant_afford" is flashed in the same frame), and a
+network channel answers later, so the interface has to be asynchronous (or the client has to check the
+cheap rules itself first). Today `Person` calls `Commands.submit` directly. The AIs and `Replayer` stay on the
+host side: they are not the person's, and in lockstep their commands have to come from one place.
 
 ## Players, drivers and commands  (**built**)
 
