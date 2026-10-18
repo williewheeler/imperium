@@ -10,6 +10,8 @@ var _looks_made := {}  # unit kind -> how many have been made, to hand out the l
 
 ## The first player's town and people at `start`, the resources round them, the Circus and the other peoples.
 func found_players(start: Vector2i) -> void:
+	Building.eras = {Main.LOCAL: 0}  # everyone starts in Era I
+	Building.era = 0
 	for off in GameMap.START_OFFSETS:
 		var u := Unit.new()
 		u.pos = Vector2(start + off) + Vector2(0.5, 0.5)
@@ -108,6 +110,7 @@ func assign_sex(u: Unit) -> void:
 
 ## An AI to run player `owner_id`, whose town stands at `spot`. It knows only the ground its people have seen.
 func _make_ai(owner_id: int, faction: String, spot: Vector2i) -> void:
+	Building.eras[owner_id] = 0
 	var ai := AI.new()
 	ai.game = game
 	ai.owner = owner_id

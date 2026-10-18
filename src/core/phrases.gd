@@ -47,6 +47,7 @@ const TABLE := {
 	"spec.growing": ["Crescit.", "Growing: villagers, houses, fields"],
 	"spec.arming": ["Armat.", "Raising an army"],
 	"spec.marching": ["Procedit.", "Marching on an enemy"],
+	"spec.defending": ["Defendit.", "Defending its towns"],
 	"spec.fighting": ["Pugnat.", "Fighting"],
 	"spec.victor": ["Victor.", "The last people standing: victory"],
 	"spec.beaten": ["Victus.", "Beaten: no town left"],

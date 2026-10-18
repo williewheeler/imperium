@@ -13,11 +13,12 @@ can move between folders freely. Only `res://` paths (the scene, shaders, assets
 
 | Folder | Role |
 |---|---|
-| `src/core/` | The game itself: state and rules (`main`, `unit`, `building`, `combat`, `defs`), the command layer (`commands`), what an order does to a unit (`orders`), where things may go (`placement`, `roads`), founding the players (`world_setup`), the computer players (`ai`), settings, weather, music, and the debug scaffolding (`debug_modes`, `era_preview`). Today `main.gd` is both the simulation and the person's input handling (see *Known debts*). |
+| `src/core/` | The game itself: state and rules (`main`, `unit`, `building`, `combat`, `defs`), the command layer (`commands`), what an order does to a unit (`orders`), where things may go (`placement`, `roads`), founding the players (`world_setup`), settings, weather, music, and the debug scaffolding (`debug_modes`, `era_preview`). Today `main.gd` is both the simulation and the person's input handling (see *Known debts*). |
 | `src/map/` | The ground and what is known of it: `GameMap`, `TerrainGen`, `Fog`, `Iso` (tile/screen maths), `Deposit`. Plain classes that never reference `Main`; they depend only on `GameSettings` and `Defs`. |
 | `src/views/` | Drawing the state. Reads the game, never changes it. |
 | `src/ui/` | The HUD, menus, lobby, title. Talks to the game through signals and `Main` calls. |
 | `src/art/` | Sprite drawing code; baked into PNG sheets by `tools/`. |
+| `src/ai/` | The computer players: `AI` (what it knows, how it senses and arbitrates) and one class per goal. See *The AIs*. |
 | `src/net/` | Lobby networking (`NetSession`). |
 
 ### How the parts depend on each other
@@ -90,7 +91,7 @@ submitted it.**
   - The person's driver is the input section of `Main` (`_do`, `_command_at`, `_try_place`, `_train_unit`,
     `_commit_road`, ...). It turns clicks and the selection into commands, flashes a refusal, and keeps
     purely interface state (markers, placement mode, attack-move mode) to itself.
-  - `AI` (`src/core/ai.gd`) thinks about once a second and submits commands as its owner through its
+  - `AI` (`src/ai/ai.gd`, see *The AIs* below) thinks about once a second and submits commands as its owner through its
     own `_do`. It sees the world through its own `Fog`, so it knows only what its people have seen.
 - **What is not a command.** Things the simulation does on its own are not player intent and call the order
   functions directly: a gatherer finding a new tree, a fighter picking a fight (`Combat`), a builder
@@ -123,11 +124,12 @@ between machines. See DESIGN.md for the lobby itself.
 
 ## Known debts
 
-- `Main` (`main.gd`, about 1,500 lines) mixes the simulation (unit movement, gathering, building, combat
+- `Main` (`main.gd`, about 1,600 lines) mixes the simulation (unit movement, gathering, building, combat
   hooks), the person's driver and input, camera, debug modes and startup. The next split is the
   simulation out from the person's driver.
-- The era is one value for the whole game and belongs to player 0, so `advance` is refused for other
-  players. Eras and the stuff they unlock should be per player.
+- Eras are per player (`Main.era_of`, `Building.eras`), but the local player is still special-cased: `Main.era`
+  (what the HUD, the music and `Building.def_for` default to) and `Building.era` are *its* era. They should
+  fold into the per-player table once the HUD takes a viewer.
 - The views are still tied to one local viewer in normal play (`game.fog`, "owner 0 is mine"). The spectator
   gets per-AI views with a parallel path (`viewers`, layers) rather than a viewer passed through every view;
   a single `Viewer` object would unify the two.
@@ -138,6 +140,29 @@ between machines. See DESIGN.md for the lobby itself.
   state and for pathing (`_set_path` is now `Orders.set_path`, but the movement code is still in `Main`).
   They should depend on a smaller simulation interface once `Main` is split.
 - Stock `stock` is still an alias for `stocks[0]`.
+
+## The AIs  (**built**)
+
+`src/ai/`: an `AI` plays one people through the same `Commands` as a person, seeing only its own `Fog`. What
+it does is organized as **goals** (`AIGoal`, one file each), not one long script:
+
+| Goal | What it is for |
+|---|---|
+| `WorkersGoal` | idle villagers go to the resource they are most short of (its usual share, less what is in store); hands move off a glut onto what has run out |
+| `GrowthGoal` | villagers at every town, houses (aqueducts later) before it runs out of room, fields at each town, a storehouse by the woods, vineyards in Era II |
+| `ExploreGoal` | scouts (one, then two or three while the map is mostly unseen): it has to find land, resources and enemies |
+| `ExpandGoal` | new Town Centers: the richest explored ground a good way from its own and everyone's towns, once it has the people |
+| `MilitaryGoal` | an army in proportion to its villagers (barracks as it grows, a stable, counters to what it has seen) |
+| `AttackGoal` | waves, attack-moving at the nearest enemy building it has explored; a force cut to 40% falls back |
+| `DefendGoal` | idle fighters march at enemy fighters near its buildings; a far-off wave is called home if needed |
+| `AdvanceGoal` | saves for and begins the next era once its requirements are met |
+
+Each think, every goal says how pressing it is (`priority()`), and they act in that order. A goal that cannot
+yet afford what it wants **reserves** the resources (`AI.reserve`, `buy`, `place`) once it is within half of
+them, so goals further down leave them alone: that is how an AI saves for a Town Center or an era while still
+feeding its people. Eras are per player (`Main.era_of`), so each AI advances by itself and its buildings take
+on its own era's look. `tools/ai_test.gd` (`just ai-test`) plays four AIs against each other at 10x and
+reports towns, era, army, exploration and kills every 150 game seconds.
 
 ## Placement and roads  (**built**)
 
@@ -215,6 +240,9 @@ in `src/map/`) is different: it is per-player simulation state (`Main.fogs`, by 
 - `just phrases-test`: every phrase has Latin and English, and every key named in the code exists.
 - `just siege-test`: attacking, burning and destroying a building, a people being defeated, and the last one winning.
 - `just war-test`: an AI wave marches across the map, burns the enemy town down and defeats the people.
+- `just ai-test`: four AIs play each other at 10x for a few thousand game seconds, and it prints each one's towns,
+  era, army, how much of the map it has explored, and the kills, every 150 game seconds. This is how AI changes
+  are judged: there is no pass/fail, so read the numbers.
 - `just net-test`: the lobby, host and client in two processes.
 - `--report` (see the justfile): runs a game headless and dumps the state, which is how AI behavior is
   checked.

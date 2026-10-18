@@ -34,7 +34,9 @@ town *args:
 perf *args:
     {{godot}} --path . -- --windowed --nosplash --perf {{args}}
 
-# Watch four AIs play each other in four panes of one window (no human player)
+# Watch four AIs play each other in four panes of one window (no human player).
+# Speed it up with + and - in the window (up to 32x), or start faster: just ai4 --speed=8
+# Other options: --seed=N, --difficulty=difficilis, --terrain=snowy, --map=anulus, --size=small
 ai4 *args:
     ./run.sh --windowed --nosplash --spectate --terrain=temperate --size=1600x900 {{args}}
 
@@ -68,6 +70,10 @@ siege-test:
 # Headless check that an AI wave marches on an enemy town and burns its buildings down
 war-test:
     {{godot}} --headless --path . --script tools/war_test.gd -- --nosplash --spectate --seed=3 --size=small --map=continens --terrain=temperate
+
+# Four AIs play each other fast (10x), headless, reporting every 150 game seconds: just ai-test 900
+ai-test seconds="900" *args:
+    {{godot}} --headless --path . --script tools/ai_test.gd -- --nosplash --spectate --terrain=temperate --size=small --map=continens --seed=3 {{seconds}} {{args}}
 
 # Headless check of the phrase table: both languages present, every key used in the code exists
 phrases-test:

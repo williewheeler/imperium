@@ -44,13 +44,25 @@ var hud: Hud
 var placing := ""  # building kind currently being placed, or ""
 var placing_road := false  # laying a paved road: drag across the ground to paint tiles
 var road_drag: Array[Vector2i] = []  # tiles under the current drag (or just the hovered tile)
-var era := 0:  # index into Defs.ERAS
+var era := 0:  # the local player's era, an index into Defs.ERAS (the interface and the music follow this one)
 	set(v):
 		era = v
 		Building.era = v
+		Building.eras[LOCAL] = v
 		_music_context()
-var advancing := false  # an era advance is being researched at the Forum
-var advance_progress := 0.0  # seconds into it
+var eras := {}  # owner -> era, for the players who are not the local one (see era_of)
+var _advancing := {}  # owner -> true while an era advance is being researched at the Forum
+var _advance_progress := {}  # owner -> seconds into it
+var advancing: bool:  # the local player's advance
+	get:
+		return _advancing.get(LOCAL, false)
+	set(v):
+		_advancing[LOCAL] = v
+var advance_progress: float:
+	get:
+		return _advance_progress.get(LOCAL, 0.0)
+	set(v):
+		_advance_progress[LOCAL] = v
 var selected_deposit := Vector2i(-1, -1)  # clicked resource tile, or (-1, -1)
 var dragging := false
 var drag_rect := Rect2()  # world pixels
@@ -872,11 +884,11 @@ func _train_unit(kind: String) -> void:
 
 
 ## The marsh around the city is drained, as Rome's was by the Cloaca Maxima: it becomes grass.
-func _drain_marshes() -> void:
-	var changed := map.drain_marsh(buildings[0].center(), 14.0)
+func _drain_marshes(center: Vector2, announce := true) -> void:
+	var changed := map.drain_marsh(center, 14.0)
 	for p in changed:
 		_world.tile_changed(p)
-	if not changed.is_empty():
+	if not changed.is_empty() and announce:
 		hud.flash_key("msg.marsh_drained")
 
 
@@ -933,43 +945,53 @@ func _cancel_road_mode() -> void:
 
 # ---------- Eras ----------
 
-func _count_built(kind: String) -> int:
+## The era `owner` is in.
+func era_of(owner: int) -> int:
+	return era if owner == LOCAL else int(eras.get(owner, 0))
+
+
+func _count_built(kind: String, owner := LOCAL) -> int:
 	var n := 0
 	for b in buildings:
-		if b.kind == kind and b.complete and b.owner == 0:
+		if b.kind == kind and b.complete and b.owner == owner:
 			n += 1
 	return n
 
 
-## The next advance's data (cost, time, needs), or null if there isn't one yet.
-func advance_data() -> Variant:
-	return Defs.ERA_ADVANCE[era] if era < Defs.ERA_ADVANCE.size() else null
+## The next advance's data (cost, time, needs) for `owner`, or null if there isn't one yet.
+func advance_data(owner := LOCAL) -> Variant:
+	var at := era_of(owner)
+	return Defs.ERA_ADVANCE[at] if at < Defs.ERA_ADVANCE.size() else null
 
 
 ## What the next advance needs, as [English text, met?] pairs.
-func advance_requirements() -> Array:
+func advance_requirements(owner := LOCAL) -> Array:
 	var out := []
-	var data: Variant = advance_data()
+	var data: Variant = advance_data(owner)
 	if data == null:
 		return out
 	for need: Array in data["needs"]:
 		var want: int = need[1]
 		if need[0] == "pop":
-			out.append(["Population %d (you have %d)" % [want, pop_used()], pop_used() >= want])
+			out.append(["Population %d (you have %d)" % [want, pop_used(owner)], pop_used(owner) >= want])
 		else:
-			var have := _count_built(need[0])
+			var have := _count_built(need[0], owner)
 			out.append(["%d x %s (you have %d)" % [want, Defs.BUILDINGS[need[0]]["english"], have], have >= want])
 	return out
 
 
-func can_advance() -> bool:
-	var data: Variant = advance_data()
-	if data == null or advancing:
+func is_advancing(owner := LOCAL) -> bool:
+	return _advancing.get(owner, false)
+
+
+func can_advance(owner := LOCAL) -> bool:
+	var data: Variant = advance_data(owner)
+	if data == null or _advancing.get(owner, false):
 		return false
-	for r: Array in advance_requirements():
+	for r: Array in advance_requirements(owner):
 		if not r[1]:
 			return false
-	return can_afford(data["cost"])
+	return can_afford(data["cost"], owner)
 
 
 ## English tooltip for the Advance button: what it gets you, what it costs, what's still missing.
@@ -991,24 +1013,42 @@ func advance_tooltip() -> String:
 	return "\n".join(lines)
 
 
-func start_advance() -> void:
-	if not can_advance():
+func start_advance(owner := LOCAL) -> void:
+	if not can_advance(owner):
 		return
-	_pay(advance_data()["cost"])
-	advancing = true
-	advance_progress = 0.0
-	hud.flash_key("msg.advancing")
+	_pay(advance_data(owner)["cost"], owner)
+	_advancing[owner] = true
+	_advance_progress[owner] = 0.0
+	if owner == LOCAL and not spectating:
+		hud.flash_key("msg.advancing")
 
 
 func _update_advance(delta: float) -> void:
-	if not advancing:
-		return
-	advance_progress += delta
-	if advance_progress >= float(advance_data()["time"]):
-		advancing = false
-		era += 1
-		_drain_marshes()
-		var e: Dictionary = Defs.ERAS[era]
+	for owner: int in _advancing.keys():
+		if not _advancing[owner]:
+			continue
+		_advance_progress[owner] = float(_advance_progress.get(owner, 0.0)) + delta
+		if _advance_progress[owner] >= float(advance_data(owner)["time"]):
+			_advancing[owner] = false
+			_set_era(owner, era_of(owner) + 1)
+
+
+## `owner` has reached `value`: new buildings and roads open to them, and their buildings take on the new look.
+func _set_era(owner: int, value: int) -> void:
+	if owner == LOCAL:
+		era = value
+	else:
+		eras[owner] = value
+	Building.eras[owner] = value
+	var home: Building = null
+	for b in buildings:
+		if b.owner == owner and b.kind == "town_center":
+			home = b
+			break
+	if value >= 1 and home != null:
+		_drain_marshes(home.center(), owner == LOCAL and not spectating)
+	if owner == LOCAL and not spectating:
+		var e: Dictionary = Defs.ERAS[value]
 		hud.flash("Aetas %s: %s" % [e["numeral"], e["latin"]], "Era %s begins: %s (%s)" % [e["numeral"], e["english"], e["years"]])
 
 

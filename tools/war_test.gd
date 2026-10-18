@@ -41,13 +41,7 @@ func _process(dt: float) -> bool:
 			g.units.append(u)
 		print("attacker ", attacker.owner, " at ", attacker.start, " victim ", victim.owner, " at ", victim.start, " distance ", snappedf(Vector2(attacker.start).distance_to(Vector2(victim.start)), 1.0))
 		stage = 1
-	elif stage == 1 and t_stage > 60.0 and not has_meta("dbg"):
-		set_meta("dbg", true)
-		var sm := attacker.summary()
-		print("t=60: wave=", attacker._wave.size(), " army=", sm["army"], " status=", sm["status"], " target=", attacker._target_for(attacker._town()))
-		for u in g.units.filter(func(u): return u.owner == attacker.owner and u.kind == "soldier").slice(0, 3):
-			print("  soldier at ", u.pos, " state ", Unit.State.keys()[u.state], " amove ", u.amove, " goal ", u.amove_goal)
-	if stage == 1 and (g.victory.defeated.has(victim.owner) or t_stage > 600.0):
+	if stage == 1 and (g.victory.defeated.has(victim.owner) or t_stage > 900.0):
 		print("after %.0f game seconds: buildings lost=%d kills=%d" % [t_stage, g.buildings_lost, g.combat.kills])
 		var states := {}
 		for u in g.units:

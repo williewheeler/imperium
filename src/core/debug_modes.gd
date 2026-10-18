@@ -129,7 +129,7 @@ func report_text() -> String:
 	var lines: Array[String] = ["stock=%s" % [game.stock], "buildings lost=%d kills=%d defeated=%s winner=%d" % [game.buildings_lost, game.combat.kills, game.victory.defeated.keys(), game.victory.winner]]
 	for ai: AI in game.ais:
 		var sm := ai.summary()
-		lines.append("AI %d: villagers=%d army=%d buildings=%d pop=%d/%d status=%s wave=%d age=%.0f" % [ai.owner, sm["villagers"], sm["army"], sm["buildings"], sm["pop"], sm["cap"], sm["status"], ai._wave.size(), ai._age])
+		lines.append("AI %d: era=%d towns=%d explored=%d%% villagers=%d army=%d buildings=%d pop=%d/%d status=%s wave=%d" % [ai.owner, sm["era"], sm["towns"], int(float(sm["explored"]) * 100.0), sm["villagers"], sm["army"], sm["buildings"], sm["pop"], sm["cap"], sm["status"], ai.wave.size()])
 	for u in game.units:
 		lines.append("unit pos=(%.2f, %.2f) state=%s carry=%d" % [u.pos.x, u.pos.y, Unit.State.keys()[u.state], u.carry])
 	for b in game.buildings:

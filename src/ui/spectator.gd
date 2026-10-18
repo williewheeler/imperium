@@ -15,6 +15,7 @@ const LAYER_BIT := 1 << 19  # the main window draws only what is on this layer (
 const GAP := 3.0
 const MINIMAP := 160.0  # side, in logical pixels
 const FOLLOW_RATE := 1.6  # how quickly a pane's camera settles on its subject
+const SPEEDS := [1.0, 2.0, 4.0, 8.0, 16.0, 32.0]  # the game speeds + and - step through
 const CREAM := Color("f3e6c4")
 const DIM := Color("b8aa86")
 
@@ -22,6 +23,7 @@ var game: Main
 var _panes: Array[Dictionary] = []
 var _grid: GridContainer
 var _clock := 0.0
+var _speed_label: Label
 
 
 func _ready() -> void:
@@ -40,9 +42,35 @@ func _ready() -> void:
 	add_child(_grid)
 	for i in game.viewers.size():
 		_make_pane(game.viewers[i], i)
+	_speed_label = Label.new()  # the speed, and how to change it
+	_speed_label.add_theme_font_override("font", Latin.FONT)
+	_speed_label.add_theme_font_size_override("font_size", 12)
+	_speed_label.add_theme_color_override("font_color", CREAM)
+	_speed_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_speed_label.add_theme_constant_override("outline_size", 4)
+	_speed_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_speed_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_speed_label.offset_top = 4.0
+	_speed_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_speed_label)
+	_show_speed()
 	_put_on_layer(self)
 	get_viewport().canvas_cull_mask = LAYER_BIT  # the world is drawn in the panes, not behind them
 	_refresh_stats()
+
+
+## Steps the game speed up (`+`) or down (`-`).
+func _change_speed(step: int) -> void:
+	var at := 0
+	for i in SPEEDS.size():
+		if is_equal_approx(float(SPEEDS[i]), Engine.time_scale):
+			at = i
+	Engine.time_scale = float(SPEEDS[clampi(at + step, 0, SPEEDS.size() - 1)])
+	_show_speed()
+
+
+func _show_speed() -> void:
+	_speed_label.text = Latin.t("Celeritas x%d   ·   + / - speed   ·   F follow   ·   wheel zoom   ·   drag look   ·   Q quit" % int(Engine.time_scale))
 
 
 ## The bit a pane's own things are on. Bit 1 is the world every pane shares.
@@ -99,11 +127,11 @@ func _make_pane(ai: AI, index: int) -> void:
 	col.add_theme_constant_override("separation", 1)
 	panel.add_child(col)
 	var labels: Array[Label] = []
-	for i in 4:
+	for i in 5:
 		var l := Label.new()
 		l.add_theme_font_override("font", Latin.FONT)
 		l.add_theme_font_size_override("font_size", 15 if i == 0 else 11)
-		l.add_theme_color_override("font_color", color.lightened(0.35) if i == 0 else (CREAM if i < 3 else DIM))
+		l.add_theme_color_override("font_color", color.lightened(0.35) if i == 0 else (CREAM if i < 4 else DIM))
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(l)
 		labels.append(l)
@@ -183,7 +211,8 @@ func _refresh_stats() -> void:
 		labels[0].text = Latin.t(Defs.faction_of(ai.owner)["latin"])
 		labels[1].text = Latin.t("Coloni %d · Milites %d · Populus %d/%d" % [s["villagers"], s["army"], s["pop"], s["cap"]])
 		labels[2].text = Latin.t("%s %d · %s %d · %s %d · %s %d" % [Defs.RES_NAMES[0], stock[0], Defs.RES_NAMES[1], stock[1], Defs.RES_NAMES[2], stock[2], Defs.RES_NAMES[3], stock[3]])
-		labels[3].text = Latin.t(Phrases.latin(s["status"]))
+		labels[3].text = Latin.t("Aetas %s · Oppida %d · Terra nota %d%%" % [Defs.ERAS[s["era"]]["numeral"], s["towns"], int(float(s["explored"]) * 100.0)])
+		labels[4].text = Latin.t(Phrases.latin(s["status"]))
 		(p["panel"] as Control).tooltip_text = "%s: %s" % [Defs.faction_of(ai.owner)["english"], Phrases.english(s["status"])]
 
 
@@ -223,6 +252,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		match event.keycode:
 			KEY_Q:
 				get_tree().quit()
+			KEY_EQUAL, KEY_PLUS, KEY_KP_ADD:
+				_change_speed(1)
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				_change_speed(-1)
 			KEY_F:
 				var p := _pane_at(get_viewport().get_mouse_position())
 				for q in (_panes if p.is_empty() else [p]):

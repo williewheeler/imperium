@@ -197,7 +197,7 @@ func _dress_paved_avenue() -> void:
 func cycle(step: int) -> void:
 	game.era = posmod(game.era + step, Defs.ERAS.size())
 	if game.era >= 1:
-		game._drain_marshes()
+		game._drain_marshes(game.buildings[0].center())
 	game.advancing = false
 	game._clear_selection()
 	game.placing = ""

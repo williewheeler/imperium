@@ -115,7 +115,7 @@ func _place(owner: int, cmd: Dictionary) -> String:
 	var kind := String(cmd.get("kind", ""))
 	if not Defs.BUILDINGS.has(kind):
 		return "err.not_allowed"
-	if game.era < int(Defs.BUILDINGS[kind].get("era", 0)):
+	if game.era_of(owner) < int(Defs.BUILDINGS[kind].get("era", 0)):
 		return "err.not_yet"
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
 	var err: String = game.placement.error(kind, tile, owner)
@@ -208,7 +208,7 @@ func _each(owner: int, cmd: Dictionary, order: Callable, workers_only := false) 
 
 
 func _pave(owner: int, cmd: Dictionary) -> String:
-	if game.era < Defs.ROAD_ERA:
+	if game.era_of(owner) < Defs.ROAD_ERA:
 		return "err.not_yet"
 	var tiles: Array[Vector2i] = []
 	for p: Vector2i in cmd.get("tiles", []):
@@ -238,9 +238,7 @@ func _pave_work(owner: int, cmd: Dictionary) -> String:
 
 
 func _advance(owner: int) -> String:
-	if owner != 0:  # the era is one for the whole game for now, and the first player's
+	if not game.can_advance(owner):
 		return "err.not_yet"
-	if not game.can_advance():
-		return "err.not_yet"
-	game.start_advance()
+	game.start_advance(owner)
 	return ""

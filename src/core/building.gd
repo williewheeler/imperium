@@ -2,7 +2,8 @@ class_name Building
 extends RefCounted
 
 ## The era the game is in. The town center changes from the Casa Romuli (the hut village) to the marble Forum in Era II.
-static var era := 0
+static var era := 0  # the local player's era (the interface shows this one)
+static var eras := {}  # owner -> era, for every player: a building looks as its owner's era makes it
 static var _early_defs := {}  # kind -> its Era I definition (name and picture differ)
 
 static var _made := 0
@@ -43,8 +44,13 @@ var stage := 0  # fields: 0 ripe .. 3 freshly sown
 var regrow := 0.0  # fields: seconds since they were emptied
 
 
+## The era this building's owner is in (a landmark: the local player's).
+func owner_era() -> int:
+	return int(eras.get(owner, era))
+
+
 func def() -> Dictionary:
-	return def_for(kind)
+	return def_for(kind, owner_era())
 
 
 ## What this building trains (an empty list for most).
@@ -59,9 +65,9 @@ func team_color() -> Color:
 
 ## Building data. Some buildings look and read differently in Era I: the town center is the
 ## Casa Romuli (then the Forum), the barracks the Arx (then the Castra), the temple the Aedes (then the Templum).
-static func def_for(k: String) -> Dictionary:
+static func def_for(k: String, at_era := -1) -> Dictionary:
 	var d: Dictionary = Defs.BUILDINGS[k]
-	if era < 1 and d.has("early"):
+	if (era if at_era < 0 else at_era) < 1 and d.has("early"):
 		if not _early_defs.has(k):
 			_early_defs[k] = d.merged(d["early"], true)
 		return _early_defs[k]
@@ -69,9 +75,9 @@ static func def_for(k: String) -> Dictionary:
 
 
 ## Sprite key for a building kind in the current era.
-static func look_key(k: String) -> String:
+static func look_key(k: String, at_era := -1) -> String:
 	var d: Dictionary = Defs.BUILDINGS[k] if Defs.BUILDINGS.has(k) else {}
-	return d["early"]["look"] if era < 1 and d.has("early") else k
+	return d["early"]["look"] if (era if at_era < 0 else at_era) < 1 and d.has("early") else k
 
 
 ## Fields (wheat, vines) are flat, renewable crops that villagers work.
@@ -81,7 +87,7 @@ func is_field() -> bool:
 
 ## Key of the sprite to draw (fields change picture as they're harvested).
 func sprite_key() -> String:
-	return "%s:%d" % [kind, stage] if is_field() else look_key(kind)
+	return "%s:%d" % [kind, stage] if is_field() else look_key(kind, owner_era())
 
 
 ## The tile at the middle of the footprint (where a field's crop lives).
