@@ -10,6 +10,7 @@ var farm := false
 var herd := false  # grazing animals: they breed back up if not hunted too hard (see Defs.HERD_*)
 var owner := 0  # a field belongs to whoever built it
 var plot_of: Building  # the farm a plot belongs to (null for anything else)
+var plot_rect := Rect2i()  # the 3x3 tiles of a farm plot: its workers stand on them
 var regrow := 0.0  # seconds a plot has been empty
 
 

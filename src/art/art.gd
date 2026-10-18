@@ -199,8 +199,6 @@ static func image(key: String) -> Image:
 			return _granary(false)
 		"large_granary":
 			return _granary(true)
-		"plot":  # plot:<stage> 0 ripe .. 3 freshly sown: one tile of a farm
-			return _plot(variant)
 		"city_center":
 			return _city_center()
 		"farm":  # farm:<stage> 0 ripe .. 3 freshly sown
@@ -1048,40 +1046,6 @@ static func _herd(n: int) -> Image:
 		Pixel.ellipse(img, at.x, at.y - 1.0, 5.0, 3.0, Color("f1ead8"))
 		Pixel.ellipse(img, at.x + dir * 4.6, at.y - 0.6, 1.9, 1.7, Color("4a3a2c"))  # the head
 		Pixel.put(img, int(at.x + dir * 4.0), int(at.y) - 3, Color("4a3a2c"))  # an ear
-	return Pixel.outlined(img, OUT_WARM)
-
-
-## One plot of a farm: a single tile of wheat, flat on the ground. Stage 0 ripe, 1 half picked, 2 stubble, 3 freshly
-## sown (also an empty plot waiting to ripen). 32x20, the diamond's front corner at the bottom middle.
-static func _plot(stage: int) -> Image:
-	var img := Pixel.blank(32, 20)
-	for y in 20:
-		for x in 32:
-			if absf(x + 0.5 - 16.0) / 16.0 + absf(y + 0.5 - 11.0) / 8.0 > 0.97:
-				continue
-			var row := int(floor(y - 0.5 * x))
-			var furrow := posmod(row, 4) == 0
-			var h := Pixel.hash2(x, y, 43 + stage)
-			var soil := Pixel.ramp(SOIL, 0.5 + (Pixel.hash2(x, y, 41) - 0.5) * 0.5, x, y, 0.3)
-			Pixel.put(img, x, y, soil)
-			match stage:
-				0:
-					if not furrow:
-						Pixel.put(img, x, y, Pixel.ramp(WHEAT, 0.55 + (Pixel.hash2(x / 2, y, 44) - 0.5) * 0.5 - (0.0 if posmod(row, 4) != 3 else 0.15), x, y, 0.3))
-						if h < 0.34 and y > 0:
-							Pixel.put(img, x, y - 1, WHEAT[0])
-				1:
-					if not furrow and (Pixel.hash2(x / 6, y / 4, 45) < 0.5):
-						Pixel.put(img, x, y, Pixel.ramp(WHEAT, 0.5 + (Pixel.hash2(x / 2, y, 44) - 0.5) * 0.5, x, y, 0.3))
-					elif not furrow and h < 0.5:
-						Pixel.put(img, x, y, Color("c9ad6a"))
-				2:
-					if not furrow and h < 0.55:
-						Pixel.put(img, x, y, Color("c9ad6a") if h < 0.35 else Color("a98e50"))
-				3:
-					if furrow and h < 0.4:
-						Pixel.put(img, x, y, Color("7ab039"))
-						Pixel.put(img, x, y - 1, Color("a2d04c"))
 	return Pixel.outlined(img, OUT_WARM)
 
 

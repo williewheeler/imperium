@@ -65,6 +65,7 @@ var carry_kind := -1
 var carry := 0
 var dropoff_only := false  # was sent to unload by hand: stand idle afterwards instead of resuming work
 var road_tile := Vector2i(-1, -1)  # the planned road tile this villager is laying
+var work_spot := Vector2i(-1, -1)  # the tile of its plot it stands on, when it works a farm plot
 var working_farm := false  # the deposit being worked is a wheat field
 var work := 0.0  # fractional progress toward the next gathered unit
 

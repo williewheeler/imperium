@@ -145,7 +145,8 @@ func gather(u: Unit, tile: Vector2i) -> bool:
 		if tile.x < 0:
 			return false
 		d = game.map.deposits[tile]
-	var stand := tile if d.plot_of != null else game.map.stand_tile(Rect2i(tile, Vector2i.ONE), u.pos)  # (a plot is worked from on it)
+	var stand := plot_spot(d, u) if d.plot_of != null else game.map.stand_tile(Rect2i(tile, Vector2i.ONE), u.pos)  # (a plot is worked from on it)
+	u.work_spot = stand
 	if stand.x < 0 or not set_path(u, stand):
 		note(u, "err.no_route")
 		u.state = Unit.State.IDLE
@@ -161,13 +162,14 @@ func gather(u: Unit, tile: Vector2i) -> bool:
 	return true
 
 
-## A plot of `farm` that `u` may work: `tile` if nobody else is on it, else the nearest free one. A ripe plot is
-## preferred (`ripe_only` takes no other). (-1, -1) if there is none.
+## A plot of `farm` that `u` may work: `tile` if it has room (up to three workers to a plot), else the nearest that
+## has. A ripe plot is preferred (`ripe_only` takes no other). (-1, -1) if there is none.
 func free_plot(farm: Building, tile: Vector2i, u: Unit, ripe_only: bool) -> Vector2i:
-	var taken := {}
+	var crowd := {}  # plot -> how many others work it
 	for o: Unit in game.units:
-		if o != u and not o.dead and o.state in [Unit.State.GATHER_GO, Unit.State.GATHERING] and o.owner == u.owner:
-			taken[o.target_tile] = true
+		if o != u and not o.dead and o.owner == u.owner and o.working_farm and o.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]:
+			crowd[o.target_tile] = int(crowd.get(o.target_tile, 0)) + 1
+	var room := int(farm.def().get("plot_workers", 3))
 	var best := Vector2i(-1, -1)
 	var best_d := INF
 	for pass_ripe in [true, false]:
@@ -175,7 +177,7 @@ func free_plot(farm: Building, tile: Vector2i, u: Unit, ripe_only: bool) -> Vect
 			break
 		for p in farm.plot_tiles():
 			var d: Deposit = game.map.deposits.get(p)
-			if d == null or taken.has(p) or (pass_ripe and d.amount <= 0):
+			if d == null or int(crowd.get(p, 0)) >= room or (pass_ripe and d.amount <= 0):
 				continue
 			var dist := (0.0 if p == tile else 1.0) * 1000.0 + (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
 			if dist < best_d:
@@ -183,6 +185,26 @@ func free_plot(farm: Building, tile: Vector2i, u: Unit, ripe_only: bool) -> Vect
 				best = p
 		if best.x >= 0:
 			break
+	return best
+
+
+## A tile of the plot `d` that no other worker is standing on, the nearest to `u`.
+func plot_spot(d: Deposit, u: Unit) -> Vector2i:
+	var taken := {}
+	for o: Unit in game.units:
+		if o != u and not o.dead and o.working_farm and o.state in [Unit.State.GATHER_GO, Unit.State.GATHERING]:
+			taken[o.work_spot] = true
+	var best := d.plot_rect.position + Vector2i.ONE
+	var best_d := INF
+	for y in range(d.plot_rect.position.y, d.plot_rect.end.y):
+		for x in range(d.plot_rect.position.x, d.plot_rect.end.x):
+			var p := Vector2i(x, y)
+			if taken.has(p) or not game.map.is_walkable(p):
+				continue
+			var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
+			if dist < best_d:
+				best_d = dist
+				best = p
 	return best
 
 

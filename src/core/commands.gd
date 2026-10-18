@@ -162,8 +162,9 @@ func _absorb(owner: int, cmd: Dictionary) -> String:
 func _gather(owner: int, cmd: Dictionary) -> String:
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
 	var at: Building = game.placement.building_at(tile)
-	if at != null and at.has_plots() and not game.map.deposits.has(tile):  # the granary itself: any plot of the farm
-		tile = at.field_tile()
+	if at != null and at.has_plots() and not game.map.deposits.has(tile):  # a tile of a plot, or the yard: a plot of the farm
+		var plot := at.plot_at(tile)
+		tile = plot if plot.x >= 0 else at.field_tile()
 	var any := false
 	for u in _units(owner, cmd):
 		if u.kind == "villager" and game.orders.gather(u, tile):

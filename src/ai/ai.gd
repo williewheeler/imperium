@@ -271,7 +271,7 @@ func buy(cmd: Dictionary, cost: Array) -> bool:
 
 ## Lays a foundation for `kind` near `near` (at least `min_r` tiles away) and sends the `crew_size` nearest
 ## free villagers to build it. False if it could not (no money, no room): it saves for it if it is close.
-func place(kind: String, near: Vector2, min_r: int, crew_size := 2) -> bool:
+func place(kind: String, near: Vector2, min_r: int, crew_size := 2, max_r := 20) -> bool:
 	var def: Dictionary = Defs.BUILDINGS[kind]
 	if game.era_of(owner) < int(def.get("era", 0)) or not afford(def["cost"]):
 		if game.era_of(owner) >= int(def.get("era", 0)):
@@ -280,7 +280,7 @@ func place(kind: String, near: Vector2, min_r: int, crew_size := 2) -> bool:
 	var avoid: Array[Vector2i] = []
 	for u: Unit in game.units:
 		avoid.append(Vector2i(u.pos))
-	var site: Vector2i = game.map.find_site(def["size"], Vector2i(near), min_r, 20, avoid, game.placement.rects())
+	var site: Vector2i = game.map.find_site(def["size"], Vector2i(near), min_r, max_r, avoid, game.placement.rects())
 	if site.x < 0:
 		return false
 	var crew := crew_for(Vector2(site) + Vector2(def["size"]) / 2.0, crew_size)

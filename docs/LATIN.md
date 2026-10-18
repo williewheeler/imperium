@@ -36,7 +36,7 @@ Some buildings change name and picture between eras (`"early"` entry in `Defs.BU
 | Vicus | Settlement | a village: three thatched huts round a yard. *Vicus* is the ordinary Latin word for a village or quarter of a town. Takes every resource, cannot train villagers; at 15 citizens it becomes the Town Center. The game's own mechanic, not a period one |
 | Civitas | City Center | what a Town Center becomes at 30 citizens: the Forum crowned with a gilded tholos. *Civitas* is the community of citizens, and later a city. Not built, only grown |
 | Casa | Hut | the Era I house. `Casae` is the plural |
-| Ager | Farm | a granary among eight plots of wheat; each plot a renewable crop worked by one villager standing on it. *Ager Magnus*: the Large Farm (8 citizens) |
+| Ager | Farm | nine tiles across: a granary in the middle, framing eight 3x3 plots of wheat; up to three villagers work a plot, standing on it, and sow, grow and harvest it automatically. *Ager Magnus*: the Large Farm (8 citizens) |
 | Pecus | Herd | grazing animals to hunt; they breed back slowly unless hunted out |
 | Horreum | Storehouse | a granary; takes wood, stone and gold |
 | Arx → Castra | Citadel → Barracks | a stockaded hilltop fortress, then the palisaded legionary camp. Trains Miles Gravis. *Arx* is a real term for Rome's citadel; using it for the Kingdom-era barracks is the game's choice |

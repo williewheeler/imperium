@@ -86,15 +86,30 @@ func has_plots() -> bool:
 	return def().get("plots", false)
 
 
-## A farm's plot tiles: its footprint without the middle.
+## A farm's plots: eight 3x3 fields round the granary's yard, in a 3x3 grid of them.
+func plot_rects() -> Array[Rect2i]:
+	var out: Array[Rect2i] = []
+	for cy in 3:
+		for cx in 3:
+			if cx != 1 or cy != 1:
+				out.append(Rect2i(tile + Vector2i(cx, cy) * 3, Vector2i(3, 3)))
+	return out
+
+
+## One tile for each plot (its middle), where its crop is kept as a deposit.
 func plot_tiles() -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	for y in range(tile.y, tile.y + size.y):
-		for x in range(tile.x, tile.x + size.x):
-			var p := Vector2i(x, y)
-			if p != granary_tile():
-				out.append(p)
+	for r in plot_rects():
+		out.append(r.position + Vector2i.ONE)
 	return out
+
+
+## The plot that has `p` among its tiles, as its middle tile; (-1, -1) if `p` is not in a plot.
+func plot_at(p: Vector2i) -> Vector2i:
+	for r in plot_rects():
+		if r.has_point(p):
+			return r.position + Vector2i.ONE
+	return Vector2i(-1, -1)
 
 
 ## The middle tile of the footprint (a farm's granary).
@@ -133,7 +148,7 @@ func sprite_key() -> String:
 
 ## The tile at the middle of the footprint (where a field's crop lives).
 func field_tile() -> Vector2i:
-	return tile if has_plots() else tile + size / 2  # (a farm: one of its plots)
+	return plot_tiles()[0] if has_plots() else tile + size / 2  # (a farm: one of its plots)
 
 
 ## Does it take citizens in (a Settlement, Town Center or City Center)?

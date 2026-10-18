@@ -89,7 +89,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 				continue
 			var dir := Vector2.from_angle(float(i) * 2.399 + 0.4)  # round the Forum at the golden angle
 			var want := game.buildings[0].tile + Vector2i((dir * (7.0 + float(i % 4) * 3.0)).round())
-			var spot := game.map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8, [])
+			var spot := game.map.find_site(Defs.BUILDINGS[kind]["size"], want, 0, 8 + 2 * (Defs.BUILDINGS[kind]["size"] as Vector2i).x, [])
 			if spot.x >= 0:
 				game._add_building(kind, spot, true)
 	if args.has("burn"):  # debug: buildings at stages of damage, the last few burning, one just fallen (use with --town)

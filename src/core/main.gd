@@ -631,6 +631,12 @@ func deposit_near(mp: Vector2) -> Vector2i:
 		var t := Vector2i(Iso.to_tile(mp + Vector2(0, dy)).floor())
 		if fog.is_explored(t) and map.deposits.has(t):
 			return t
+	var on := Vector2i(Iso.to_tile(mp).floor())  # anywhere on a farm plot is the plot
+	var farm: Building = placement.building_at(on)
+	if farm != null and farm.has_plots() and fog.is_explored(on):
+		var plot := farm.plot_at(on)
+		if plot.x >= 0:
+			return plot
 	return Vector2i(-1, -1)
 
 
@@ -854,13 +860,16 @@ func _add_building(kind: String, tile: Vector2i, complete: bool, owner := 0) -> 
 ## A building just became usable: fields start growing, depots get a trodden plaza around them.
 func _on_complete(b: Building) -> void:
 	if b.has_plots():  # a farm: eight plots to work
-		for p in b.plot_tiles():
+		for r in b.plot_rects():  # the granary frames out its plots: bare ground until a villager sows it
+			var p := r.position + Vector2i.ONE
 			if not map.deposits.has(p):
 				var plot := Deposit.new(Defs.Res.FOOD, int(b.def()["crop"]))
+				plot.amount = 0
 				plot.renews = true
 				plot.farm = true
 				plot.owner = b.owner
 				plot.plot_of = b
+				plot.plot_rect = r
 				map.deposits[p] = plot
 		return
 	if b.is_field():
@@ -910,7 +919,8 @@ func upgrade_building(b: Building, kind: String) -> void:
 			if plot != null:
 				var gain := int(b.def()["crop"]) - plot.max_amount
 				plot.max_amount += gain
-				plot.amount += gain
+				if plot.amount > 0:
+					plot.amount += gain
 	if b.owner == LOCAL and not spectating and hud != null:
 		hud.flash_key("msg.grew_town" if kind == "town_center" else ("msg.grew_city" if kind == "city_center" else "msg.grew_farm"))
 
@@ -1674,12 +1684,19 @@ func _update_herds(delta: float) -> void:
 				d.amount = mini(d.max_amount, d.amount + Defs.HERD_BREED_GAIN)
 
 
-## A farm's plots ripen again some time after they are emptied.
+## A bare plot grows a crop while somebody is working it: sown, tended and ripe in time, with no more to do.
 func _update_plots(b: Building, delta: float) -> void:
 	var regrow := float(b.def()["regrow"])
 	for p in b.plot_tiles():
 		var d: Deposit = map.deposits.get(p)
-		if d != null and d.amount <= 0:
+		if d == null or d.amount > 0:
+			continue
+		var tended := false
+		for u: Unit in units:
+			if u.state == Unit.State.GATHERING and u.target_tile == p and not u.dead:
+				tended = true
+				break
+		if tended:
 			d.regrow += delta
 			if d.regrow >= regrow:
 				d.regrow = 0.0

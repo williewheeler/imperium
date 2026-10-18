@@ -175,16 +175,16 @@ const BUILDINGS := {
 	},
 	"farm": {
 		"name": "Ager", "acc": "Agrum", "english": "Farm", "done": "perfectus est", "ready": "Paratus", "look": "granary",
-		"size": Vector2i(3, 3), "cost": [80, 0, 0, 0], "walkable": true, "solid_center": true,
-		"plots": true, "crop": 60, "regrow": 25.0, "citizens_max": 8, "absorbs": true,
-		"build_time": 18.0, "sight": 4.0, "accepts": [1], "pop": 0,
-		"about": "Eight plots of wheat round a granary. A villager works one plot, standing on it, and carries the crop to the granary. Take 8 villagers into the granary for good and it grows into a Large Farm with richer plots.",
+		"size": Vector2i(9, 9), "cost": [100, 0, 0, 0], "walkable": true, "solid_center": true,
+		"plots": true, "plot_workers": 3, "crop": 250, "regrow": 20.0, "citizens_max": 8, "absorbs": true,
+		"build_time": 25.0, "sight": 6.0, "accepts": [1], "pop": 0,
+		"about": "A big field: a granary in the middle, framing eight plots round it. Building the granary lays out the plots; then send villagers onto them (up to three to a plot) and they sow, tend and harvest by themselves, carrying the crop to the granary. Take 8 villagers into the granary for good and it grows into a Large Farm with richer plots.",
 	},
 	"large_farm": {
 		"name": "Ager Magnus", "acc": "Agrum Magnum", "english": "Large Farm", "done": "perfectus est", "ready": "Paratus", "look": "large_granary",
-		"size": Vector2i(3, 3), "cost": [0, 0, 0, 0], "walkable": true, "solid_center": true, "upgrade_only": true,
-		"plots": true, "crop": 90, "regrow": 17.0, "citizens_max": 8, "absorbs": true,
-		"build_time": 18.0, "sight": 5.0, "accepts": [1], "pop": 0,
+		"size": Vector2i(9, 9), "cost": [0, 0, 0, 0], "walkable": true, "solid_center": true, "upgrade_only": true,
+		"plots": true, "plot_workers": 3, "crop": 375, "regrow": 14.0, "citizens_max": 8, "absorbs": true,
+		"build_time": 25.0, "sight": 7.0, "accepts": [1], "pop": 0,
 	},
 	"vineyard": {
 		"name": "Vinea", "acc": "Vineam", "english": "Vineyard", "done": "perfecta est", "ready": "Parata", "era": 1,

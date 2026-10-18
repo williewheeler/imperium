@@ -51,13 +51,13 @@ func _ready() -> void:
 		return
 	if building.has_plots():  # the plots lie flat on the ground, under everyone's feet
 		_plot_tiles = building.plot_tiles()
-		for p in _plot_tiles:
+		var anchor := Art.building_anchor("farm")
+		for r in building.plot_rects():
 			var plot := Sprite2D.new()
 			plot.centered = false
-			plot.texture = Art.tex("plot:3")
-			var h := plot.texture.get_height()
-			plot.offset = Vector2(-16, -(h - 1))  # the picture's front corner on the tile's
-			plot.position = _corner(Vector2(p) + Vector2(1, 1)).round() - position
+			plot.texture = Art.tex("farm:3")
+			plot.offset = -anchor  # the field's front corner on the plot's
+			plot.position = _corner(Vector2(r.position + r.size)).round() - position
 			add_child(plot)
 			_plots.append(plot)
 	var t := Vector2(building.stand_tile())
@@ -232,7 +232,7 @@ func update_view() -> void:
 		if plot != null:
 			var frac := float(plot.amount) / float(maxi(1, plot.max_amount))
 			stage = 0 if frac >= 0.66 else (1 if frac >= 0.33 else (2 if plot.amount > 0 else 3))
-		_plots[i].texture = Art.tex("plot:%d" % stage)
+		_plots[i].texture = Art.tex("farm:%d" % stage)
 	var size := Art.tex(_key).get_size()
 	var y0 := 0.0
 	if not building.complete:
@@ -275,3 +275,14 @@ func _draw() -> void:
 	])
 	if not building.complete:
 		draw_colored_polygon(pts, Color(0.45, 0.36, 0.22, 0.55))
+	if building.has_plots():  # the granary's yard: trodden earth in the middle of the plots
+		var c := t + Vector2(3, 3)
+		var yard := PackedVector2Array([
+			Iso.to_screen_flat(c) - origin, Iso.to_screen_flat(c + Vector2(3, 0)) - origin,
+			Iso.to_screen_flat(c + Vector2(3, 3)) - origin, Iso.to_screen_flat(c + Vector2(0, 3)) - origin])
+		draw_colored_polygon(yard, Color("a98a5a"))
+		var inner := PackedVector2Array()
+		var mid := (yard[0] + yard[2]) / 2.0
+		for q in yard:
+			inner.append(mid + (q - mid) * 0.72)
+		draw_colored_polygon(inner, Color("bd9d6b"))
