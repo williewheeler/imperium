@@ -14,7 +14,7 @@ extends RefCounted
 ## A *god* view (`PlayerView.god`) knows everything: it is for a spectator, who watches every people at once.
 ##
 ## Where the news comes from is the part that will change: today `refresh` reads the Simulation directly, filtering as it
-## goes, which stands in for the view channel; later the same model will be brought up to date by what the host publishes.
+## goes, which stands in for the view link; later the same model will be brought up to date by what the host publishes.
 ## The questions it answers do not change with that.
 
 signal notice(key: String)  # a message for the player, as a phrase key
@@ -29,7 +29,7 @@ signal road_changed(p: Vector2i)
 var owner: int  # -1 for a god view
 var _god := false
 var _fog: Fog  # what the player has explored (null for a god view)
-var _sim: Simulation  # the stand-in for the view channel: nothing outside `refresh` and a few questions below touches it
+var _sim: Simulation  # the stand-in for the view link: nothing outside `refresh` and a few questions below touches it
 var _units := {}  # id -> UnitInfo, for everyone known
 var _buildings := {}  # id -> BuildingInfo
 var _removed := {}  # id -> true if it was absorbed: units that have left the game, since the last refresh

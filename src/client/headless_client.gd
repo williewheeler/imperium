@@ -5,7 +5,7 @@ extends RefCounted
 ## that a person and an AI see and do exactly the same things, and neither can look at the real game.
 ##
 ## Today `submit` calls the simulation's `Commands` directly and answers at once, and the view reads the simulation as
-## it filters. The seam is where the command channel and the view channel will go.
+## it filters. The seam is where the command link and the view link will go.
 
 var owner: int
 var view: PlayerView

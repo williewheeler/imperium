@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1260" font-family="Helvetica, Arial, sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1180" font-family="Helvetica, Arial, sans-serif" font-size="13">
   <defs>
     <style>
       .bg{fill:#ffffff}
@@ -23,68 +23,64 @@
     </style>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
   </defs>
-  <rect class="bg" x="0" y="0" width="1200" height="1260"/>
+  <rect class="bg" x="0" y="0" width="1200" height="1180"/>
 
-  <!-- Person and the UI, with its own headless client -->
+  <!-- Person and the UI, with its headless client -->
   <rect class="box" x="60" y="20" width="520" height="45" rx="6"/><text class="t" x="320" y="40" text-anchor="middle">Person</text><text class="s" x="320" y="56" text-anchor="middle">looks at the screen, uses the mouse and keyboard</text>
-  <rect class="grp" x="30" y="95" width="610" height="190" rx="10"/><text class="h" x="45" y="116">UI  (humans only)</text>
+  <rect class="grp" x="30" y="95" width="770" height="190" rx="10"/><text class="h" x="45" y="116">UI  (humans only)</text>
   <rect class="box" x="60" y="130" width="240" height="70" rx="6"/><text class="t" x="180" y="154" text-anchor="middle">Views</text><text class="s" x="180" y="172" text-anchor="middle">world, units, fog, minimap,</text><text class="s" x="180" y="186" text-anchor="middle">HUD readouts, messages</text>
   <rect class="box" x="340" y="130" width="240" height="70" rx="6"/><text class="t" x="460" y="154" text-anchor="middle">Controls</text><text class="s" x="460" y="172" text-anchor="middle">mouse, keys, selection, buttons:</text><text class="s" x="460" y="186" text-anchor="middle">make commands</text>
-  <rect class="box" x="60" y="215" width="550" height="55" rx="6"/><text class="t" x="335" y="237" text-anchor="middle">Headless client  (the person's)</text><text class="s" x="335" y="255" text-anchor="middle">the player's fog-filtered model of the world; takes commands</text>
-
-  <!-- the AIs, with theirs -->
-  <rect class="grp" x="670" y="95" width="500" height="190" rx="10"/><text class="h" x="685" y="116">AIs  (players run by the computer)</text>
-  <rect class="box" x="690" y="130" width="460" height="70" rx="6"/><text class="t" x="920" y="160" text-anchor="middle">AIs</text><text class="s" x="920" y="180" text-anchor="middle">decide what to do from what their client tells them</text>
-  <rect class="box" x="690" y="215" width="460" height="55" rx="6"/><text class="t" x="920" y="237" text-anchor="middle">Headless client  (one for each AI)</text><text class="s" x="920" y="255" text-anchor="middle">the same model and the same way to act as the person's</text>
-
-  <!-- the UI's channels -->
-  <rect class="prop" x="60" y="320" width="240" height="75" rx="6"/><text class="t" x="180" y="343" text-anchor="middle">View channel</text><text class="s" x="180" y="360" text-anchor="middle">asynchronous, host to client</text><text class="s" x="180" y="375" text-anchor="middle">in-process queue, or NetSession</text>
-  <rect class="prop" x="470" y="320" width="240" height="75" rx="6"/><text class="t" x="590" y="343" text-anchor="middle">Command channel</text><text class="s" x="590" y="360" text-anchor="middle">asynchronous, client to host</text><text class="s" x="590" y="375" text-anchor="middle">in-process queue, or NetSession</text>
-
-  <!-- Host -->
-  <rect class="grp" x="30" y="425" width="1150" height="640" rx="10"/>
-  <text class="h" x="1165" y="1050" text-anchor="end">Host  (where the one simulation runs)</text>
-  <rect class="prop" x="60" y="465" width="240" height="60" rx="6"/><text class="t" x="180" y="489" text-anchor="middle">View publisher</text><text class="s" x="180" y="507" text-anchor="middle">sends each player what it may see</text>
-  <rect class="prop" x="470" y="465" width="240" height="60" rx="6"/><text class="t" x="590" y="489" text-anchor="middle">Command receiver</text><text class="s" x="590" y="507" text-anchor="middle">takes commands off the channel</text>
-  <rect class="box" x="730" y="465" width="200" height="60" rx="6"/><text class="t" x="830" y="489" text-anchor="middle">Recorder</text><text class="s" x="830" y="507" text-anchor="middle">taps the interface</text>
-
-  <rect class="sim" x="45" y="560" width="820" height="475" rx="10"/>
-  <text class="h" x="60" y="583">Simulation</text><text class="s" x="850" y="1025" text-anchor="end">src/sim: no scene, no clock</text>
-  <rect class="prop" x="340" y="595" width="500" height="60" rx="6"/><text class="t" x="590" y="618" text-anchor="middle">Command interface</text><text class="s" x="590" y="635" text-anchor="middle">accepts a command from any player or the Replayer, with the</text><text class="s" x="590" y="648" text-anchor="middle">tick it is due (default: next); today Commands.submit, answering at once</text>
-  <rect class="prop" x="340" y="675" width="500" height="50" rx="6"/><text class="t" x="590" y="697" text-anchor="middle">Command queue</text><text class="s" x="590" y="714" text-anchor="middle">holds each command with its due tick, in order</text>
-  <rect class="box" x="340" y="750" width="500" height="250" rx="6"/><text class="t" x="590" y="773" text-anchor="middle">Game loop   (Simulation.step)</text><text class="s" x="590" y="799" text-anchor="middle">each tick, 1/30 s of game time:</text><text class="s" x="590" y="818" text-anchor="middle">1  drain the commands now due from the queue</text><text class="s" x="590" y="834" text-anchor="middle">    and have the systems validate and apply them</text><text class="s" x="590" y="852" text-anchor="middle">2  run the systems over the state</text><text class="s" x="590" y="869" text-anchor="middle">3  the state publishes what changed</text><text class="s" x="590" y="907" text-anchor="middle">world time is the tick count; it moves only</text><text class="s" x="590" y="923" text-anchor="middle">when the tick driver runs a tick</text>
-  <rect class="box" x="60" y="750" width="240" height="110" rx="6"/><text class="t" x="180" y="773" text-anchor="middle">Game state</text><text class="s" x="180" y="795" text-anchor="middle">units and their goals,</text><text class="s" x="180" y="811" text-anchor="middle">buildings, stocks, fogs,</text><text class="s" x="180" y="827" text-anchor="middle">rng, the tick count,</text><text class="s" x="180" y="843" text-anchor="middle">GameMap, Fog, Defs</text>
-  <rect class="box" x="60" y="895" width="240" height="105" rx="6"/><text class="t" x="180" y="916" text-anchor="middle">Game systems</text><text class="s" x="180" y="936" text-anchor="middle">Commands, Movement, Economy,</text><text class="s" x="180" y="952" text-anchor="middle">Production, Eras, Vision,</text><text class="s" x="180" y="968" text-anchor="middle">Wildlife, UnitBehavior, Combat,</text><text class="s" x="180" y="984" text-anchor="middle">Orders, Placement, Roads, Victory</text>
-
-  <!-- right of the simulation -->
-  <rect class="box" x="900" y="555" width="170" height="60" rx="6"/><text class="t" x="985" y="578" text-anchor="middle">Replayer</text><text class="s" x="985" y="596" text-anchor="middle">drives the interface</text>
-  <rect class="prop" x="900" y="640" width="270" height="165" rx="6"/><text class="t" x="1035" y="665" text-anchor="middle">The AIs' channels and endpoints</text><text class="s" x="1035" y="690" text-anchor="middle">the same pair of channels, receiver</text><text class="s" x="1035" y="706" text-anchor="middle">and publisher as for the person,</text><text class="s" x="1035" y="722" text-anchor="middle">one set for each AI, in process</text>
-  <rect class="box" x="900" y="860" width="250" height="90" rx="6"/><text class="t" x="1025" y="890" text-anchor="middle">Tick driver</text><text class="s" x="1025" y="910" text-anchor="middle">turns wall-clock time into ticks</text><text class="s" x="1025" y="925" text-anchor="middle">(Main, the headless runner)</text>
+  <rect class="box" x="60" y="215" width="710" height="55" rx="6"/><text class="t" x="415" y="237" text-anchor="middle">Headless client  (the person's)</text><text class="s" x="415" y="255" text-anchor="middle">the player's fog-filtered model of the world; takes commands; talks to the host through its end of an asynchronous link</text>
 
   <!-- Key -->
-  <rect class="grp" x="30" y="1085" width="560" height="150" rx="10"/>
-  <text class="h" x="45" y="1108">Key</text>
-  <path class="l" d="M45,1128 L90,1128"/><text class="s" x="100" y="1132">a call, or data flowing</text>
-  <path class="d" d="M45,1150 L90,1150"/><text class="s" x="100" y="1154">a tap that takes no part</text>
-  <rect class="prop" x="45" y="1164" width="45" height="20" rx="4"/><text class="s" x="100" y="1178">proposed, not built</text>
-  <text class="s" x="45" y="1202">Today the UI and the AIs work through headless clients, which read and call the Simulation</text><text class="s" x="45" y="1217">directly: no channels or queue. (A client is built for each player, so each AI has its own.)</text>
+  <rect class="grp" x="830" y="20" width="350" height="215" rx="10"/>
+  <text class="h" x="845" y="42">Key</text>
+  <path class="l" d="M845,62 L890,62"/><text class="s" x="900" y="66">a call, or data flowing</text>
+  <path class="d" d="M845,84 L890,84"/><text class="s" x="900" y="88">a tap that takes no part</text>
+  <rect class="prop" x="845" y="98" width="45" height="20" rx="4"/><text class="s" x="900" y="112">proposed, not built</text>
+  <text class="s" x="845" y="142">Today the clients are built (one for the person,</text><text class="s" x="845" y="157">one for each AI) but read and call the Simulation</text><text class="s" x="845" y="172">directly: the links, the publisher, the receiver and</text><text class="s" x="845" y="187">the queue are not built.</text>
+  <text class="s" x="845" y="212">A link is asynchronous: an in-process queue, or</text><text class="s" x="845" y="227">NetSession.</text>
+
+  <!-- the links between the person's client and the host -->
+  <text class="s" x="195" y="345">view link</text><text class="s" x="195" y="359">asynchronous: in-process, or NetSession</text>
+  <text class="s" x="755" y="345">command link</text><text class="s" x="755" y="359">asynchronous: in-process, or NetSession</text>
+
+  <!-- Host -->
+  <rect class="grp" x="30" y="425" width="1150" height="720" rx="10"/>
+  <text class="h" x="1165" y="1130" text-anchor="end">Host  (where the one simulation runs, and the AIs)</text>
+  <rect class="box" x="340" y="455" width="240" height="60" rx="6"/><text class="t" x="460" y="480" text-anchor="middle">AIs</text><text class="s" x="460" y="498" text-anchor="middle">players run by the computer</text>
+  <rect class="prop" x="60" y="545" width="240" height="60" rx="6"/><text class="t" x="180" y="569" text-anchor="middle">View publisher</text><text class="s" x="180" y="587" text-anchor="middle">sends each player what it may see</text>
+  <rect class="box" x="340" y="545" width="240" height="60" rx="6"/><text class="t" x="460" y="569" text-anchor="middle">Headless client</text><text class="s" x="460" y="587" text-anchor="middle">one for each AI</text>
+  <rect class="prop" x="620" y="545" width="240" height="60" rx="6"/><text class="t" x="740" y="569" text-anchor="middle">Command receiver</text><text class="s" x="740" y="587" text-anchor="middle">takes each player's commands</text>
+  <text class="s" x="460" y="628" text-anchor="middle">the AIs' links are in process</text>
+
+  <rect class="sim" x="45" y="640" width="820" height="470" rx="10"/>
+  <text class="h" x="60" y="663">Simulation</text><text class="s" x="850" y="1100" text-anchor="end">src/sim: no scene, no clock</text>
+  <rect class="prop" x="340" y="675" width="500" height="60" rx="6"/><text class="t" x="590" y="698" text-anchor="middle">Command interface</text><text class="s" x="590" y="715" text-anchor="middle">accepts a command from any player or the Replayer, with the</text><text class="s" x="590" y="728" text-anchor="middle">tick it is due (default: next); today Commands.submit, answering at once</text>
+  <rect class="prop" x="340" y="755" width="500" height="50" rx="6"/><text class="t" x="590" y="777" text-anchor="middle">Command queue</text><text class="s" x="590" y="794" text-anchor="middle">holds each command with its due tick, in order</text>
+  <rect class="box" x="340" y="830" width="500" height="250" rx="6"/><text class="t" x="590" y="853" text-anchor="middle">Game loop   (Simulation.step)</text><text class="s" x="590" y="879" text-anchor="middle">each tick, 1/30 s of game time:</text><text class="s" x="590" y="898" text-anchor="middle">1  drain the commands now due from the queue</text><text class="s" x="590" y="914" text-anchor="middle">    and have the systems validate and apply them</text><text class="s" x="590" y="932" text-anchor="middle">2  run the systems over the state</text><text class="s" x="590" y="949" text-anchor="middle">3  the state publishes what changed</text><text class="s" x="590" y="987" text-anchor="middle">world time is the tick count; it moves only</text><text class="s" x="590" y="1003" text-anchor="middle">when the tick driver runs a tick</text>
+  <rect class="box" x="60" y="830" width="240" height="110" rx="6"/><text class="t" x="180" y="853" text-anchor="middle">Game state</text><text class="s" x="180" y="875" text-anchor="middle">units and their goals,</text><text class="s" x="180" y="891" text-anchor="middle">buildings, stocks, fogs,</text><text class="s" x="180" y="907" text-anchor="middle">rng, the tick count,</text><text class="s" x="180" y="923" text-anchor="middle">GameMap, Fog, Defs</text>
+  <rect class="box" x="60" y="975" width="240" height="105" rx="6"/><text class="t" x="180" y="996" text-anchor="middle">Game systems</text><text class="s" x="180" y="1016" text-anchor="middle">Commands, Movement, Economy,</text><text class="s" x="180" y="1032" text-anchor="middle">Production, Eras, Vision,</text><text class="s" x="180" y="1048" text-anchor="middle">Wildlife, UnitBehavior, Combat,</text><text class="s" x="180" y="1064" text-anchor="middle">Orders, Placement, Roads, Victory</text>
+
+  <!-- right of the simulation -->
+  <rect class="box" x="900" y="640" width="170" height="60" rx="6"/><text class="t" x="985" y="663" text-anchor="middle">Replayer</text><text class="s" x="985" y="681" text-anchor="middle">drives the interface</text>
+  <rect class="box" x="900" y="715" width="250" height="70" rx="6"/><text class="t" x="1025" y="737" text-anchor="middle">Recorder</text><text class="s" x="1025" y="755" text-anchor="middle">taps the interface: writes each</text><text class="s" x="1025" y="769" text-anchor="middle">command with its due tick</text>
+  <rect class="box" x="900" y="950" width="250" height="90" rx="6"/><text class="t" x="1025" y="980" text-anchor="middle">Tick driver</text><text class="s" x="1025" y="1000" text-anchor="middle">turns wall-clock time into ticks</text><text class="s" x="1025" y="1015" text-anchor="middle">(Main, the headless runner)</text>
 
   <!-- arrows -->
   <path class="l" d="M460,65 L460,130"/><path class="l" d="M180,130 L180,65"/>
   <path class="l" d="M460,200 L460,215"/><path class="l" d="M180,215 L180,200"/>
-  <path class="l" d="M770,215 L770,200"/><path class="l" d="M1050,200 L1050,215"/>
-  <path class="l" d="M180,320 L180,270"/><path class="l" d="M590,270 L590,320"/>
-  <path class="l" d="M590,395 L590,465"/><path class="l" d="M180,465 L180,395"/>
-  <path class="l" d="M590,525 L590,595"/>
-  <path class="d" d="M830,525 L830,595"/>
-  <path class="l" d="M900,583 L840,583"/>
-  <path class="l" d="M590,655 L590,675"/>
-  <path class="l" d="M590,725 L590,750"/>
-  <path class="d" d="M180,750 L180,525"/><text class="s" x="195" y="640">state and events</text>
-  <path class="l" d="M180,895 L180,860"/>
-  <path class="l" d="M340,975 L300,975"/>
-  <path class="l" d="M900,925 L840,925"/>
-  <path class="l" d="M900,640 L840,640"/>
-  <path class="d" d="M840,780 L900,780"/>
-  <path class="l" d="M1100,270 L1100,640"/><path class="l" d="M1140,640 L1140,270"/>
+  <path class="l" d="M180,545 L180,270"/>
+  <path class="l" d="M740,270 L740,545"/>
+  <path class="l" d="M410,545 L410,515"/><path class="l" d="M510,515 L510,545"/>
+  <path class="l" d="M300,575 L340,575"/><path class="l" d="M580,575 L620,575"/>
+  <path class="l" d="M740,605 L740,675"/>
+  <path class="l" d="M590,735 L590,755"/>
+  <path class="l" d="M590,805 L590,830"/>
+  <path class="d" d="M180,830 L180,605"/><text class="s" x="195" y="720">state and events</text>
+  <path class="l" d="M180,975 L180,940"/>
+  <path class="l" d="M340,1030 L300,1030"/>
+  <path class="l" d="M900,995 L840,995"/>
+  <path class="l" d="M900,690 L840,690"/>
+  <path class="d" d="M840,725 L900,725"/>
 </svg>

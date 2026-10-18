@@ -26,7 +26,7 @@ in the code, or marked as not built.
 | `src/ui/views/` | Drawing the state: `World` and the unit, building, ground, fog, weather and overlay views, the minimap, `Iso` (tile and screen maths), `Weather` (cosmetic). Read the simulation, never change it. |
 | `src/ui/controls/` | `Person` (mouse, keys, selection, command targeting) and `CameraRig`. |
 | `src/app/` | The application: `Main` (starts the world, wires the parts, and is the **tick driver** in play) and the debug scaffolding (`DebugModes`, `EraPreview`). |
-| `src/net/` | Networking (`NetSession`, the lobby so far; later the channels). |
+| `src/net/` | Networking (`NetSession`, the lobby so far; later the links between clients and the host). |
 | `src/art/` | Sprite drawing code; baked into PNG sheets by `tools/`. |
 | `src/infra/` | `GameSettings` (what the player chose; kept in `user://settings.cfg`) and `Perf` (the profiler). |
 | `src/audio/`, `src/text/` | `Music`; `Phrases` and `Latin` (the game's words). |
@@ -41,10 +41,9 @@ in the code, or marked as not built.
 | Views | `src/ui/views/`, and the HUD's readouts in `src/ui/`; they draw `game.view` (a `PlayerView`) |
 | Controls | `src/ui/controls/` (`Person`, `CameraRig`), and the HUD's buttons in `src/ui/`; commands go through `game.client` |
 | AIs | `src/ai/` |
-| Headless client (the person's, inside the UI) | `src/client/`, made once in `Main` (`Main.client`, `Main.view`); built. It reads the `Simulation` in place of the view channel |
+| Headless client (the person's, inside the UI) | `src/client/`, made once in `Main` (`Main.client`, `Main.view`); built. It reads the `Simulation` in place of the view link |
 | Headless client (the AIs') | `src/client/`, made for each AI in `WorldSetup` (`AI.client`, `AI.view`); built, as above |
-| The AIs' channels and endpoints | not built: the same pair of channels, receiver and publisher as for the person, one set for each AI, in process |
-| View channel, Command channel | not built (`src/net/` will hold them; today `NetSession` is the lobby only) |
+| The links (view and command) | not built, and not boxes: a link is a client's end and the host's end of an asynchronous transport, an in-process queue or `NetSession` (`src/net/`; today `NetSession` is the lobby only) |
 | View publisher, Command receiver | not built (today the simulation's signals reach `Main`, which shows them) |
 | Command interface, Command queue | not built (today `Commands.submit`, which validates and applies at once) |
 | Game loop | `Simulation.step()` in `src/sim/simulation.gd` |
@@ -69,12 +68,15 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 - **A headless client per player, human or AI.** It holds the player's fog-filtered model of the world and takes their
   commands. The person's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
   and keys) are wrapped round it. Each AI has a client of its own, the same class, in the AIs' part of the picture. Each client has its
-  own pair of channels (the AIs' in process). So a human and an AI see and do exactly the same things, and
+  own link to the host (the AIs' in process). So a human and an AI see and do exactly the same things, and
   neither can look at the real state. (Today the AIs read `Simulation.units` and the like directly, and only
   discipline keeps them to their own fog.)
-- **Two asynchronous channels between client and host**, each an in-process queue or `NetSession`: the **command
-  channel** (client to host) and the **view channel** (host to client). On the host a *command receiver* takes commands
-  off the first, and a *view publisher* sends each player what it may see, from the game state, on the second.
+- **The AIs run in the host**, in the game server's process, as they do now: in principle an AI could run elsewhere and
+  talk to the host as a person's client does, but the usual deployment is in the server. Each has its own headless client.
+- **Clients talk to the host through asynchronous links**, not through channel components: a client has its end of the
+  link, and the host's end is a *command receiver* (it takes each player's commands) and a *view publisher* (it sends each
+  player what it may see, from the game state). A link is an in-process queue or `NetSession`, whichever suits the game: a
+  person joining over the network uses `NetSession`, and the AIs and a person playing on the host use in-process queues.
 - **A command interface and queue in the simulation.** Commands from every source enter through the interface, which is
   the only thing that writes to the queue. When a command arrives is up to the world; at the interface it is stamped
   with the tick it is due (a live command for the next tick, a lockstep peer's for an agreed one, a replay's for the tick it
@@ -256,7 +258,7 @@ and sends state back is still open, but the first no longer waits on the simulat
   gets per-AI views with a parallel path (`viewers`, layers) rather than a viewer passed through every view;
   a single `Viewer` object would unify the two.
 - **The headless client still reads the simulation.** `PlayerView.refresh` filters what it reads from the `Simulation` by the
-  player's fog, which stands in for the view channel; and a few questions (stores, era, pop, `placement_error`) are answered
+  player's fog, which stands in for the view link; and a few questions (stores, era, pop, `placement_error`) are answered
   by asking the systems for that player. Not yet done: the terrain and deposits of unexplored ground are handed to the client
   (`view.map()`, which the ground view and the minimap draw), and `Deposit`s are the live objects, not copies; `UnitInfo` and
   `BuildingInfo` are-a `Unit` and `Building` so the views and the rules' helpers work on them, which carries every entity field
