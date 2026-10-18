@@ -26,11 +26,11 @@
   <rect class="bg" x="0" y="0" width="1200" height="1400"/>
 
   <!-- Person and the UI, with its headless client -->
-  <rect class="box" x="340" y="20" width="520" height="45" rx="6"/><text class="t" x="600" y="40" text-anchor="middle">Person</text><text class="s" x="600" y="56" text-anchor="middle">looks at the screen, uses the mouse and keyboard</text>
-  <rect class="grp" x="210" y="95" width="780" height="190" rx="10"/><text class="h" x="225" y="116">UI  (humans only)</text>
+  <rect class="box" x="240" y="20" width="520" height="45" rx="6"/><text class="t" x="500" y="40" text-anchor="middle">Person</text><text class="s" x="500" y="56" text-anchor="middle">looks at the screen, uses the mouse and keyboard</text>
+  <rect class="grp" x="210" y="95" width="580" height="200" rx="10"/><text class="h" x="225" y="116">UI  (humans only)</text>
   <rect class="box" x="240" y="130" width="240" height="70" rx="6"/><text class="t" x="360" y="154" text-anchor="middle">Views</text><text class="s" x="360" y="172" text-anchor="middle">world, units, fog, minimap,</text><text class="s" x="360" y="186" text-anchor="middle">HUD readouts, messages</text>
   <rect class="box" x="520" y="130" width="240" height="70" rx="6"/><text class="t" x="640" y="154" text-anchor="middle">Controls</text><text class="s" x="640" y="172" text-anchor="middle">mouse, keys, selection, buttons:</text><text class="s" x="640" y="186" text-anchor="middle">make commands</text>
-  <rect class="box" x="240" y="215" width="710" height="55" rx="6"/><text class="t" x="595" y="237" text-anchor="middle">Headless client  (the person's)</text><text class="s" x="595" y="255" text-anchor="middle">the player's fog-filtered model of the world; takes commands; talks to the host through its end of an asynchronous link</text>
+  <rect class="box" x="240" y="215" width="520" height="66" rx="6"/><text class="t" x="500" y="236" text-anchor="middle">Headless client  (the person's)</text><text class="s" x="500" y="254" text-anchor="middle">the player's fog-filtered model of the world; takes commands;</text><text class="s" x="500" y="269" text-anchor="middle">talks to the host through its end of an asynchronous link</text>
 
   <!-- Key -->
   <g transform="translate(-800 1150)"><rect class="grp" x="830" y="20" width="350" height="215" rx="10"/>
@@ -70,8 +70,8 @@
   <!-- arrows -->
   <path class="l" d="M640,65 L640,130"/><path class="l" d="M360,130 L360,65"/>
   <path class="l" d="M640,200 L640,215"/><path class="l" d="M360,215 L360,200"/>
-  <path class="l" d="M250,545 L250,270"/>
-  <path class="l" d="M740,270 L740,545"/>
+  <path class="l" d="M250,545 L250,281"/>
+  <path class="l" d="M740,281 L740,545"/>
   <path class="l" d="M410,545 L410,515"/><path class="l" d="M510,515 L510,545"/>
   <path class="l" d="M300,575 L340,575"/><path class="l" d="M580,575 L620,575"/>
   <path class="l" d="M740,605 L740,675"/>
