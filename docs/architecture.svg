@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 600" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444"/></marker>
+    <style>
+      .box{fill:#fff;stroke:#444;stroke-width:1.5;rx:6}
+      .grp{fill:#f4f1ea;stroke:#999;stroke-width:1.2;rx:10}
+      .sim{fill:#e9f0f7;stroke:#5b7fa6;stroke-width:1.5;rx:10}
+      .t{fill:#222}.s{fill:#666;font-size:11px}.h{font-weight:bold;fill:#333;font-size:14px}
+      .l{stroke:#444;stroke-width:1.5;fill:none;marker-end:url(#a)}
+      .d{stroke:#444;stroke-width:1.5;fill:none;stroke-dasharray:6 4;marker-end:url(#a)}
+      .prop{fill:#fff8e1;stroke:#c9a227;stroke-width:1.5;stroke-dasharray:6 4;rx:6}
+    </style>
+  </defs>
+
+  <!-- Client -->
+  <rect class="grp" x="15" y="15" width="290" height="570"/>
+  <text class="h" x="30" y="40">Client  (src/client, views, ui)</text>
+  <rect class="box" x="40" y="60" width="240" height="55"/><text class="t" x="160" y="84" text-anchor="middle">Person</text><text class="s" x="160" y="102" text-anchor="middle">mouse, keys, selection</text>
+  <rect class="prop" x="40" y="150" width="240" height="70"/><text class="t" x="160" y="174" text-anchor="middle">Command channel</text><text class="s" x="160" y="192" text-anchor="middle">proposed: today Person calls</text><text class="s" x="160" y="206" text-anchor="middle">Commands.submit directly</text>
+  <rect class="box" x="40" y="300" width="240" height="55"/><text class="t" x="160" y="324" text-anchor="middle">Main</text><text class="s" x="160" y="342" text-anchor="middle">gives the simulation time</text>
+  <rect class="box" x="40" y="420" width="240" height="55"/><text class="t" x="160" y="444" text-anchor="middle">views/ and ui/</text><text class="s" x="160" y="462" text-anchor="middle">draw the state</text>
+  <path class="l" d="M160,115 L160,150"/>
+
+  <!-- Network -->
+  <rect class="box" x="350" y="170" width="120" height="50"/><text class="t" x="410" y="192" text-anchor="middle">NetSession</text><text class="s" x="410" y="208" text-anchor="middle">lobby only today</text>
+
+  <!-- Host -->
+  <rect class="grp" x="515" y="15" width="570" height="570"/>
+  <text class="h" x="530" y="40">Host  (where the one simulation runs)</text>
+  <rect class="box" x="540" y="55" width="110" height="40"/><text class="t" x="595" y="80" text-anchor="middle">AIs</text>
+  <rect class="box" x="670" y="55" width="130" height="40"/><text class="t" x="735" y="80" text-anchor="middle">Replayer</text>
+  <rect class="box" x="540" y="140" width="260" height="70"/><text class="t" x="670" y="166" text-anchor="middle">Commands.submit</text><text class="s" x="670" y="186" text-anchor="middle">validate, pay, apply</text>
+  <rect class="box" x="880" y="140" width="180" height="70"/><text class="t" x="970" y="166" text-anchor="middle">Recorder</text><text class="s" x="970" y="184" text-anchor="middle">writes the commands and</text><text class="s" x="970" y="198" text-anchor="middle">checksums to a file</text>
+
+  <rect class="sim" x="540" y="270" width="520" height="290"/>
+  <text class="h" x="556" y="295">Simulation  (src/sim: no scene, no clock)</text>
+  <rect class="box" x="560" y="310" width="480" height="45"/><text class="t" x="800" y="338" text-anchor="middle">Simulation.step()   units, buildings, stocks, fogs, rng</text>
+  <rect class="box" x="560" y="375" width="480" height="75"/><text class="t" x="800" y="400" text-anchor="middle">Movement, Economy, Production, Eras, Vision,</text><text class="t" x="800" y="418" text-anchor="middle">Wildlife, UnitBehavior, Combat, Orders,</text><text class="t" x="800" y="436" text-anchor="middle">Placement, Roads, Victory</text>
+  <rect class="box" x="560" y="470" width="480" height="40"/><text class="t" x="800" y="495" text-anchor="middle">GameMap, Fog, Defs</text>
+
+  <!-- arrows -->
+  <path class="l" d="M280,165 L540,165"/><text class="s" x="410" y="158" text-anchor="middle">direct call (single player, host)</text>
+  <path class="d" d="M280,200 L350,200"/><path class="d" d="M470,200 L540,200"/>
+  <text class="s" x="410" y="238" text-anchor="middle">over the network (joined player)</text><text class="s" x="410" y="251" text-anchor="middle">decided, not built</text>
+  <path class="l" d="M595,95 L595,140"/><path class="l" d="M735,95 L735,140"/>
+  <path class="l" d="M670,210 L670,270"/>
+  <path class="d" d="M800,175 L880,175"/><text class="s" x="840" y="168" text-anchor="middle">submitted</text>
+  <path class="d" d="M970,270 L970,210"/><text class="s" x="1010" y="245">stepped</text>
+  <path class="l" d="M280,320 L540,320"/><text class="s" x="410" y="313" text-anchor="middle">step()</text>
+  <path class="d" d="M540,345 L280,345"/><text class="s" x="410" y="338" text-anchor="middle">signals: notice, building_destroyed ...</text>
+  <path class="l" d="M280,447 L540,447"/><text class="s" x="410" y="440" text-anchor="middle">reads the state</text>
+  <text class="s" x="820" y="80">AIs read the world through</text><text class="s" x="820" y="94">their own Fog</text>
+</svg>

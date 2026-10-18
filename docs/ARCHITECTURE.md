@@ -55,45 +55,9 @@ can move between folders freely. Only `res://` paths (the scene, shaders, assets
 Arrows mean "calls or reads". The simulation depends on none of the client: it tells the client what
 happened through signals, and the client reads its state to draw it.
 
-```mermaid
-flowchart TD
-    subgraph client [Client: src/client, views, ui]
-        person["Person<br/>mouse, keys, selection"]
-        main["Main<br/>gives the simulation time"]
-        views["views/ and ui/<br/>draw the state"]
-        channel["Command channel<br/>(proposed: today Person calls<br/>Commands.submit directly)"]
-    end
+![How the parts depend on each other](architecture.svg)
 
-    subgraph host [Host: where the one simulation runs]
-        AI["AIs"]
-        replayer["Replayer<br/>(a recorded game)"]
-        commands["Commands.submit<br/>validate, pay, apply"]
-        subgraph sim [Simulation: src/sim, no scene and no clock]
-            simulation["Simulation.step()"]
-            parts["Movement, Economy, Production, Eras, Vision,<br/>Wildlife, UnitBehavior, Combat, Orders,<br/>Placement, Roads, Victory"]
-            map["GameMap, Fog, Defs"]
-        end
-    end
-
-    net["NetSession<br/>(lobby only today)"]
-    recorder["Recorder<br/>(a side tool)"]
-
-    person --> channel
-    channel -- "single player or host:<br/>direct call" --> commands
-    channel -. "joined player:<br/>over the network (decided, not built)" .-> net
-    net -.-> commands
-    AI --> commands
-    replayer --> commands
-    commands --> simulation
-    simulation --> parts
-    parts --> map
-    AI -. "reads, through its own Fog" .-> simulation
-    main -- "step()" --> simulation
-    simulation -. "signals: notice, building_destroyed, ..." .-> main
-    views -- "reads" --> simulation
-    recorder -. "listens: submitted, stepped" .-> commands
-    recorder -.-> simulation
-```
+*Solid arrows are calls and reads, dashed ones are signals and listeners or things not built yet; the yellow box is proposed.*
 
 **The command channel (proposed).** The client should not know whether the simulation is in the same process.
 `Person` would hand commands to a *command channel*, one small interface (`submit(cmd)`, and a way to hear the
