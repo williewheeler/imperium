@@ -49,8 +49,6 @@ in the code, or marked as not built.
 | Game state | `GameState` (`src/sim/state/game_state.gd`), held as `Simulation.state`: the map, units, buildings, stocks, fogs, tick, rng, eras, road plans, shots in flight, who has fallen. Inert; see *Known debts* for what is still not |
 | Game systems | `src/sim/systems/`: they hold no game state of their own (only the `Movement` grid, which is rebuilt each tick) |
 | Tick driver | `Main._run_sim` (`src/app/main.gd`); `tools/sim_run.gd` and `tools/replay_check.gd` headless |
-| Recorder | `src/replay/recorder.gd` (taps `Commands.submitted` today; snapshots are not built) |
-| Replayer | `src/replay/replayer.gd` (calls `Commands.submit` today; restoring a snapshot is not built) |
 
 ### How the parts depend on each other
 
@@ -89,21 +87,15 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
   fog filter is: a view is made from what that player may know) and put it on its view queue. The **game state** is inert
   data and the **game systems** act on it, a little like a rules engine. The clock reaches the world through the step, and
   commands reach it through the drain.
-- **Recorder and Replayer are tools, not part of the core, and two sides of one coin.** The Recorder taps each player's
-  command queue as the step drains it, so it writes down what the game was told from outside, with the tick it was applied at
-  and in what order, and a checksum every 5 s. The Replayer puts the recorded commands on the command queues, with the people
-  and AIs switched off, so the drain, the validation and the systems run exactly as they did live. A game is then its config (the
-  seed and settings) plus that list. Everything the step works out for itself, such as a gatherer picking a new tree or a
-  path, is recomputed, never recorded. Invalid commands are recorded too and rejected the same way on replay. Recording
-  commands, not their effects, keeps this compatible with lockstep, where machines exchange commands.
-  **Proposed addition: state snapshots as keyframes.** Both also attach to the game state. The Recorder takes a snapshot every
-  30 to 60 game seconds, and the Replayer restores one into the state and then replays the commands from there. That gives random access
-  (jump to tick T: restore the nearest snapshot and simulate forward, a few seconds at 5 to 25 times real time), saved games, and a way to
-  bring a desynchronized machine back. It is a supplement, not a replacement for the commands: a snapshot is 1 to 3 MB (deposits and the
-  per-player fogs dominate) and tens of milliseconds to take in GDScript, which is fine a few times a minute and far too heavy every tick, and
-  snapshots alone would record the states but not the play between them. The cost is in restoring: every reference between
-  objects (a unit's target, a farm's plots, road plans, shots in flight) has to be rebuilt from numbers. The checksum is the test: restore,
-  carry on, and compare.
+- **The tick driver is the only thing that connects game time to real time.** The simulation has no clock of its own: it has a
+  tick counter that goes up by one inside each step, and a tick is always 1/30 s of game time. Whatever calls `step()` decides
+  when and how often: `Main` in play (it banks real time, runs a step per 1/30 s of it, more per frame when fast-forwarding, none
+  when paused); a test or the headless runner in a tight loop, for exactly N ticks and as fast as the machine allows; and
+  in lockstep play, later, it would also wait until every player's commands for the next tick have arrived. The driver never sets
+  the clock, it only asks for steps, and the tick size never changes, so a game plays out the same whichever driver runs it.
+- **Recording and replaying are not part of this design.** There are tools for them (`src/replay/`, see *Headless play and
+  replays*), built on the command layer and the checksum, and they would attach to the queues; the design leaves room for them
+  (commands are stamped with a due tick, and what is drained is what the game is made of) but does not depend on them.
 
 Two consequences. A command no longer gets an answer at once ("err.cant_afford" is flashed in the same frame today), so
 the `Controls` show a refusal when it comes back and the AIs, whose `buy` logic reads the answer, need late answers or a

@@ -55,9 +55,7 @@
   <rect class="box" x="600" y="940" width="360" height="110" rx="6"/><text class="t" x="780" y="962" text-anchor="middle">Game state</text><text class="s" x="780" y="984" text-anchor="middle">units and their goals, buildings, stocks, fogs,</text><text class="s" x="780" y="1000" text-anchor="middle">rng, the tick count, GameMap, Fog, Defs</text><text class="s" x="780" y="1022" text-anchor="middle">(inert data)</text>
 
   <!-- right of the simulation -->
-  <rect class="box" x="1030" y="740" width="150" height="80" rx="6"/><text class="t" x="1105" y="762" text-anchor="middle">Tick driver</text><text class="s" x="1105" y="780" text-anchor="middle">turns wall-clock time</text><text class="s" x="1105" y="794" text-anchor="middle">into ticks (Main, the</text><text class="s" x="1105" y="808" text-anchor="middle">headless runner)</text>
-  <rect class="box" x="1030" y="840" width="150" height="120" rx="6"/><text class="t" x="1105" y="862" text-anchor="middle">Recorder</text><text class="s" x="1105" y="880" text-anchor="middle">taps each command</text><text class="s" x="1105" y="894" text-anchor="middle">as it is drained;</text><text class="s" x="1105" y="908" text-anchor="middle">snapshots the state</text><text class="s" x="1105" y="922" text-anchor="middle">now and then</text><text class="s" x="1105" y="942" text-anchor="middle">(snapshots: proposed)</text>
-  <rect class="box" x="1030" y="975" width="150" height="120" rx="6"/><text class="t" x="1105" y="997" text-anchor="middle">Replayer</text><text class="s" x="1105" y="1015" text-anchor="middle">restores a snapshot</text><text class="s" x="1105" y="1029" text-anchor="middle">into the state, and</text><text class="s" x="1105" y="1043" text-anchor="middle">puts the recorded</text><text class="s" x="1105" y="1057" text-anchor="middle">commands on the queues</text><text class="s" x="1105" y="1077" text-anchor="middle">(snapshots: proposed)</text>
+  <rect class="box" x="1030" y="770" width="150" height="130" rx="6"/><text class="t" x="1105" y="792" text-anchor="middle">Tick driver</text><text class="s" x="1105" y="812" text-anchor="middle">decides when steps</text><text class="s" x="1105" y="826" text-anchor="middle">run: at real time in</text><text class="s" x="1105" y="840" text-anchor="middle">play, as fast as it</text><text class="s" x="1105" y="854" text-anchor="middle">can in a test</text><text class="s" x="1105" y="876" text-anchor="middle">(Main; the harness)</text>
 
   <!-- Key -->
   <rect class="grp" x="30" y="1180" width="560" height="225" rx="10"/>
@@ -80,7 +78,5 @@
   <path class="l" d="M370,905 L370,940"/>
   <path class="l" d="M560,995 L600,995"/>
   <path class="d" d="M780,940 L780,905"/><text class="s" x="795" y="928">reads, for the views</text>
-  <path class="l" d="M1030,790 L960,790"/>
-  <path class="d" d="M1000,900 L1030,900"/>
-  <path class="l" d="M1030,1035 L1000,1035"/>
+  <path class="l" d="M1030,835 L960,835"/>
 </svg>
