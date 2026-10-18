@@ -1,9 +1,9 @@
 class_name Minimap
 extends Control
-## Flat top-down minimap: the terrain and fog (one pixel per tile) drawn as a square, with dots for
-## buildings and units and an outline of what the main view shows.
+## Isometric minimap: the terrain and fog (one pixel per tile) drawn as a diamond in the same projection as the
+## main view, with dots for buildings and units and an outline (a plain rectangle) of what the main view shows.
 
-const SIZE := Vector2(176, 176)
+const SIZE := Vector2(176, 88)  # the diamond is twice as wide as tall
 const COLORS := [Color("2c7db2"), Color("78cbe6"), Color("ebdc9e"), Color("8ec142"), Color("5e8b30"), Color("9cab4c"), Color("c8c4b4"), Color("6e8a52")]
 
 ## The land's colors under snow and in the desert (grass, forest, hills, mountain and marsh differ; water and beach do not).
@@ -35,10 +35,9 @@ func setup(p_game) -> void:
 	_texture = ImageTexture.create_from_image(_image)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	custom_minimum_size = SIZE
-	var land := TextureRect.new()  # the land, behind the dots: only what has been seen is drawn, on the parchment
+	var land := MinimapLand.new()  # the land, behind the dots: only what has been seen is drawn, on the parchment
 	land.texture = _texture
-	land.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	land.stretch_mode = TextureRect.STRETCH_SCALE
+	land.map_size = Vector2i(map.w, map.h)
 	land.set_anchors_preset(Control.PRESET_FULL_RECT)
 	land.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	land.show_behind_parent = true
@@ -59,13 +58,33 @@ func _fog() -> Fog:
 	return fog if fog != null else game.fog
 
 
-func _k() -> float:  # minimap pixels per tile
-	return size.x / float(game.map.w)
+## Minimap pixels per tile step along a diagonal: the diamond is (w + h) of these wide.
+func iso_k() -> float:
+	return size.x / float(game.map.w + game.map.h)
 
 
-## Tile coordinates -> pixels inside this control.
+## Where the diamond's top corner sits: it is centered up and down in the control.
+func iso_origin() -> Vector2:
+	return Vector2(0.0, (size.y - float(game.map.w + game.map.h) * 0.5 * iso_k()) / 2.0)
+
+
+func _k() -> float:  # (kept for the dots' sizes)
+	return iso_k()
+
+
+## Tile coordinates -> pixels inside this control, in the isometric projection.
 func _to_mini(p: Vector2) -> Vector2:
-	return p * _k()
+	var k := iso_k()
+	return Vector2((p.x - p.y + float(game.map.h)) * k, (p.x + p.y) * 0.5 * k) + iso_origin()
+
+
+## Pixels inside this control -> tile coordinates.
+func _from_mini(m: Vector2) -> Vector2:
+	var k := iso_k()
+	var q := m - iso_origin()
+	var diff := q.x / k - float(game.map.h)  # x - y
+	var sum := q.y / (0.5 * k)  # x + y
+	return Vector2((sum + diff) / 2.0, (sum - diff) / 2.0)
 
 
 func _process(delta: float) -> void:
@@ -104,4 +123,4 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _jump(p: Vector2) -> void:
-	jump_requested.emit((p / _k()).clamp(Vector2.ZERO, Vector2(game.map.w, game.map.h)))
+	jump_requested.emit(_from_mini(p).clamp(Vector2.ZERO, Vector2(game.map.w, game.map.h)))

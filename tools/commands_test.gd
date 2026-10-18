@@ -65,6 +65,17 @@ func _run() -> void:
 	var rough: Array = g.map.find_path_rough(Vector2i(dog.pos), far_goal)
 	print("route to a tile 30 away: %d steps normally, %d corners for a dog" % [plain.size(), rough.size()])
 	_check("a dog's route is a few straight runs", plain.size() < 20 or rough.size() <= plain.size() / 3, true)
+	var mini := Minimap.new()  # the isometric minimap: a click must land where the thing is drawn
+	mini.setup(g)
+	mini.size = Vector2(176, 176)
+	var back_ok := true
+	for p in [Vector2(10, 10), Vector2(g.map.w - 5, 7), Vector2(g.map.w / 2.0, g.map.h / 2.0), Vector2(40, g.map.h - 20)]:
+		back_ok = back_ok and mini._from_mini(mini._to_mini(p)).distance_to(p) < 0.01
+	_check("minimap pixels map back to the same tile", back_ok, true)
+	var corner := mini._to_mini(Vector2(0, 0))
+	var far := mini._to_mini(Vector2(g.map.w, g.map.h))
+	_check("the map is a diamond twice as wide as tall", is_equal_approx((far.y - corner.y) * 2.0, mini.size.x), true)
+	mini.free()
 	_check("a dog cannot fight", Combat.fights(dog), false)
 	_check("the game's population is shared out", g.pop_limit(), Defs.POP_LIMIT / 2)
 	_check("no one may exceed their share", g.pop_cap(0) <= g.pop_limit(), true)

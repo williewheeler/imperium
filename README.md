@@ -40,8 +40,8 @@ houses, vineyards, an aqueduct, the Senate House (*Curia*) and barracks become a
 
 **Many kinds of ground.** The ground is chosen apart from the shape of the land, so the same coast can
 be green, snowy or sand. Snow whitens the grass, pines and hills; the desert parches them; marshlands
-are reeds and pools; hilly maps rise into terraces; wooded maps are thick with forest. The minimap is a
-parchment scroll that fills in as you explore.
+are reeds and pools; hilly maps rise into terraces; wooded maps are thick with forest. The minimap is an
+isometric diamond of parchment that fills in as you explore.
 
 | Snow | Desert |
 |---|---|
