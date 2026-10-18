@@ -10,6 +10,12 @@ const DEPOSIT_LATIN := ["Silva", "Baccae", "Lapis", "Aurum"]  # woods, berries, 
 const DEPOSIT_ENGLISH := ["Trees", "Berry bushes", "Stone", "Gold"]
 const DEPOSIT_AMOUNT := [100, 150, 300, 300]
 const GATHER_RATE := [1.0, 1.2, 0.8, 0.7]  # units per second
+# Herds: grazing animals, a food deposit that breeds. While at least HERD_BREED_MIN of it is left it gains
+# HERD_BREED_GAIN every HERD_BREED_EVERY seconds up to HERD_AMOUNT; hunt it to nothing and it is gone for good.
+const HERD_AMOUNT := 240
+const HERD_BREED_MIN := 0.15
+const HERD_BREED_EVERY := 8.0
+const HERD_BREED_GAIN := 4
 const CARRY_CAP := 15
 
 # Costs are [wood, food, stone, gold].

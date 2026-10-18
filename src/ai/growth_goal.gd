@@ -69,7 +69,8 @@ func _build(hubs: Array[Building]) -> void:
 		for f in fields:
 			if f.center().distance_to(t.center()) < 11.0:
 				here += 1
-		if here < clampi(villagers.size() / hubs.size() / 16, 1, 3):  # a farm has eight plots, one villager to each
+		var short_of_food := 1 if int(ai.stock()[Defs.Res.FOOD]) < 200 else 0  # another farm when the larder is low
+		if here < clampi(villagers.size() / hubs.size() / 16 + short_of_food, 1, 4):  # a farm has eight plots, one villager to each
 			if ai.place("farm", t.center(), 3):
 				return
 	if ai.game.era_of(ai.owner) >= 1 and int(ai.stock()[Defs.Res.GOLD]) < 250 and ai.mine("vineyard").size() < hubs.size() * 2:

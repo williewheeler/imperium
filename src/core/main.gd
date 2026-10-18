@@ -1217,6 +1217,7 @@ func _process(delta: float) -> void:
 	t0 = Perf.start()
 	combat.update_projectiles(delta)
 	combat.update_buildings(delta)
+	_update_herds(delta)
 	victory.tick(delta)
 	combat.flush_dead()  # the dead leave the game now that the loops over the units are done
 	Perf.stop("combat", t0)
@@ -1657,6 +1658,20 @@ func _retarget(u: Unit) -> bool:
 				best = p
 	Perf.stop("retarget scan", t0)
 	return best.x >= 0 and orders.gather(u, best)
+
+
+## Herds breed: while enough of one is left it grows back, slowly, up to a limit. One hunted to nothing is gone.
+func _update_herds(delta: float) -> void:
+	for p: Vector2i in map.herds.duplicate():
+		var d: Deposit = map.deposits.get(p)
+		if d == null or not d.herd:
+			map.herds.erase(p)
+			continue
+		if d.amount >= int(float(d.max_amount) * Defs.HERD_BREED_MIN) and d.amount < d.max_amount:
+			d.regrow += delta
+			if d.regrow >= Defs.HERD_BREED_EVERY:
+				d.regrow = 0.0
+				d.amount = mini(d.max_amount, d.amount + Defs.HERD_BREED_GAIN)
 
 
 ## A farm's plots ripen again some time after they are emptied.

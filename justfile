@@ -83,6 +83,10 @@ settlement-test:
 farm-test:
     {{godot}} --headless --path . --script tools/farm_test.gd -- --nosplash --seed=42 --players=3
 
+# Headless check of the sparse start and of herds that breed and can be hunted out
+herd-test:
+    {{godot}} --headless --path . --script tools/herd_test.gd -- --nosplash --seed=42 --players=3
+
 # Headless check of the phrase table: both languages present, every key used in the code exists
 phrases-test:
     {{godot}} --headless --path . --script tools/phrases_test.gd

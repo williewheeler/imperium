@@ -44,6 +44,7 @@ var levels := PackedByteArray()  # per tile terrace: 0 (shore and plains) up to 
 var relief := PackedByteArray()  # per tile light on the ground from the top-left: 128 flat, brighter when facing the light
 var slope_factor := PackedFloat32Array()  # per tile walking-cost multiplier from steepness (1.0 = flat)
 var deposits := {}  # Vector2i -> Deposit
+var herds: Array[Vector2i] = []  # where the herds graze (see Defs.HERD_*)
 var astar_rough: AStarGrid2D  # built the first time a dog needs a route (see find_path_rough)
 var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 2 paved road
 var wear := PackedFloat32Array()  # distance walked over each tile so far
@@ -790,25 +791,46 @@ func place_start_resources(start: Vector2i, density := 1.0) -> void:
 
 
 func _place_start_clusters(rng: RandomNumberGenerator, start: Vector2i, density: float) -> void:
-	for i in maxi(1, int(round(3.0 * density))):  # berries
-		_place_cluster(rng, start, 5.0, 11.0, Defs.Res.FOOD, 5, 2)
-	for i in maxi(1, int(round(density))):  # stone and gold
-		_place_cluster(rng, start, 9.0, 15.0, Defs.Res.STONE, 3, 1)
-		_place_cluster(rng, start, 12.0, 20.0, Defs.Res.GOLD, 3, 1)
+	# A couple of berry bushes by the town, herds to hunt, and one small outcrop of stone a little way off. Everything
+	# else (more food, gold, more stone) has to be found, and a Settlement put up beside it.
+	_place_cluster(rng, start, 4.0, 9.0, Defs.Res.FOOD, maxi(2, int(round(2.0 * density))), 1)
+	for i in maxi(1, int(round(2.0 * density))):
+		_place_herd(rng, start, 6.0, 14.0)
+	_place_cluster(rng, start, 16.0, 24.0, Defs.Res.STONE, 2, 1)
 
 
 func _place_scattered(rng: RandomNumberGenerator, density: float) -> void:
 	var blocks := maxi(1, w * h / 6400)  # one for every 80x80 tiles
-	for i in int(round(8 * blocks * density)):  # mines scattered over the whole world, for exploring armies and villagers to find
+	for i in int(round(3 * blocks * density)):  # a few mines scattered over the whole world, for exploring armies and villagers to find
 		for attempt in 20:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
 			if _place_cluster(rng, c, 0.0, 0.0, Defs.Res.STONE if i % 2 == 0 else Defs.Res.GOLD, 3, 1):
 				break
-	for i in int(round(4 * blocks * density)):  # and berry patches
+	for i in int(round(2 * blocks * density)):  # and berry patches
 		for attempt in 20:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
 			if _place_cluster(rng, c, 0.0, 0.0, Defs.Res.FOOD, 5, 2):
 				break
+	for i in int(round(3 * blocks * density)):  # and herds
+		for attempt in 20:
+			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
+			if _place_herd(rng, c, 0.0, 0.0):
+				break
+
+
+## A herd of grazing animals on one tile, somewhere between `min_r` and `max_r` tiles from `center`.
+func _place_herd(rng: RandomNumberGenerator, center: Vector2i, min_r: float, max_r: float) -> bool:
+	for attempt in 40:
+		var a := rng.randf() * TAU
+		var r := rng.randf_range(min_r, max_r)
+		var p := center + Vector2i((Vector2(cos(a), sin(a)) * r).round())
+		if _site_ok(p, Defs.Res.FOOD):
+			var d := Deposit.new(Defs.Res.FOOD, Defs.HERD_AMOUNT)
+			d.herd = true
+			deposits[p] = d
+			herds.append(p)
+			return true
+	return false
 
 
 func _site_ok(p: Vector2i, kind: int) -> bool:

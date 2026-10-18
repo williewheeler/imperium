@@ -383,7 +383,9 @@ func _build_chunk(c: Vector2i) -> void:
 			var d: Deposit = map.deposits.get(p)
 			if d != null and d.kind != Defs.Res.WOOD and not d.farm:  # trees are the forest tile's own sprites; a field draws its own crop
 				var key := "berries"
-				if d.kind == Defs.Res.STONE:
+				if d.herd:
+					key = "herd:%d" % _herd_size(d)
+				elif d.kind == Defs.Res.STONE:
 					key = "stone:%d" % int(Pixel.hash2(x, y, 80) * 2.0)
 				elif d.kind == Defs.Res.GOLD:
 					key = "gold:%d" % int(Pixel.hash2(x, y, 81) * 2.0)
@@ -505,6 +507,16 @@ func _process(delta: float) -> void:
 		if not game.map.deposits.has(p):
 			_deposit_nodes[p].queue_free()
 			_deposit_nodes.erase(p)
+		elif game.map.deposits[p].herd and is_instance_valid(_deposit_nodes[p]):  # a herd shows fewer animals as it is hunted
+			var n := _herd_size(game.map.deposits[p])
+			if _deposit_nodes[p].get_meta("herd_n", -1) != n:
+				_deposit_nodes[p].set_meta("herd_n", n)
+				_deposit_nodes[p].texture = Art.tex("herd:%d" % n)
+
+
+## How many animals to draw for a herd, one to four.
+func _herd_size(d: Deposit) -> int:
+	return clampi(ceili(4.0 * float(d.amount) / float(maxi(1, d.max_amount))), 1, 4)
 
 
 ## Trees, buildings and mountains can hide a villager. When most of them is covered, draw a flat

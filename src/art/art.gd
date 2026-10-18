@@ -193,6 +193,8 @@ static func image(key: String) -> Image:
 			return _regia()
 		"settlement":
 			return _settlement()
+		"herd":  # herd:<n> one to four grazing animals
+			return _herd(variant)
 		"granary":
 			return _granary(false)
 		"large_granary":
@@ -1027,6 +1029,25 @@ static func _regia() -> Image:
 		Pixel.rect(img, int(h.x + cos(a) * 5.5), int(h.y + sin(a) * 2.8) - 1, 2, 2, ROCK[1 + (k % 3)])
 	Pixel.rect(img, int(h.x) - 2, int(h.y) - 1, 4, 2, Color("3a2418"))
 	# (the flames and smoke are animated in code: see hearth_fire.gd)
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## A herd of grazing sheep, one to four of them on a tile, each facing its own way. 34x22 before the outline.
+static func _herd(n: int) -> Image:
+	var img := Pixel.blank(34, 22)
+	var spots: Array = [[Vector2(17, 15)], [Vector2(9, 13), Vector2(25, 16)], [Vector2(7, 12), Vector2(26, 12), Vector2(16, 18)],
+		[Vector2(6, 11), Vector2(24, 10), Vector2(12, 18), Vector2(28, 17)]][clampi(n, 1, 4) - 1]
+	var order: Array = range(spots.size())
+	order.sort_custom(func(a: int, b: int) -> bool: return spots[a].y < spots[b].y)  # back to front
+	for i: int in order:
+		var at: Vector2 = spots[i]
+		var dir := 1.0 if i % 2 == 0 else -1.0
+		for lx in [-3.0, -1.0, 1.0, 3.0]:  # legs
+			Pixel.rect(img, int(at.x + lx), int(at.y) + 2, 1, 3, Color("4a3a2c"))
+		Pixel.ellipse(img, at.x, at.y, 5.2, 3.6, Color("cfc4a6"))  # the fleece in shadow
+		Pixel.ellipse(img, at.x, at.y - 1.0, 5.0, 3.0, Color("f1ead8"))
+		Pixel.ellipse(img, at.x + dir * 4.6, at.y - 0.6, 1.9, 1.7, Color("4a3a2c"))  # the head
+		Pixel.put(img, int(at.x + dir * 4.0), int(at.y) - 3, Color("4a3a2c"))  # an ear
 	return Pixel.outlined(img, OUT_WARM)
 
 

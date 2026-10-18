@@ -253,14 +253,19 @@ func _show_building(b: Building) -> void:
 func _show_deposit(d: Deposit) -> void:
 	var res: String = Defs.RES_ENGLISH[d.kind].to_lower()
 	var key := "berries"
-	if d.kind == Defs.Res.STONE:
+	if d.herd:
+		key = "herd:%d" % clampi(ceili(4.0 * float(d.amount) / float(maxi(1, d.max_amount))), 1, 4)
+	elif d.kind == Defs.Res.STONE:
 		key = "stone:0"
 	elif d.kind == Defs.Res.GOLD:
 		key = "gold:0"
 	elif d.kind == Defs.Res.WOOD:
 		key = "oak:0"
 	_show_portrait(Art.tex(key))
-	_text(_name, Defs.DEPOSIT_LATIN[d.kind], "%s: a source of %s" % [Defs.DEPOSIT_ENGLISH[d.kind], res])
+	if d.herd:
+		_text(_name, "Pecus", "Herd: grazing animals. Hunt too hard and it is gone for good; left alone it breeds back slowly.")
+	else:
+		_text(_name, Defs.DEPOSIT_LATIN[d.kind], "%s: a source of %s" % [Defs.DEPOSIT_ENGLISH[d.kind], res])
 	var english := "Remaining: %d of %d %s" % [d.amount, d.max_amount, res]
 	_show_work(float(d.amount), float(d.max_amount), Latin.t("Reliquum %d/%d" % [d.amount, d.max_amount]), english, Art.RES_COLORS[d.kind])
 	_text(_state, "", "")
