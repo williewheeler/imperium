@@ -41,9 +41,10 @@ in the code, or marked as not built.
 | Views | `src/ui/views/`, and the HUD's readouts in `src/ui/`; they draw `game.view` (a `PlayerView`) |
 | Controls | `src/ui/controls/` (`Person`, `CameraRig`), and the HUD's buttons in `src/ui/`; commands go through `game.client` |
 | AIs | `src/ai/` |
-| Headless client (the person's, inside the UI) | `src/client/`, made once in `Main` (`Main.client`, `Main.view`); built. It reads the `Simulation` in place of the view link |
+| Headless client (a local human's, inside the UI) | `src/client/`, made once in `Main` (`Main.client`, `Main.view`); built. It reads the `Simulation` in place of the view queue |
+| Headless client (a remote human's, on another machine) | not built: the same client, on the other machine, speaking queue through Networking |
 | Headless client (the AIs') | `src/client/`, made for each AI in `WorldSetup` (`AI.client`, `AI.view`); built, as above |
-| Networking | not built (`src/net/`: today `NetSession` is the lobby only): the host's end of a link to a client on another machine; it talks to that player's two queues |
+| Networking | not built (`src/net/`: today `NetSession` is the lobby only): the host's end of the connection to a remote human's client; it talks to that player's two queues |
 | View queue, Command queue (one pair for each player) | not built: they are the simulation's interface. Today a client calls `Commands.submit` (validates and applies at once) and reads the `Simulation` as it filters, and the simulation's signals reach `Main`, which shows them |
 | Simulation step | `Simulation.step()` in `src/sim/simulation.gd`: today it runs the AIs and the systems; it does not yet drain command queues or publish views |
 | Game state | `GameState` (`src/sim/state/game_state.gd`), held as `Simulation.state`: the map, units, buildings, stocks, fogs, tick, rng, eras, road plans, shots in flight, who has fallen. Inert; see *Known debts* for what is still not |
@@ -63,7 +64,7 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 **The end state (proposed; the picture above).** None of the yellow boxes exist yet. They are where the design is going:
 
 - **A headless client per player, human or AI.** It holds the player's fog-filtered model of the world and takes their
-  commands. The person's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
+  commands. A human's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
   and keys) are wrapped round it. Each AI has a client of its own, the same class, in the AIs' part of the picture. Each client attaches to its
   player's pair of queues. So a human and an AI see and do exactly the same things, and
   neither can look at the real state. (Today the AIs read `Simulation.units` and the like directly, and only
