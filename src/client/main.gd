@@ -94,7 +94,7 @@ func _ready() -> void:
 			push_error("cannot read the replay %s" % args["replay"])
 			get_tree().quit(1)
 			return
-		GameSettings.apply_lobby(replay.view)  # the peoples and colors it was played with (for this run only)
+		replay.apply_to_settings()  # the map kind, terrain, peoples and colors it was played with (for this run only)
 		spectating = replay.config.humans.is_empty()
 	Perf.on = args.has("perf")
 	_record_dir = String(args.get("record", ""))

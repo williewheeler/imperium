@@ -15,13 +15,14 @@
 
   <!-- Client -->
   <rect class="grp" x="15" y="15" width="300" height="590"/>
-  <text class="h" x="30" y="40">Client  (src/client, views, ui)</text>
-  <rect class="box" x="40" y="55" width="250" height="50"/><text class="t" x="165" y="76" text-anchor="middle">UI</text><text class="s" x="165" y="93" text-anchor="middle">HUD buttons, menus</text>
-  <rect class="box" x="40" y="125" width="250" height="50"/><text class="t" x="165" y="146" text-anchor="middle">Person</text><text class="s" x="165" y="163" text-anchor="middle">mouse, keys, selection: makes commands</text>
-  <rect class="prop" x="40" y="185" width="250" height="60"/><text class="t" x="165" y="209" text-anchor="middle">Command endpoint</text><text class="s" x="165" y="227" text-anchor="middle">proposed: Person calls Commands directly today</text>
-  <rect class="box" x="40" y="320" width="250" height="100"/><text class="t" x="165" y="345" text-anchor="middle">Main, views/, ui/</text><text class="s" x="165" y="364" text-anchor="middle">draw the state, show messages,</text><text class="s" x="165" y="378" text-anchor="middle">play the music</text><text class="s" x="165" y="400" text-anchor="middle">(today they read the Simulation directly)</text>
-  <rect class="prop" x="40" y="500" width="250" height="60"/><text class="t" x="165" y="524" text-anchor="middle">Update endpoint</text><text class="s" x="165" y="542" text-anchor="middle">proposed: receives state and events</text>
-  <path class="l" d="M165,105 L165,125"/><path class="l" d="M165,175 L165,185"/><path class="l" d="M165,500 L165,420"/>
+  <text class="h" x="30" y="40">Client  (src/client, views, ui; Main wires it up)</text>
+  <rect class="box" x="35" y="65" width="125" height="65"/><text class="t" x="97" y="90" text-anchor="middle">Person</text><text class="s" x="97" y="108" text-anchor="middle">mouse, keys,</text><text class="s" x="97" y="121" text-anchor="middle">selection</text>
+  <rect class="box" x="170" y="65" width="125" height="65"/><text class="t" x="232" y="90" text-anchor="middle">UI</text><text class="s" x="232" y="108" text-anchor="middle">buttons and menus</text><text class="s" x="232" y="121" text-anchor="middle">(through Person today)</text>
+  <rect class="prop" x="40" y="185" width="250" height="60"/><text class="t" x="165" y="209" text-anchor="middle">Command endpoint</text><text class="s" x="165" y="227" text-anchor="middle">proposed: Commands is called directly today</text>
+  <path class="l" d="M97,130 L97,185"/><path class="l" d="M232,130 L232,185"/>
+  <rect class="box" x="40" y="320" width="250" height="100"/><text class="t" x="165" y="345" text-anchor="middle">Views</text><text class="s" x="165" y="364" text-anchor="middle">world, units, fog, minimap, HUD readouts:</text><text class="s" x="165" y="378" text-anchor="middle">draw the state, show messages</text><text class="s" x="165" y="400" text-anchor="middle">(today they read the Simulation directly)</text>
+  <rect class="prop" x="40" y="500" width="250" height="60"/><text class="t" x="165" y="524" text-anchor="middle">View endpoint</text><text class="s" x="165" y="542" text-anchor="middle">proposed: receives state and events</text>
+  <path class="l" d="M165,500 L165,420"/>
 
   <!-- Channels -->
   <rect class="ch" x="345" y="150" width="230" height="130"/>
@@ -29,7 +30,7 @@
   <text class="s" x="460" y="195" text-anchor="middle">client to host</text>
   <text class="s" x="460" y="250" text-anchor="middle">a direct call (single player,</text><text class="s" x="460" y="264" text-anchor="middle">the host's own player), or NetSession</text>
   <rect class="ch" x="345" y="470" width="230" height="130"/>
-  <text class="h" x="460" y="495" text-anchor="middle">Update channel</text>
+  <text class="h" x="460" y="495" text-anchor="middle">View channel</text>
   <text class="s" x="460" y="515" text-anchor="middle">host to client</text>
   <text class="s" x="460" y="570" text-anchor="middle">a direct call (single player,</text><text class="s" x="460" y="584" text-anchor="middle">the host's own player), or NetSession</text>
 
@@ -49,7 +50,7 @@
   <rect class="box" x="645" y="422" width="490" height="36"/><text class="t" x="890" y="445" text-anchor="middle">GameMap, Fog, Defs</text>
 
   <rect class="box" x="625" y="480" width="170" height="40"/><text class="t" x="710" y="497" text-anchor="middle">Tick driver</text><text class="s" x="710" y="512" text-anchor="middle">gives it time (Main today)</text>
-  <rect class="prop" x="815" y="500" width="340" height="60"/><text class="t" x="985" y="524" text-anchor="middle">Update publisher</text><text class="s" x="985" y="542" text-anchor="middle">proposed: signals today; later state or the ordered commands</text>
+  <rect class="prop" x="815" y="500" width="340" height="60"/><text class="t" x="985" y="524" text-anchor="middle">View publisher</text><text class="s" x="985" y="542" text-anchor="middle">proposed: signals today; later state or the ordered commands</text>
 
   <path class="l" d="M680,95 L680,150"/><path class="l" d="M820,95 L820,150"/>
   <path class="l" d="M755,220 L755,260"/>

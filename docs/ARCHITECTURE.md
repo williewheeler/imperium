@@ -63,9 +63,8 @@ happened through signals, and the client reads its state to draw it.
 client and host there would be two channels side by side, each with an endpoint on either side, and each either
 a **direct call** (single player, or the host's own player) or **NetSession** (a joined player):
 
-- the **command channel**, client to host: the HUD tells `Person` what the person wants, `Person` makes a command,
-  and the command goes through the channel to `Commands.submit`, as the AIs' and `Replayer`'s already do on the host;
-- the **update channel**, host to client: what `Main`, the views and the interface need to show. Today that is the
+- the **command channel**, client to host: `Person` (the mouse and keys) and the UI (its buttons) make commands, and they go through the channel to `Commands.submit`, as the AIs' and `Replayer`'s already do on the host;
+- the **view channel**, host to client: what the views (and the HUD's readouts) need to show. Today that is the
   simulation's signals plus the views reading its state directly, which only works in one process. For a
   host that keeps the one simulation it would carry state and events; for lockstep (every machine runs its own copy)
   it would carry the ordered commands of all the players, and the client would read its local copy as now.
