@@ -47,6 +47,12 @@ func set_difficulty(id: String) -> void:
 	shares = [0.85 - food, food, 0.09, 0.06]
 
 
+## Gives the game a command as this player. The reason it was refused, or "" if it was carried out.
+func _do(cmd: Dictionary) -> String:
+	cmd["owner"] = owner
+	return game.commands.submit(cmd)
+
+
 func tick(delta: float) -> void:
 	_age += delta
 	_scout_wait -= delta
@@ -124,10 +130,7 @@ func _train(town: Building) -> void:
 	var want := mini(max_villagers, 10 + int(_age / grow_seconds))
 	if _villagers().size() + town.train_queue.size() >= want or town.train_queue.size() >= 2:
 		return
-	var cost: Array = Defs.VILLAGER_COST
-	if game.can_afford(cost, owner) and game.has_pop_room(owner):
-		game._pay(cost, owner)
-		town.train_queue.append("villager")
+	_do({"type": "train", "building": town.id, "kind": "villager"})
 
 
 ## Put up a hut when the people are about to outgrow their roofs, fields beside the town (food can
@@ -166,27 +169,21 @@ func _put_up(kind: String, near: Vector2, min_r: int) -> void:
 	for u: Unit in game.units:
 		avoid.append(Vector2i(u.pos))
 	var site: Vector2i = game.map.find_site(def["size"], Vector2i(near), min_r, 20, avoid, game._building_rects())
-	if site.x < 0 or game.placement_error(kind, site, owner) != "":
+	if site.x < 0:
 		return
-	game._pay(def["cost"], owner)
-	var b: Building = game._add_building(kind, site, false, owner)
-	var crew := 0
-	for u in _villagers():  # the two nearest idle hands (or gatherers, if nobody is idle) build it
-		if crew >= 2:
-			break
-		if u.state == Unit.State.IDLE:
-			game._order_build(u, b)
-			crew += 1
-	if crew == 0:
-		var nearest: Unit = null
+	var crew: Array[Unit] = []  # the two nearest idle hands (or the nearest gatherer, if nobody is idle) build it
+	for u in _villagers():
+		if crew.size() < 2 and u.state == Unit.State.IDLE:
+			crew.append(u)
+	if crew.is_empty():
 		var best := INF
+		var centre := Vector2(site) + Vector2(def["size"]) / 2.0
 		for u in _villagers():
-			var d := u.pos.distance_to(b.center())
+			var d := u.pos.distance_to(centre)
 			if d < best:
 				best = d
-				nearest = u
-		if nearest != null:
-			game._order_build(nearest, b)
+				crew = [u]
+	_do({"type": "place", "kind": kind, "tile": site, "units": crew.map(func(u: Unit) -> int: return u.id)})
 
 
 ## Send idle villagers to whichever resource is furthest below its share.
@@ -200,7 +197,7 @@ func _work(town: Building) -> void:
 		for u in villagers:  # no stone or no gold found yet: an idle hand goes looking
 			if u.state == Unit.State.IDLE:
 				_scout_wait = 60.0
-				game._order_explore(u)
+				_do({"type": "explore", "units": [u.id]})
 				break
 	for u in villagers:
 		if u.state != Unit.State.IDLE:
@@ -211,14 +208,14 @@ func _work(town: Building) -> void:
 			var tile := _nearest_deposit(kind, town.center(), 0)
 			if tile.x < 0:
 				continue
-			if game._order_gather(u, tile):
+			if _do({"type": "gather", "tile": tile, "units": [u.id]}) == "":
 				busy[kind] += 1
 				assigned = true
 				break
 			_blocked[tile] = 30.0
 		if not assigned and _scout_wait <= 0.0:  # nothing it knows of to work: go and look for something
 			_scout_wait = 40.0
-			game._order_explore(u)
+			_do({"type": "explore", "units": [u.id]})
 
 
 func _kinds_by_need(busy: Array, total: int) -> Array:
@@ -284,10 +281,7 @@ func _train_army(camp: Building, villagers: int) -> void:
 	if army.size() + camp.train_queue.size() >= want or camp.train_queue.size() >= 2:
 		return
 	var kind := _pick_kind()
-	var cost: Array = Defs.UNITS[kind]["cost"]
-	if game.can_afford(cost, owner) and game.has_pop_room(owner):
-		game._pay(cost, owner)
-		camp.train_queue.append(kind)
+	_do({"type": "train", "building": camp.id, "kind": kind})
 
 
 ## A kind of fighter to train. Each kind has a base chance; what it has seen of its enemies raises the chance
@@ -316,8 +310,7 @@ func _send_wave(town: Building) -> void:
 	_wave = _wave.filter(func(u: Unit) -> bool: return not u.dead)
 	if not _wave.is_empty():
 		if _wave.size() < int(_wave_start * 0.4):  # beaten: retreat
-			for u in _wave:
-				game._order_move(u, Vector2i(town.center()))
+			_do({"type": "move", "tile": Vector2i(town.center()), "units": _wave.map(func(u: Unit) -> int: return u.id)})
 			_wave.clear()
 			_wave_cooldown = 120.0
 		else:
@@ -338,8 +331,7 @@ func _send_wave(town: Building) -> void:
 		return
 	_wave = ready
 	_wave_start = ready.size()
-	for i in ready.size():
-		game.combat.order_attack_move(ready[i], target)
+	_do({"type": "attack_move", "tile": target, "units": ready.map(func(u: Unit) -> int: return u.id)})
 
 
 ## Where to send the army: the nearest enemy building it has seen (the ground it has explored), else the nearest

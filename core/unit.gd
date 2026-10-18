@@ -3,6 +3,17 @@ extends RefCounted
 
 enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING, EXPLORE, ATTACK_GO, ATTACKING, FLEE }
 
+static var _made := 0
+
+
+## A number no other unit has had: commands name units by it.
+static func _next_id() -> int:
+	_made += 1
+	return _made
+
+
+var id := _next_id()
+
 ## Position in tile coordinates (tile centers are at +0.5).
 var kind := "villager"  # "villager", or a fighting man: "soldier", "spearman", "slinger", "horseman"
 var pos := Vector2.ZERO

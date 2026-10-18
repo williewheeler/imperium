@@ -38,7 +38,7 @@ var markers: Array[Dictionary] = []  # {pos: Vector2, t: float}
 var stock: Array[int] = []  # the first player's (ours); rivals keep theirs in `stocks`
 var stocks: Array = []  # every player's resources, by owner (stocks[0] is `stock`)
 var rivals: Array[Rival] = []
-var rival_fogs := {}  # owner -> the Fog that people has built up: what it has seen, and nothing more
+var fogs := {}  # owner -> the Fog that player has built up: what it has seen, and nothing more (fogs[0] is `fog`)
 var _rome_start := Vector2i.ZERO
 var camera: Camera2D
 var hud: Hud
@@ -87,6 +87,8 @@ var _shot_frame := 20
 var _frame := 0
 var music: Music  # null in scripted runs
 var combat := Combat.new(self)  # who fights whom
+var commands := Commands.new()  # how a player acts on the game: every driver submits to it (see docs/ARCHITECTURE.md)
+const LOCAL := 0  # the player at this keyboard
 var _skirmish_look := Vector2.INF  # --skirmish: where the camera goes
 var attack_move_mode := false  # the next left click sends the selected fighters there to fight on the way (key A)
 
@@ -210,6 +212,8 @@ func _ready() -> void:
 	Iso.set_terrain(map.w, map.h, map.levels)
 	var start := map.find_start(Vector2i((map.homes[0] * map.w).round()), Vector2i(-1, -1), 0)  # you start on the ring round the map like everyone else
 	fog = Fog.new(map.w, map.h)
+	fogs = {LOCAL: fog}
+	commands.game = self
 	stock.assign(Defs.START_STOCK)
 	stocks = [stock]
 
@@ -252,7 +256,7 @@ func _ready() -> void:
 		_cancel_road_mode())
 	hud.road_requested.connect(start_road_mode)
 	weather.changed.connect(_on_weather_changed)
-	hud.advance_requested.connect(start_advance)
+	hud.advance_requested.connect(func() -> void: _do({"type": "advance"}))
 	hud.action_requested.connect(command_selected)
 	hud.kind_chosen.connect(select_only_kind)
 	hud.settings_requested.connect(_open_settings)
@@ -467,7 +471,7 @@ func building_at(tile: Vector2i) -> Building:
 
 ## What the given player has explored (a rival knows only what its own people have seen).
 func fog_of(owner: int) -> Fog:
-	return fog if owner == 0 else rival_fogs[owner]
+	return fogs[owner]
 
 
 func stock_of(owner: int) -> Array[int]:
@@ -780,15 +784,28 @@ func selected_workers() -> Array[Unit]:
 
 ## A command-bar action ("explore", "stop") for everyone selected.
 func command_selected(action: String) -> void:
-	for u in selected_units():
-		match action:
-			"explore":
-				_order_explore(u)
-			"stop":
-				_order_stop(u)
+	if action == "explore" or action == "stop":
+		_do({"type": action, "units": _ids(selected_units())})
 	if action == "attack_move" and not selected_fighters().is_empty():
 		attack_move_mode = true
 		hud.flash("Quo oppugnamus? Sinistra.", "Attack-move: left click where the fighters should go, fighting whatever they meet. (Esc cancels)")
+
+
+# ---------- The person's driver ----------
+# Turns clicks, keys and the selection into commands. Everything the player does to the world goes through
+# `commands.submit`; the only things done here directly are the interface's own (markers, flashes, modes).
+
+## Submits `cmd` as the local player and flashes the reason if it was refused. True if it was carried out.
+func _do(cmd: Dictionary) -> bool:
+	cmd["owner"] = LOCAL
+	var err := commands.submit(cmd)
+	if err != "":
+		hud.flash(err)
+	return err == ""
+
+
+func _ids(us: Array) -> Array:
+	return us.map(func(u: Unit) -> int: return u.id)
 
 
 ## The selected units that can fight.
@@ -807,12 +824,7 @@ func _attack_move_to(mp: Vector2) -> void:
 	if fighters.is_empty() or not map.in_bounds(tile):
 		return
 	markers.append({"pos": Iso.to_tile(mp), "t": 0.0, "attack": true})
-	var goals := map.spread_goals(tile, fighters.size())
-	if goals.is_empty():
-		hud.flash("Iter nullum est.")
-		return
-	for i in fighters.size():
-		combat.order_attack_move(fighters[i], goals[i % goals.size()])
+	_do({"type": "attack_move", "tile": tile, "units": _ids(fighters)})
 
 
 func _order_stop(u: Unit) -> void:
@@ -897,8 +909,7 @@ func _command_at(mp: Vector2) -> void:
 	var fighters := selected_fighters()
 	if foe != null and not fighters.is_empty():  # right click on an enemy we can see: the fighters attack it
 		markers.append({"pos": foe.pos, "t": 0.0, "attack": true})
-		for u in fighters:
-			combat.order_attack(u, foe)
+		_do({"type": "attack", "target": foe.id, "units": _ids(fighters)})
 		foe.targeted = Combat.TARGET_MARK
 		var others: Array[Unit] = []
 		for u in us:
@@ -910,7 +921,7 @@ func _command_at(mp: Vector2) -> void:
 	markers.append({"pos": pos, "t": 0.0})
 	var res := deposit_near(mp)
 	var b := building_under(mp)
-	if b != null and b.owner != 0:
+	if b != null and b.owner != LOCAL:
 		b = null  # a rival's building is just ground to us for now
 	var movers := us  # who just walks there
 	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.is_field()))):
@@ -921,8 +932,7 @@ func _command_at(mp: Vector2) -> void:
 			if u.carry > 0 and u.carry_kind in b.def()["accepts"]:
 				carriers.append(u)
 		if not carriers.is_empty():
-			for u in carriers:
-				_order_dropoff(u, b)
+			_do({"type": "dropoff", "building": b.id, "units": _ids(carriers)})
 			movers = []
 			for u in us:
 				if not carriers.has(u):
@@ -933,17 +943,13 @@ func _command_at(mp: Vector2) -> void:
 	if not workers.is_empty():
 		var handled := true
 		if res.x >= 0:
-			for u in workers:
-				_order_gather(u, res)
+			_do({"type": "gather", "tile": res, "units": _ids(workers)})
 		elif road_plans.has(tile):  # right-click a marked road tile: go and pave it
-			for u in workers:
-				_assign_road_work(u)
+			_do({"type": "pave_work", "units": _ids(workers)})
 		elif b != null and not b.complete:
-			for u in workers:
-				_order_build(u, b)
+			_do({"type": "build", "building": b.id, "units": _ids(workers)})
 		elif b != null and b.is_field():
-			for u in workers:
-				_order_gather(u, b.field_tile())
+			_do({"type": "gather", "tile": b.field_tile(), "units": _ids(workers)})
 		else:
 			handled = false
 		if handled:  # soldiers in the same group have no work to do; they march to the spot
@@ -953,12 +959,7 @@ func _command_at(mp: Vector2) -> void:
 					movers.append(u)
 	if movers.is_empty():
 		return
-	var goals := map.spread_goals(tile, movers.size())
-	if goals.is_empty():
-		hud.flash("Iter nullum est.")
-		return
-	for i in movers.size():
-		_order_move(movers[i], goals[i % goals.size()])
+	_do({"type": "move", "tile": tile, "units": _ids(movers)})
 
 
 ## A message about one of our own units (rivals' troubles are not ours to hear).
@@ -1050,19 +1051,12 @@ func _order_build(u: Unit, b: Building) -> void:
 
 
 func _try_place() -> void:
-	if era < int(Defs.BUILDINGS[placing].get("era", 0)):
-		hud.flash("Nondum licet.")
-		placing = ""
-		return
-	var tile := placing_tile()
-	var err := placement_error(placing, tile)
+	var err := commands.submit({"type": "place", "owner": LOCAL, "kind": placing, "tile": placing_tile(), "units": _ids(selected_workers())})
 	if err != "":
 		hud.flash(err)
+		if err == "Nondum licet.":
+			placing = ""
 		return
-	_pay(Defs.BUILDINGS[placing]["cost"])
-	var b := _add_building(placing, tile, false)
-	for u in selected_workers():
-		_order_build(u, b)
 	placing = ""
 
 
@@ -1138,16 +1132,8 @@ func has_pop_room(owner := 0) -> bool:
 ## Train a `kind` of unit at the selected building: villagers at the Forum, fighting men at the Castra or Stabulum.
 func _train_unit(kind: String) -> void:
 	var b := selected_building()
-	if b == null or not b.complete or not b.trains().has(kind):
-		return
-	var cost: Array = Defs.UNITS[kind]["cost"]
-	if not can_afford(cost):
-		return
-	if not has_pop_room():
-		hud.flash("Domus plures requiruntur.")
-		return
-	_pay(cost)
-	b.train_queue.append(kind)
+	if b != null:
+		_do({"type": "train", "building": b.id, "kind": kind})
 
 
 ## Closest clear spot for `kind` near `near`, avoiding the tiles villagers are standing on.
@@ -1375,7 +1361,7 @@ func _place_rivals(rome: Vector2i) -> void:
 		rival.start = spot
 		rival.set_difficulty(GameSettings.difficulty_id)
 		rival.fog = Fog.new(map.w, map.h, true)
-		rival_fogs[owner_id] = rival.fog
+		fogs[owner_id] = rival.fog
 		rival.see()  # it knows the ground round its town, and nothing else
 		rivals.append(rival)
 
@@ -1648,8 +1634,8 @@ func _road_line(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 
 
 ## Empty if a paved road can be laid on `p`, otherwise the reason it can't.
-func road_tile_error(p: Vector2i) -> String:
-	if not fog.is_explored(p):
+func road_tile_error(p: Vector2i, owner := LOCAL) -> String:
+	if not fog_of(owner).is_explored(p):
 		return "Terra incognita."
 	if not map.can_pave(p) or building_at(p) != null:
 		return "Locus liber et planus requiritur."
@@ -1677,27 +1663,7 @@ func _update_road_drag() -> void:
 
 ## Pays for the dragged tiles and sends the selected villagers to pave them.
 func _commit_road(line: Array[Vector2i]) -> void:
-	if era < Defs.ROAD_ERA:
-		hud.flash("Nondum licet.")
-		return
-	var tiles: Array[Vector2i] = []
-	for p in line:
-		if road_tile_error(p) == "":
-			tiles.append(p)
-	if tiles.is_empty():
-		hud.flash(road_tile_error(line[0]) if not line.is_empty() and road_tile_error(line[0]) != "" else "Locus liber et planus requiritur.")
-		return
-	var n := tiles.size()
-	for r in 4:
-		if Defs.ROAD_COST[r] > 0:
-			n = mini(n, stock[r] / Defs.ROAD_COST[r])
-	if n < tiles.size():
-		hud.flash("Copiae non sufficiunt.")
-	for i in n:
-		_pay(Defs.ROAD_COST)
-		road_plans[tiles[i]] = null
-	for u in selected_workers():
-		_assign_road_work(u)
+	_do({"type": "pave", "tiles": line, "units": _ids(selected_workers())})
 
 
 ## Sends `u` to the nearest planned road tile nobody is working on. False if there's none.

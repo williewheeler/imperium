@@ -5,6 +5,16 @@ extends RefCounted
 static var era := 0
 static var _early_defs := {}  # kind -> its Era I definition (name and picture differ)
 
+static var _made := 0
+
+
+## A number no other building has had: commands name buildings by it.
+static func _next_id() -> int:
+	_made += 1
+	return _made
+
+
+var id := _next_id()
 var kind: String
 var owner := 0  # which player's: a player number (0 is you), or -1 for a landmark nobody owns
 var building_name := ""

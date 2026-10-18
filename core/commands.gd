@@ -1,0 +1,228 @@
+class_name Commands
+extends RefCounted
+## The one way a player acts on the game. A driver (the person at the keyboard, a Rival, later a remote
+## peer) builds a command, a plain Dictionary of numbers, strings and tiles, and gives it to `submit`. This
+## checks that it is the player's to give and that the rules allow it, pays for it, and carries it out. It
+## never learns who gave it: nothing here reads the selection, the mouse or the HUD.
+##
+## Every command has `type` and `owner` (the player giving it). Units and buildings are named by `id`.
+##
+##   train        building, kind                  queue a `kind` of unit at a building
+##   place        kind, tile, units               lay a foundation; `units` go to build it
+##   build        building, units                 go and work on a foundation already there
+##   gather       tile, units                     work the deposit (or field) on `tile`
+##   dropoff      building, units                 go and unload at a depot
+##   move         tile, units                     walk there (the group spreads out round the tile)
+##   attack_move  tile, units                     walk there, fighting whatever is met on the way
+##   attack       target, units                   fight one enemy unit
+##   stop         units
+##   explore      units                           go and look at ground nobody has seen
+##   pave         tiles, units                    pay for roads on `tiles`; `units` go and lay them
+##   pave_work    units                           join the paving already planned
+##   advance                                      begin the next era
+##
+## `submit` returns "" when the command was carried out, otherwise the reason it was not (a Latin line the
+## person's driver may show). A command that names things that no longer exist, or are someone else's, is
+## quietly trimmed to what is left, and refused only if nothing is.
+
+var game  # Main
+
+
+func submit(cmd: Dictionary) -> String:
+	var owner := int(cmd.get("owner", -1))
+	if owner < 0 or owner >= game.stocks.size():
+		return "Lusor ignotus."
+	match String(cmd.get("type", "")):
+		"train":
+			return _train(owner, cmd)
+		"place":
+			return _place(owner, cmd)
+		"build":
+			return _build(owner, cmd)
+		"gather":
+			return _gather(owner, cmd)
+		"dropoff":
+			return _dropoff(owner, cmd)
+		"move":
+			return _move(owner, cmd, false)
+		"attack_move":
+			return _move(owner, cmd, true)
+		"attack":
+			return _attack(owner, cmd)
+		"stop":
+			return _each(owner, cmd, game._order_stop)
+		"explore":
+			return _each(owner, cmd, game._order_explore)
+		"pave":
+			return _pave(owner, cmd)
+		"pave_work":
+			return _pave_work(owner, cmd)
+		"advance":
+			return _advance(owner)
+	return "Imperium ignotum."
+
+
+# ---------------------------------------------------------------- what the player may name
+
+## The living units among `cmd.units` that belong to `owner`.
+func _units(owner: int, cmd: Dictionary) -> Array[Unit]:
+	var wanted := {}
+	for id: int in cmd.get("units", []):
+		wanted[id] = true
+	var out: Array[Unit] = []
+	for u: Unit in game.units:
+		if wanted.has(u.id) and u.owner == owner and not u.dead:
+			out.append(u)
+	return out
+
+
+func _unit(id: int) -> Unit:
+	for u: Unit in game.units:
+		if u.id == id:
+			return u
+	return null
+
+
+## The building with this id, if it is `owner`'s.
+func _building(owner: int, id: int) -> Building:
+	for b: Building in game.buildings:
+		if b.id == id:
+			return b if b.owner == owner else null
+	return null
+
+
+# ---------------------------------------------------------------- the commands
+
+func _train(owner: int, cmd: Dictionary) -> String:
+	var b := _building(owner, int(cmd.get("building", -1)))
+	var kind := String(cmd.get("kind", ""))
+	if b == null or not b.complete or not b.trains().has(kind):
+		return "Non licet."
+	var cost: Array = Defs.UNITS[kind]["cost"]
+	if not game.can_afford(cost, owner):
+		return "Copiae non sufficiunt."
+	if not game.has_pop_room(owner):
+		return "Domus plures requiruntur."
+	game._pay(cost, owner)
+	b.train_queue.append(kind)
+	return ""
+
+
+func _place(owner: int, cmd: Dictionary) -> String:
+	var kind := String(cmd.get("kind", ""))
+	if not Defs.BUILDINGS.has(kind):
+		return "Non licet."
+	if game.era < int(Defs.BUILDINGS[kind].get("era", 0)):
+		return "Nondum licet."
+	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
+	var err: String = game.placement_error(kind, tile, owner)
+	if err != "":
+		return err
+	game._pay(Defs.BUILDINGS[kind]["cost"], owner)
+	var b: Building = game._add_building(kind, tile, false, owner)
+	for u in _units(owner, cmd):
+		if u.kind == "villager":
+			game._order_build(u, b)
+	return ""
+
+
+func _build(owner: int, cmd: Dictionary) -> String:
+	var b := _building(owner, int(cmd.get("building", -1)))
+	if b == null:
+		return "Non licet."
+	return _each(owner, cmd, func(u: Unit) -> void: game._order_build(u, b), true)
+
+
+func _gather(owner: int, cmd: Dictionary) -> String:
+	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
+	var any := false
+	for u in _units(owner, cmd):
+		if u.kind == "villager" and game._order_gather(u, tile):
+			any = true
+	return "" if any else "Iter nullum est."
+
+
+func _dropoff(owner: int, cmd: Dictionary) -> String:
+	var b := _building(owner, int(cmd.get("building", -1)))
+	if b == null or not b.complete:
+		return "Non licet."
+	return _each(owner, cmd, func(u: Unit) -> void: game._order_dropoff(u, b), true)
+
+
+## Move (or attack-move) the group to `tile`, spread out so nobody lands on anyone.
+func _move(owner: int, cmd: Dictionary, fighting: bool) -> String:
+	var us := _units(owner, cmd)
+	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
+	if us.is_empty() or not game.map.in_bounds(tile):
+		return "Non licet."
+	var goals: Array = game.map.spread_goals(tile, us.size())
+	if goals.is_empty():
+		return "Iter nullum est."
+	for i in us.size():
+		if fighting:
+			game.combat.order_attack_move(us[i], goals[i % goals.size()])
+		else:
+			game._order_move(us[i], goals[i % goals.size()])
+	return ""
+
+
+func _attack(owner: int, cmd: Dictionary) -> String:
+	var foe := _unit(int(cmd.get("target", -1)))
+	if foe == null or foe.dead or foe.owner == owner:
+		return "Non licet."
+	var any := false
+	for u in _units(owner, cmd):
+		if Combat.fights(u):
+			game.combat.order_attack(u, foe)
+			any = true
+	return "" if any else "Non licet."
+
+
+## Runs `order` on each of the named units (only the villagers, if `workers_only`).
+func _each(owner: int, cmd: Dictionary, order: Callable, workers_only := false) -> String:
+	var any := false
+	for u in _units(owner, cmd):
+		if workers_only and u.kind != "villager":
+			continue
+		order.call(u)
+		any = true
+	return "" if any else "Non licet."
+
+
+func _pave(owner: int, cmd: Dictionary) -> String:
+	if game.era < Defs.ROAD_ERA:
+		return "Nondum licet."
+	var tiles: Array[Vector2i] = []
+	for p: Vector2i in cmd.get("tiles", []):
+		if game.road_tile_error(p, owner) == "":
+			tiles.append(p)
+	if tiles.is_empty():
+		return "Locus liber et planus requiritur."
+	var have: Array[int] = game.stock_of(owner)
+	var n := tiles.size()
+	for r in 4:
+		if Defs.ROAD_COST[r] > 0:
+			n = mini(n, have[r] / Defs.ROAD_COST[r])
+	if n == 0:
+		return "Copiae non sufficiunt."
+	for i in n:
+		game._pay(Defs.ROAD_COST, owner)
+		game.road_plans[tiles[i]] = null
+	return _pave_work(owner, cmd)
+
+
+func _pave_work(owner: int, cmd: Dictionary) -> String:
+	var any := false
+	for u in _units(owner, cmd):
+		if u.kind == "villager" and game._assign_road_work(u):
+			any = true
+	return "" if any or cmd.get("type") == "pave" else "Non licet."
+
+
+func _advance(owner: int) -> String:
+	if owner != 0:  # the era is one for the whole game for now, and the first player's
+		return "Nondum licet."
+	if not game.can_advance():
+		return "Nondum licet."
+	game.start_advance()
+	return ""
