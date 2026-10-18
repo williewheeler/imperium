@@ -52,7 +52,7 @@
   <path class="l" d="M980,555 L980,495"/><path class="l" d="M1160,495 L1160,555"/>
 
   <!-- Networking, for the remote human -->
-  <rect class="prop" x="60" y="555" width="340" height="66" rx="6"/><text class="t" x="230" y="577" text-anchor="middle">Networking  (NetSession)</text><text class="s" x="230" y="595" text-anchor="middle">the remote client talks to this; it talks to</text><text class="s" x="230" y="610" text-anchor="middle">that player's two queues</text>
+  <rect class="prop" x="60" y="555" width="340" height="66" rx="6"/><text class="t" x="230" y="577" text-anchor="middle">Networking  (NetSession)</text><text class="s" x="230" y="595" text-anchor="middle">the remote client talks to this; it uses<text class="s" x="230" y="610" text-anchor="middle">the command queue and its view queue</text>
   <path class="l" d="M140,555 L140,284"/><path class="l" d="M320,284 L320,555"/>
 
   <!-- the simulation: its interface is the queues -->
