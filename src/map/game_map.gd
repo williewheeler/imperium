@@ -430,6 +430,11 @@ func clear_ground(rect: Rect2i) -> void:
 			var p := Vector2i(x, y)
 			if not in_bounds(p):
 				continue
+			if herds.has(p):  # a flock or a bush in the way goes; the ground is for the landmark
+				herds.erase(p)
+				deposits.erase(p)
+			elif deposits.has(p) and not deposits[p].farm:
+				remove_deposit(p)
 			if tile(x, y) == Terrain.FOREST:
 				remove_deposit(p)
 			elif tile(x, y) == Terrain.MARSH:

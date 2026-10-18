@@ -1307,7 +1307,8 @@ func _update_world_tip() -> void:
 			var t := deposit_near(mp)
 			if t.x >= 0:
 				var d: Deposit = map.deposits[t]
-				tip = "%s: %d left" % [Defs.DEPOSIT_ENGLISH[d.kind], d.amount]
+				var what: String = "Sheep" if d.herd else ("Fish" if d.fish else ("Field" if d.farm else Defs.DEPOSIT_ENGLISH[d.kind]))
+				tip = "%s: %d left" % [what, d.amount]
 	hud.set_world_tip(tip)
 
 
