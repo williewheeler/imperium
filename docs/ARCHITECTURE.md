@@ -131,6 +131,11 @@ it holds; the views draw units a fraction of the way between where they stood at
 and where they stand now (`Unit.prev_pos`, `Main.sim_alpha()`), so motion stays smooth at 60 frames a second.
 A headless run just calls `step()` as fast as it can.
 
+**The clock.** World time is only the tick count (`Simulation.time()` is `tick x 1/30 s`); the simulation never reads the wall
+clock. A *tick driver* outside it decides how many ticks to run for a slice of real time: `Main` in play (one tick
+per 1/30 s, more when fast-forwarding, none when paused), the headless runner as fast as it can, `Replayer` up to the
+recording's last tick. The size of a tick never changes, so "twice as fast" is twice as many ticks, never bigger steps.
+
 The simulation is **deterministic**: given the same `SimConfig` (the seed and the choices that shape the
 world) and the same commands at the same ticks, it plays out the same, tick for tick. That is what makes
 replays possible, and it is what lockstep multiplayer will need. It holds because of these rules, which any
@@ -152,6 +157,12 @@ change to `src/sim/`, `src/ai/` and `src/map/` has to keep:
 building with its position and health, every deposit, every fog). Two games that have played the same have the
 same checksum. It is exact to the bit, so it also demonstrates that the arithmetic repeats; this is verified on one
 machine and one build of Godot, and not across platforms.
+
+Where the nondeterminism is: when a command *arrives* (the network, the AIs' timing) is up to the world. What the
+simulation does with it is not, once it is drained from the command queue at a tick boundary in a fixed order. Recording
+the drained sequence (each command with the tick it was applied at) therefore pins the game down, whatever order things
+arrived in. Today there is no queue, so commands are applied as they are submitted, between ticks or at the start of one,
+which comes to the same thing.
 
 Two things change the game *without* a command, and so are not replayable: the debug aids (`M` lays the map open,
 `E` jumps through the eras, and the scene flags `--town`, `--demo`, `--skirmish`...). They call `Simulation.taint(why)`;
