@@ -61,6 +61,6 @@ net-test:
 commands-test:
     {{godot}} --headless --path . --script tools/commands_test.gd -- --nosplash --seed=42 --players=2
 
-# Redraw the art sheets from art/art.gd (overwrites assets/art/*.png!)
+# Redraw the art sheets from src/art/art.gd (overwrites assets/art/*.png!)
 art:
     tools/export_art.sh

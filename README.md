@@ -139,7 +139,7 @@ are a wrong address, a blocked port, or a missing port forward.
 
 Try it on one computer with two copies: `just mp` (host and joiner, started together), or `just host` and
 `just join` in two terminals. `just net-test` checks the networking without a window. The network code is
-in `net/net_session.gd` and the lobby screen in `ui/lobby_screen.gd`.
+in `src/net/net_session.gd` and the lobby screen in `src/ui/lobby_screen.gd`.
 
 ### Controls
 
@@ -158,15 +158,15 @@ in `net/net_session.gd` and the lobby screen in `ui/lobby_screen.gd`.
 
 | Folder | What is in it |
 |---|---|
-| `core/` | game state and rules: the map, units, buildings, weather, fog |
-| `art/` | the drawing code that makes every sprite, and team colors |
-| `views/` | everything drawn from the game state: world, buildings, units, fog, weather |
-| `ui/` | the HUD, buttons, the title screen, the multiplayer lobby and the opening scroll |
-| `net/` | multiplayer: hosting, joining and the lobby's roster (`net_session.gd`) |
+| `src/core/` | game state and rules: the map, units, buildings, weather, fog, and the command layer (`commands.gd`) |
+| `src/art/` | the drawing code that makes every sprite, and team colors |
+| `src/views/` | everything drawn from the game state: world, buildings, units, fog, weather |
+| `src/ui/` | the HUD, buttons, the title screen, the multiplayer lobby and the opening scroll |
+| `src/net/` | multiplayer: hosting, joining and the lobby's roster (`net_session.gd`) |
 | `shaders/` | the ground, fog, weather and team-color shaders |
 | `assets/` | the art sheets (PNG) and fonts |
-| `docs/` | [`DESIGN.md`](docs/DESIGN.md) (design notes and what is built) and [`LATIN.md`](docs/LATIN.md) |
-| `tools/` | `export_art.sh` regenerates the art sheets from the drawing code; `net_test.gd` is the headless network check |
+| `docs/` | [`DESIGN.md`](docs/DESIGN.md) (game design and what is built), [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) (technical design), [`LATIN.md`](docs/LATIN.md), [`PERFORMANCE.md`](docs/PERFORMANCE.md) |
+| `tools/` | `export_art.sh` regenerates the art sheets from the drawing code; `net_test.gd` and `commands_test.gd` are the headless network and command-layer checks |
 | `justfile` | recipes for running, testing and screenshots (`just` lists them) |
 
 See [`assets/art/README.md`](assets/art/README.md) for the art rules. Note that `tools/export_art.sh`

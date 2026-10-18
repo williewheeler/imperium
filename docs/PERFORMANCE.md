@@ -16,13 +16,13 @@ count or memory at the stall; none of the stalls below did.
 
 ## Tools added
 
-- **F3 in game** (`ui/frame_monitor.gd`): live frame time (average, 99th percentile, worst), script,
+- **F3 in game** (`src/ui/frame_monitor.gd`): live frame time (average, 99th percentile, worst), script,
   render-CPU and GPU time, object / node / orphan counts, memory, draw calls, stall count and the last stall.
 - **Stall log**: every frame over 24 ms is appended to `user://stutter.log` (macOS:
   `~/Library/Application Support/Godot/app_userdata/Imperium/stutter.log`), with the three slowest parts of the
   game code in that frame. Columns are in the file's header line.
   - `--stutter` logs from the start without the panel; `--stutter=all` logs every frame.
-- **Per-part timing** (`core/perf.gd`): `Perf.start()` / `Perf.stop("name", t0)` marks. With `Perf.trace` on
+- **Per-part timing** (`src/core/perf.gd`): `Perf.start()` / `Perf.stop("name", t0)` marks. With `Perf.trace` on
   (the monitor turns it on when logging) each frame's time per part is kept. Marked: pan, rivals, unit logic
   (split per state and player, e.g. `unit_explore_p3`), separate units, buildings, world tip, fog, hud,
   scenery streaming, tree sway, unit views, pathfinding, `set_path`, `retarget scan`.
