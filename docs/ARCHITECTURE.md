@@ -64,8 +64,8 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 
 **The end state (proposed; the picture above).** None of the yellow boxes exist yet. They are where the design is going:
 
-- **A headless client per player, human or AI.** It holds the player's fog-filtered model of the world and takes their
-  commands. A human's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
+- **A headless client per player, human or AI.** It is the player's end of the queues: it sends their commands, holds the latest view it was sent (already
+  filtered by the step) and answers questions about it. A human's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
   and keys) are wrapped round it. Each AI has a client of its own, the same class, in the AIs' part of the picture. Each client attaches to its
   the queues. So a human and an AI see and do exactly the same things, and
   neither can look at the real state. (Today the AIs read `Simulation.units` and the like directly, and only

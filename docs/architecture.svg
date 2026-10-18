@@ -29,7 +29,7 @@
   <rect class="grp" x="30" y="20" width="400" height="285" rx="10"/><text class="h" x="45" y="42">A remote human  (another machine)</text>
   <rect class="box" x="60" y="58" width="340" height="45" rx="6"/><text class="t" x="230" y="78" text-anchor="middle">Person</text><text class="s" x="230" y="94" text-anchor="middle">looks at the screen, uses the mouse and keyboard</text>
   <rect class="box" x="60" y="130" width="340" height="60" rx="6"/><text class="t" x="230" y="152" text-anchor="middle">UI</text><text class="s" x="230" y="170" text-anchor="middle">Views and Controls</text>
-  <rect class="box" x="60" y="218" width="340" height="66" rx="6"/><text class="t" x="230" y="239" text-anchor="middle">Headless client</text><text class="s" x="230" y="257" text-anchor="middle">fog-filtered model of the world; takes commands;</text><text class="s" x="230" y="272" text-anchor="middle">speaks queue, through Networking</text>
+  <rect class="box" x="60" y="218" width="340" height="66" rx="6"/><text class="t" x="230" y="239" text-anchor="middle">Headless client</text><text class="s" x="230" y="257" text-anchor="middle">the player's end of the queues: sends commands, holds its</text><text class="s" x="230" y="272" text-anchor="middle">latest view, answers questions about it (through Networking)</text>
   <path class="l" d="M140,130 L140,103"/><path class="l" d="M320,103 L320,130"/>
   <path class="l" d="M140,218 L140,190"/><path class="l" d="M320,190 L320,218"/>
 
@@ -41,13 +41,13 @@
   <rect class="grp" x="470" y="370" width="400" height="270" rx="10"/><text class="h" x="485" y="392">A local human  (the host's own player)</text>
   <rect class="box" x="490" y="405" width="360" height="40" rx="6"/><text class="t" x="670" y="422" text-anchor="middle">Person</text><text class="s" x="670" y="437" text-anchor="middle">looks at the screen, uses the mouse and keyboard</text>
   <rect class="box" x="490" y="470" width="360" height="55" rx="6"/><text class="t" x="670" y="492" text-anchor="middle">UI</text><text class="s" x="670" y="510" text-anchor="middle">Views and Controls</text>
-  <rect class="box" x="490" y="555" width="360" height="66" rx="6"/><text class="t" x="670" y="577" text-anchor="middle">Headless client</text><text class="s" x="670" y="595" text-anchor="middle">fog-filtered model of the world; takes commands;</text><text class="s" x="670" y="610" text-anchor="middle">attaches to its queues directly</text>
+  <rect class="box" x="490" y="555" width="360" height="66" rx="6"/><text class="t" x="670" y="577" text-anchor="middle">Headless client</text><text class="s" x="670" y="595" text-anchor="middle">the player's end of the queues: sends commands, holds its</text><text class="s" x="670" y="610" text-anchor="middle">latest view, answers questions about it (attaches directly)</text>
   <path class="l" d="M572,470 L572,445"/><path class="l" d="M767,445 L767,470"/>
   <path class="l" d="M572,555 L572,525"/><path class="l" d="M767,525 L767,555"/>
 
   <!-- the AIs, in the host's process -->
   <rect class="box" x="910" y="440" width="320" height="55" rx="6"/><text class="t" x="1070" y="464" text-anchor="middle">AIs</text><text class="s" x="1070" y="482" text-anchor="middle">players run by the computer</text>
-  <rect class="box" x="910" y="555" width="320" height="66" rx="6"/><text class="t" x="1070" y="577" text-anchor="middle">Headless client</text><text class="s" x="1070" y="595" text-anchor="middle">one for each AI; attaches to its queues</text><text class="s" x="1070" y="610" text-anchor="middle">directly</text>
+  <rect class="box" x="910" y="555" width="320" height="66" rx="6"/><text class="t" x="1070" y="577" text-anchor="middle">Headless client</text><text class="s" x="1070" y="595" text-anchor="middle">one for each AI: its end of the queues, sends commands,</text><text class="s" x="1070" y="610" text-anchor="middle">holds its latest view, answers questions about it</text>
   <path class="l" d="M980,555 L980,495"/><path class="l" d="M1160,495 L1160,555"/>
 
   <!-- Networking, for the remote human -->
