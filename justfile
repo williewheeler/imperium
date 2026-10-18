@@ -40,6 +40,10 @@ perf *args:
 ai4 *args:
     ./run.sh --windowed --nosplash --spectate --terrain=temperate --size=1600x900 {{args}}
 
+# Watch eight AIs play each other in a 3x3 grid of panes, the standings in the middle (same options and keys as ai4).
+ai8 *args:
+    ./run.sh --windowed --nosplash --spectate --players=8 --terrain=temperate --size=1600x900 {{args}}
+
 # Multiplayer: host a lobby in the title flow (127.0.0.1:7777)
 host *args:
     ./run.sh --windowed --splash --lobby=host {{args}}

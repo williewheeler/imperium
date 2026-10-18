@@ -4,7 +4,8 @@ extends CanvasLayer
 ## (a SubViewport that draws the same scene). A pane follows its player's town, or the army it has sent out;
 ## drag to look around (that stops it following), the wheel zooms, F follows again. Each pane shows the world
 ## as its AI knows it: its own fog, and only the people and buildings that AI can see. Each has its own
-## minimap. Used by `--spectate`, where every player, the first included, is an AI.
+## minimap. Used by `--spectate`, where every player, the first included, is an AI. Up to four players make a 2x2 grid;
+## more make a 3x3, with the middle cell (the fifth) holding the standings of everyone, best first.
 ##
 ## How one scene can look different in each pane: every pane has a bit (`pane_bit`). A viewport draws an item
 ## only if it shares a layer with the viewport's cull mask, so a pane's mask is the world (bit 1) plus its own
@@ -12,6 +13,7 @@ extends CanvasLayer
 ## can see it (see World).
 
 const LAYER_BIT := 1 << 19  # the main window draws only what is on this layer (the panes), not the world itself
+const MAX_PANES := 8
 const GAP := 3.0
 const MINIMAP := 160.0  # side, in logical pixels
 const FOLLOW_RATE := 1.6  # how quickly a pane's camera settles on its subject
@@ -24,6 +26,7 @@ var _panes: Array[Dictionary] = []
 var _grid: GridContainer
 var _clock := 0.0
 var _speed_label: Label
+var _stats := {}  # the middle cell of a 3x3 grid: {clock, rows (each a row of labels), foot}
 
 
 func _ready() -> void:
@@ -34,7 +37,7 @@ func _ready() -> void:
 	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(back)
 	_grid = GridContainer.new()
-	_grid.columns = 2
+	_grid.columns = 2 if game.viewers.size() <= 4 else 3
 	_grid.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_grid.add_theme_constant_override("h_separation", 0)
 	_grid.add_theme_constant_override("v_separation", 0)
@@ -42,6 +45,8 @@ func _ready() -> void:
 	add_child(_grid)
 	for i in game.viewers.size():
 		_make_pane(game.viewers[i], i)
+		if i == 3 and game.viewers.size() > 4:
+			_make_stats_cell()  # the fifth cell: the middle of a 3x3 grid
 	_speed_label = Label.new()  # the speed, and how to change it
 	_speed_label.add_theme_font_override("font", Latin.FONT)
 	_speed_label.add_theme_font_size_override("font_size", 12)
@@ -164,6 +169,52 @@ func _make_pane(ai: AI, index: int) -> void:
 	_panes.append(pane)
 
 
+## The middle cell: how everyone stands, best first (by population), and the game's clock.
+func _make_stats_cell() -> void:
+	var cell := PanelContainer.new()
+	cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cell.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.1, 0.07, 0.05)
+	sb.set_border_width_all(3)
+	sb.border_color = DIM
+	sb.set_content_margin_all(10)
+	cell.add_theme_stylebox_override("panel", sb)
+	_grid.add_child(cell)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(col)
+	_stats["clock"] = _stat_label(col, 18, CREAM)
+	var table := GridContainer.new()
+	table.columns = 7
+	table.add_theme_constant_override("h_separation", 10)
+	table.add_theme_constant_override("v_separation", 3)
+	table.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(table)
+	for head in ["Populi", "Coloni", "Milites", "Populus", "Oppida", "Aetas", "Terra"]:
+		_stat_label(table, 11, DIM).text = Latin.t(head)
+	var rows: Array = []
+	for i in game.viewers.size():
+		var row: Array[Label] = []
+		for j in 7:
+			row.append(_stat_label(table, 12, CREAM))
+		rows.append(row)
+	_stats["rows"] = rows
+	_stats["foot"] = _stat_label(col, 11, DIM)
+
+
+func _stat_label(parent: Node, size: int, color: Color) -> Label:
+	var l := Label.new()
+	l.add_theme_font_override("font", Latin.FONT)
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(l)
+	return l
+
+
 func _put_on_layer(node: Node) -> void:
 	if node is CanvasItem:
 		(node as CanvasItem).visibility_layer = LAYER_BIT
@@ -202,9 +253,11 @@ func _process(delta: float) -> void:
 
 
 func _refresh_stats() -> void:
+	var standings: Array[Dictionary] = []
 	for p in _panes:
 		var ai: AI = p["ai"]
 		var s := ai.summary()
+		standings.append({"ai": ai, "s": s})
 		var stock: Array = s["stock"]
 		var labels: Array[Label] = p["labels"]
 		labels[0].text = Latin.t(Defs.faction_of(ai.owner)["latin"])
@@ -213,6 +266,41 @@ func _refresh_stats() -> void:
 		labels[3].text = Latin.t("Aetas %s · Oppida %d · Terra nota %d%%" % [Defs.ERAS[s["era"]]["numeral"], s["towns"], int(float(s["explored"]) * 100.0)])
 		labels[4].text = Latin.t(Phrases.latin(s["status"]))
 		(p["panel"] as Control).tooltip_text = "%s: %s" % [Defs.faction_of(ai.owner)["english"], Phrases.english(s["status"])]
+	if not _stats.is_empty():
+		_refresh_standings(standings)
+
+
+func _refresh_standings(standings: Array[Dictionary]) -> void:
+	standings.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var fa: bool = a["s"]["status"] == "spec.beaten"
+		var fb: bool = b["s"]["status"] == "spec.beaten"
+		if fa != fb:
+			return fb
+		if a["s"]["pop"] != b["s"]["pop"]:
+			return a["s"]["pop"] > b["s"]["pop"]
+		return a["ai"].owner < b["ai"].owner)
+	var secs := int(game.view.time())
+	var army := 0
+	for e in standings:
+		army += int(e["s"]["army"])
+	(_stats["clock"] as Label).text = Latin.t("Tempus %d:%02d   ·   Milites %d   ·   Aedificia %d" % [secs / 60, secs % 60, army, game.view.buildings().size()])
+	var rows: Array = _stats["rows"]
+	for i in rows.size():
+		var row: Array = rows[i]
+		var e: Dictionary = standings[i]
+		var s: Dictionary = e["s"]
+		var color: Color = Defs.color_of((e["ai"] as AI).owner).lightened(0.35)
+		if s["status"] == "spec.beaten":
+			color = DIM.darkened(0.3)
+		elif s["status"] == "spec.victor":
+			color = Color("f0c040")
+		var cells := [Latin.t(Defs.faction_of((e["ai"] as AI).owner)["latin"]), str(s["villagers"]), str(s["army"]), "%d/%d" % [s["pop"], s["cap"]],
+			str(s["towns"]), str(Defs.ERAS[s["era"]]["numeral"]), "%d%%" % int(float(s["explored"]) * 100.0)]
+		for j in 7:
+			(row[j] as Label).text = cells[j]
+			(row[j] as Label).add_theme_color_override("font_color", color)
+	var best: Dictionary = standings[0]
+	(_stats["foot"] as Label).text = Latin.t(Phrases.latin((best["s"] as Dictionary)["status"]))
 
 
 ## A tile changed terrain (a felled forest): the panes' minimaps catch up.

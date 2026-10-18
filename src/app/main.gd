@@ -87,8 +87,8 @@ func _ready() -> void:
 		GameSettings.terrain_id = GameSettings.terrain_info(String(args["terrain"]))["id"]
 	Hud.quiet = args.has("shot")  # a screenshot has no banners over it
 	spectating = args.has("spectate")
-	if spectating:
-		GameSettings.players = 4  # one pane each
+	if spectating and not args.has("players"):
+		GameSettings.players = 4  # one pane each (--players=N for another number, up to 8: more than four make a 3x3 grid)
 	var replay: Replay = null
 	if args.has("replay"):  # --replay=FILE: play back a game written down (see Replay); nobody plays it
 		replay = Replay.load_file(String(args["replay"]))
@@ -169,7 +169,7 @@ func _ready() -> void:
 		view = PlayerView.god(sim)  # a spectator sees every people at once
 		var by_owner: Array[AI] = sim.ais.duplicate()
 		by_owner.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
-		viewers.assign(by_owner.slice(0, 4))
+		viewers.assign(by_owner.slice(0, Spectator.MAX_PANES))
 	else:
 		client = HeadlessClient.new(sim, LOCAL, 1, true)  # the screen is wrapped round it: it knows what the player may know, and the person acts through it
 		view = client.view
