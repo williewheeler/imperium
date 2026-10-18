@@ -111,6 +111,8 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 		for b in game.buildings:
 			if b.kind == str(args["selectb"]) and b.complete:
 				b.selected = true
+				game.cam_pos = Iso.to_screen(b.center())  # and the camera looks at it
+				skirmish_look = game.cam_pos
 				break
 	if args.has("ring"):  # debug: villagers standing around the Forum's walls, to check drawing order
 		var r := game.buildings[0].rect()

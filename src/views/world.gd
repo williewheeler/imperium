@@ -445,6 +445,7 @@ func _process(delta: float) -> void:
 			var v := BuildingView.new()
 			v.building = b
 			v.objects = objects
+			v.game = game
 			decals.add_child(v)
 			_building_views[b] = v
 			_clear_scenery_under(b)

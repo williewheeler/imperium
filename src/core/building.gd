@@ -78,10 +78,50 @@ static func def_for(k: String, at_era := -1) -> Dictionary:
 ## Sprite key for a building kind in the current era.
 static func look_key(k: String, at_era := -1) -> String:
 	var d: Dictionary = Defs.BUILDINGS[k] if Defs.BUILDINGS.has(k) else {}
-	return d["early"]["look"] if (era if at_era < 0 else at_era) < 1 and d.has("early") else k
+	return d["early"]["look"] if (era if at_era < 0 else at_era) < 1 and d.has("early") else String(d.get("look", k))
 
 
-## Fields (wheat, vines) are flat, renewable crops that villagers work.
+## A farm: eight plots of wheat round a granary (the middle tile), each plot worked by one villager standing on it.
+func has_plots() -> bool:
+	return def().get("plots", false)
+
+
+## A farm's plot tiles: its footprint without the middle.
+func plot_tiles() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for y in range(tile.y, tile.y + size.y):
+		for x in range(tile.x, tile.x + size.x):
+			var p := Vector2i(x, y)
+			if p != granary_tile():
+				out.append(p)
+	return out
+
+
+## The middle tile of the footprint (a farm's granary).
+func granary_tile() -> Vector2i:
+	return tile + size / 2
+
+
+## The most citizens that can be absorbed into it.
+func max_citizens() -> int:
+	return int(def().get("citizens_max", Defs.CITIZENS_MAX))
+
+
+## Where a villager stands to hand things in: round the granary for a farm, round the whole building otherwise.
+func dropoff_rect() -> Rect2i:
+	return Rect2i(granary_tile(), Vector2i.ONE) if has_plots() else rect()
+
+
+## The part of the footprint a standing building is drawn on (a farm's granary is one tile in the middle).
+func stand_tile() -> Vector2i:
+	return granary_tile() if has_plots() else tile
+
+
+func stand_size() -> Vector2i:
+	return Vector2i.ONE if has_plots() else size
+
+
+## Fields (vines) are flat, renewable crops that villagers work.
 func is_field() -> bool:
 	return def().get("field", false)
 
@@ -93,7 +133,7 @@ func sprite_key() -> String:
 
 ## The tile at the middle of the footprint (where a field's crop lives).
 func field_tile() -> Vector2i:
-	return tile + size / 2
+	return tile if has_plots() else tile + size / 2  # (a farm: one of its plots)
 
 
 ## Does it take citizens in (a Settlement, Town Center or City Center)?
@@ -103,7 +143,7 @@ func absorbs() -> bool:
 
 ## Can another villager be absorbed into it now?
 func can_take_citizen() -> bool:
-	return complete and not dead and absorbs() and citizens < Defs.CITIZENS_MAX
+	return complete and not dead and absorbs() and citizens < max_citizens()
 
 
 func max_hp() -> float:

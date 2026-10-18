@@ -618,7 +618,7 @@ func _finish_select(rect: Rect2, additive: bool) -> void:
 func building_under(mp: Vector2) -> Building:
 	var hit: Building = null
 	for b in buildings:
-		var origin := Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round() - Art.building_anchor(b.sprite_key())
+		var origin := Iso.to_screen_on(Vector2(b.stand_tile() + b.stand_size()), Iso.level_of(b.tile)).round() - Art.building_anchor(b.sprite_key())
 		if Art.solid_at(b.sprite_key(), Vector2i((mp - origin).floor())) and (hit == null or b.tile.y > hit.tile.y):
 			hit = b
 	return hit
@@ -777,7 +777,7 @@ func _command_at(mp: Vector2) -> void:
 	if b != null and b.owner != LOCAL:
 		b = null  # an AI's building is just ground to us for now
 	var movers := us  # who just walks there
-	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.is_field()))):
+	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.is_field() or b.has_plots()))):
 		hud.flash_key("err.soldiers_cant_work")  # they can only march to the spot
 	if b != null and b.complete and res.x < 0:  # laden villagers go and unload at a depot they click
 		var carriers: Array[Unit] = []
@@ -801,7 +801,7 @@ func _command_at(mp: Vector2) -> void:
 			_do({"type": "pave_work", "units": _ids(workers)})
 		elif b != null and not b.complete:
 			_do({"type": "build", "building": b.id, "units": _ids(workers)})
-		elif b != null and b.is_field():
+		elif b != null and (b.is_field() or b.has_plots()):
 			_do({"type": "gather", "tile": b.field_tile(), "units": _ids(workers)})
 		else:
 			handled = false
@@ -844,6 +844,8 @@ func _add_building(kind: String, tile: Vector2i, complete: bool, owner := 0) -> 
 	buildings.append(b)
 	if not Defs.BUILDINGS[kind].get("walkable", false):
 		map.set_solid(b.rect(), true)
+	elif Defs.BUILDINGS[kind].get("solid_center", false):
+		map.set_solid(Rect2i(b.granary_tile(), Vector2i.ONE), true)  # a farm's granary stands among its plots
 	if complete:
 		_on_complete(b)
 	return b
@@ -851,6 +853,16 @@ func _add_building(kind: String, tile: Vector2i, complete: bool, owner := 0) -> 
 
 ## A building just became usable: fields start growing, depots get a trodden plaza around them.
 func _on_complete(b: Building) -> void:
+	if b.has_plots():  # a farm: eight plots to work
+		for p in b.plot_tiles():
+			if not map.deposits.has(p):
+				var plot := Deposit.new(Defs.Res.FOOD, int(b.def()["crop"]))
+				plot.renews = true
+				plot.farm = true
+				plot.owner = b.owner
+				plot.plot_of = b
+				map.deposits[p] = plot
+		return
 	if b.is_field():
 		var d := Deposit.new(b.def()["yield"], b.def()["crop"])
 		d.renews = true
@@ -892,8 +904,15 @@ func upgrade_building(b: Building, kind: String) -> void:
 		b.building_name = CITY_NAMES[_cities % CITY_NAMES.size()]  # a town has a name of its own
 		_cities += 1
 	_on_complete(b)
+	if b.has_plots():  # richer plots: they hold more and ripen sooner
+		for p in b.plot_tiles():
+			var plot: Deposit = map.deposits.get(p)
+			if plot != null:
+				var gain := int(b.def()["crop"]) - plot.max_amount
+				plot.max_amount += gain
+				plot.amount += gain
 	if b.owner == LOCAL and not spectating and hud != null:
-		hud.flash_key("msg.grew_town" if kind == "town_center" else "msg.grew_city")
+		hud.flash_key("msg.grew_town" if kind == "town_center" else ("msg.grew_city" if kind == "city_center" else "msg.grew_farm"))
 
 
 ## Population limit: each finished Town Center and House adds room.
@@ -971,7 +990,12 @@ func _remove_building(b: Building) -> void:
 	buildings.erase(b)
 	if not b.def().get("walkable", false):
 		map.set_solid(b.rect(), false)
-	if b.is_field():
+	elif b.def().get("solid_center", false):
+		map.set_solid(Rect2i(b.granary_tile(), Vector2i.ONE), false)
+	if b.has_plots():
+		for p in b.plot_tiles():
+			map.deposits.erase(p)
+	elif b.is_field():
 		map.deposits.erase(b.field_tile())
 	for u in units:
 		if u.target_building == b:
@@ -1584,6 +1608,8 @@ func _gather(u: Unit, delta: float) -> void:
 	if d.amount <= 0 and d.renews:  # an emptied field: wait for it to ripen again
 		if u.carry > 0:
 			_return_to_dropsite(u)
+		elif d.plot_of != null:
+			orders.next_plot(u)  # or move to another plot of the farm that is ripe
 		return
 	if d.amount <= 0:
 		if map.remove_deposit(u.target_tile):
@@ -1605,7 +1631,7 @@ func _return_to_dropsite(u: Unit) -> void:
 		u.state = Unit.State.IDLE
 		orders.note(u, "err.need_depot")
 		return
-	var stand := map.stand_tile(best.rect(), u.pos)
+	var stand := map.stand_tile(best.dropoff_rect(), u.pos)
 	if stand.x >= 0 and orders.set_path(u, stand):
 		u.state = Unit.State.RETURN
 	else:
@@ -1633,6 +1659,18 @@ func _retarget(u: Unit) -> bool:
 	return best.x >= 0 and orders.gather(u, best)
 
 
+## A farm's plots ripen again some time after they are emptied.
+func _update_plots(b: Building, delta: float) -> void:
+	var regrow := float(b.def()["regrow"])
+	for p in b.plot_tiles():
+		var d: Deposit = map.deposits.get(p)
+		if d != null and d.amount <= 0:
+			d.regrow += delta
+			if d.regrow >= regrow:
+				d.regrow = 0.0
+				d.amount = d.max_amount
+
+
 func _update_farm(b: Building, delta: float) -> void:
 	var d: Deposit = map.deposits.get(b.field_tile())
 	if d == null:
@@ -1647,6 +1685,10 @@ func _update_farm(b: Building, delta: float) -> void:
 
 
 func _update_building(b: Building, delta: float) -> void:
+	if b.has_plots():
+		if b.complete:
+			_update_plots(b, delta)
+		return
 	if b.is_field():
 		if b.complete:
 			_update_farm(b, delta)

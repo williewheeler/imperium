@@ -17,11 +17,14 @@ const FIRE_SPOTS := {"regia": Vector2(0, -13.6), "aedes": Vector2(0, -7.2)}
 
 var building: Building
 var objects: Node2D  # the depth-sorted layer the halves live in
+var game: Main
 
 var _key := ""
 var _flat: Sprite2D  # fields
 var _halves: Array[Node2D] = []  # standing buildings: one strip per tile along the left wall, then along the right
 var _sprites: Array[Sprite2D] = []
+var _plots: Array[Sprite2D] = []  # a farm: one flat picture for each of its eight plots
+var _plot_tiles: Array[Vector2i] = []
 var _fire: HearthFire  # the Casa Romuli's animated hearth
 var _banner: Node2D  # the owner's pennant, on the roof (child of the front-most strip, so it sorts over the whole building)
 var _cloth: Sprite2D
@@ -37,7 +40,7 @@ func _corner(p: Vector2) -> Vector2:
 
 
 func _ready() -> void:
-	position = _corner(Vector2(building.tile + building.size)).round()
+	position = _corner(Vector2(building.stand_tile() + building.stand_size())).round()
 	_key = building.sprite_key()
 	var tex := Art.tex(_key)
 	if building.is_field():
@@ -46,12 +49,23 @@ func _ready() -> void:
 		_flat.texture = tex
 		add_child(_flat)
 		return
-	var t := Vector2(building.tile)
-	var s := Vector2(building.size)
+	if building.has_plots():  # the plots lie flat on the ground, under everyone's feet
+		_plot_tiles = building.plot_tiles()
+		for p in _plot_tiles:
+			var plot := Sprite2D.new()
+			plot.centered = false
+			plot.texture = Art.tex("plot:3")
+			var h := plot.texture.get_height()
+			plot.offset = Vector2(-16, -(h - 1))  # the picture's front corner on the tile's
+			plot.position = _corner(Vector2(p) + Vector2(1, 1)).round() - position
+			add_child(plot)
+			_plots.append(plot)
+	var t := Vector2(building.stand_tile())
+	var s := Vector2(building.stand_size())
 	var corners := []  # where each strip sorts: its starting corner along the wall
-	for i in building.size.x:
+	for i in int(s.x):
 		corners.append(_corner(t + Vector2(i, s.y)))
-	for j in building.size.y:
+	for j in int(s.y):
 		corners.append(_corner(t + Vector2(s.x, j)))
 	for i in corners.size():
 		var node := Node2D.new()
@@ -212,6 +226,13 @@ func update_view() -> void:
 			_flat.texture = tex
 		for sprite in _sprites:
 			sprite.texture = tex
+	for i in _plots.size():  # each plot shows how ripe it is
+		var plot: Deposit = game.map.deposits.get(_plot_tiles[i]) if building.complete else null
+		var stage := 3
+		if plot != null:
+			var frac := float(plot.amount) / float(maxi(1, plot.max_amount))
+			stage = 0 if frac >= 0.66 else (1 if frac >= 0.33 else (2 if plot.amount > 0 else 3))
+		_plots[i].texture = Art.tex("plot:%d" % stage)
 	var size := Art.tex(_key).get_size()
 	var y0 := 0.0
 	if not building.complete:
@@ -229,10 +250,11 @@ func update_view() -> void:
 	else:
 		var right_w := size.x - anchor.x
 		var cuts := []  # the columns each strip covers: the left wall's, then the right wall's
-		for k in building.size.x:
-			cuts.append([floori(anchor.x * k / building.size.x), floori(anchor.x * (k + 1) / building.size.x)])
-		for k in building.size.y:
-			cuts.append([floori(anchor.x + right_w * k / building.size.y), floori(anchor.x + right_w * (k + 1) / building.size.y)])
+		var ss := building.stand_size()
+		for k in ss.x:
+			cuts.append([floori(anchor.x * k / ss.x), floori(anchor.x * (k + 1) / ss.x)])
+		for k in ss.y:
+			cuts.append([floori(anchor.x + right_w * k / ss.y), floori(anchor.x + right_w * (k + 1) / ss.y)])
 		for i in _sprites.size():
 			var region := Rect2(cuts[i][0], y0, cuts[i][1] - cuts[i][0], size.y - y0)
 			_sprites[i].region_rect = region
@@ -246,7 +268,7 @@ func _draw() -> void:
 	# Footprint outline on the ground, drawn beneath everything.
 	var t := Vector2(building.tile)
 	var s := Vector2(building.size)
-	var origin := Iso.to_screen_flat(t + s)
+	var origin := Iso.to_screen_flat(Vector2(building.stand_tile() + building.stand_size()))
 	var pts := PackedVector2Array([
 		Iso.to_screen_flat(t) - origin, Iso.to_screen_flat(t + Vector2(s.x, 0)) - origin,
 		Iso.to_screen_flat(t + s) - origin, Iso.to_screen_flat(t + Vector2(0, s.y)) - origin,

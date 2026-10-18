@@ -208,7 +208,18 @@ func _show_building(b: Building) -> void:
 	if b.absorbs() and b.complete:
 		var grows: Variant = Defs.GROWTH.get(b.kind)
 		var next := ("It grows into a %s at %d citizens." % [Defs.BUILDINGS[grows[1]]["english"], int(grows[0])]) if grows != null else "It is as grown as a town gets."
-		n = _stat(n, "Cives %d/%d" % [b.citizens, Defs.CITIZENS_MAX], "Citizens: villagers taken into this %s for good (at most %d). %s They cannot be taken out again." % [String(def["english"]).to_lower(), Defs.CITIZENS_MAX, next])
+		n = _stat(n, "Cives %d/%d" % [b.citizens, b.max_citizens()], "Citizens: villagers taken into this %s for good (at most %d). %s They cannot be taken out again." % [String(def["english"]).to_lower(), b.max_citizens(), next])
+	if b.has_plots() and b.complete:
+		var held := 0
+		var most := 0
+		var ripe := 0
+		for p in b.plot_tiles():
+			var plot: Deposit = _game.map.deposits.get(p)
+			if plot != null:
+				held += plot.amount
+				most += plot.max_amount
+				ripe += 1 if plot.amount > 0 else 0
+		n = _stat(n, "Areae %d/%d" % [ripe, b.plot_tiles().size()], "Plots with a crop to pick: %d of %d. A villager works one plot, standing on it, and carries the crop to the granary. An emptied plot ripens again in time." % [ripe, b.plot_tiles().size()])
 	if b.is_field():
 		n = _stat(n, "Fructus %d" % int(def["yield"]), "Yield: villagers carry the crop home")
 	if not b.complete:
@@ -220,6 +231,16 @@ func _show_building(b: Building) -> void:
 		var done := b.train_progress / float(unit["time"])
 		_show_work(done, 1.0, Latin.t("Instituit: %s" % unit["name"]), "Training a %s: %d%% done" % [String(unit["english"]).to_lower(), int(done * 100.0)])
 		_text(_state, "In ordine: %d" % b.train_queue.size(), "In training: %d" % b.train_queue.size())
+	elif b.has_plots():
+		var held2 := 0
+		var most2 := 0
+		for p in b.plot_tiles():
+			var plot2: Deposit = _game.map.deposits.get(p)
+			if plot2 != null:
+				held2 += plot2.amount
+				most2 += plot2.max_amount
+		_show_work(float(held2), float(maxi(1, most2)), Latin.t("Reliquum %d/%d" % [held2, most2]), "Remaining in the plots: %d of %d food" % [held2, most2], Art.RES_COLORS[Defs.Res.FOOD])
+		_text(_state, def["ready"], "Ready")
 	elif b.is_field() and _game.map.deposits.has(b.field_tile()):
 		var fd: Deposit = _game.map.deposits[b.field_tile()]
 		var english := "Remaining: %d of %d %s%s" % [fd.amount, fd.max_amount, Defs.RES_ENGLISH[fd.kind].to_lower(), "  (ripening again...)" if fd.amount <= 0 else ""]

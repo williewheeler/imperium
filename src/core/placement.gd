@@ -51,6 +51,11 @@ func error(kind: String, tile: Vector2i, owner := 0) -> String:
 		for u: Unit in game.units:
 			if rect.has_point(Vector2i(u.pos)):
 				return "err.villagers_in_way"
+	elif def.get("solid_center", false):  # a farm's granary stands on its middle tile
+		var middle := Rect2i(tile + (def["size"] as Vector2i) / 2, Vector2i.ONE)
+		for u: Unit in game.units:
+			if middle.has_point(Vector2i(u.pos)):
+				return "err.villagers_in_way"
 	if not game.can_afford(def["cost"], owner):
 		return "err.cant_afford"
 	return ""

@@ -64,6 +64,8 @@ const BUILDING_GEOM := {
 	"hut": {"a": 1, "b": 1, "ridge": 22.0},
 	"regia": {"a": 3, "b": 3, "ridge": 30.0},
 	"settlement": {"a": 3, "b": 3, "ridge": 28.0},
+	"granary": {"a": 1, "b": 1, "ridge": 22.0},
+	"large_granary": {"a": 1, "b": 1, "ridge": 34.0},
 	"city_center": {"a": 3, "b": 3, "ridge": 55.0},
 	"farm": {"a": 3, "b": 3, "ridge": 6.0},
 	"vineyard": {"a": 3, "b": 3, "ridge": 9.0},
@@ -191,6 +193,12 @@ static func image(key: String) -> Image:
 			return _regia()
 		"settlement":
 			return _settlement()
+		"granary":
+			return _granary(false)
+		"large_granary":
+			return _granary(true)
+		"plot":  # plot:<stage> 0 ripe .. 3 freshly sown: one tile of a farm
+			return _plot(variant)
 		"city_center":
 			return _city_center()
 		"farm":  # farm:<stage> 0 ripe .. 3 freshly sown
@@ -834,7 +842,7 @@ static func scenery_keys() -> Array[String]:
 
 
 static func building_keys() -> Array[String]:
-	return ["town_center", "regia", "settlement", "city_center", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
+	return ["town_center", "regia", "settlement", "city_center", "granary", "large_granary", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
 		"curia", "aqueduct", "castra", "arx", "stabulum", "circus", "aedes", "temple", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
 
 
@@ -1019,6 +1027,82 @@ static func _regia() -> Image:
 		Pixel.rect(img, int(h.x + cos(a) * 5.5), int(h.y + sin(a) * 2.8) - 1, 2, 2, ROCK[1 + (k % 3)])
 	Pixel.rect(img, int(h.x) - 2, int(h.y) - 1, 4, 2, Color("3a2418"))
 	# (the flames and smoke are animated in code: see hearth_fire.gd)
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## One plot of a farm: a single tile of wheat, flat on the ground. Stage 0 ripe, 1 half picked, 2 stubble, 3 freshly
+## sown (also an empty plot waiting to ripen). 32x20, the diamond's front corner at the bottom middle.
+static func _plot(stage: int) -> Image:
+	var img := Pixel.blank(32, 20)
+	for y in 20:
+		for x in 32:
+			if absf(x + 0.5 - 16.0) / 16.0 + absf(y + 0.5 - 11.0) / 8.0 > 0.97:
+				continue
+			var row := int(floor(y - 0.5 * x))
+			var furrow := posmod(row, 4) == 0
+			var h := Pixel.hash2(x, y, 43 + stage)
+			var soil := Pixel.ramp(SOIL, 0.5 + (Pixel.hash2(x, y, 41) - 0.5) * 0.5, x, y, 0.3)
+			Pixel.put(img, x, y, soil)
+			match stage:
+				0:
+					if not furrow:
+						Pixel.put(img, x, y, Pixel.ramp(WHEAT, 0.55 + (Pixel.hash2(x / 2, y, 44) - 0.5) * 0.5 - (0.0 if posmod(row, 4) != 3 else 0.15), x, y, 0.3))
+						if h < 0.34 and y > 0:
+							Pixel.put(img, x, y - 1, WHEAT[0])
+				1:
+					if not furrow and (Pixel.hash2(x / 6, y / 4, 45) < 0.5):
+						Pixel.put(img, x, y, Pixel.ramp(WHEAT, 0.5 + (Pixel.hash2(x / 2, y, 44) - 0.5) * 0.5, x, y, 0.3))
+					elif not furrow and h < 0.5:
+						Pixel.put(img, x, y, Color("c9ad6a"))
+				2:
+					if not furrow and h < 0.55:
+						Pixel.put(img, x, y, Color("c9ad6a") if h < 0.35 else Color("a98e50"))
+				3:
+					if furrow and h < 0.4:
+						Pixel.put(img, x, y, Color("7ab039"))
+						Pixel.put(img, x, y - 1, Color("a2d04c"))
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## A farm's granary, one tile in the middle of its plots: a small plank store raised on posts under a thatched
+## gable, with grain sacks at the door. The large one (key "large_granary", for a farm that has taken in eight
+## citizens) is taller, with a plastered store below, a loft above and a tiled roof.
+static func _granary(large: bool) -> Image:
+	var n := 1.0
+	var floor_h := 3.0
+	var wall_h := 12.0 if not large else 15.0
+	var ridge_h := 22.0 if not large else 34.0
+	var hs := int(n * 16 + ridge_h + 8)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	_dirt_patch(img, f, n, 0.0)
+	var x0 := 0.12
+	var x1 := n - 0.12
+	for post in [Vector2(x0 + 0.05, x1 - 0.05), Vector2(x1 - 0.05, x1 - 0.05), Vector2(x1 - 0.05, x0 + 0.05)]:
+		Pixel.rect(img, int(f.p(post.x, post.y, 0).x) - 1, int(f.p(post.x, post.y, floor_h).y), 2, int(floor_h), ROCK[2])
+	var walls: Array = [PLASTER, WOOD] if large else [WOOD, WOOD]
+	_box(img, f, x0, x1, x0, x1, floor_h, wall_h,
+		func(x: int, y: int) -> Color:
+			var v := 0.62 + (Pixel.hash2(x, y, 4) - 0.5) * 0.15
+			if posmod(x, 4) == 0 and not large:
+				v -= 0.22  # plank gaps
+			return Pixel.ramp(walls[0], v, x, y, 0.1),
+		func(x: int, y: int) -> Color:
+			var v := 0.34 + (Pixel.hash2(x, y, 5) - 0.5) * 0.15
+			if posmod(x, 4) == 0 and not large:
+				v -= 0.2
+			return Pixel.ramp(walls[0], v, x, y, 0.1), WOOD[1])
+	Pixel.poly(img, [f.p(0.3, x1, floor_h), f.p(0.62, x1, floor_h), f.p(0.62, x1, floor_h + 7), f.p(0.3, x1, floor_h + 7)], WOOD[2])  # the door
+	Pixel.ellipse(img, f.p(0.15, x1 + 0.08, 0).x, f.p(0.15, x1 + 0.08, 0).y - 2, 2.2, 2.2, PLASTER[1])  # a grain sack
+	Pixel.ellipse(img, f.p(0.8, x1 + 0.08, 0).x, f.p(0.8, x1 + 0.08, 0).y - 2, 2.2, 2.2, PLASTER[2])
+	if large:  # a loft above the store, and a bigger roof
+		_box(img, f, 0.2, n - 0.2, 0.2, n - 0.2, wall_h, wall_h + 7.0,
+			func(x: int, y: int) -> Color: return Pixel.ramp(WOOD, 0.58 + (Pixel.hash2(x, y, 6) - 0.5) * 0.15, x, y, 0.1),
+			func(x: int, y: int) -> Color: return Pixel.ramp(WOOD, 0.3 + (Pixel.hash2(x, y, 7) - 0.5) * 0.15, x, y, 0.1), WOOD[1])
+		Pixel.poly(img, [f.p(0.4, n - 0.2, wall_h + 1.0), f.p(0.7, n - 0.2, wall_h + 1.0), f.p(0.7, n - 0.2, wall_h + 6.0), f.p(0.4, n - 0.2, wall_h + 6.0)], Color("2c1c12"))  # the loft door
+		_gable_roof(img, f, 0.1, n - 0.1, 0.1, n - 0.1, wall_h + 7.0, ridge_h, func(x: int, y: int) -> Color: return Pixel.ramp(TERRA, 0.55 + (Pixel.hash2(x, y, 8) - 0.5) * 0.2, x, y, 0.1))
+	else:
+		_gable_roof(img, f, 0.0, n, 0.0, n, wall_h, ridge_h, func(x: int, y: int) -> Color: return Pixel.ramp(THATCH, 0.55 + (Pixel.hash2(x, y, 6) - 0.5) * 0.2, x, y, 0.15))
 	return Pixel.outlined(img, OUT_WARM)
 
 

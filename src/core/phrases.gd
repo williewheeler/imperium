@@ -42,6 +42,7 @@ const TABLE := {
 	"msg.absorb_prompt": ["Quo incorporamus? Sinistra.", "Absorb: left click a Settlement, Town Center or City Center to take the selected villagers into it for good. (Esc cancels)"],
 	"msg.grew_town": ["Vicus in oppidum crevit.", "Your Settlement has grown into a Town Center: it can make villagers now."],
 	"msg.grew_city": ["Oppidum in civitatem crevit.", "Your Town Center has grown into a City Center."],
+	"msg.grew_farm": ["Ager auctus est.", "Your farm has grown into a Large Farm: richer plots."],
 	"msg.rain": ["Pluit.", "It begins to rain."],
 	"msg.storm": ["Tonat.", "A storm breaks: thunder and heavy rain."],
 	"msg.fog": ["Nebula oritur.", "Fog is rolling in."],

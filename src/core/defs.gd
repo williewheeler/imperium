@@ -57,14 +57,14 @@ const UNITS := {
 # most, spears and shot little, and a horse none to speak of. A building that falls to 40% health catches fire
 # and burns down on its own (see Combat).
 const BUILDING_HP := {"settlement": 500, "city_center": 1800, "town_center": 1200, "hut": 150, "house": 300, "storehouse": 250, "castra": 600, "stabulum": 500,
-	"temple": 450, "curia": 600, "aqueduct": 500, "farm": 0, "vineyard": 0, "circus": 0}
+	"temple": 450, "curia": 600, "aqueduct": 500, "farm": 0, "large_farm": 0, "vineyard": 0, "circus": 0}
 const SIEGE := {"soldier": 0.6, "spearman": 0.35, "slinger": 0.2, "horseman": 0.25}
 # Towns grow by taking in citizens. A villager sent into a Settlement, Town Center or City Center is absorbed for
 # good (the building counts how many, up to CITIZENS_MAX). A Settlement takes every resource but cannot make
 # villagers; at GROWTH[kind][0] citizens it becomes the next kind. HUBS take resources in; TOWNS also make villagers.
 const POP_LIMIT := 1200  # the most units in the whole game: each player may have an equal share (300 of 4)
 const CITIZENS_MAX := 50
-const GROWTH := {"settlement": [15, "town_center"], "town_center": [30, "city_center"]}
+const GROWTH := {"settlement": [15, "town_center"], "town_center": [30, "city_center"], "farm": [8, "large_farm"]}
 const HUBS := ["settlement", "town_center", "city_center"]
 const TOWNS := ["town_center", "city_center"]
 const MELEE_REACH := 0.9  # tiles between centers for a melee blow (a horseman reaches a little farther)
@@ -168,10 +168,17 @@ const BUILDINGS := {
 		"build_time": 20.0, "sight": 4.0, "accepts": [], "pop": 5,
 	},
 	"farm": {
-		"name": "Ager", "acc": "Agrum", "english": "Wheat Field", "done": "perfectus est", "ready": "Paratus",
-		"size": Vector2i(3, 3), "cost": [60, 0, 0, 0], "walkable": true,
-		"field": true, "yield": 1, "crop": 250, "regrow": 20.0,
-		"build_time": 18.0, "sight": 4.0, "accepts": [], "pop": 0,
+		"name": "Ager", "acc": "Agrum", "english": "Farm", "done": "perfectus est", "ready": "Paratus", "look": "granary",
+		"size": Vector2i(3, 3), "cost": [80, 0, 0, 0], "walkable": true, "solid_center": true,
+		"plots": true, "crop": 60, "regrow": 25.0, "citizens_max": 8, "absorbs": true,
+		"build_time": 18.0, "sight": 4.0, "accepts": [1], "pop": 0,
+		"about": "Eight plots of wheat round a granary. A villager works one plot, standing on it, and carries the crop to the granary. Take 8 villagers into the granary for good and it grows into a Large Farm with richer plots.",
+	},
+	"large_farm": {
+		"name": "Ager Magnus", "acc": "Agrum Magnum", "english": "Large Farm", "done": "perfectus est", "ready": "Paratus", "look": "large_granary",
+		"size": Vector2i(3, 3), "cost": [0, 0, 0, 0], "walkable": true, "solid_center": true, "upgrade_only": true,
+		"plots": true, "crop": 90, "regrow": 17.0, "citizens_max": 8, "absorbs": true,
+		"build_time": 18.0, "sight": 5.0, "accepts": [1], "pop": 0,
 	},
 	"vineyard": {
 		"name": "Vinea", "acc": "Vineam", "english": "Vineyard", "done": "perfecta est", "ready": "Parata", "era": 1,

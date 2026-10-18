@@ -145,7 +145,7 @@ func _absorb(owner: int, cmd: Dictionary) -> String:
 	var b := _building(owner, int(cmd.get("building", -1)))
 	if b == null or not b.complete or not b.absorbs():
 		return "err.not_allowed"
-	var room := Defs.CITIZENS_MAX - b.citizens
+	var room := b.max_citizens() - b.citizens
 	for u: Unit in game.units:  # those already on their way count
 		if u.state == Unit.State.ABSORB_GO and u.target_building == b:
 			room -= 1
@@ -161,6 +161,9 @@ func _absorb(owner: int, cmd: Dictionary) -> String:
 
 func _gather(owner: int, cmd: Dictionary) -> String:
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
+	var at: Building = game.placement.building_at(tile)
+	if at != null and at.has_plots() and not game.map.deposits.has(tile):  # the granary itself: any plot of the farm
+		tile = at.field_tile()
 	var any := false
 	for u in _units(owner, cmd):
 		if u.kind == "villager" and game.orders.gather(u, tile):
