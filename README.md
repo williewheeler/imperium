@@ -115,7 +115,7 @@ You need [Godot 4](https://godotengine.org) (`brew install --cask godot` on macO
 just ai4                 # watch four AIs play each other, in four panes of one window
 ```
 
-`just ai4` (`--spectate`) has no human player: four AIs play on one map and each pane follows one of them, or the army it sends out. Drag to look around, wheel to zoom, F to follow again, Q to quit; add `--speed=4` to hurry them along or `--difficulty=difficilis` to make them sharper.
+`just ai4` (`--spectate`) has no human player: four AIs play on one map and each pane shows the world as one of them sees it (its own fog of war, its own minimap), following it or the army it sends out. It uses temperate terrain; add `--terrain=snowy` (or another) to change it. Drag to look around, wheel to zoom, F to follow again, Q to quit; add `--speed=4` to hurry them along or `--difficulty=difficilis` to make them sharper.
 
 The first run imports the project, which takes a moment. Other options include `--windowed`,
 `--zoom=N`, `--weather=rain|fog|storm|cloudy|clear`, and `--shot=FILE` to save a screenshot. There is

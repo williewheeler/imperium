@@ -24,6 +24,9 @@ func found_players(start: Vector2i) -> void:
 	place_ais(start)
 	if game.spectating:
 		_make_ai(0, "romans", start)  # nobody plays the first town: it is an AI like the rest
+		var by_owner: Array[AI] = game.ais.duplicate()
+		by_owner.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
+		game.viewers.assign(by_owner.slice(0, 4))
 
 
 ## The Circus Maximus stands in the valley near the city from the start: the nearest level patch of
@@ -111,7 +114,7 @@ func _make_ai(owner_id: int, faction: String, spot: Vector2i) -> void:
 	ai.faction = faction
 	ai.start = spot
 	ai.set_difficulty(GameSettings.difficulty_id)
-	ai.fog = Fog.new(game.map.w, game.map.h, true)
+	ai.fog = Fog.new(game.map.w, game.map.h, not game.spectating)  # a spectator draws what each AI has seen
 	game.fogs[owner_id] = ai.fog
 	ai.see()  # it knows the ground round its town, and nothing else
 	game.ais.append(ai)

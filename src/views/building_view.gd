@@ -100,6 +100,15 @@ func set_seen(seen: bool) -> void:
 		node.visible = seen
 
 
+## Which panes of a spectator can see this building (a bit each; see Spectator): it is drawn only in those.
+func set_layers(mask: int) -> void:
+	visibility_layer = mask
+	for node in _halves:
+		node.visibility_layer = mask
+	if _fire != null:
+		_fire.visibility_layer = mask
+
+
 ## Off the screen: nothing to animate, so the hearth fire stops until it is seen again.
 func go_quiet() -> void:
 	if _fire != null:

@@ -4,6 +4,8 @@ extends Node2D
 ## target, with a shadow on the ground. Shots between ground we cannot see are not drawn.
 
 var game  # Main
+var fog: Fog  # what the viewer has seen (the main fog if not set)
+var viewer := 0  # the player looking: their own shots always show
 
 
 func _process(_delta: float) -> void:
@@ -15,7 +17,7 @@ func _draw() -> void:
 		var t: Unit = p["target"]
 		var k := clampf(float(p["t"]) / float(p["dur"]), 0.0, 1.0)
 		var tile: Vector2 = (p["from"] as Vector2).lerp(t.pos, k)
-		if not game.fog.is_visible_now(Vector2i(tile)) and (p["attacker"] as Unit).owner != 0:
+		if not (fog if fog != null else game.fog).is_visible_now(Vector2i(tile)) and (p["attacker"] as Unit).owner != viewer:
 			continue
 		var ground := Iso.to_screen(tile)
 		var height := 9.0 + sin(k * PI) * 9.0  # up from the sling hand, over the top, down to the target's chest

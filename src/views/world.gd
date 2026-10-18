@@ -54,9 +54,18 @@ func setup(p_game) -> void:
 	add_child(decals)
 	objects.y_sort_enabled = true
 	add_child(objects)
-	var shots := ProjectileView.new()  # slingers' bullets fly above everything standing on the ground
-	shots.game = game
-	add_child(shots)
+	if game.spectating:  # each pane sees the shots its own AI can see
+		for i in game.viewers.size():
+			var shots := ProjectileView.new()
+			shots.game = game
+			shots.fog = game.viewers[i].fog
+			shots.viewer = game.viewers[i].owner
+			shots.visibility_layer = Spectator.pane_bit(i)
+			add_child(shots)
+	else:
+		var shots := ProjectileView.new()  # slingers' bullets fly above everything standing on the ground
+		shots.game = game
+		add_child(shots)
 
 	var style: int = GameSettings.terrain_info(GameSettings.terrain_id)["style"]
 	if style != 0:  # snow on the trees, or the green parched
@@ -73,11 +82,20 @@ func setup(p_game) -> void:
 	_ghost_material.set_shader_parameter("tint", GHOST_TINT)
 	add_child(_ghost_layer)  # above the depth-sorted objects, below the fog
 
-	var fog_view := FogView.new()
-	fog_view.fog = game.fog
-	fog_view.map_size = Vector2i(game.map.w, game.map.h)
-	fog_view.levels = game.map.levels
-	add_child(fog_view)
+	if game.spectating:  # one fog for each pane: what that AI has seen
+		for i in game.viewers.size():
+			var pane_fog := FogView.new()
+			pane_fog.fog = game.viewers[i].fog
+			pane_fog.map_size = Vector2i(game.map.w, game.map.h)
+			pane_fog.levels = game.map.levels
+			pane_fog.visibility_layer = Spectator.pane_bit(i)
+			add_child(pane_fog)
+	else:
+		var fog_view := FogView.new()
+		fog_view.fog = game.fog
+		fog_view.map_size = Vector2i(game.map.w, game.map.h)
+		fog_view.levels = game.map.levels
+		add_child(fog_view)
 
 	var overlay := OverlayView.new()
 	overlay.game = game
@@ -97,6 +115,8 @@ func road_changed(p: Vector2i) -> void:
 ## A tile's terrain changed (forest felled): update the ground and drop its trees.
 func tile_changed(p: Vector2i) -> void:
 	game.hud.minimap.tile_changed(p)
+	if game.spectator != null:
+		game.spectator.tile_changed(p)
 	ground.set_tile(p, game.map.tile(p.x, p.y))
 	remove_tile_objects(p)
 
@@ -201,6 +221,26 @@ func _meadow_scenery(biome: int, x: int, y: int) -> String:
 func view_rect() -> Rect2:
 	var half: Vector2 = game.get_viewport_rect().size / game.camera.zoom.x / 2.0
 	return Rect2(game.cam_pos - half, half * 2.0)
+
+
+## The panes of a spectator that can see `u` now: its own AI's, and any whose AI has it in sight (a bit each).
+func _seen_by(u: Unit) -> int:
+	var mask := 0
+	for i in game.viewers.size():
+		var ai: AI = game.viewers[i]
+		if u.owner == ai.owner or ai.fog.is_visible_now(Vector2i(u.pos)):
+			mask |= Spectator.pane_bit(i)
+	return mask
+
+
+## The panes whose AI has explored the ground `b` stands on, or owns it.
+func _explored_by(b: Building) -> int:
+	var mask := 0
+	for i in game.viewers.size():
+		var ai: AI = game.viewers[i]
+		if b.owner == ai.owner or ai.fog.is_explored(Vector2i(b.center())):
+			mask |= Spectator.pane_bit(i)
+	return mask
 
 
 ## Every area being looked at, in world pixels: the one screen, or each pane of a spectator.
@@ -354,11 +394,17 @@ func _process(delta: float) -> void:
 			objects.add_child(v)
 			_unit_views[u] = v
 		var view: UnitView = _unit_views[u]
-		var on_screen: bool = _any_has(views, Iso.to_screen(u.pos), 48.0) and (u.owner == 0 or game.fog.is_visible_now(Vector2i(u.pos)))  # an AI's people show only while we can see them
+		var seen_by := _seen_by(u) if game.spectating else 1  # which panes see it (a spectator); otherwise just us
+		var on_screen: bool = _any_has(views, Iso.to_screen(u.pos), 48.0) and (seen_by != 0 if game.spectating else (u.owner == 0 or game.fog.is_visible_now(Vector2i(u.pos))))  # an AI's people show only while we can see them
 		view.visible = on_screen
 		if on_screen:
+			if game.spectating:
+				view.visibility_layer = seen_by
 			view.update_view()
 			_update_ghost(u, view, delta)
+			if game.spectating:
+				_ghosts[u].visibility_layer = seen_by
+				_rings[u].visibility_layer = seen_by
 		elif _ghosts.has(u):
 			_ghosts[u].visible = false
 			_rings[u].visible = false
@@ -371,7 +417,10 @@ func _process(delta: float) -> void:
 			decals.add_child(v)
 			_building_views[b] = v
 			_clear_scenery_under(b)
-		var seen: bool = b.owner == 0 or game.fog.is_explored(Vector2i(b.center()))  # an AI's town shows once discovered
+		var seen_by := _explored_by(b) if game.spectating else 1
+		var seen: bool = seen_by != 0 if game.spectating else (b.owner == 0 or game.fog.is_explored(Vector2i(b.center())))  # an AI's town shows once discovered
+		if game.spectating:
+			_building_views[b].set_layers(seen_by)
 		_building_views[b].set_seen(seen)
 		if seen and _any_has(views, Iso.to_screen_flat(b.center()), 200.0):  # buildings are big
 			_building_views[b].update_view()

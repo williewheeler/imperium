@@ -78,6 +78,7 @@ var combat := Combat.new(self)  # who fights whom
 var placement := Placement.new()  # where things may go
 var spectating := false  # --spectate: every player is an AI, and the window shows them all (see Spectator)
 var spectator: Spectator
+var viewers: Array[AI] = []  # --spectate: the AIs whose views are shown, in pane order (each pane has its own fog and layer)
 var debug := DebugModes.new()  # the --flags that set a scene up
 var orders := Orders.new()  # what an order does to a unit
 var setup := WorldSetup.new()  # founding the players

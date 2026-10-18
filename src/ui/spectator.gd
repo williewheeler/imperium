@@ -2,11 +2,18 @@ class_name Spectator
 extends CanvasLayer
 ## Watching AIs play: the window is split into panes, one per player, each a camera on the one shared world
 ## (a SubViewport that draws the same scene). A pane follows its player's town, or the army it has sent out;
-## drag to look around (that stops it following), the wheel zooms, F follows again. No fog: you see all.
-## Used by `--spectate`, where every player, the first included, is an AI.
+## drag to look around (that stops it following), the wheel zooms, F follows again. Each pane shows the world
+## as its AI knows it: its own fog, and only the people and buildings that AI can see. Each has its own
+## minimap. Used by `--spectate`, where every player, the first included, is an AI.
+##
+## How one scene can look different in each pane: every pane has a bit (`pane_bit`). A viewport draws an item
+## only if it shares a layer with the viewport's cull mask, so a pane's mask is the world (bit 1) plus its own
+## bit; a fog overlay sits only on its pane's bit, and a unit or building sits on the bits of the panes that
+## can see it (see World).
 
 const LAYER_BIT := 1 << 19  # the main window draws only what is on this layer (the panes), not the world itself
 const GAP := 3.0
+const MINIMAP := 160.0  # side, in logical pixels
 const FOLLOW_RATE := 1.6  # how quickly a pane's camera settles on its subject
 const CREAM := Color("f3e6c4")
 const DIM := Color("b8aa86")
@@ -31,16 +38,19 @@ func _ready() -> void:
 	_grid.add_theme_constant_override("v_separation", 0)
 	_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_grid)
-	var ais: Array[AI] = game.ais.duplicate()
-	ais.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
-	for ai in ais.slice(0, 4):
-		_make_pane(ai)
+	for i in game.viewers.size():
+		_make_pane(game.viewers[i], i)
 	_put_on_layer(self)
 	get_viewport().canvas_cull_mask = LAYER_BIT  # the world is drawn in the panes, not behind them
 	_refresh_stats()
 
 
-func _make_pane(ai: AI) -> void:
+## The bit a pane's own things are on. Bit 1 is the world every pane shares.
+static func pane_bit(index: int) -> int:
+	return 2 << index
+
+
+func _make_pane(ai: AI, index: int) -> void:
 	var color := Defs.color_of(ai.owner)
 	var cell := Control.new()
 	cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -57,6 +67,7 @@ func _make_pane(ai: AI) -> void:
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	vp.handle_input_locally = false
 	vp.world_2d = get_viewport().world_2d  # the one world, seen from another place
+	vp.canvas_cull_mask = 1 | pane_bit(index)  # the shared world, and only this pane's fog and sights
 	add_child(vp)
 	var box := TextureRect.new()  # shows what the viewport drew (a SubViewportContainer would grow with the viewport)
 	box.texture = vp.get_texture()
@@ -96,8 +107,34 @@ func _make_pane(ai: AI) -> void:
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(l)
 		labels.append(l)
-	_panes.append({"ai": ai, "cell": cell, "box": box, "vp": vp, "cam": cam, "panel": panel, "labels": labels,
-		"pos": Iso.to_screen(ai.focus()), "zoom": 2, "follow": true})
+	var mini := Minimap.new()  # what this AI has seen of the map, with the area this pane shows outlined
+	mini.game = game
+	mini.fog = ai.fog
+	mini.viewer = ai.owner
+	var pane: Dictionary = {}
+	mini.corners = func() -> Array[Vector2]: return _corners(pane)
+	var frame := PanelContainer.new()
+	var fsb := StyleBoxFlat.new()
+	fsb.bg_color = Color("c9b27a")
+	fsb.set_border_width_all(3)
+	fsb.border_color = color
+	fsb.set_content_margin_all(3)
+	frame.add_theme_stylebox_override("panel", fsb)
+	frame.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	frame.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	frame.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	frame.offset_right = -(GAP + 6.0)
+	frame.offset_bottom = -(GAP + 6.0)
+	frame.add_child(mini)
+	cell.add_child(frame)
+	mini.setup(game)
+	mini.custom_minimum_size = Vector2(MINIMAP, MINIMAP)
+	mini.jump_requested.connect(func(tile_pos: Vector2) -> void:
+		pane["follow"] = false
+		pane["pos"] = Iso.to_screen(tile_pos))
+	pane.merge({"ai": ai, "cell": cell, "box": box, "vp": vp, "cam": cam, "panel": panel, "labels": labels,
+		"pos": Iso.to_screen(ai.focus()), "zoom": 2, "follow": true, "mini": mini})
+	_panes.append(pane)
 
 
 func _put_on_layer(node: Node) -> void:
@@ -148,6 +185,21 @@ func _refresh_stats() -> void:
 		labels[2].text = Latin.t("%s %d · %s %d · %s %d · %s %d" % [Defs.RES_NAMES[0], stock[0], Defs.RES_NAMES[1], stock[1], Defs.RES_NAMES[2], stock[2], Defs.RES_NAMES[3], stock[3]])
 		labels[3].text = Latin.t(Phrases.latin(s["status"]))
 		(p["panel"] as Control).tooltip_text = "%s: %s" % [Defs.faction_of(ai.owner)["english"], Phrases.english(s["status"])]
+
+
+## A tile changed terrain (a felled forest): the panes' minimaps catch up.
+func tile_changed(p: Vector2i) -> void:
+	for pane in _panes:
+		(pane["mini"] as Minimap).tile_changed(p)
+
+
+## The corners of what a pane shows, in tile coordinates, for its minimap's outline.
+func _corners(pane: Dictionary) -> Array[Vector2]:
+	var half := Vector2((pane["vp"] as SubViewport).size) / float(pane["zoom"]) / 2.0
+	var out: Array[Vector2] = []
+	for sgn in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		out.append(Iso.to_tile((pane["pos"] as Vector2) + half * sgn))
+	return out
 
 
 ## The part of the world each pane shows, in world pixels.
