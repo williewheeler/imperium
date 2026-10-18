@@ -19,7 +19,8 @@ in the code, or marked as not built.
 | `src/sim/` | **The simulation**: everything that decides what happens, and nothing that shows it. No scene, no window, no input, no clock. At the top, `Simulation` (the game loop, `step()`, and the owner of the parts) and `SimConfig` (the choices that shape a game). |
 | `src/sim/state/` | The **game state**, inert data: `Unit`, `Building`, `Deposit`, `GameMap` and `TerrainGen` (the ground), `Fog` (what each people has seen), and `Defs` (the rules' tables). |
 | `src/sim/systems/` | The **game systems**, which act on the state: `Commands`, `Orders`, `Movement` (with `UnitGrid`), `Economy`, `Production`, `Eras`, `Vision`, `Wildlife`, `UnitBehavior`, `Combat`, `Placement`, `Roads`, `Victory`, `WorldSetup`. |
-| `src/ai/` | The computer players: `AI` and one class per goal. See *The AIs*. |
+| `src/client/` | The **headless client**: `HeadlessClient` (a player's side of the game with no screen: what it knows and a way to act), `PlayerView` (the fog-filtered model: what the player may know), `UnitInfo` and `BuildingInfo` (what it knows of one unit or building). |
+| `src/ai/` | The computer players: `AI` and one class per goal. They read the game only through a `PlayerView` and act only through a `HeadlessClient`. See *The AIs*. |
 | `src/replay/` | `Replay` (the file), `Recorder`, `Replayer`. See *Headless play and replays*. |
 | `src/ui/` | **The UI, for humans only**: the HUD, menus, lobby, title and opening scroll. |
 | `src/ui/views/` | Drawing the state: `World` and the unit, building, ground, fog, weather and overlay views, the minimap, `Iso` (tile and screen maths), `Weather` (cosmetic). Read the simulation, never change it. |
@@ -40,7 +41,7 @@ in the code, or marked as not built.
 | Views | `src/ui/views/`, and the HUD's readouts in `src/ui/` |
 | Controls | `src/ui/controls/` (`Person`, `CameraRig`), and the HUD's buttons in `src/ui/` |
 | AIs | `src/ai/` |
-| Headless client | not built (today the UI and the AIs read the `Simulation` directly) |
+| Headless client | `src/client/`: built, and the AIs work through it; the UI does not yet (it still reads the `Simulation`) |
 | View channel, Command channel | not built (`src/net/` will hold them; today `NetSession` is the lobby only) |
 | View publisher, Command receiver | not built (today the simulation's signals reach `Main`, which shows them) |
 | Command interface, Command queue | not built (today `Commands.submit`, which validates and applies at once) |
@@ -251,14 +252,15 @@ and sends state back is still open, but the first no longer waits on the simulat
 - The views are still tied to one local viewer in normal play (`game.fog`, "owner 0 is mine"). The spectator
   gets per-AI views with a parallel path (`viewers`, layers) rather than a viewer passed through every view;
   a single `Viewer` object would unify the two.
-- Drivers read raw `Simulation.units` and `buildings`. The `AI` filters by its own fog by discipline, not
-  by construction. A per-player view (fog-filtered queries) would enforce it, and is what a remote client
-  would receive.
+- **The headless client still reads the simulation.** `PlayerView.refresh` filters what it reads from the `Simulation` by the
+  player's fog, which stands in for the view channel; and a few questions (stores, era, pop, `placement_error`) are answered
+  by asking the systems for that player. `Deposit`s are handed out as the live objects (for explored ground only), not copies.
+  The human UI (`Views`, `Controls`, the HUD) does not go through a client yet, and `AI.summary()` and `focus()` serve the spectator.
 - Saved games are not built. The pieces are there (the whole state is plain data), but a replay can only begin from the start.
 
 ## The AIs  (**built**)
 
-`src/ai/`: an `AI` plays one people through the same `Commands` as a person, seeing only its own `Fog`. What
+`src/ai/`: an `AI` plays one people through a `HeadlessClient`: it reads the game only through its `PlayerView` (its own people and what its fog lets it see) and submits commands only through the client, so it knows only what its people have found. `tools/check_members.py` fails if anything under `src/ai/` names the simulation. What
 it does is organized as **goals** (`AIGoal`, one file each), not one long script:
 
 | Goal | What it is for |
@@ -365,6 +367,7 @@ in `src/sim/state/`) is different: it is per-player simulation state (`Simulatio
 - `just farm-test`: a 9x9 farm's eight plots round a granary, one villager to a plot, bare plots growing only while tended, food reaching the granary, a Large Farm at 8 citizens.
 - `just herd-test`: the sparse start (a couple of berry bushes, herds, no gold or stone by the town) herds wandering within their range, breeding, capping and being hunted out, and gold spread thinly.
 - `just water-test`: a dock only in the shallows touching land, a boat made on water, fish only for boats, 15 a trip to the dock, boats stay on water.
+- `just view-test`: the headless client: a player's view holds its own people and buildings and no one else's; ground it has not explored is closed to it (no deposits there, no building sites); another people's unit is seen only while in sight, and then as what it is and where it stands, not what it is doing; buildings on explored ground are known, not what they train; a command goes out in the client's own name and cannot order another people's unit; and an AI plays a game through it.
 - `just net-test`: the lobby, host and client in two processes.
 - `just replay-test`: the simulation is deterministic: two runs of a game agree to the last checksum; a game written down
   plays back, AIs off, to the same checksums (also with a person's commands in it); a tampered replay or one with commands

@@ -43,5 +43,13 @@ for f in files:
                 print('%s:%d: Main has no %r' % (f, n, a)); bad += 1
             elif b and a in MAIN_PARTS and b not in MAIN_PARTS[a]:
                 print('%s:%d: %s has no %r' % (f, n, a, b)); bad += 1
+# the AIs read the game only through their PlayerView and act only through their HeadlessClient
+for f in glob.glob('src/ai/*.gd'):
+    for n, line in enumerate(open(f).read().split('\n'), 1):
+        code = line.split('#')[0]
+        for word in [r'\bsim\b', r'\bSimulation\b', r'\bGameState\b', r'\bCombat\.']:
+            if re.search(word, code):
+                print('%s:%d: the AIs may not touch the simulation (%s); use ai.view and ai.client' % (f, n, code.strip()[:60])); bad += 1
+                break
 print('check_members: %d problems' % bad)
 sys.exit(1 if bad else 0)

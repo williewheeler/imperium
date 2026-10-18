@@ -18,7 +18,7 @@ func priority() -> float:
 
 func act() -> void:
 	_cooldown -= ai.think_interval
-	ai.wave = ai.wave.filter(func(u: Unit) -> bool: return not u.dead)
+	ai.wave = ai.wave.filter(func(u: UnitInfo) -> bool: return not u.dead)
 	var home := ai.main_town()
 	if home == null:
 		return
@@ -27,7 +27,7 @@ func act() -> void:
 		return
 	if ai.age < ai.attack_after or _cooldown > 0.0:
 		return
-	var ready: Array[Unit] = []
+	var ready: Array[UnitInfo] = []
 	for u in ai.army():
 		if u.state == Unit.State.IDLE:
 			ready.append(u)
@@ -44,22 +44,22 @@ func act() -> void:
 	elif _last_target.x >= 0 and _sweeps < 8:
 		# no building left that it knows of, but the people who lived there may not be gone: sweep the ground round it
 		_sweeps += 1
-		tile = (_last_target + Vector2i(ai.rng.randi_range(-24, 24), ai.rng.randi_range(-24, 24))).clamp(Vector2i(2, 2), Vector2i(ai.sim.state.map.w - 3, ai.sim.state.map.h - 3))
+		tile = (_last_target + Vector2i(ai.rng.randi_range(-24, 24), ai.rng.randi_range(-24, 24))).clamp(Vector2i(2, 2), ai.view.map_size() - Vector2i(3, 3))
 	else:
 		return  # it has not found anyone yet: the scouts are looking
 	var go := ready.slice(guard)
 	ai.wave.assign(go)
 	_started = go.size()
-	ai.do({"type": "attack_move", "tile": tile, "units": go.map(func(u: Unit) -> int: return u.id)})
+	ai.do({"type": "attack_move", "tile": tile, "units": go.map(func(u: UnitInfo) -> int: return u.id)})
 
 
-func _manage(home: Building) -> void:
+func _manage(home: BuildingInfo) -> void:
 	if ai.wave.size() < int(float(_started) * 0.4):  # beaten: pull back
-		ai.do({"type": "move", "tile": Vector2i(home.center()), "units": ai.wave.map(func(u: Unit) -> int: return u.id)})
+		ai.do({"type": "move", "tile": Vector2i(home.center()), "units": ai.wave.map(func(u: UnitInfo) -> int: return u.id)})
 		ai.wave.clear()
 		_cooldown = 90.0
 		return
-	var idle := ai.wave.filter(func(u: Unit) -> bool: return u.state == Unit.State.IDLE)
+	var idle := ai.wave.filter(func(u: UnitInfo) -> bool: return u.state == Unit.State.IDLE)
 	if idle.size() >= ai.wave.size() - 1:  # it has arrived and the fight is over: on to the next target
 		ai.wave.clear()
 		_cooldown = 8.0

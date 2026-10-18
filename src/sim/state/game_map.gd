@@ -873,30 +873,38 @@ func _start_tiles(start: Vector2i) -> Array[Vector2i]:
 
 
 ## Closest spot to `near` (between min_r and max_r tiles away) where a building of `size` fits
-## on clear grass, with a walkable ring around it and none of the `avoid` tiles inside it.
-## Returns (-1, -1) if there is none.
-func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Array[Vector2i], avoid_rects: Array = [], loose := false) -> Vector2i:
+## on clear grass, with a walkable ring around it and none of the `avoid` tiles inside it. With `known`, only ground
+## that fog has explored counts. Returns (-1, -1) if there is none.
+func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Array[Vector2i], avoid_rects: Array = [], loose := false, known: Fog = null) -> Vector2i:
 	for r in range(min_r, max_r + 1):
 		for y in range(near.y - r, near.y + r + 1):
 			for x in range(near.x - r, near.x + r + 1):
 				if maxi(absi(x - near.x), absi(y - near.y)) != r:
 					continue
-				var rect := Rect2i(Vector2i(x, y), size)
-				var ok := loose or is_level(rect)  # a loose search will clear woods and level the ground itself
-				for yy in range(rect.position.y - 1, rect.end.y + 1):
-					for xx in range(rect.position.x - 1, rect.end.x + 1):
-						var p := Vector2i(xx, yy)
-						if not ((is_free_land(p) or (loose and is_clearable(p))) if rect.has_point(p) else is_walkable(p)):
-							ok = false
-				for p in avoid:
-					if rect.has_point(p):
-						ok = false
-				for other: Rect2i in avoid_rects:  # keep a tile of space around existing buildings
-					if rect.grow(1).intersects(other):
-						ok = false
-				if ok:
+				if _site_fits(Rect2i(Vector2i(x, y), size), loose, avoid, avoid_rects, known):
 					return Vector2i(x, y)
 	return Vector2i(-1, -1)
+
+
+## Does a building with this footprint fit: level (or clearable, if `loose`), on free land with a walkable ring round it,
+## away from the `avoid` tiles and rects, and (with `known`) on explored ground? Stops at the first thing that says no.
+func _site_fits(rect: Rect2i, loose: bool, avoid: Array[Vector2i], avoid_rects: Array, known: Fog) -> bool:
+	if not (loose or is_level(rect)):  # a loose search will clear woods and level the ground itself
+		return false
+	for other: Rect2i in avoid_rects:  # keep a tile of space around existing buildings
+		if rect.grow(1).intersects(other):
+			return false
+	for p in avoid:
+		if rect.has_point(p):
+			return false
+	for yy in range(rect.position.y - 1, rect.end.y + 1):
+		for xx in range(rect.position.x - 1, rect.end.x + 1):
+			var p := Vector2i(xx, yy)
+			if known != null and not known.is_explored(p):
+				return false
+			if not ((is_free_land(p) or (loose and is_clearable(p))) if rect.has_point(p) else is_walkable(p)):
+				return false
+	return true
 
 
 ## Berries, stone and gold near the start, plus scattered mines elsewhere to explore for.

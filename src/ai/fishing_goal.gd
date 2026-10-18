@@ -17,9 +17,9 @@ func priority() -> float:
 func _schools() -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	var hubs := ai.hubs()
-	for p: Vector2i in ai.sim.state.map.herds:
-		var d: Deposit = ai.sim.state.map.deposits.get(p)
-		if d == null or not d.fish or d.amount <= 0 or not ai.fog.is_explored(p):
+	for p in ai.view.herd_tiles():
+		var d := ai.view.deposit_at(p)
+		if d == null or not d.fish or d.amount <= 0:
 			continue
 		for h in hubs:
 			if h.center().distance_to(Vector2(p)) <= NEAR:
@@ -61,13 +61,13 @@ func act() -> void:
 func _build_dock(fish: Vector2i) -> void:
 	var cost: Array = Defs.BUILDINGS["dock"]["cost"]
 	for r in range(2, 13):
-		for p in ai.sim.state.map.ring(fish, r):
-			var err: String = ai.sim.placement.error("dock", p, ai.owner)
+		for p in ai.view.ring(fish, r):
+			var err: String = ai.view.placement_error("dock", p)
 			if err == "" or err == "err.cant_afford":
 				if not ai.afford(cost):
 					ai.reserve(cost)
 					return
 				var crew := ai.crew_for(Vector2(p), 2)
 				if not crew.is_empty():
-					ai.do({"type": "place", "kind": "dock", "tile": p, "units": crew.map(func(u: Unit) -> int: return u.id)})
+					ai.do({"type": "place", "kind": "dock", "tile": p, "units": crew.map(func(u: UnitInfo) -> int: return u.id)})
 				return

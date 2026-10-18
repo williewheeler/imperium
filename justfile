@@ -112,6 +112,10 @@ replay file *args:
 person-test:
     {{godot}} --headless --path . --script tests/person_test.gd -- --nosplash --seed=42 --players=3
 
+# Headless check of the headless client: what a player's view shows, hides and lets it do
+view-test:
+    {{godot}} --headless --path . --script tests/view_test.gd
+
 # Headless check of determinism: two runs of one game agree, a replay of it agrees, a doctored replay does not
 replay-test:
     {{godot}} --headless --path . --script tests/replay_test.gd

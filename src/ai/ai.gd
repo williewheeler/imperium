@@ -13,11 +13,12 @@ const MIN_THINK := 0.3
 const SEARCH_RADIUS := 26  # tiles around a town to look for something to gather
 const CLOSE := 0.5  # a goal reserves resources once it has this share of what it wants
 
-var sim: Simulation
+var client: HeadlessClient  # how it acts: it submits commands through it
+var view: PlayerView  # what it knows: the only way it reads the game (it never touches the Simulation)
 var owner := 0
 var faction := ""
 var start := Vector2i.ZERO  # where its first town stands
-var fog: Fog  # what its people have seen: the only part of the map it knows about (Vision keeps it up to date)
+var fog: Fog  # what its people have seen (for a spectator's panes and for tests; the AI itself asks `view`)
 var rng := RandomNumberGenerator.new()  # its own dice, so its choices never disturb the rules' (see Simulation)
 
 # How it plays (set from the difficulty; it never gets extra resources)
@@ -42,8 +43,8 @@ var threat_at := Vector2.ZERO  # where
 var threat_count := 0  # how many of them
 var unemployed := 0  # idle villagers with nothing known to work
 var need_housing := false  # something wanted to train and there was no room
-var scouts: Array[Unit] = []  # villagers sent exploring (the work goal leaves them alone)
-var wave: Array[Unit] = []  # the force it has sent out against someone
+var scouts: Array[UnitInfo] = []  # villagers sent exploring (the work goal leaves them alone)
+var wave: Array[UnitInfo] = []  # the force it has sent out against someone
 var goals: Array[AIGoal] = []
 
 var _timer := 0.0
@@ -97,6 +98,9 @@ func _think() -> void:
 	reserved = [0, 0, 0, 0]
 	need_housing = false
 	_sense()
+	var t_view := Perf.start()
+	view.refresh()
+	Perf.stop("ai view refresh", t_view)
 	var order: Array[Array] = []
 	for goal in goals:
 		var p := goal.priority()
@@ -104,15 +108,17 @@ func _think() -> void:
 			order.append([p, goal])
 	order.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
 	for entry in order:
+		var t0 := Perf.start()
 		(entry[1] as AIGoal).act()
+		Perf.stop("ai goal " + str((entry[1] as AIGoal).get_script().get_global_name()), t0)
 
 
 ## What kinds of enemy it can see right now, and how many: it remembers the largest count, fading over time.
 func _note_enemies() -> void:
+	view.refresh()
 	var now := {}
-	for u: Unit in sim.state.units:
-		if u.owner != owner and not u.dead and fog.is_visible_now(Vector2i(u.pos)):
-			now[u.kind] = now.get(u.kind, 0) + 1
+	for u in view.seen_units():
+		now[u.kind] = now.get(u.kind, 0) + 1
 	for k: String in seen_kinds.keys():
 		seen_kinds[k] = maxf(0.0, float(seen_kinds[k]) - 0.03)  # forgets slowly
 	for k: String in now:
@@ -123,14 +129,11 @@ func _note_enemies() -> void:
 func _sense() -> void:
 	under_attack = false
 	threat_count = 0
-	var mine_b: Array[Building] = []
-	for b: Building in sim.state.buildings:
-		if b.owner == owner:
-			mine_b.append(b)
+	var mine_b := view.my_buildings()
 	var sum := Vector2.ZERO
 	var n := 0
-	for u: Unit in sim.state.units:
-		if u.owner == owner or u.dead or not Combat.fights(u) or not fog.is_visible_now(Vector2i(u.pos)):
+	for u in view.seen_units():
+		if not u.fights():
 			continue
 		for b in mine_b:
 			if b.center().distance_squared_to(u.pos) < 14.0 * 14.0:
@@ -146,17 +149,17 @@ func _sense() -> void:
 # ---------------------------------------------------------------- what it has
 
 ## Its towns: Town Centers and City Centers, which make villagers (or all of them, foundations too).
-func towns(only_done := true) -> Array[Building]:
+func towns(only_done := true) -> Array[BuildingInfo]:
 	return mine_of(Defs.TOWNS, only_done)
 
 
 ## Everything that takes resources in and houses its people: Settlements as well as towns.
-func hubs(only_done := true) -> Array[Building]:
+func hubs(only_done := true) -> Array[BuildingInfo]:
 	return mine_of(Defs.HUBS, only_done)
 
 
 ## Its main town, or failing that its first Settlement.
-func main_town() -> Building:
+func main_town() -> BuildingInfo:
 	var t := towns()
 	if not t.is_empty():
 		return t[0]
@@ -165,8 +168,8 @@ func main_town() -> Building:
 
 
 ## The nearest of its hubs to `pos`, or null.
-func nearest_town(pos: Vector2) -> Building:
-	var best: Building = null
+func nearest_town(pos: Vector2) -> BuildingInfo:
+	var best: BuildingInfo = null
 	var best_d := INF
 	for b in hubs():
 		var d := b.center().distance_squared_to(pos)
@@ -176,59 +179,59 @@ func nearest_town(pos: Vector2) -> Building:
 	return best
 
 
-func mine_of(kinds: Array, only_done := false) -> Array[Building]:
-	var out: Array[Building] = []
-	for b: Building in sim.state.buildings:
-		if b.owner == owner and b.kind in kinds and (b.complete or not only_done):
+func mine_of(kinds: Array, only_done := false) -> Array[BuildingInfo]:
+	var out: Array[BuildingInfo] = []
+	for b in view.my_buildings():
+		if b.kind in kinds and (b.complete or not only_done):
 			out.append(b)
 	return out
 
 
-func mine(kind: String, only_done := false) -> Array[Building]:
-	var out: Array[Building] = []
-	for b: Building in sim.state.buildings:
-		if b.owner == owner and b.kind == kind and (b.complete or not only_done):
+func mine(kind: String, only_done := false) -> Array[BuildingInfo]:
+	var out: Array[BuildingInfo] = []
+	for b in view.my_buildings():
+		if b.kind == kind and (b.complete or not only_done):
 			out.append(b)
 	return out
 
 
-func villagers() -> Array[Unit]:
-	var out: Array[Unit] = []
-	for u: Unit in sim.state.units:
-		if u.owner == owner and u.kind == "villager":
+func villagers() -> Array[UnitInfo]:
+	var out: Array[UnitInfo] = []
+	for u in view.my_units():
+		if u.kind == "villager":
 			out.append(u)
 	return out
 
 
 ## Its fighting men.
-func army() -> Array[Unit]:
-	var out: Array[Unit] = []
-	for u: Unit in sim.state.units:
-		if u.owner == owner and Combat.fights(u):
+func army() -> Array[UnitInfo]:
+	var out: Array[UnitInfo] = []
+	for u in view.my_units():
+		if u.fights():
 			out.append(u)
 	return out
 
 
 ## Its fishing boats.
-func boats() -> Array[Unit]:
-	var out: Array[Unit] = []
-	for u: Unit in sim.state.units:
-		if u.owner == owner and u.kind == "fishing_boat" and not u.dead:
+func boats() -> Array[UnitInfo]:
+	var out: Array[UnitInfo] = []
+	for u in view.my_units():
+		if u.kind == "fishing_boat" and not u.dead:
 			out.append(u)
 	return out
 
 
 ## Its dogs (scouts).
-func dogs() -> Array[Unit]:
-	var out: Array[Unit] = []
-	for u: Unit in sim.state.units:
-		if u.owner == owner and u.kind == "dog" and not u.dead:
+func dogs() -> Array[UnitInfo]:
+	var out: Array[UnitInfo] = []
+	for u in view.my_units():
+		if u.kind == "dog" and not u.dead:
 			out.append(u)
 	return out
 
 
 func stock() -> Array[int]:
-	return sim.stock_of(owner)
+	return view.stock()
 
 
 ## Can it spend `cost`, leaving what a more pressing goal is saving?
@@ -252,8 +255,7 @@ func reserve(cost: Array) -> void:
 
 ## Gives the game a command as this player. The reason it was refused, or "" if it was carried out.
 func do(cmd: Dictionary) -> String:
-	cmd["owner"] = owner
-	return sim.commands.submit(cmd)
+	return client.submit(cmd)
 
 
 ## Spends `cost` on `cmd` if it can, otherwise saves for it. True if the command was carried out.
@@ -271,24 +273,26 @@ func buy(cmd: Dictionary, cost: Array) -> bool:
 ## free villagers to build it. False if it could not (no money, no room): it saves for it if it is close.
 func place(kind: String, near: Vector2, min_r: int, crew_size := 2, max_r := 20) -> bool:
 	var def: Dictionary = Defs.BUILDINGS[kind]
-	if sim.era_of(owner) < int(def.get("era", 0)) or not afford(def["cost"]):
-		if sim.era_of(owner) >= int(def.get("era", 0)):
+	if view.era() < int(def.get("era", 0)) or not afford(def["cost"]):
+		if view.era() >= int(def.get("era", 0)):
 			reserve(def["cost"])
 		return false
 	var avoid: Array[Vector2i] = []
-	for u: Unit in sim.state.units:
+	for u in view.my_units():  # it keeps off the people it can see, which are its own and whoever is in sight
 		avoid.append(Vector2i(u.pos))
-	var site: Vector2i = sim.state.map.find_site(def["size"], Vector2i(near), min_r, max_r, avoid, sim.placement.rects())
+	for u in view.seen_units():
+		avoid.append(Vector2i(u.pos))
+	var site: Vector2i = view.find_site(def["size"], Vector2i(near), min_r, max_r, avoid, view.building_rects())
 	if site.x < 0:
 		return false
 	var crew := crew_for(Vector2(site) + Vector2(def["size"]) / 2.0, crew_size)
-	return do({"type": "place", "kind": kind, "tile": site, "units": crew.map(func(u: Unit) -> int: return u.id)}) == ""
+	return do({"type": "place", "kind": kind, "tile": site, "units": crew.map(func(u: UnitInfo) -> int: return u.id)}) == ""
 
 
 ## The `n` villagers nearest `pos` that are free: idle first, then gatherers (never scouts).
-func crew_for(pos: Vector2, n: int) -> Array[Unit]:
-	var idle: Array[Unit] = []
-	var busy: Array[Unit] = []
+func crew_for(pos: Vector2, n: int) -> Array[UnitInfo]:
+	var idle: Array[UnitInfo] = []
+	var busy: Array[UnitInfo] = []
 	for u in villagers():
 		if scouts.has(u):
 			continue
@@ -296,10 +300,10 @@ func crew_for(pos: Vector2, n: int) -> Array[Unit]:
 			idle.append(u)
 		elif u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]:
 			busy.append(u)
-	var by_distance := func(a: Unit, b: Unit) -> bool: return a.pos.distance_squared_to(pos) < b.pos.distance_squared_to(pos)
+	var by_distance := func(a: UnitInfo, b: UnitInfo) -> bool: return a.pos.distance_squared_to(pos) < b.pos.distance_squared_to(pos)
 	idle.sort_custom(by_distance)
 	busy.sort_custom(by_distance)
-	var out: Array[Unit] = []
+	var out: Array[UnitInfo] = []
 	for u in idle + busy:
 		if out.size() >= n:
 			break
@@ -311,11 +315,10 @@ func crew_for(pos: Vector2, n: int) -> Array[Unit]:
 ## from `from` in square rings, among the ground it has explored.
 func nearest_deposit(kind: int, from: Vector2, min_r: int, wild_only := false) -> Vector2i:
 	var c := Vector2i(from)
-	var deposits: Dictionary = sim.state.map.deposits
 	for r in range(min_r, SEARCH_RADIUS):
-		for p in sim.state.map.ring(c, r):  # just the cells on the ring, not the whole square again
-			var d: Deposit = deposits.get(p)
-			if d == null or d.kind != kind or d.amount <= 0 or blocked.has(p) or not fog.is_explored(p):
+		for p in view.ring(c, r):  # just the cells on the ring, not the whole square again
+			var d := view.deposit_at(p)  # (null for ground it has not explored)
+			if d == null or d.kind != kind or d.amount <= 0 or blocked.has(p):
 				continue  # it cannot work what it has not found
 			if d.farm and (wild_only or d.owner != owner):
 				continue
@@ -324,12 +327,12 @@ func nearest_deposit(kind: int, from: Vector2, min_r: int, wild_only := false) -
 
 
 ## The enemy buildings it has seen (the ground it has explored), nearest `from` first.
-func enemy_buildings(from: Vector2) -> Array[Building]:
-	var out: Array[Building] = []
-	for b: Building in sim.state.buildings:
-		if b.owner != owner and b.attackable() and fog.is_explored(Vector2i(b.center())):
+func enemy_buildings(from: Vector2) -> Array[BuildingInfo]:
+	var out: Array[BuildingInfo] = []
+	for b in view.known_buildings():
+		if b.attackable():
 			out.append(b)
-	out.sort_custom(func(a: Building, c: Building) -> bool: return a.center().distance_squared_to(from) < c.center().distance_squared_to(from))
+	out.sort_custom(func(a: BuildingInfo, c: BuildingInfo) -> bool: return a.center().distance_squared_to(from) < c.center().distance_squared_to(from))
 	return out
 
 
@@ -339,14 +342,7 @@ func explored_share() -> float:
 	if _explored_clock > 0.0:
 		return _explored
 	_explored_clock = 8.0
-	var seen := 0
-	var total := 0
-	for y in range(0, fog.h, 4):
-		for x in range(0, fog.w, 4):
-			total += 1
-			if fog.state[y * fog.w + x] != Fog.HIDDEN:
-				seen += 1
-	_explored = float(seen) / float(maxi(1, total))
+	_explored = view.explored_share()
 	return _explored
 
 
@@ -356,9 +352,9 @@ func explored_share() -> float:
 func summary() -> Dictionary:
 	var t := towns()
 	var status := "spec.growing"
-	if sim.state.winner == owner:
+	if view.winner() == owner:
 		status = "spec.victor"
-	elif sim.state.defeated.has(owner) or (t.is_empty() and villagers().is_empty()):
+	elif view.has_fallen(owner) or (t.is_empty() and villagers().is_empty()):
 		status = "spec.beaten"
 	elif under_attack:
 		status = "spec.defending"
@@ -373,17 +369,17 @@ func summary() -> Dictionary:
 	var citizens := 0
 	for b in hubs():
 		citizens += b.citizens
-	return {"era": sim.era_of(owner), "towns": hubs().size(), "citizens": citizens, "explored": _explored, "villagers": villagers().size(), "army": army().size(),
-		"buildings": sim.state.buildings.filter(func(b: Building) -> bool: return b.owner == owner).size(),
-		"pop": sim.economy.pop_used(owner), "cap": sim.economy.pop_cap(owner), "stock": sim.stock_of(owner), "status": status}
+	return {"era": view.era(), "towns": hubs().size(), "citizens": citizens, "explored": _explored, "villagers": villagers().size(), "army": army().size(),
+		"buildings": view.my_buildings().size(),
+		"pop": view.pop_used(), "cap": view.pop_cap(), "stock": view.stock(), "status": status}
 
 
 ## Where a spectator should look: the force it has sent out, else its main town (tile coordinates).
 func focus() -> Vector2:
-	var live := wave.filter(func(u: Unit) -> bool: return not u.dead)
+	var live := wave.filter(func(u: UnitInfo) -> bool: return not u.dead)
 	if not live.is_empty():
 		var sum := Vector2.ZERO
-		for u: Unit in live:
+		for u: UnitInfo in live:
 			sum += u.pos
 		return sum / float(live.size())
 	var town := main_town()

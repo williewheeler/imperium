@@ -13,7 +13,7 @@ func priority() -> float:
 
 func act() -> void:
 	_cooldown -= ai.think_interval
-	ai.scouts = ai.scouts.filter(func(u: Unit) -> bool: return not u.dead and ai.sim.state.units.has(u))
+	ai.scouts = ai.scouts.filter(func(u: UnitInfo) -> bool: return not u.dead)
 	var villagers := ai.villagers().size()
 	var share := ai.explored_share()
 	var want := 0
@@ -52,7 +52,7 @@ func _train_dog() -> bool:
 
 
 func _draft_villager() -> void:
-	var pick: Unit = null
+	var pick: UnitInfo = null
 	for u in ai.villagers():
 		if ai.scouts.has(u) or u.state in [Unit.State.BUILD_GO, Unit.State.BUILDING]:
 			continue

@@ -56,7 +56,7 @@ func act() -> void:
 	var crew := ai.crew_for(Vector2(_site), 4)
 	if crew.size() < 2:
 		return
-	var err := ai.do({"type": "place", "kind": "settlement", "tile": _site, "units": crew.map(func(u: Unit) -> int: return u.id)})
+	var err := ai.do({"type": "place", "kind": "settlement", "tile": _site, "units": crew.map(func(u: UnitInfo) -> int: return u.id)})
 	if err != "" and err != "err.cant_afford":  # no good after all: not that ground for a while
 		_rejected[_cell(_site)] = ai.age + 90.0
 	_site = Vector2i(-1, -1)
@@ -77,10 +77,9 @@ func _find_site() -> Vector2i:
 		foes.append(b.center())
 	var have := ai.stock()
 	var per_kind := {}  # cell -> [worth of wood, of food, of stone, of gold]
-	var deposits: Dictionary = ai.sim.state.map.deposits
-	for p: Vector2i in deposits:
-		var d: Deposit = deposits[p]
-		if d.amount <= 0 or d.farm or not ai.fog.is_explored(p):
+	for p in ai.view.deposit_tiles():
+		var d := ai.view.deposit_at(p)
+		if d.amount <= 0 or d.farm:
 			continue
 		var c := _cell(p)
 		if not per_kind.has(c):
@@ -95,9 +94,11 @@ func _find_site() -> Vector2i:
 		worth[c] = total
 	var tried: Array = worth.keys()
 	tried.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return worth[a] > worth[b])
-	var rects: Array = ai.sim.placement.rects()
+	var rects: Array = ai.view.building_rects()
 	var avoid: Array[Vector2i] = []
-	for u: Unit in ai.sim.state.units:
+	for u in ai.view.my_units():
+		avoid.append(Vector2i(u.pos))
+	for u in ai.view.seen_units():
 		avoid.append(Vector2i(u.pos))
 	for c: Vector2i in tried.slice(0, 12):
 		if float(_rejected.get(c, 0.0)) > ai.age:
@@ -113,11 +114,11 @@ func _find_site() -> Vector2i:
 			d_foe = minf(d_foe, f.distance_to(center))
 		if d_foe < MIN_FROM_ENEMY:
 			continue
-		var site: Vector2i = ai.sim.state.map.find_site(Defs.BUILDINGS["settlement"]["size"], Vector2i(center), 0, 8, avoid, rects)
+		var site: Vector2i = ai.view.find_site(Defs.BUILDINGS["settlement"]["size"], Vector2i(center), 0, 8, avoid, rects)
 		if site.x < 0:
 			_rejected[c] = ai.age + 90.0
 			continue
-		var err: String = ai.sim.placement.error("settlement", site, ai.owner)
+		var err: String = ai.view.placement_error("settlement", site)
 		if err == "" or err == "err.cant_afford":
 			return site
 		_rejected[c] = ai.age + 90.0

@@ -10,12 +10,12 @@ func priority() -> float:
 
 func act() -> void:
 	var tile := Vector2i(ai.threat_at)
-	var home: Array[Unit] = []
+	var home: Array[UnitInfo] = []
 	for u in ai.army():
 		if u.state == Unit.State.IDLE and not ai.wave.has(u):
 			home.append(u)
 	if not home.is_empty():
-		ai.do({"type": "attack_move", "tile": tile, "units": home.map(func(u: Unit) -> int: return u.id)})
+		ai.do({"type": "attack_move", "tile": tile, "units": home.map(func(u: UnitInfo) -> int: return u.id)})
 	if not ai.wave.is_empty() and home.size() < ai.threat_count:
-		ai.do({"type": "attack_move", "tile": tile, "units": ai.wave.map(func(u: Unit) -> int: return u.id)})
+		ai.do({"type": "attack_move", "tile": tile, "units": ai.wave.map(func(u: UnitInfo) -> int: return u.id)})
 		ai.wave.clear()

@@ -13,7 +13,7 @@ var _next_at := 0.0  # its age before it sends more
 
 ## Can it spare villagers for `b` now? Citizens come off the land for good, so it waits until the economy can
 ## take it: enough hands left working and food in store to train more.
-func _can_spare(b: Building) -> bool:
+func _can_spare(b: BuildingInfo) -> bool:
 	var villagers := ai.villagers().size()
 	var food := int(ai.stock()[Defs.Res.FOOD])
 	if b.kind == "settlement":
@@ -22,7 +22,7 @@ func _can_spare(b: Building) -> bool:
 
 
 ## The town that wants citizens next, or null.
-func _target() -> Building:
+func _target() -> BuildingInfo:
 	for b in ai.hubs():
 		var g: Variant = Defs.GROWTH.get(b.kind)
 		if g != null and b.citizens + _incoming(b) < int(g[0]) and _can_spare(b):
@@ -30,10 +30,10 @@ func _target() -> Building:
 	return null
 
 
-func _incoming(b: Building) -> int:
+func _incoming(b: BuildingInfo) -> int:
 	var n := 0
-	for u: Unit in ai.sim.state.units:
-		if u.owner == ai.owner and u.state == Unit.State.ABSORB_GO and u.target_building == b:
+	for u in ai.view.my_units():
+		if u.state == Unit.State.ABSORB_GO and u.target_building_id == b.id:
 			n += 1
 	return n
 
@@ -49,5 +49,5 @@ func act() -> void:
 	var need := int(Defs.GROWTH[b.kind][0]) - b.citizens - _incoming(b)
 	var send := ai.crew_for(b.center(), mini(need, SEND))
 	if not send.is_empty():
-		ai.do({"type": "absorb", "building": b.id, "units": send.map(func(u: Unit) -> int: return u.id)})
+		ai.do({"type": "absorb", "building": b.id, "units": send.map(func(u: UnitInfo) -> int: return u.id)})
 		_next_at = ai.age + PAUSE

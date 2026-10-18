@@ -54,7 +54,7 @@ func _kinds_by_need(busy: Array, total: int) -> Array:
 
 ## Fields never run out, so their workers never go idle: when one resource is piling up and another has run
 ## short, move a couple of hands from the one to the other.
-func _rebalance(villagers: Array[Unit]) -> void:
+func _rebalance(villagers: Array[UnitInfo]) -> void:
 	var have := ai.stock()
 	var rich := -1
 	var poor := -1

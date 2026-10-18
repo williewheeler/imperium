@@ -136,7 +136,8 @@ func assign_sex(u: Unit) -> void:
 ## An AI to run player `owner_id`, whose town stands at `spot`. It knows only the ground its people have seen.
 func _make_ai(owner_id: int, faction: String, spot: Vector2i) -> void:
 	var ai := AI.new()
-	ai.sim = sim
+	ai.client = HeadlessClient.new(sim, owner_id)
+	ai.view = ai.client.view
 	ai.owner = owner_id
 	ai.faction = faction
 	ai.start = spot

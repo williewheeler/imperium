@@ -5,17 +5,17 @@ extends AIGoal
 
 
 func priority() -> float:
-	var data: Variant = ai.sim.eras.data(ai.owner)
-	if data == null or ai.sim.eras.is_advancing(ai.owner):
+	var data: Variant = ai.view.advance_data()
+	if data == null or ai.view.is_advancing():
 		return -1.0
-	for need: Array in ai.sim.eras.requirements(ai.owner):
+	for need: Array in ai.view.advance_requirements():
 		if not need[1]:
 			return -1.0
 	return 0.9
 
 
 func act() -> void:
-	if ai.sim.eras.can_advance(ai.owner):
+	if ai.view.can_advance():
 		ai.do({"type": "advance"})
 	else:
-		ai.reserve(ai.sim.eras.data(ai.owner)["cost"])
+		ai.reserve(ai.view.advance_data()["cost"])

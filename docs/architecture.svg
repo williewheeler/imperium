@@ -33,7 +33,7 @@
   <rect class="box" x="650" y="120" width="250" height="80" rx="6"/><text class="t" x="775" y="154" text-anchor="middle">AIs</text><text class="s" x="775" y="173" text-anchor="middle">players run by the computer</text>
 
   <!-- Headless client -->
-  <rect class="prop" x="30" y="245" width="900" height="75" rx="6"/><text class="t" x="480" y="270" text-anchor="middle">Headless client  (one per player, human or AI)</text><text class="s" x="480" y="289" text-anchor="middle">holds the player's fog-filtered model of the world, and takes commands. The UI and the AIs both work through it,</text><text class="s" x="480" y="304" text-anchor="middle">so a human and an AI see and do exactly the same things, and neither can look at the real state.</text>
+  <rect class="prop" x="30" y="245" width="900" height="75" rx="6"/><text class="t" x="480" y="270" text-anchor="middle">Headless client  (one per player, human or AI)</text><text class="s" x="480" y="289" text-anchor="middle">holds the player's fog-filtered model of the world, and takes commands. The UI and the AIs both work through it,</text><text class="s" x="480" y="304" text-anchor="middle">so a human and an AI see and do the same things. Built for the AIs (src/client); the UI still reads the Simulation directly.</text>
 
   <!-- Channels -->
   <rect class="prop" x="60" y="350" width="240" height="75" rx="6"/><text class="t" x="180" y="373" text-anchor="middle">View channel</text><text class="s" x="180" y="390" text-anchor="middle">asynchronous, host to client</text><text class="s" x="180" y="405" text-anchor="middle">in-process queue, or NetSession</text>
@@ -64,7 +64,7 @@
   <path class="l" d="M955,62 L1000,62"/><text class="s" x="1010" y="66">a call, or data flowing</text>
   <path class="d" d="M955,84 L1000,84"/><text class="s" x="1010" y="88">a tap that takes no part</text>
   <rect class="prop" x="955" y="98" width="45" height="20" rx="4"/><text class="s" x="1010" y="112">proposed, not built</text>
-  <text class="s" x="955" y="140">Today the Controls and AIs call</text><text class="s" x="955" y="155">Commands directly, the AIs and</text><text class="s" x="955" y="170">Views read the Simulation, and</text><text class="s" x="955" y="185">there are no channels or queue.</text>
+  <text class="s" x="955" y="140">Today the AIs work through a</text><text class="s" x="955" y="155">headless client; the Controls call</text><text class="s" x="955" y="170">Commands and the Views read the</text><text class="s" x="955" y="185">Simulation directly; no channels.</text>
 
   <!-- arrows -->
   <path class="l" d="M460,65 L460,130"/><path class="l" d="M180,130 L180,65"/>

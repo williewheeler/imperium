@@ -19,7 +19,7 @@ func act() -> void:
 	_build(hubs)
 
 
-func _train(towns: Array[Building], hub_count: int) -> void:
+func _train(towns: Array[BuildingInfo], hub_count: int) -> void:
 	if towns.is_empty():
 		return  # only Settlements so far: they cannot make villagers
 	var queued := 0
@@ -29,7 +29,7 @@ func _train(towns: Array[Building], hub_count: int) -> void:
 	var want := mini(ai.villagers_per_town * hub_count, 8 + int(ai.age / ai.grow_seconds) + surplus)
 	if ai.villagers().size() + queued >= want:
 		return
-	var best: Building = null  # the town with the shortest queue
+	var best: BuildingInfo = null  # the town with the shortest queue
 	for t in towns:
 		if t.train_queue.size() < 2 and (best == null or t.train_queue.size() < best.train_queue.size()):
 			best = t
@@ -37,7 +37,7 @@ func _train(towns: Array[Building], hub_count: int) -> void:
 		ai.buy({"type": "train", "building": best.id, "kind": "villager"}, Defs.VILLAGER_COST)
 
 
-func _build(hubs: Array[Building]) -> void:
+func _build(hubs: Array[BuildingInfo]) -> void:
 	var open := 0
 	for kind in ["hut", "house", "farm", "vineyard", "storehouse", "aqueduct", "dock"]:
 		for b in ai.mine(kind):
@@ -49,13 +49,12 @@ func _build(hubs: Array[Building]) -> void:
 	if villagers.size() < 3:
 		return
 	var queued := 0
-	for b: Building in ai.sim.state.buildings:
-		if b.owner == ai.owner:
-			queued += b.train_queue.size()
-	var headroom := ai.sim.economy.pop_cap(ai.owner) - ai.sim.economy.pop_used(ai.owner) - queued
+	for b in ai.view.my_buildings():
+		queued += b.train_queue.size()
+	var headroom := ai.view.pop_cap() - ai.view.pop_used() - queued
 	var home := hubs[_round % hubs.size()]
-	var capped := ai.sim.economy.pop_cap(ai.owner) >= ai.sim.economy.pop_limit()  # no more houses will help
-	if not capped and (headroom < maxi(6, ai.sim.economy.pop_cap(ai.owner) / 8) or ai.need_housing):  # keep a tenth or so free: an army fills it fast
+	var capped := ai.view.pop_cap() >= ai.view.pop_limit()  # no more houses will help
+	if not capped and (headroom < maxi(6, ai.view.pop_cap() / 8) or ai.need_housing):  # keep a tenth or so free: an army fills it fast
 		_round += 1
 		_house(home)
 		return
@@ -71,12 +70,12 @@ func _build(hubs: Array[Building]) -> void:
 		if here < clampi(villagers.size() / hubs.size() / 12 + short_of_food, 1, 4):
 			if ai.place("farm", t.center(), 4, 2, 30):
 				return
-	if ai.sim.era_of(ai.owner) >= 1 and int(ai.stock()[Defs.Res.GOLD]) < 250 and ai.mine_of(["vineyard", "large_vineyard"]).size() < hubs.size():
+	if ai.view.era() >= 1 and int(ai.stock()[Defs.Res.GOLD]) < 250 and ai.mine_of(["vineyard", "large_vineyard"]).size() < hubs.size():
 		ai.place("vineyard", home.center(), 4, 2, 30)  # wine is sold: it brings in gold
 
 
-func _house(home: Building) -> void:
-	if ai.sim.era_of(ai.owner) >= 1:
+func _house(home: BuildingInfo) -> void:
+	if ai.view.era() >= 1:
 		if int(ai.stock()[Defs.Res.STONE]) >= 260 and ai.mine("aqueduct").size() < 2 and ai.place("aqueduct", home.center(), 4):
 			return  # fresh water lets a bigger town live here
 		ai.place("house", home.center(), 3)
@@ -86,7 +85,7 @@ func _house(home: Building) -> void:
 
 ## A storehouse (cheap, takes wood, stone and gold) beside the nearest stone, gold or woods that is a long carry from
 ## anywhere to hand them in. Rarer things first. True if one was started. A fallback: settlements come first.
-func _storehouse(hubs: Array[Building]) -> bool:
+func _storehouse(hubs: Array[BuildingInfo]) -> bool:
 	# A settlement is better (it grows into a town that makes villagers), so a storehouse is for when there is no
 	# settlement to be had: it is at its limit, knows of no ground for one, or is too early to have the people.
 	if not (ai.hubs(false).size() >= ai.max_towns or not ai.settle_possible or ai.age < 150.0):
