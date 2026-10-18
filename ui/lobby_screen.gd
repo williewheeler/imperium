@@ -88,7 +88,7 @@ func _ready() -> void:
 	_status_english = _label("", 13, DIM)
 	column.add_child(_status_english)
 
-	var back_button := _button(Latin.t("Redi"), 150, 20)
+	var back_button := _button(Latin.t("Redi"), 150, 20, "act:back")
 	back_button.tooltip_text = "Back  (Esc)"
 	back_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back_button.pressed.connect(_back)

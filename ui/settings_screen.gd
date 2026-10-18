@@ -105,7 +105,7 @@ func _ready() -> void:
 	_build_players_page(_pages["players"])
 	_build_interface_page(_pages["interface"])
 
-	var done := _toggle(Latin.t("Redi"), 150, 20)
+	var done := _toggle(Latin.t("Redi"), 150, 20, "act:back")
 	done.tooltip_text = "Back to the title  (Esc)"
 	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	done.pressed.connect(_close)

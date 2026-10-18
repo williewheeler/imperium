@@ -63,6 +63,10 @@ static func _draw(img: Image, id: String, color: Color) -> void:
 			if name == "start":  # a play triangle, pointing right
 				for y in 10:
 					_rect(img, 4, 3 + y, 2 + mini(y, 9 - y) * 2, 1, GOLD)
+			elif name == "back":  # the same triangle, pointing left
+				for y in 10:
+					var w := 2 + mini(y, 9 - y) * 2
+					_rect(img, 12 - w, 3 + y, w, 1, GOLD)
 		"coins":
 			_coins(img, int(name))
 		"skill":
