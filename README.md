@@ -27,7 +27,11 @@ with five citizens, no army and nothing in store: a couple of berry bushes and a
 town are the first food, the woods the first wood, and everything else must be saved for. Its hearth
 burns, the trees sway in the wind, and everything of yours flies the Roman purple.
 
-![The Casa Romuli at the start: five citizens, nothing in store, a few berry bushes, the sea and the Circus beyond](docs/screenshots/village.png)
+![The start: the Casa Romuli with five citizens and nothing in store, the Temple of Jupiter on its hill and the Circus Maximus beside it](docs/screenshots/village.png)
+
+**The Capitoline.** Near the city from the first moment stand two landmarks nobody owns: the Circus Maximus in the valley and the great Temple of Jupiter Optimus Maximus on a hill of its own, with its bronze quadriga on the roof. Neither can be built or burned.
+
+![The Temple of Jupiter on its raised platform, beside the Circus Maximus](docs/screenshots/jupiter.png)
 
 **The Circus Maximus.** A landmark stadium stands in the valley near the city: four tiers of timber
 seating, a sand track, a ring of arches round the base, and a crowd that cheers in waves.
@@ -72,7 +76,7 @@ ripples the water, storms roughen it, and fog drifts in banks.
 
 | Rain | Fog |
 |---|---|
-| ![Rain falling over a Republican Forum and aqueduct](docs/screenshots/republic-rain.png) | ![Fog rolling over the village](docs/screenshots/fog.png) |
+| ![Rain falling over a built-up Republican town, the Temple of Jupiter and the Circus](docs/screenshots/republic-rain.png) | ![Fog rolling over the village](docs/screenshots/fog.png) |
 
 **Fighting men.** Horsemen (Equites), spearmen (Pedites) and slingers (Funditores) in the color of
 their owner: purple for you, a different color for another player.
