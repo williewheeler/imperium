@@ -123,7 +123,7 @@ between machines. See DESIGN.md for the lobby itself.
 
 ## Known debts
 
-- `Main` (`main.gd`, about 2,250 lines) mixes the simulation (unit movement, gathering, building, combat
+- `Main` (`main.gd`, about 2,300 lines) mixes the simulation (unit movement, gathering, building, combat
   hooks), the person's driver and input, camera, debug modes and startup. The next split is the
   simulation out from the person's driver.
 - The era is one value for the whole game and belongs to player 0, so `advance` is refused for other
