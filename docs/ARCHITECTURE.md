@@ -71,23 +71,25 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 - **Two asynchronous channels between client and host**, each an in-process queue or `NetSession`: the **command
   channel** (client to host) and the **view channel** (host to client). On the host a *command receiver* takes commands
   off the first, and a *view publisher* sends each player what it may see, from the game state, on the second.
-- **A command interface, queue and consumer in the simulation.** Commands from every source enter through the
-  interface, which is the only thing that writes to the queue. Each entry carries the tick it is due (a live command is
-  stamped for the next tick; a lockstep peer's for an agreed one; a replay's for the tick it was recorded at). The
-  *command consumer* takes the commands due this tick, in order, and validates and applies them through `Commands`.
-  That is where an inherently asynchronous transport meets a simulation that consumes input at fixed ticks, and it
-  means the loop has one source of commands, whoever they come from.
-- **The game loop is the heart.** Each tick (one step of the *tick driver*, which turns wall-clock time into ticks): apply
-  the drained commands to the **game state**; run the **game systems** over the state, which is what makes the world
+- **A command interface and queue in the simulation.** Commands from every source enter through the interface, which is
+  the only thing that writes to the queue. When a command arrives is up to the world; at the interface it is stamped
+  with the tick it is due (a live command for the next tick, a lockstep peer's for an agreed one, a replay's for the tick it
+  was recorded at) and its place in the order. The queue holds them in that order. That is where an inherently
+  asynchronous transport meets a simulation that consumes input at fixed ticks, and it is the one place where
+  the nondeterminism ends.
+- **The game loop is the heart.** Each tick (one step of the *tick driver*, which turns wall-clock time into ticks): drain
+  the commands now due from the queue, validate them and apply them to the **game state**; run the **game systems** over the state, which is what makes the world
   move with nobody issuing anything (a fire burns down, a dog walks towards its goal); and let the state publish
   what changed. The clock reaches the world through the loop, and commands reach it through the drain.
-- **Recorder and Replayer are tools, not part of the core.** The Recorder taps the consumer: what it takes off the queue, in
-  order, with the game's answer to each. The Replayer loads a recording into the queue through the interface, with the
-  recorded due ticks and the AIs and people switched off, so it needs no tie to the tick driver, and the commands go
-  through validation again (which checks the answers match). What is recorded is what the world was told from
-  outside the loop, here the commands, which keeps recording compatible with lockstep, where machines exchange
-  commands; everything inside the loop, such as a gatherer picking a new tree or a path being worked out, is
-  recomputed, not recorded.
+- **Recorder and Replayer are tools, not part of the core, and two sides of one coin.** Whatever is tapped on the way out is what
+  is driven on the way back, so that nothing between them can drift. That point is the command interface: it is where
+  everything the world tells the simulation arrives, already stamped with its due tick and order. The Recorder writes each
+  command there, with a checksum every 5 s. The Replayer loads the recording back through the interface, with the people and AIs
+  switched off, so the queue, the drain and the validation run exactly as they did live. A game is then its config (the seed and
+  settings) plus that list, nothing more. Everything inside the loop, such as a gatherer picking a new tree or a path being
+  worked out, is recomputed, never recorded. Validation happens when a command is applied, so the interface does not
+  know its answer; the answers can be checked by a passive tap in the loop, and the checksums catch the rest. Recording
+  commands, not their effects, keeps this compatible with lockstep, where machines exchange commands.
 
 Two consequences. A command no longer gets an answer at once ("err.cant_afford" is flashed in the same frame today), so
 the `Controls` show a refusal when it comes back and the AIs, whose `buy` logic reads the answer, need late answers or a
