@@ -6,7 +6,7 @@ extends RefCounted
 ## things, and neither can look at the real game.
 ##
 ## A command goes on the simulation's command queue, and its answer (done, or why not) comes back later, as `answered`,
-## once the step has dealt with it. Today the view still reads the simulation as it filters: the view queue is yet to come.
+## once the step has dealt with it. What the player may see comes the other way, on its view queue: the view takes it.
 
 signal answered(ticket: int, cmd: Dictionary, err: String)  # the game has dealt with one of this player's commands: err is "" if it was carried out
 
@@ -16,10 +16,12 @@ var _sim: Simulation
 var _asked := {}  # tickets of this player's commands that have no answer yet
 
 
-func _init(sim: Simulation, p_owner: int) -> void:
+## `every` is how often the host builds this player's view, in ticks (0: only when asked: see `want_view`); `paths`: also the routes
+## of its own units.
+func _init(sim: Simulation, p_owner: int, every := 0, paths := false) -> void:
 	_sim = sim
 	owner = p_owner
-	view = PlayerView.new(sim, p_owner)
+	view = PlayerView.new(sim, p_owner, every, paths)
 	sim.answered.connect(_on_answered)
 
 
@@ -28,6 +30,11 @@ func submit(cmd: Dictionary) -> int:
 	var ticket := _sim.put_command(cmd, owner)
 	_asked[ticket] = true
 	return ticket
+
+
+## Asks the host to build this player's view at the end of the step that is running.
+func want_view() -> void:
+	view.want()
 
 
 func _on_answered(ticket: int, cmd: Dictionary, err: String) -> void:

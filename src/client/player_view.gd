@@ -1,21 +1,23 @@
 class_name PlayerView
 extends RefCounted
 ## What one player may know about the world, and nothing else: the one way an AI or a person's screen reads the game. It
-## is a model that is brought up to date by `refresh`, which holds:
+## is a model that is brought up to date by `refresh`, which takes the latest view the host has put on the player's ViewQueue
+## (a ViewFrame, already filtered by the host) and folds it in. It holds:
 ##   - the player's own people, buildings, stores and era, in detail;
 ##   - other peoples' units while the player can see them, and their buildings once their ground is explored, as far as a
 ##     passer-by could tell (see UnitInfo, BuildingInfo);
 ##   - the ground the player has explored and what is on it, and the few facts that are public (the size of the map, who
 ##     has fallen, who has won);
-## and it says what happens to the player (the signals below), as the host would publish it.
+## and it says what happens to the player (the signals below), as the host published it.
 ## It cannot be asked about anything the player has not seen. It hands out the client's own copies of what is known, and
 ## commands go the other way (HeadlessClient.submit).
 ##
 ## A *god* view (`PlayerView.god`) knows everything: it is for a spectator, who watches every people at once.
 ##
-## Where the news comes from is the part that will change: today `refresh` reads the Simulation directly, filtering as it
-## goes, which stands in for the view link; later the same model will be brought up to date by what the host publishes.
-## The questions it answers do not change with that.
+## What is still not through the queue, and reads the Simulation in place: the ground (`map`, `fog`, the deposits, which a
+## client of another machine would be told as it explored), and the questions the rules answer (`find_site`,
+## `placement_error`, `road_error`, `unit_speed`), which a client would put to the rules itself. The units, buildings, stores,
+## eras, shots and news all come in the frames.
 
 signal notice(key: String)  # a message for the player, as a phrase key
 signal building_completed(b: BuildingInfo)
@@ -28,11 +30,13 @@ signal road_changed(p: Vector2i)
 
 var owner: int  # -1 for a god view
 var _god := false
+var _paths := false
 var _fog: Fog  # what the player has explored (null for a god view)
-var _sim: Simulation  # the stand-in for the view link: nothing outside `refresh` and a few questions below touches it
+var _sim: Simulation  # for the ground and the rules' answers (see above); the world itself comes in the frames
+var _queue: ViewQueue  # where the host puts what the player may see
+var _frame := ViewFrame.new()  # the latest view taken
 var _units := {}  # id -> UnitInfo, for everyone known
 var _buildings := {}  # id -> BuildingInfo
-var _removed := {}  # id -> true if it was absorbed: units that have left the game, since the last refresh
 var _all_units: Array[UnitInfo] = []
 var _mine_units: Array[UnitInfo] = []
 var _seen_units: Array[UnitInfo] = []  # other peoples', in sight now
@@ -46,95 +50,96 @@ static func god(sim: Simulation) -> PlayerView:
 	return PlayerView.new(sim, -1)
 
 
-func _init(sim: Simulation, p_owner: int) -> void:
+## `every` is how often the host puts a view on the queue, in ticks (0: only when `want` asks); `paths`: also the routes of the
+## player's own units (a person's screen draws the route of what is selected).
+func _init(sim: Simulation, p_owner: int, every := 1, paths := false) -> void:
 	_sim = sim
 	owner = p_owner
 	_god = p_owner < 0
+	_paths = paths
 	if not _god:
 		_fog = sim.state.fogs[p_owner]
-	sim.unit_removed.connect(func(id: int, absorbed: bool) -> void:
-		if _units.has(id):
-			_removed[id] = absorbed)
-	sim.notice.connect(func(who: int, key: String) -> void:
-		if who == owner:
-			notice.emit(key))
-	sim.building_completed.connect(func(b: Building) -> void:
-		if b.owner == owner:
-			building_completed.emit(_building_info(b)))
-	sim.era_reached.connect(func(who: int, e: int) -> void:
-		if who == owner:
-			era_reached.emit(e))
-	sim.people_fell.connect(func(p: int) -> void: people_fell.emit(p))
-	sim.game_won.connect(func(w: int) -> void: game_won.emit(w))
-	sim.tile_changed.connect(func(p: Vector2i) -> void:
-		if _god or is_explored(p):
-			tile_changed.emit(p))
-	sim.road_changed.connect(func(p: Vector2i) -> void:
-		if _god or is_explored(p):
-			road_changed.emit(p))
+	_queue = sim.open_view(p_owner, every, paths)
 	refresh()
 
 
 # ---------------------------------------------------------------- keeping up to date
 
-## Brings the model up to date with the world.
+## Brings the model up to date with the latest view the host has put on the queue (if it has put one since the last).
 func refresh() -> void:
+	var frame := _queue.take()
+	if frame != null:
+		_apply(frame)
+
+
+## Asks the host for a view at the end of the step that is running, for a client that does not have one every tick.
+func want() -> void:
+	_queue.want()
+
+
+## Has the host build a view now, and takes it. (For a debug aid or a test that has changed the game by hand: in play, the
+## step puts the views on the queue.)
+func catch_up() -> void:
+	_sim.publish_view(_queue)
+	refresh()
+
+
+func _apply(f: ViewFrame) -> void:
+	_frame = f
 	var live_units := {}
 	_all_units = []
 	_mine_units = []
 	_seen_units = []
-	for u: Unit in _sim.state.units:
-		if u.dead or u.absorbed:
-			continue
-		var mine := u.owner == owner
-		if not mine and not _god and not _fog.is_visible_now(Vector2i(u.pos)):
-			continue
-		var info: UnitInfo = _units.get(u.id)
+	for r in f.units:
+		var info: UnitInfo = _units.get(r.id)
 		if info == null:
 			info = UnitInfo.new()
-			info.id = u.id
-			info.kind = u.kind
-			info.owner = u.owner
-			info.own = mine
-			_units[u.id] = info
-		_copy_unit(info, u, mine or _god)
+			info.id = r.id
+			info.kind = r.kind
+			info.owner = r.owner
+			info.own = r.own
+			_units[r.id] = info
+		_copy_unit(info, r)
 		_all_units.append(info)
-		if mine:
+		if r.own:
 			_mine_units.append(info)
 		else:
 			_seen_units.append(info)
-		live_units[u.id] = true
-	for u: Unit in _sim.state.units:  # who is fighting whom, now that everyone known has a model
-		if live_units.has(u.id):
-			var info: UnitInfo = _units[u.id]
-			info.target = _units.get(u.target.id) if u.target != null and info.state == Unit.State.ATTACKING else null
+		live_units[r.id] = true
+	for r in f.units:  # who is fighting whom, now that everyone known has a model
+		(_units[r.id] as UnitInfo).target = _units.get(r.target_id) if r.target_id != 0 else null
 	for id: int in _units.keys():
 		if not live_units.has(id):
 			var info: UnitInfo = _units[id]
-			if _removed.has(id):
+			if f.removed.has(id):
 				info.dead = true  # it left the game
-				info.absorbed = bool(_removed[id])
+				info.absorbed = bool(f.removed[id])
 			else:
 				info.gone = true  # it is only out of sight
 			_units.erase(id)
-	_removed.clear()
 
 	var live_buildings := {}
 	_all_buildings = []
 	_my_buildings = []
 	_known_buildings = []
-	for b: Building in _sim.state.buildings:
-		var mine := b.owner == owner
-		if not mine and not _god and not _fog.is_explored(Vector2i(b.center())):
-			continue
-		var info := _building_info(b)
-		_copy_building(info, b, mine or _god)
+	for r in f.buildings:
+		var info: BuildingInfo = _buildings.get(r.id)
+		if info == null:
+			info = BuildingInfo.new()
+			info.id = r.id
+			info.kind = r.kind
+			info.owner = r.owner
+			info.tile = r.tile
+			info.size = r.size
+			info.own = r.own
+			_buildings[r.id] = info
+		_copy_building(info, r)
 		_all_buildings.append(info)
-		if mine:
+		if r.own:
 			_my_buildings.append(info)
 		else:
 			_known_buildings.append(info)
-		live_buildings[b.id] = true
+		live_buildings[r.id] = true
 	for id: int in _buildings.keys():
 		if not live_buildings.has(id):
 			var info: BuildingInfo = _buildings[id]
@@ -142,72 +147,61 @@ func refresh() -> void:
 			_buildings.erase(id)
 			building_destroyed.emit(info)
 
-
-func _building_info(b: Building) -> BuildingInfo:
-	var info: BuildingInfo = _buildings.get(b.id)
-	if info == null:
-		info = BuildingInfo.new()
-		info.id = b.id
-		info.kind = b.kind
-		info.owner = b.owner
-		info.tile = b.tile
-		info.size = b.size
-		info.own = b.owner == owner
-		_buildings[b.id] = info
-	return info
-
-
-## What a passer-by sees of an unfinished or burning unit's activity: not what it means to do, only what it is doing.
-func _seen_state(s: Unit.State) -> Unit.State:
-	match s:
-		Unit.State.ATTACKING, Unit.State.GATHERING, Unit.State.BUILDING, Unit.State.PAVING:
-			return s
-	return Unit.State.IDLE
+	for e in f.events:  # what happened, in order
+		match e[0]:
+			"notice":
+				notice.emit(e[1])
+			"building_completed":
+				if _buildings.has(e[1]):
+					building_completed.emit(_buildings[e[1]])
+			"era_reached":
+				era_reached.emit(e[1])
+			"people_fell":
+				people_fell.emit(e[1])
+			"game_won":
+				game_won.emit(e[1])
+			"tile_changed":
+				tile_changed.emit(e[1])
+			"road_changed":
+				road_changed.emit(e[1])
 
 
-func _copy_unit(info: UnitInfo, u: Unit, full: bool) -> void:
-	info.pos = u.pos
-	info.prev_pos = u.prev_pos
-	info.female = u.female
-	info.look = u.look
-	info.display = u.display
-	info.anim = u.anim
-	info.walk = u.walk
-	info.sdir = u.sdir
-	info.moving = u.moving
-	info.hp = u.hp
-	info.hit_flash = u.hit_flash
-	info.bar_t = u.bar_t
-	info.atk_t = u.atk_t
-	info.carry = u.carry
-	info.carry_kind = u.carry_kind
-	if full:
-		info.state = u.state
-		info.gather_kind = u.gather_kind
-		info.working_farm = u.working_farm
-		info.target_building_id = u.target_building.id if u.target_building != null else 0
-		if info.selected:  # (the route of a selected unit is drawn)
-			info.path = u.path.duplicate()
-	else:
-		info.state = _seen_state(u.state)
-		var working := info.state == Unit.State.GATHERING
-		info.gather_kind = u.gather_kind if working else -1  # (what it is doing shows in its work)
-		info.working_farm = u.working_farm and working
+func _copy_unit(info: UnitInfo, r: ViewFrame.UnitRecord) -> void:
+	info.pos = r.pos
+	info.prev_pos = r.prev_pos
+	info.female = r.female
+	info.look = r.look
+	info.display = r.display
+	info.anim = r.anim
+	info.walk = r.walk
+	info.sdir = r.sdir
+	info.moving = r.moving
+	info.hp = r.hp
+	info.hit_flash = r.hit_flash
+	info.bar_t = r.bar_t
+	info.atk_t = r.atk_t
+	info.carry = r.carry
+	info.carry_kind = r.carry_kind
+	info.state = r.state
+	info.gather_kind = r.gather_kind
+	info.working_farm = r.working_farm
+	info.target_building_id = r.target_building_id
+	if _paths and r.own:
+		info.path = r.path
 
 
-func _copy_building(info: BuildingInfo, b: Building, full: bool) -> void:
-	info.kind = b.kind  # a Settlement grows into a Town Center
-	info.complete = b.complete
-	info.work = b.work
-	info.hp = b.hp
-	info.burning = b.burning
-	info.bar_t = b.bar_t
-	info.building_name = b.building_name
-	info.era = _sim.era_of(b.owner)
-	if full:
-		info.citizens = b.citizens
-		info.train_queue = b.train_queue.duplicate()
-		info.train_progress = b.train_progress
+func _copy_building(info: BuildingInfo, r: ViewFrame.BuildingRecord) -> void:
+	info.kind = r.kind  # a Settlement grows into a Town Center
+	info.complete = r.complete
+	info.work = r.work
+	info.hp = r.hp
+	info.burning = r.burning
+	info.bar_t = r.bar_t
+	info.building_name = r.building_name
+	info.era = r.era
+	info.citizens = r.citizens
+	info.train_queue = r.train_queue
+	info.train_progress = r.train_progress
 
 
 # ---------------------------------------------------------------- the player's own
@@ -221,53 +215,56 @@ func my_buildings() -> Array[BuildingInfo]:
 
 
 func stock() -> Array[int]:
-	return _sim.stock_of(owner)
+	return _frame.stock
 
 
 func era() -> int:
-	return _sim.era_of(owner)
+	return _frame.era
 
 
 func pop_used() -> int:
-	return _sim.economy.pop_used(owner)
+	return _frame.pop_used
 
 
 func pop_cap() -> int:
-	return _sim.economy.pop_cap(owner)
+	return _frame.pop_cap
 
 
 ## The most people one player may have in this game (the same for everyone).
 func pop_limit() -> int:
-	return _sim.economy.pop_limit()
+	return _frame.pop_limit
 
 
 func can_afford(cost: Array) -> bool:
-	return _sim.economy.can_afford(cost, owner)
+	for i in cost.size():
+		if _frame.stock[i] < cost[i]:
+			return false
+	return true
 
 
 func has_pop_room() -> bool:
-	return _sim.economy.has_pop_room(owner)
+	return _frame.pop_room
 
 
 ## The next advance (cost, time, needs), or null if there is none yet.
 func advance_data() -> Variant:
-	return _sim.eras.data(owner)
+	return _frame.advance.get("data")
 
 
 func advance_requirements() -> Array:
-	return _sim.eras.requirements(owner)
+	return _frame.advance.get("requirements", [])
 
 
 func is_advancing() -> bool:
-	return _sim.eras.is_advancing(owner)
+	return _frame.advance.get("advancing", false)
 
 
 func advance_progress() -> float:
-	return _sim.eras.progress_of(owner)
+	return _frame.advance.get("progress", 0.0)
 
 
 func can_advance() -> bool:
-	return _sim.eras.can_advance(owner)
+	return _frame.advance.get("can", false)
 
 
 # ---------------------------------------------------------------- what is known of the others
@@ -302,14 +299,7 @@ func building_at(tile: Vector2i) -> BuildingInfo:
 
 ## Shots in flight that the player can see: where each is on the ground (tile coordinates) and how far along (0 to 1).
 func shots() -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	for p: Dictionary in _sim.state.projectiles:
-		var target: Unit = p["target"]
-		var k := clampf(float(p["t"]) / float(p["dur"]), 0.0, 1.0)
-		var tile: Vector2 = (p["from"] as Vector2).lerp(target.pos, k)
-		if _god or is_visible(Vector2i(tile)) or (p["attacker"] as Unit).owner == owner:
-			out.append({"tile": tile, "k": k})
-	return out
+	return _frame.shots
 
 
 # ---------------------------------------------------------------- the ground
@@ -395,14 +385,13 @@ func building_rects() -> Array:
 ## The tiles of roads that have been paid for and are waiting to be paved.
 func road_plan_tiles() -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	for p: Vector2i in _sim.state.road_plans:
-		if is_explored(p):
-			out.append(p)
+	for p: Vector2i in _frame.road_plans:
+		out.append(p)
 	return out
 
 
 func has_road_plan(tile: Vector2i) -> bool:
-	return _sim.state.road_plans.has(tile)
+	return _frame.road_plans.has(tile)
 
 
 ## Why a road cannot be laid on `tile`, or "" if it can.
@@ -429,13 +418,13 @@ func unit_speed(u: Unit) -> float:
 # ---------------------------------------------------------------- what everyone knows
 
 func time() -> float:
-	return _sim.time()
+	return _frame.tick * Simulation.TICK
 
 
 ## The people that has won, or -1 while the game goes on.
 func winner() -> int:
-	return _sim.state.winner
+	return _frame.winner
 
 
 func has_fallen(people: int) -> bool:
-	return _sim.state.defeated.has(people)
+	return _frame.defeated.has(people)

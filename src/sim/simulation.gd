@@ -10,6 +10,9 @@ extends RefCounted
 ## client that draws the game calls it as often as real time asks (see Main); a headless run calls it as fast
 ## as it can.
 ##
+## **Players see through views.** At the end of a step the simulation builds, for each player's client, what that player may
+## know (a ViewFrame, by a ViewFilter: the one place the fog is applied) and puts it on the player's `ViewQueue`.
+##
 ## **Players act through commands.** Anything a player does (a person, an AI, a replay) is a command put on the
 ## `command_queue` (see CommandQueue) and carried out at the start of a step, and nothing else changes the game from outside.
 ## The answer to each comes back as the `answered` signal, a tick after the question at the soonest.
@@ -48,6 +51,7 @@ var state := GameState.new()  # the game: inert data that the systems act on
 var ais: Array[AI] = []
 var tainted: Array[String] = []  # what has changed the game other than by commands, so that a replay of it cannot be trusted
 var command_queue := CommandQueue.new()  # where the players' commands wait for the step
+var view_queues: Array[ViewQueue] = []  # where each player's views wait for its client (see `open_view`)
 var ai_enabled := true  # false when the commands come from somewhere else (a replay), so the AIs stay quiet
 var drawn_fogs: Array = []  # the players whose Fog also keeps a picture of itself (set by a client that draws them)
 
@@ -132,6 +136,9 @@ func step() -> void:
 	vision.update()
 	Perf.stop("fog", t0)
 	state.tick += 1
+	t0 = Perf.start()
+	publish_views()
+	Perf.stop("views", t0)
 	stepped.emit()
 
 
@@ -147,6 +154,33 @@ func drain_commands() -> void:
 	for e in command_queue.drain(state.tick):
 		var err := commands.apply(e["cmd"])
 		answered.emit(int(e["ticket"]), e["cmd"], err)
+
+
+## Opens a view queue for `player` (-1: a spectator who sees all). The first view is on it at once. `every` is how often the step
+## puts another there of its own accord, in ticks (0: only when asked, see ViewQueue.want).
+func open_view(player: int, every := 1, paths := false) -> ViewQueue:
+	var q := ViewQueue.new()
+	q.player = player
+	q.every = every
+	q.paths = paths
+	q.filter = ViewFilter.new(self, player)
+	view_queues.append(q)
+	publish_view(q)
+	return q
+
+
+## The end of a step: builds the views that are due, one for each player that is to have one.
+func publish_views() -> void:
+	for q in view_queues:
+		if q.due(state.tick):
+			publish_view(q)
+
+
+## Builds a view and puts it on `q` now. (The step does this for the views that are due; a debug aid or a test that has
+## changed the game by hand uses it to bring a client up to date.)
+func publish_view(q: ViewQueue) -> void:
+	q.put(q.filter.build(q.paths))
+	q.published(state.tick)
 
 
 # ---------------------------------------------------------------- queries

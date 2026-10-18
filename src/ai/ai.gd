@@ -79,6 +79,8 @@ func set_difficulty(id: String) -> void:
 
 
 func tick(delta: float) -> void:
+	if _see_timer <= 2.5 * delta or _timer <= 2.5 * delta:
+		client.want_view()  # it looks in a tick or so, and the host builds its view at the end of each step till then
 	age += delta
 	_see_timer -= delta
 	if _see_timer <= 0.0:

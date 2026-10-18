@@ -171,7 +171,7 @@ func _ready() -> void:
 		by_owner.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
 		viewers.assign(by_owner.slice(0, 4))
 	else:
-		client = HeadlessClient.new(sim, LOCAL)  # the screen is wrapped round it: it knows what the player may know, and the person acts through it
+		client = HeadlessClient.new(sim, LOCAL, 1, true)  # the screen is wrapped round it: it knows what the player may know, and the person acts through it
 		view = client.view
 		fog = view.fog()
 	era_preview.game = self

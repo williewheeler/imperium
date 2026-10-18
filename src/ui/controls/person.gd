@@ -69,7 +69,7 @@ func set_selected_unit(id: int, on := true) -> void:
 		if u.id == id:
 			u.selected = on
 			return
-	main.view.refresh()  # it may be newer than the client's picture of the world
+	main.view.catch_up()  # it may be newer than the client's picture of the world
 	for u in main.view.my_units():
 		if u.id == id:
 			u.selected = on
@@ -81,7 +81,7 @@ func set_selected_building(id: int, on := true) -> void:
 		if b.id == id:
 			b.selected = on
 			return
-	main.view.refresh()
+	main.view.catch_up()
 	for b in main.view.my_buildings():
 		if b.id == id:
 			b.selected = on
