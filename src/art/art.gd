@@ -1231,7 +1231,8 @@ static func _city_center() -> Image:
 	var rx := 8.0
 	var ry := 4.0
 	var drum_h := 9.0
-	var yb := float(peak - 1) + 3.0  # the middle of the drum's base, sunk a little into the roof
+	# the ridge slopes down toward the front, and the tholos belongs at its middle, 12 pixels below the topmost point
+	var yb := float(peak - 1) + 3.0 + 12.0  # the middle of the drum's base, sunk a little into the roof
 	var yt := yb - drum_h  # the middle of its top
 	for xi in range(int(cx - rx), int(cx + rx) + 1):  # the drum's side: from the top rim's front arc down to the base's
 		var dx := (xi + 0.5 - cx) / rx
