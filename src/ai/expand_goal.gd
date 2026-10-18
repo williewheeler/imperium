@@ -3,15 +3,19 @@ extends AIGoal
 ## Founds new settlements. Land is finite and the deposits round a town run out, so once it has the people for it
 ## an AI looks for the richest explored ground a good way from its own towns (and from anyone else's), and sends a
 ## crew to put up a Settlement there. A Settlement takes in every resource; PopulateGoal then fills it with
-## citizens until it grows into a town. It also carries the AI towards its neighbors, where the fighting starts.
+## citizens until it grows into a town. (A storehouse is the fallback when there is no ground for one: see GrowthGoal.) It also carries the AI towards its neighbors, where the fighting starts.
 
 const CELL := 12  # tiles: deposits are counted in squares of this size
-const WEIGHT := [1.0, 1.4, 2.0, 2.4]  # what a deposit is worth, by resource: wood, food, stone, gold
-const MIN_FROM_OWN := 20.0  # tiles from its own towns
-const MAX_FROM_OWN := 70.0
-const MIN_FROM_ENEMY := 24.0
+const WEIGHT := [0.5, 1.0, 4.0, 5.0]  # what a deposit is worth, by resource: wood, food, stone, gold (woods are everywhere)
+const CAP := [8.0, 8.0, 99.0, 99.0]  # most a cell is credited for one resource: a forest should not outweigh a mine
+const MIN_FROM_OWN := 16.0  # tiles from its own towns
+const MAX_FROM_OWN := 80.0
+const MIN_FROM_ENEMY := 22.0
+const PAUSE := 20.0  # seconds after one is built before it looks for the next
 
 var _site := Vector2i(-1, -1)
+var _count := 0
+var _last_done := 0.0  # its age when its last new settlement stood complete
 var _search_clock := 0.0
 var _rejected := {}  # cell -> age until which it is not tried again
 
@@ -19,13 +23,18 @@ var _rejected := {}  # cell -> age until which it is not tried again
 func _wants() -> bool:
 	var done := ai.hubs()
 	var all := ai.hubs(false)
-	if done.is_empty() or all.size() >= ai.max_towns or ai.age < 120.0 or ai.under_attack:
+	if done.is_empty() or all.size() >= ai.max_towns or ai.age < 90.0 or ai.under_attack:
 		return false
 	for b in all:
 		if not b.complete:
 			return false  # one at a time
+	if _last_done == 0.0 or all.size() > _count:
+		_count = all.size()
+		_last_done = ai.age
+	if ai.age < _last_done + PAUSE:
+		return false
 	var villagers := ai.villagers().size()
-	return villagers >= 12 * done.size() + 4 or (ai.unemployed >= 3 and villagers >= 8)
+	return villagers >= 9 * done.size() + 6 or (ai.unemployed >= 3 and villagers >= 8)
 
 
 func priority() -> float:
@@ -37,6 +46,7 @@ func act() -> void:
 	if _site.x < 0 and _search_clock <= 0.0:
 		_search_clock = 10.0
 		_site = _find_site()
+		ai.settle_possible = _site.x >= 0
 	if _site.x < 0:
 		return
 	var cost: Array = Defs.BUILDINGS["settlement"]["cost"]
@@ -65,14 +75,24 @@ func _find_site() -> Vector2i:
 	var foes: Array[Vector2] = []
 	for b in ai.enemy_buildings(own[0]):
 		foes.append(b.center())
-	var worth := {}
+	var have := ai.stock()
+	var per_kind := {}  # cell -> [worth of wood, of food, of stone, of gold]
 	var deposits: Dictionary = ai.game.map.deposits
 	for p: Vector2i in deposits:
 		var d: Deposit = deposits[p]
 		if d.amount <= 0 or d.farm or not ai.fog.is_explored(p):
 			continue
 		var c := _cell(p)
-		worth[c] = float(worth.get(c, 0.0)) + float(WEIGHT[d.kind]) * minf(float(d.amount), 300.0) / 100.0
+		if not per_kind.has(c):
+			per_kind[c] = [0.0, 0.0, 0.0, 0.0]
+		per_kind[c][d.kind] += float(WEIGHT[d.kind]) * minf(float(d.amount), 300.0) / 100.0
+	var worth := {}
+	for c: Vector2i in per_kind:
+		var total := 0.0
+		for k in 4:
+			var need := 2.0 if int(have[k]) < 150 else 1.0  # worth more if it is short of that
+			total += minf(float(per_kind[c][k]), float(CAP[k])) * need
+		worth[c] = total
 	var tried: Array = worth.keys()
 	tried.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return worth[a] > worth[b])
 	var rects: Array = ai.game.placement.rects()

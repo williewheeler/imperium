@@ -59,10 +59,8 @@ func _build(hubs: Array[Building]) -> void:
 		_round += 1
 		_house(home)
 		return
-	if ai.mine("storehouse").is_empty() and villagers.size() >= 6:  # by the nearest woods (food is only dropped at a town)
-		var wood := ai.nearest_deposit(Defs.Res.WOOD, hubs[0].center(), 5)
-		if wood.x >= 0 and ai.place("storehouse", Vector2(wood), 1):
-			return
+	if villagers.size() >= 6 and _storehouse(hubs):
+		return
 	var fields := ai.mine_of(["farm", "large_farm"])
 	for t in hubs:  # a farm has eight plots, one worker to each: about one for every twelve villagers at each town, more if food is short
 		var here := 0
@@ -84,3 +82,29 @@ func _house(home: Building) -> void:
 		ai.place("house", home.center(), 3)
 	else:
 		ai.place("hut", home.center(), 3)
+
+
+## A storehouse (cheap, takes wood, stone and gold) beside the nearest stone, gold or woods that is a long carry from
+## anywhere to hand them in. Rarer things first. True if one was started. A fallback: settlements come first.
+func _storehouse(hubs: Array[Building]) -> bool:
+	# A settlement is better (it grows into a town that makes villagers), so a storehouse is for when there is no
+	# settlement to be had: it is at its limit, knows of no ground for one, or is too early to have the people.
+	if not (ai.hubs(false).size() >= ai.max_towns or not ai.settle_possible or ai.age < 150.0):
+		return false
+	var stores := ai.mine("storehouse")
+	if stores.size() >= 2 + hubs.size():
+		return false
+	var dropoffs := ai.mine_of(["storehouse", "settlement", "town_center", "city_center"], true)
+	for kind in [Defs.Res.STONE, Defs.Res.GOLD, Defs.Res.WOOD]:
+		for hub in hubs:
+			var tile := ai.nearest_deposit(kind, hub.center(), 4)
+			if tile.x < 0:
+				continue
+			var far := true
+			for d in dropoffs:
+				if d.center().distance_to(Vector2(tile)) < 7.0:
+					far = false
+					break
+			if far and ai.place("storehouse", Vector2(tile), 1, 2, 6):
+				return true
+	return false

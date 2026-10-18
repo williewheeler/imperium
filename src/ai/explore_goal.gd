@@ -19,7 +19,7 @@ func act() -> void:
 	var want := 0
 	if villagers >= 6 and share < 0.9:
 		want = 1
-	if ai.age > 180.0 and villagers >= 12 and share < 0.6:
+	if ai.age > 120.0 and villagers >= 10 and share < 0.5:  # a second dog early: the ground round it first
 		want = 2
 	if ai.age > 500.0 and villagers >= 25 and share < 0.4:
 		want = 3

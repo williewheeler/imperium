@@ -35,6 +35,7 @@ var age := 0.0  # seconds of its history
 var blocked := {}  # deposit tile -> seconds before it is tried again (no way to reach it)
 var seen_kinds := {}  # kind of enemy unit -> the most of them it has seen at once lately (it picks counters from this)
 var reserved := [0, 0, 0, 0]  # resources a more pressing goal is saving for this think
+var settle_possible := true  # ExpandGoal knows of ground for another settlement (else a storehouse will do)
 var under_attack := false  # enemy fighters are near its buildings
 var threat_at := Vector2.ZERO  # where
 var threat_count := 0  # how many of them

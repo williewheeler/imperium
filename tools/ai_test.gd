@@ -38,6 +38,14 @@ func _process(dt: float) -> bool:
 			var home := ai.main_town()
 			var foes := ai.enemy_buildings(home.center()) if home != null else []
 			print("     wave=%d %s  known enemy buildings=%d nearest=%s" % [ai.wave.size(), states, foes.size(), (str(snappedf(foes[0].center().distance_to(home.center()), 1.0)) + " tiles") if not foes.is_empty() else "-"])
+			var rich := 0
+			for b in ai.hubs():
+				for kind in [Defs.Res.STONE, Defs.Res.GOLD]:
+					for mp: Vector2i in g.map.mines.get(kind, []):
+						if g.map.deposits.has(mp) and Vector2(mp).distance_to(b.center()) <= 16.0:
+							rich += 1
+							break
+			print("     storehouses=%d  hub-by-stone-or-gold=%d" % [ai.mine("storehouse").size(), rich])
 			print("  AI %d %-9s era=%d hubs=%d citizens=%d explored=%2d%% villagers=%2d army=%2d buildings=%2d pop=%3d/%3d  %s  stock=%s" % [ai.owner, Defs.faction_of(ai.owner)["english"], s["era"], s["towns"], s["citizens"], int(float(s["explored"]) * 100.0), s["villagers"], s["army"], s["buildings"], s["pop"], s["cap"], s["status"].replace("spec.", ""), s["stock"]])
 	if elapsed >= limit:
 		quit(0)
