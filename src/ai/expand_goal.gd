@@ -56,9 +56,11 @@ func act() -> void:
 	var crew := ai.crew_for(Vector2(_site), 4)
 	if crew.size() < 2:
 		return
-	var err := ai.do({"type": "place", "kind": "settlement", "tile": _site, "units": crew.map(func(u: UnitInfo) -> int: return u.id)})
-	if err != "" and err != "err.cant_afford":  # no good after all: not that ground for a while
-		_rejected[_cell(_site)] = ai.age + 90.0
+	var site := _site
+	ai.do({"type": "place", "kind": "settlement", "tile": site, "units": crew.map(func(u: UnitInfo) -> int: return u.id)}, func(err: String) -> void:
+		if err != "err.cant_afford":  # no good after all: not that ground for a while
+			_rejected[_cell(site)] = ai.age + 90.0)
+	ai.spend(cost)
 	_site = Vector2i(-1, -1)
 
 

@@ -80,10 +80,15 @@ func _init() -> void:
 
 	# acting: only as itself, and only on its own
 	var mine := view.my_units()[0]
-	var refused := client.submit({"type": "move", "owner": foe, "tile": Vector2i(mine.pos) + Vector2i(5, 0), "units": [mine.id]})
-	_check("a command goes out in its own name, whatever it says", refused == "" and sim.commands != null)
+	var answers := {}
+	client.answered.connect(func(ticket: int, _cmd: Dictionary, err: String) -> void: answers[ticket] = err)
+	var own_ticket := client.submit({"type": "move", "owner": foe, "tile": Vector2i(mine.pos) + Vector2i(5, 0), "units": [mine.id]})
 	var stolen: Unit = sim.state.units.filter(func(u: Unit) -> bool: return u.owner == foe)[0]
-	_check("it cannot order another people's unit", client.submit({"type": "move", "tile": Vector2i(stolen.pos) + Vector2i(5, 0), "units": [stolen.id]}) == "err.not_allowed")
+	var stolen_ticket := client.submit({"type": "move", "tile": Vector2i(stolen.pos) + Vector2i(5, 0), "units": [stolen.id]})
+	_check("a command waits for the step: no answer yet", answers.is_empty() and sim.command_queue.size() == 2)
+	sim.step()
+	_check("a command goes out in its own name, whatever it says", answers.get(own_ticket, "?") == "")
+	_check("it cannot order another people's unit", answers.get(stolen_ticket, "?") == "err.not_allowed")
 	for i in 20:
 		sim.step()
 	view.refresh()

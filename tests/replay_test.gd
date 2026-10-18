@@ -66,14 +66,14 @@ func _person(sim: Simulation) -> void:
 			if d.kind == Defs.Res.WOOD and Vector2(p).distance_to(sim.state.start) < best:
 				best = Vector2(p).distance_to(sim.state.start)
 				wood = p
-		sim.commands.submit({"type": "gather", "owner": 0, "tile": wood, "units": me.map(func(u: Unit) -> int: return u.id)})
+		sim.commands.apply({"type": "gather", "owner": 0, "tile": wood, "units": me.map(func(u: Unit) -> int: return u.id)})
 	if sim.state.tick == 600:
 		sim.taint("test")
 		var one: Unit = sim.state.units.filter(func(u: Unit) -> bool: return u.owner == 0)[0]
-		sim.commands.submit({"type": "move", "owner": 0, "tile": Vector2i(one.pos) + Vector2i(6, 3), "units": [one.id]})
+		sim.commands.apply({"type": "move", "owner": 0, "tile": Vector2i(one.pos) + Vector2i(6, 3), "units": [one.id]})
 	if sim.state.tick == 900:
 		var theirs: Unit = sim.state.units.filter(func(u: Unit) -> bool: return u.owner == 1)[0]
-		sim.commands.submit({"type": "stop", "owner": 0, "units": [theirs.id]})  # (not the person's unit, so the game says no)
+		sim.commands.apply({"type": "stop", "owner": 0, "units": [theirs.id]})  # (not the person's unit, so the game says no)
 
 
 func _init() -> void:

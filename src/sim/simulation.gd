@@ -10,8 +10,9 @@ extends RefCounted
 ## client that draws the game calls it as often as real time asks (see Main); a headless run calls it as fast
 ## as it can.
 ##
-## **Players act through commands.** Anything a player does (a person, an AI, a replay) is a `Commands.submit`
-## made *between* ticks, or by an AI at the start of one, and nothing else changes the game from outside.
+## **Players act through commands.** Anything a player does (a person, an AI, a replay) is a command put on the
+## `command_queue` (see CommandQueue) and carried out at the start of a step, and nothing else changes the game from outside.
+## The answer to each comes back as the `answered` signal, a tick after the question at the soonest.
 ## With the same `SimConfig` and the same commands at the same ticks, a game always comes out the same: that
 ## is what makes replays possible (see Replay). So inside the simulation:
 ##   - randomness comes only from `state.rng`, and only the rules draw from it (an AI has a generator of its own);
@@ -38,6 +39,7 @@ signal people_fell(owner: int)
 signal game_won(winner: int)
 signal tile_changed(p: Vector2i)  # the ground there is different (a deposit used up, marsh drained)
 signal road_changed(p: Vector2i)
+signal answered(ticket: int, cmd: Dictionary, err: String)  # a command from the queue was carried out ("" ) or refused (the reason)
 signal stepped  # a tick has been taken (a recorder listens)
 signal tainted_by(why: String)  # something other than commands has changed the game (see `taint`)
 
@@ -45,6 +47,7 @@ var config: SimConfig
 var state := GameState.new()  # the game: inert data that the systems act on
 var ais: Array[AI] = []
 var tainted: Array[String] = []  # what has changed the game other than by commands, so that a replay of it cannot be trusted
+var command_queue := CommandQueue.new()  # where the players' commands wait for the step
 var ai_enabled := true  # false when the commands come from somewhere else (a replay), so the AIs stay quiet
 var drawn_fogs: Array = []  # the players whose Fog also keeps a picture of itself (set by a client that draws them)
 
@@ -98,6 +101,7 @@ func step() -> void:
 		for ai in ais:
 			ai.tick(dt)
 	Perf.stop("ais", t0)
+	drain_commands()
 	t0 = Perf.start()
 	movement.begin_tick()
 	for u in state.units:
@@ -129,6 +133,20 @@ func step() -> void:
 	Perf.stop("fog", t0)
 	state.tick += 1
 	stepped.emit()
+
+
+# ---------------------------------------------------------------- commands
+
+## Puts `cmd` on the queue as `player`, due the next time a step runs. Returns the ticket its answer will come under.
+func put_command(cmd: Dictionary, player: int) -> int:
+	return command_queue.put(cmd, player, state.tick)
+
+
+## The start of a step: carries out the commands that are due, in the queue's order, and says what became of each.
+func drain_commands() -> void:
+	for e in command_queue.drain(state.tick):
+		var err := commands.apply(e["cmd"])
+		answered.emit(int(e["ticket"]), e["cmd"], err)
 
 
 # ---------------------------------------------------------------- queries

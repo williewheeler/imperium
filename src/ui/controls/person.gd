@@ -1,7 +1,7 @@
 class_name Person
 extends RefCounted
 ## The person at the keyboard, as a driver of the game: turns the mouse, the keys and the selection into commands
-## (everything the person does to the world goes through `sim.commands.submit`; see `give`), and keeps the
+## (everything the person does to the world is a command through the client; see `give`), and keeps the
 ## interface's own state: what is selected, what is being placed, the drag box, the markers.
 ## The simulation never sees any of this; the HUD and the views read it.
 
@@ -19,6 +19,7 @@ var markers: Array[Dictionary] = []  # {pos: Vector2, t: float, attack: bool}: t
 var absorb_mode := false  # the next left click on a town takes the selected villagers into it for good (key I)
 var attack_move_mode := false  # the next left click sends the selected fighters there to fight on the way (key A)
 
+var _placing_ticket := 0  # the foundation just asked for, whose answer is awaited (the ghost stays up till then)
 var _drag_start := Vector2.ZERO
 var _road_dragging := false
 var _road_start := Vector2i.ZERO
@@ -309,19 +310,29 @@ func absorb_at(mp: Vector2) -> void:
 	give({"type": "absorb", "building": b.id, "units": ids(selected_workers())})
 
 
-## Submits `cmd` as the local player and flashes the reason if it was refused. True if it was carried out.
+## Sends `cmd` as the local player. The game answers a step later, and a refusal is flashed then. True if it was sent.
 ## (While a replay plays, the commands come from the file and the person's are turned away.)
 func give(cmd: Dictionary) -> bool:
-	var err := _submit(cmd)
+	if main.replayer != null:
+		main.hud.flash_key("err.not_allowed")
+		return false
+	_send(cmd)
+	return true
+
+
+func _send(cmd: Dictionary) -> int:
+	if not main.client.answered.is_connected(_on_answer):
+		main.client.answered.connect(_on_answer)
+	return main.client.submit(cmd)
+
+
+func _on_answer(ticket: int, _cmd: Dictionary, err: String) -> void:
+	if ticket == _placing_ticket:
+		_placing_ticket = 0
+		if err == "" or err == "err.not_yet":
+			placing = ""  # (placed, or not to be)
 	if err != "":
 		main.hud.flash_key(err)
-	return err == ""
-
-
-func _submit(cmd: Dictionary) -> String:
-	if main.replayer != null:
-		return "err.not_allowed"
-	return main.client.submit(cmd)
 
 
 func ids(us: Array) -> Array:
@@ -444,13 +455,12 @@ func command_at(mp: Vector2) -> void:
 
 
 func try_place() -> void:
-	var err := _submit({"type": "place", "kind": placing, "tile": placing_tile(), "units": ids(selected_workers())})
-	if err != "":
-		main.hud.flash_key(err)
-		if err == "err.not_yet":
-			placing = ""
+	if main.replayer != null:
+		main.hud.flash_key("err.not_allowed")
 		return
-	placing = ""
+	if _placing_ticket != 0:
+		return  # the last click is not answered yet
+	_placing_ticket = _send({"type": "place", "kind": placing, "tile": placing_tile(), "units": ids(selected_workers())})
 
 
 ## Train a `kind` of unit at the selected building: villagers at the Forum, fighting men at the Castra or Stabulum.

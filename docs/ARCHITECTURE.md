@@ -46,8 +46,9 @@ in the code, or marked as not built.
 | Headless client (a remote human's, on another machine) | not built: the same client, on the other machine, speaking queue through Networking |
 | Headless client (the AIs') | `src/client/`, made for each AI in `WorldSetup` (`AI.client`, `AI.view`); built, as above |
 | Networking | not built (`src/net/`: today `NetSession` is the lobby only): the host's end of the connection to a remote human's client; it puts its commands on the command queue and reads that player's view queue |
-| View queue (one for each player), Command queue (one for all) | not built: they are the simulation's interface. Today a client calls `Commands.submit` (validates and applies at once) and reads the `Simulation` as it filters, and the simulation's signals reach `Main`, which shows them |
-| Simulation step | `Simulation.step()` in `src/sim/simulation.gd`: today it runs the AIs and the systems; it does not yet drain command queues or publish views |
+| Command queue (one for all) | `CommandQueue` (`src/sim/command_queue.gd`), held as `Simulation.command_queue`; built. A client's `submit` puts a command on it with the player and the due tick; `Simulation.step()` drains it first thing, in (tick, player, order given) order, and each answer comes back as `Simulation.answered` (the client's `answered`) |
+| View queue (one for each player) | not built: today a client's `PlayerView` reads the `Simulation` as it filters, and the simulation's signals reach it and `Main` directly |
+| Simulation step | `Simulation.step()` in `src/sim/simulation.gd`: today it runs the AIs (which are clients, and will leave it), drains the command queue, and runs the systems; it does not yet publish views |
 | Game state | `GameState` (`src/sim/state/game_state.gd`), held as `Simulation.state`: the map, units, buildings, stocks, fogs, tick, rng, eras, road plans, shots in flight, who has fallen. Inert; see *Known debts* for what is still not |
 | Game systems | `src/sim/systems/`: they hold no game state of their own (only the `Movement` grid, which is rebuilt each tick) |
 | Tick driver | `Main._run_sim` (`src/app/main.gd`); `tools/sim_run.gd` and `tools/replay_check.gd` headless |
@@ -109,13 +110,13 @@ boundary; the cost is that an AI reacts a tick late.
 
 ## Players, drivers and commands  (**built**)
 
-The central rule: **a player acts on the game only by submitting a command, and the game cannot tell who
-submitted it.**
+The central rule: **a player acts on the game only by putting a command on the queue, and the game cannot tell who
+put it there.**
 
 ```
  person (mouse, keys, selection)  ─┐
- AI (computer player)          ─┼─►  Commands.submit(cmd) ─►  game state (units, buildings, stocks)
- replay (a recorded game)      ─┤        validate · pay · apply
+ AI (computer player)          ─┼─►  client.submit(cmd) ─► CommandQueue ─► step: Commands.apply(cmd) ─► game state
+ replay (a recorded game)      ─┤                                            validate · pay · apply
  remote peer (network)  [decided] ─┤
  test script                   ─┘
 ```
@@ -127,17 +128,22 @@ submitted it.**
   buildings are named by `id` (`Unit.id`, `Building.id`), never by reference. That makes a command
   serializable, so it can be sent over the network, recorded, or written by hand in a test. The set of
   commands and their fields is listed at the top of `src/sim/commands.gd`.
-- **`Commands.submit(cmd) -> String`** is the only gate. It checks that the named units and buildings exist
+- **`Commands.apply(cmd) -> String`** is the only gate, and the step is the only thing that calls it, once for each command
+  drained from the queue (a test that wants an answer at once may call it itself). It checks that the named units and buildings exist
   and belong to `owner` (anything else is trimmed away), checks the rules (affordable, population room,
   placement, era), pays, and applies. It returns `""` on success or a phrase key on refusal (`"err.cant_afford"`; see *Text*), and it never
-  touches the selection, mouse, HUD or markers. It emits `submitted(cmd, err)` for everything it is given: that is how
-  a game is recorded.
+  touches the selection, mouse, HUD or markers. It emits `applied(cmd, err)` for everything it is given: that is how
+  a game is recorded. The answer goes back to the client as `Simulation.answered(ticket, cmd, err)`, a step after the question at the soonest.
+- **The queue** (`CommandQueue`) takes a command with the player who gave it and the tick it is due, which the host side sets
+  (`HeadlessClient.submit` puts its own owner in whatever the command says). The step drains what is due at its start, by due tick, then player,
+  then the order each gave them, so that two players' commands for the same tick are settled the same way whichever arrived first.
 - **Drivers** decide what to ask for:
   - The person's driver is `Person` (`src/ui/controls/person.gd`). It turns clicks and the selection into commands, flashes a refusal, and keeps
     purely interface state (markers, placement mode, attack-move mode) to itself.
-  - `AI` (`src/ai/ai.gd`, see *The AIs* below) thinks about once a second and submits commands as its owner through its
-    own `do`. It sees the world through its own `Fog`, so it knows only what its people have seen.
-  - `Replayer` gives the simulation the commands a recording holds, at the ticks they were given.
+  - `AI` (`src/ai/ai.gd`, see *The AIs* below) thinks about once a second and puts commands on the queue as its owner through its
+    own `do` (it does not wait for the answer: `do` can be given what to do if the command is refused, and `spend` counts what it has put
+    on the queue as spent until the store shows it). It sees the world through its own `Fog`, so it knows only what its people have seen.
+  - `Replayer` puts the commands a recording holds on the queue, due at the ticks they were given.
 - **What is not a command.** Things the simulation does on its own are not player intent and call the order
   functions directly: a gatherer finding a new tree, a fighter picking a fight (`Combat`), a builder
   finishing and going idle. Scripted setup and the `--showcase`/`--demo` debug modes also place and order
@@ -146,7 +152,7 @@ submitted it.**
   `building_completed`, `building_destroyed`, `era_reached`, `people_fell`, `game_won`, `tile_changed`,
   `road_changed`. `Main` hears them and shows them to the person they concern.
 
-Adding a new action: add a branch in `Commands.submit` and a line in its header comment, make `Person`
+Adding a new action: add a branch in `Commands.apply` and a line in its header comment, make `Person`
 and (if the AI needs it) `AI` call it, and add a case to `tests/commands_test.gd`.
 
 ## Time and determinism  (**built**)
@@ -185,10 +191,9 @@ same checksum. It is exact to the bit, so it also demonstrates that the arithmet
 machine and one build of Godot, and not across platforms.
 
 Where the nondeterminism is: when a command *arrives* (the network, the AIs' timing) is up to the world. What the
-simulation does with it is not, once it is drained from the command queue at a tick boundary in a fixed order. Recording
-the drained sequence (each command with the tick it was applied at) therefore pins the game down, whatever order things
-arrived in. Today there is no queue, so commands are applied as they are submitted, between ticks or at the start of one,
-which comes to the same thing.
+simulation does with it is not, once it is drained from the command queue at the start of a step in a fixed order (due tick,
+player, the order each gave them). Recording the drained sequence (each command with the tick it was applied at) therefore pins
+the game down, whatever order things arrived in.
 
 Two things change the game *without* a command, and so are not replayable: the debug aids (`M` lays the map open,
 `E` jumps through the eras, and the scene flags `--town`, `--demo`, `--skirmish`...). They call `Simulation.taint(why)`;
@@ -237,7 +242,7 @@ between machines. See DESIGN.md for the lobby itself.
 
 What is in place for it: the command layer, a fixed tick, a deterministic simulation and a checksum to detect
 desynchronization. What is missing is the exchange itself: each machine sends its person's commands stamped with a
-future tick, every machine runs `Commands.submit` for all of them at that tick (as `Replayer` does), and
+future tick, every machine puts all of them on its queue due at that tick (as `Replayer` does), and
 they compare checksums now and then. The choice between that (lockstep) and a host that runs the one simulation
 and sends state back is still open, but the first no longer waits on the simulation.
 

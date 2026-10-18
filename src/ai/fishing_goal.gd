@@ -70,4 +70,5 @@ func _build_dock(fish: Vector2i) -> void:
 				var crew := ai.crew_for(Vector2(p), 2)
 				if not crew.is_empty():
 					ai.do({"type": "place", "kind": "dock", "tile": p, "units": crew.map(func(u: UnitInfo) -> int: return u.id)})
+					ai.spend(cost)
 				return

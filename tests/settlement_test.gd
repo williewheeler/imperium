@@ -53,14 +53,14 @@ func _process(dt: float) -> bool:
 				g.sim.state.stocks[0][i] = 1000
 			g.sim.ais.clear()
 			var spot: Vector2i = g.sim.state.map.find_site(Vector2i(3, 3), Vector2i(g.sim.state.units[0].pos) + Vector2i(14, 14), 0, 25, [])
-			_check("a Town Center cannot be built directly", g.sim.commands.submit({"type": "place", "owner": 0, "kind": "town_center", "tile": spot, "units": []}), "err.not_allowed")
-			_check("a City Center cannot be built directly", g.sim.commands.submit({"type": "place", "owner": 0, "kind": "city_center", "tile": spot, "units": []}), "err.not_allowed")
+			_check("a Town Center cannot be built directly", g.sim.commands.apply({"type": "place", "owner": 0, "kind": "town_center", "tile": spot, "units": []}), "err.not_allowed")
+			_check("a City Center cannot be built directly", g.sim.commands.apply({"type": "place", "owner": 0, "kind": "city_center", "tile": spot, "units": []}), "err.not_allowed")
 			town = g.sim.add_building("settlement", spot, true, 0)
 			_check("a Settlement trains nobody", town.trains().is_empty(), true)
 			_check("but takes every resource", town.def()["accepts"], [0, 1, 2, 3])
 			var before := g.sim.economy.pop_used(0)
 			crowd = _spawn(g, 14, Vector2(spot) + Vector2(3.5, 1.5))
-			_check("the settlement is not full", g.sim.commands.submit({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(crowd)}), "")
+			_check("the settlement is not full", g.sim.commands.apply({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(crowd)}), "")
 			print("pop before ", before, " (14 villagers added)")
 			stage = 1
 			t_stage = 0.0
@@ -70,7 +70,7 @@ func _process(dt: float) -> bool:
 				_check("still a Settlement at 14", town.kind, "settlement")
 				_check("the villagers are gone from the world", crowd.all(func(u): return not g.sim.state.units.has(u)), true)
 				var spare := _spawn(g, 1, Vector2(town.tile) + Vector2(3.5, 1.5))
-				g.sim.commands.submit({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(spare)})
+				g.sim.commands.apply({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(spare)})
 				crowd = spare
 				stage = 2
 				t_stage = 0.0
@@ -80,7 +80,7 @@ func _process(dt: float) -> bool:
 				_check("which can train villagers", town.trains().has("villager"), true)
 				_check("and has a name", town.building_name != "Vicus", true)
 				crowd = _spawn(g, 15, Vector2(town.tile) + Vector2(3.5, 1.5))
-				g.sim.commands.submit({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(crowd)})
+				g.sim.commands.apply({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(crowd)})
 				stage = 3
 				t_stage = 0.0
 		3:
@@ -91,15 +91,15 @@ func _process(dt: float) -> bool:
 				_check("citizens count toward the population", pop >= 30, true)
 				# fill it to 50 and try to go over
 				crowd = _spawn(g, 25, Vector2(town.tile) + Vector2(3.5, 1.5))
-				_check("room for 20 more", g.sim.commands.submit({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(crowd)}), "")
+				_check("room for 20 more", g.sim.commands.apply({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(crowd)}), "")
 				stage = 4
 				t_stage = 0.0
 		4:
 			if town.citizens >= 50 or t_stage > 120.0:
 				_check("it holds 50 and no more", town.citizens, 50)
 				var more := _spawn(g, 2, Vector2(town.tile) + Vector2(3.5, 1.5))
-				_check("a full city refuses", g.sim.commands.submit({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(more)}), "err.full")
-				_check("others cannot absorb into it", g.sim.commands.submit({"type": "absorb", "owner": 1, "building": town.id, "units": _ids(more)}), "err.not_allowed")
+				_check("a full city refuses", g.sim.commands.apply({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(more)}), "err.full")
+				_check("others cannot absorb into it", g.sim.commands.apply({"type": "absorb", "owner": 1, "building": town.id, "units": _ids(more)}), "err.not_allowed")
 				print("DONE fails=", fails)
 				quit(1 if fails > 0 else 0)
 	return false

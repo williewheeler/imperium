@@ -1,9 +1,10 @@
 class_name Commands
 extends RefCounted
-## The one way a player acts on the game. A driver (the person at the keyboard, a AI, later a remote
-## peer) builds a command, a plain Dictionary of numbers, strings and tiles, and gives it to `submit`. This
-## checks that it is the player's to give and that the rules allow it, pays for it, and carries it out. It
-## never learns who gave it: nothing here reads the selection, the mouse or the HUD.
+## The rules for commands. A player (the person at the keyboard, an AI, later a remote peer) builds a command, a plain
+## Dictionary of numbers, strings and tiles, and its client puts it on the simulation's CommandQueue; the step drains
+## the queue and gives each command that is due to `apply`. This checks that it is the player's to give and that the
+## rules allow it, pays for it, and carries it out. It never learns who gave it: nothing here reads the selection, the
+## mouse or the HUD.
 ##
 ## Every command has `type` and `owner` (the player giving it). Units and buildings are named by `id`.
 ##
@@ -23,18 +24,18 @@ extends RefCounted
 ##   pave_work    units                           join the paving already planned
 ##   advance                                      begin the next era
 ##
-## `submit` returns "" when the command was carried out, otherwise the reason it was not (a Latin line the
-## person's driver may show). A command that names things that no longer exist, or are someone else's, is
+## `apply` returns "" when the command was carried out, otherwise the reason it was not (a Latin line the
+## person's driver may show; it reaches the client as the answer to its ticket). A command that names things that no longer exist, or are someone else's, is
 ## quietly trimmed to what is left, and refused only if nothing is.
 
-signal submitted(cmd: Dictionary, err: String)  # every command given, with the answer (a recorder listens)
+signal applied(cmd: Dictionary, err: String)  # every command carried out or refused, with the answer (a recorder listens)
 
 var sim: Simulation
 
 
-func submit(cmd: Dictionary) -> String:
+func apply(cmd: Dictionary) -> String:
 	var err := _dispatch(cmd)
-	submitted.emit(cmd, err)
+	applied.emit(cmd, err)
 	return err
 
 

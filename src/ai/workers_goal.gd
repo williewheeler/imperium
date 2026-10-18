@@ -27,11 +27,10 @@ func act() -> void:
 			var tile := ai.nearest_deposit(kind, town.center(), 0)
 			if tile.x < 0:
 				continue
-			if ai.do({"type": "gather", "tile": tile, "units": [u.id]}) == "":
-				busy[kind] += 1
-				assigned = true
-				break
-			ai.blocked[tile] = 30.0
+			ai.do({"type": "gather", "tile": tile, "units": [u.id]}, func(_err: String) -> void: ai.blocked[tile] = 30.0)  # (no way to it: not that deposit for a while)
+			busy[kind] += 1
+			assigned = true
+			break
 		if not assigned:
 			ai.unemployed += 1
 	_rebalance(villagers)
@@ -73,5 +72,6 @@ func _rebalance(villagers: Array[UnitInfo]) -> void:
 			continue
 		var town := ai.nearest_town(u.pos)
 		var tile := ai.nearest_deposit(poor, town.center(), 0) if town != null else Vector2i(-1, -1)
-		if tile.x >= 0 and ai.do({"type": "gather", "tile": tile, "units": [u.id]}) == "":
+		if tile.x >= 0:
+			ai.do({"type": "gather", "tile": tile, "units": [u.id]})
 			moved += 1

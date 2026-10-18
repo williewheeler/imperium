@@ -20,7 +20,7 @@ func _init(path: String, sim: Simulation, view := {}) -> void:
 	_file.store_line("%s %d" % [Replay.MAGIC, Replay.VERSION])
 	_write(["head", {"version": Replay.VERSION, "ticks_per_second": Simulation.TICKS_PER_SECOND,
 		"engine": Engine.get_version_info()["string"], "config": sim.config.to_dict(), "view": view}])
-	sim.commands.submitted.connect(_on_command)
+	sim.commands.applied.connect(_on_command)
 	sim.stepped.connect(_on_step)
 	sim.tainted_by.connect(func(why: String) -> void: _write(["taint", _sim.state.tick, why]))
 

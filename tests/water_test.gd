@@ -68,7 +68,7 @@ func _process(dt: float) -> bool:
 			_check("land touches it, so builders can reach it", g.sim.state.map.land_adjacent(dock.rect()), true)
 			_check("a boat cannot sail through it", g.sim.state.map.can_sail(site), false)
 			_check("a dock trains fishing boats", dock.trains(), ["fishing_boat"])
-			_check("train a boat", g.sim.commands.submit({"type": "train", "owner": 0, "building": dock.id, "kind": "fishing_boat"}), "")
+			_check("train a boat", g.sim.commands.apply({"type": "train", "owner": 0, "building": dock.id, "kind": "fishing_boat"}), "")
 			var near_water := g.sim.state.map.water_next_to(dock.rect(), dock.center())
 			# a school of fish a few tiles out
 			for r in range(3, 10):

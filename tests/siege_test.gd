@@ -49,8 +49,8 @@ func _process(dt: float) -> bool:
 				g.sim.add_unit(u)
 				troops.append(u)
 			var ids: Array = troops.map(func(u): return u.id)
-			_check("attack own building is refused", g.sim.commands.submit({"type": "attack_building", "owner": 1, "building": hut.id, "units": ids}), "err.not_allowed")
-			_check("attack the enemy hut", g.sim.commands.submit({"type": "attack_building", "owner": 0, "building": hut.id, "units": ids}), "")
+			_check("attack own building is refused", g.sim.commands.apply({"type": "attack_building", "owner": 1, "building": hut.id, "units": ids}), "err.not_allowed")
+			_check("attack the enemy hut", g.sim.commands.apply({"type": "attack_building", "owner": 0, "building": hut.id, "units": ids}), "")
 			_check("fields cannot be attacked", Defs.BUILDING_HP["farm"], 0)
 			stage = 1
 			t_stage = 0.0

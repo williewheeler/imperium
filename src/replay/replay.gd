@@ -9,8 +9,8 @@ extends RefCounted
 ##
 ## It is a text file, one record a line, each written as a Godot value (`var_to_str`):
 ##
-##   IMPERIVM-REPLAY 1
-##   ["head", {"version": 1, "ticks_per_second": 30, "engine": "4.7.2", "config": {...}, "view": {...}}]
+##   IMPERIVM-REPLAY 2
+##   ["head", {"version": 2, "ticks_per_second": 30, "engine": "4.7.2", "config": {...}, "view": {...}}]
 ##   ["cmd", 0, {"type": "train", "owner": 1, ...}, ""]           tick, the command, the game's answer ("" = done)
 ##   ["chk", 150, "5f0c9a77e8d2b413"]                              tick, checksum of the game as it stood
 ##   ["taint", 40, "--town"]                                       the game was changed by something other than a command
@@ -20,7 +20,7 @@ extends RefCounted
 ## `end` (the game was quit or crashed) is still good as far as it goes.
 ## Recorder writes one; Replayer plays one into a Simulation.
 
-const VERSION := 1
+const VERSION := 2
 const MAGIC := "IMPERIVM-REPLAY"
 
 var config: SimConfig

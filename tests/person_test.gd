@@ -24,6 +24,7 @@ func _key(code: Key) -> InputEventKey:
 
 
 func _states(g: Main) -> Dictionary:
+	g.sim.drain_commands()  # (what the person sent waits on the queue for the next step)
 	var out := {}
 	for u in villagers:
 		var k: String = Unit.State.keys()[u.state]
@@ -92,6 +93,7 @@ func _process(_dt: float) -> bool:
 			p.set_selected_building(g.sim.state.buildings[0].id)
 			_check("the Forum is the selected building", p.selected_building() != null and p.selected_building().id == g.sim.state.buildings[0].id, true)
 			g.hud.train_requested.emit("villager")
+			g.sim.drain_commands()
 			_check("the interface's train button queues a villager", g.sim.state.buildings[0].train_queue, ["villager"])
 			_check("and it is paid for", g.sim.state.stocks[0][Defs.Res.FOOD] < 1000, true)
 

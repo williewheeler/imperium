@@ -17,5 +17,6 @@ func priority() -> float:
 func act() -> void:
 	if ai.view.can_advance():
 		ai.do({"type": "advance"})
+		ai.spend(ai.view.advance_data()["cost"])
 	else:
 		ai.reserve(ai.view.advance_data()["cost"])

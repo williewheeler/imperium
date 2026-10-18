@@ -37,6 +37,7 @@ var age := 0.0  # seconds of its history
 var blocked := {}  # deposit tile -> seconds before it is tried again (no way to reach it)
 var seen_kinds := {}  # kind of enemy unit -> the most of them it has seen at once lately (it picks counters from this)
 var reserved := [0, 0, 0, 0]  # resources a more pressing goal is saving for this think
+var pending := [0, 0, 0, 0]  # resources it has put commands on the queue to spend this think (the store shows it once they are carried out)
 var settle_possible := true  # ExpandGoal knows of ground for another settlement (else a storehouse will do)
 var under_attack := false  # enemy fighters are near its buildings
 var threat_at := Vector2.ZERO  # where
@@ -47,6 +48,8 @@ var scouts: Array[UnitInfo] = []  # villagers sent exploring (the work goal leav
 var wave: Array[UnitInfo] = []  # the force it has sent out against someone
 var goals: Array[AIGoal] = []
 
+var _refusals := {}  # ticket -> what to do if the game refuses that command
+var _housing_refused := false  # a command to train was refused for want of houses since the last think
 var _timer := 0.0
 var _see_timer := 0.0
 var _explored := 0.0
@@ -96,7 +99,9 @@ func tick(delta: float) -> void:
 
 func _think() -> void:
 	reserved = [0, 0, 0, 0]
-	need_housing = false
+	pending = [0, 0, 0, 0]
+	need_housing = _housing_refused  # (the answers have come in since it last thought)
+	_housing_refused = false
 	_sense()
 	var t_view := Perf.start()
 	view.refresh()
@@ -238,7 +243,7 @@ func stock() -> Array[int]:
 func afford(cost: Array) -> bool:
 	var have := stock()
 	for i in cost.size():
-		if int(have[i]) - int(reserved[i]) < int(cost[i]):
+		if int(have[i]) - int(reserved[i]) - int(pending[i]) < int(cost[i]):
 			return false
 	return true
 
@@ -253,24 +258,46 @@ func reserve(cost: Array) -> void:
 		reserved[i] = int(reserved[i]) + int(cost[i])
 
 
-## Gives the game a command as this player. The reason it was refused, or "" if it was carried out.
-func do(cmd: Dictionary) -> String:
-	return client.submit(cmd)
+## Puts a command on the queue as this player. The game answers a step later, so nothing here knows yet whether it will be
+## carried out: `refused`, if given, is called with the reason if it is not.
+func do(cmd: Dictionary, refused := Callable()) -> void:
+	if not client.answered.is_connected(_on_answer):
+		client.answered.connect(_on_answer)
+	var ticket := client.submit(cmd)
+	if refused.is_valid():
+		_refusals[ticket] = refused
 
 
-## Spends `cost` on `cmd` if it can, otherwise saves for it. True if the command was carried out.
+func _on_answer(ticket: int, cmd: Dictionary, err: String) -> void:
+	var then: Callable = _refusals.get(ticket, Callable())
+	_refusals.erase(ticket)
+	if err == "":
+		return
+	if err == "err.need_houses" and cmd.get("type") == "train":
+		_housing_refused = true
+	if then.is_valid():
+		then.call(err)
+
+
+## Counts `cost` as spent for the rest of this think: the command that spends it is still on the queue, so the store does not show it.
+func spend(cost: Array) -> void:
+	for i in cost.size():
+		pending[i] = int(pending[i]) + int(cost[i])
+
+
+## Spends `cost` on `cmd` if it can, otherwise saves for it. True if the command was put on the queue.
 func buy(cmd: Dictionary, cost: Array) -> bool:
 	if not afford(cost):
 		reserve(cost)
 		return false
-	var err := do(cmd)
-	if err == "err.need_houses":
-		need_housing = true
-	return err == ""
+	do(cmd)
+	spend(cost)
+	return true
 
 
 ## Lays a foundation for `kind` near `near` (at least `min_r` tiles away) and sends the `crew_size` nearest
-## free villagers to build it. False if it could not (no money, no room): it saves for it if it is close.
+## free villagers to build it. False if it could not (no money, no room: it saves for it if it is close); true if the
+## command went on the queue.
 func place(kind: String, near: Vector2, min_r: int, crew_size := 2, max_r := 20) -> bool:
 	var def: Dictionary = Defs.BUILDINGS[kind]
 	if view.era() < int(def.get("era", 0)) or not afford(def["cost"]):
@@ -286,7 +313,9 @@ func place(kind: String, near: Vector2, min_r: int, crew_size := 2, max_r := 20)
 	if site.x < 0:
 		return false
 	var crew := crew_for(Vector2(site) + Vector2(def["size"]) / 2.0, crew_size)
-	return do({"type": "place", "kind": kind, "tile": site, "units": crew.map(func(u: UnitInfo) -> int: return u.id)}) == ""
+	do({"type": "place", "kind": kind, "tile": site, "units": crew.map(func(u: UnitInfo) -> int: return u.id)})
+	spend(def["cost"])
+	return true
 
 
 ## The `n` villagers nearest `pos` that are free: idle first, then gatherers (never scouts).

@@ -102,7 +102,7 @@ func _process(dt: float) -> bool:
 				_check("they sow, grow and harvest by themselves, and the store grows", g.sim.stock_of(0)[Defs.Res.FOOD] > 1000, true)
 				# take eight into the granary
 				var eight := _spawn(g, 8, Vector2(farm.tile) + Vector2(10.5, 1.5))
-				_check("absorb into a farm", g.sim.commands.submit({"type": "absorb", "owner": 0, "building": farm.id, "units": eight.map(func(u): return u.id)}), "")
+				_check("absorb into a farm", g.sim.commands.apply({"type": "absorb", "owner": 0, "building": farm.id, "units": eight.map(func(u): return u.id)}), "")
 				stage = 3
 				t_stage = 0.0
 		3:
@@ -113,8 +113,8 @@ func _process(dt: float) -> bool:
 				_check("richer plots", plot.max_amount, 375)
 				_check("the granary is still solid", g.sim.state.map.is_walkable(farm.granary_tile()), false)
 				var more := _spawn(g, 1, Vector2(farm.tile) + Vector2(10.5, 1.5))
-				_check("a full granary refuses more", g.sim.commands.submit({"type": "absorb", "owner": 0, "building": farm.id, "units": more.map(func(u): return u.id)}), "err.full")
-				_check("a Large Farm cannot be built directly", g.sim.commands.submit({"type": "place", "owner": 0, "kind": "large_farm", "tile": Vector2i(1, 1), "units": []}), "err.not_allowed")
+				_check("a full granary refuses more", g.sim.commands.apply({"type": "absorb", "owner": 0, "building": farm.id, "units": more.map(func(u): return u.id)}), "err.full")
+				_check("a Large Farm cannot be built directly", g.sim.commands.apply({"type": "place", "owner": 0, "kind": "large_farm", "tile": Vector2i(1, 1), "units": []}), "err.not_allowed")
 				print("DONE fails=", fails)
 				quit(1 if fails > 0 else 0)
 	return false
