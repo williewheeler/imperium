@@ -18,9 +18,9 @@ SIM_PARTS = {  # Simulation member -> the class it holds
     'placement': 'placement', 'roads': 'roads', 'victory': 'victory', 'setup': 'world_setup',
 }
 sim_members = members('src/sim/simulation.gd')
-part_members = {k: members('src/sim/%s.gd' % v) for k, v in SIM_PARTS.items()}
-main_members = members('src/client/main.gd')
-MAIN_PARTS = {'person': members('src/client/person.gd'), 'rig': members('src/client/camera_rig.gd')}
+part_members = {k: members('src/sim/systems/%s.gd' % v) for k, v in SIM_PARTS.items()}
+main_members = members('src/app/main.gd')
+MAIN_PARTS = {'person': members('src/ui/controls/person.gd'), 'rig': members('src/ui/controls/camera_rig.gd')}
 NODE_BUILTIN = set('get_tree get_viewport get_viewport_rect add_child position queue_redraw get_window get_global_mouse_position visible name'.split())
 
 bad = 0

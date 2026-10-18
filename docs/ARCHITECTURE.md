@@ -11,45 +11,45 @@ Status key as in DESIGN.md: **built**, **decided**, **proposed**, **open**.
 Code is under `src/`; Godot has no required layout, and scripts find each other by `class_name`, so files
 can move between folders freely. Only `res://` paths (the scene, shaders, assets) name locations.
 
+The folders follow the diagram below. Each box in it is named in the table after the layout, with where it is
+in the code, or marked as not built.
+
 | Folder | Role |
 |---|---|
-| `src/sim/` | **The simulation**: everything that decides what happens in the game, and nothing that shows it. `Simulation` (the state and the tick) and the parts it is made of: `Movement`, `Economy`, `Production`, `Eras`, `Vision`, `Wildlife`, `UnitBehavior`, `Combat`, `Orders`, `Commands`, `Placement`, `Roads`, `Victory`, `WorldSetup`; the entities (`Unit`, `Building`); the rules' data (`Defs`) and the game's starting choices (`SimConfig`). No scene, no window, no input, no clock. |
-| `src/map/` | The ground and what is known of it: `GameMap`, `TerrainGen`, `Fog`, `Iso` (tile/screen maths), `Deposit`. Plain classes that never reference the simulation. |
-| `src/ai/` | The computer players: `AI` (what it knows, how it senses and arbitrates) and one class per goal. Drivers: they act only through `Commands`. See *The AIs*. |
-| `src/replay/` | `Replay` (the file), `Recorder` (writes a game down as it is played), `Replayer` (plays one back into a simulation). See *Headless play and replays*. |
-| `src/client/` | The game as a person plays it: `Main` (the scene root: starts the world, gives the simulation time, wires the parts), `Person` (the person's driver: mouse, keys, selection, command targeting), `CameraRig`, `Weather` (cosmetic), and the debug scaffolding (`DebugModes`, `EraPreview`). |
-| `src/views/` | Drawing the state. Reads the simulation, never changes it. |
-| `src/ui/` | The HUD, menus, lobby, title. Talks to the game through signals and `Main` calls. |
+| `src/sim/` | **The simulation**: everything that decides what happens, and nothing that shows it. No scene, no window, no input, no clock. At the top, `Simulation` (the game loop, `step()`, and the owner of the parts) and `SimConfig` (the choices that shape a game). |
+| `src/sim/state/` | The **game state**, inert data: `Unit`, `Building`, `Deposit`, `GameMap` and `TerrainGen` (the ground), `Fog` (what each people has seen), and `Defs` (the rules' tables). |
+| `src/sim/systems/` | The **game systems**, which act on the state: `Commands`, `Orders`, `Movement` (with `UnitGrid`), `Economy`, `Production`, `Eras`, `Vision`, `Wildlife`, `UnitBehavior`, `Combat`, `Placement`, `Roads`, `Victory`, `WorldSetup`. |
+| `src/ai/` | The computer players: `AI` and one class per goal. See *The AIs*. |
+| `src/replay/` | `Replay` (the file), `Recorder`, `Replayer`. See *Headless play and replays*. |
+| `src/ui/` | **The UI, for humans only**: the HUD, menus, lobby, title and opening scroll. |
+| `src/ui/views/` | Drawing the state: `World` and the unit, building, ground, fog, weather and overlay views, the minimap, `Iso` (tile and screen maths), `Weather` (cosmetic). Read the simulation, never change it. |
+| `src/ui/controls/` | `Person` (mouse, keys, selection, command targeting) and `CameraRig`. |
+| `src/app/` | The application: `Main` (starts the world, wires the parts, and is the **tick driver** in play) and the debug scaffolding (`DebugModes`, `EraPreview`). |
+| `src/net/` | Networking (`NetSession`, the lobby so far; later the channels). |
 | `src/art/` | Sprite drawing code; baked into PNG sheets by `tools/`. |
-| `src/net/` | Lobby networking (`NetSession`). |
 | `src/infra/` | `GameSettings` (what the player chose; kept in `user://settings.cfg`) and `Perf` (the profiler). |
 | `src/audio/`, `src/text/` | `Music`; `Phrases` and `Latin` (the game's words). |
-| `tools/` | Headless runners and dev tools (`sim_run`, `replay_check`, `lint`, art export). |
+| `tools/` | Headless runners and dev tools (`sim_run` is the headless tick driver; `replay_check`, `lint`, art export). |
 | `tests/` | The headless checks, one script each (`just commands-test`, `just replay-test`...). |
 
-### The subsystems of a real-time strategy game, and where they are here
+### From the diagram to the code
 
-| Subsystem | Here |
+| Box in the diagram | In the code |
 |---|---|
-| Game loop and time | `Simulation.step()` is one fixed tick (1/30 s). `Main._process` turns frame time into ticks. |
-| Entities (units, buildings, resources) | `Simulation.units`, `buildings`, `GameMap.deposits`; ids from `Simulation.add_unit` / `add_building` |
-| Map and terrain | `GameMap`, `TerrainGen` (seeded, so a seed is a map) |
-| Pathfinding and movement | `GameMap.find_path*` (A\*), `Orders.set_path`, `Movement` (following a path, steering round people, keeping them apart) |
-| Commands and orders | `Commands.submit` (the player's intent), `Orders` (what an order does to a unit) |
-| Combat | `Combat` (targeting, blows, shots, fire), `Victory` (who is still in the game) |
-| Economy | `Economy` (stores, population, gathering), `Production` (building, training, towns growing), `Eras` (advancing) |
-| Fog of war and vision | `Vision` (who sees what), `Fog` (what each people remembers) |
-| Simulated life | `Wildlife` (herds and fish move, breed, are hunted out) |
-| AI | `src/ai/`: goals that read the world through the AI's own fog and act through `Commands` |
-| Scenario and setup | `WorldSetup` (founds the players), `SimConfig` (the choices that shape a game) |
-| Rendering and camera | `World` and the views, `CameraRig`, `Art` |
-| Input and selection | `Person` |
-| UI and HUD | `src/ui/` |
-| Audio | `Music` |
-| Networking | `NetSession` (lobby only so far) |
-| Data | `Defs` (units, buildings, costs, eras) |
-| Save, load and replay | `Replay`, `Recorder`, `Replayer` (replay: built; saved games: not built) |
-| Profiling and debug | `Perf`, `FrameMonitor`, `DebugModes`, `tools/` |
+| Person | the person |
+| Views | `src/ui/views/`, and the HUD's readouts in `src/ui/` |
+| Controls | `src/ui/controls/` (`Person`, `CameraRig`), and the HUD's buttons in `src/ui/` |
+| AIs | `src/ai/` |
+| Headless client | not built (today the UI and the AIs read the `Simulation` directly) |
+| View channel, Command channel | not built (`src/net/` will hold them; today `NetSession` is the lobby only) |
+| View publisher, Command receiver | not built (today the simulation's signals reach `Main`, which shows them) |
+| Command interface, Command queue | not built (today `Commands.submit`, which validates and applies at once) |
+| Game loop | `Simulation.step()` in `src/sim/simulation.gd` |
+| Game state | `src/sim/state/`, held by `Simulation` (`units`, `buildings`, `stocks`, `fogs`, `map`, `rng`, `tick`), with debts: see *Known debts* |
+| Game systems | `src/sim/systems/` |
+| Tick driver | `Main._run_sim` (`src/app/main.gd`); `tools/sim_run.gd` and `tools/replay_check.gd` headless |
+| Recorder | `src/replay/recorder.gd` (taps `Commands.submitted` today) |
+| Replayer | `src/replay/replayer.gd` (calls `Commands.submit` today) |
 
 ### How the parts depend on each other
 
@@ -124,7 +124,7 @@ submitted it.**
   touches the selection, mouse, HUD or markers. It emits `submitted(cmd, err)` for everything it is given: that is how
   a game is recorded.
 - **Drivers** decide what to ask for:
-  - The person's driver is `Person` (`src/client/person.gd`). It turns clicks and the selection into commands, flashes a refusal, and keeps
+  - The person's driver is `Person` (`src/ui/controls/person.gd`). It turns clicks and the selection into commands, flashes a refusal, and keeps
     purely interface state (markers, placement mode, attack-move mode) to itself.
   - `AI` (`src/ai/ai.gd`, see *The AIs* below) thinks about once a second and submits commands as its owner through its
     own `do`. It sees the world through its own `Fog`, so it knows only what its people have seen.
@@ -156,7 +156,7 @@ recording's last tick. The size of a tick never changes, so "twice as fast" is t
 The simulation is **deterministic**: given the same `SimConfig` (the seed and the choices that shape the
 world) and the same commands at the same ticks, it plays out the same, tick for tick. That is what makes
 replays possible, and it is what lockstep multiplayer will need. It holds because of these rules, which any
-change to `src/sim/`, `src/ai/` and `src/map/` has to keep:
+change to `src/sim/` and `src/ai/` has to keep:
 
 - **Randomness** comes only from seeded generators: the map's (`TerrainGen`, `GameMap`), the rules' (`Simulation.rng`,
   used by `Wildlife`), and one for each AI (`AI.rng`). The AI's is separate on purpose: an AI's decisions end up in the
@@ -241,7 +241,7 @@ and sends state back is still open, but the first no longer waits on the simulat
   player's saved preferences (colors, volume, speed). The simulation reads only the tables and gets everything else
   through `SimConfig`; the tables should move out to where `Defs` is.
 - **Entities carry a little drawing state:** `selected`, `targeted`, `hit_flash`, `bar_t`, `sdir`, `walk`, `anim` on
-  `Unit` and `Building`, and `Movement` computes the facing with `Iso`. None of it is read by the rules (and none is
+  `Unit` and `Building`, and `Movement` computes the facing on the isometric screen. None of it is read by the rules (and none is
   in the checksum), but it belongs to the views.
 - **`Fog` keeps a picture of itself** for the players whose fog is drawn (`Simulation.drawn_fogs`), and `Fog.show_all`
   (the `M` key) changes what the simulation sees. The picture belongs to `FogView`, and "see everything" to the
@@ -304,7 +304,7 @@ game and burns the buildings of a people that has fallen. Player actions reach i
 
 `DebugModes` (`--demo`, `--showcase`, `--skirmish`, `--town`, ... and the headless `--report`) and
 `EraPreview` (the E key, which dresses a fake town for each era) hold code that sets scenes up for looking
-at. They are kept out of the simulation, in `src/client/`, because none of it is the rules. `EraPreview.place_display_army` also puts a
+at. They are kept out of the simulation, in `src/app/`, because none of it is the rules. `EraPreview.place_display_army` also puts a
 few non-population "display" soldiers by the first town in a normal game; it is a placeholder.
 
 ## Text  (**built**)
@@ -345,9 +345,9 @@ lettering (capitals, V for U). See `LATIN.md` for the vocabulary.
 
 ## Weather and fog
 
-Weather (`src/client/weather.gd`) is cosmetic: a small state machine that drives `WeatherView`, the ground
+Weather (`src/ui/views/weather.gd`) is cosmetic: a small state machine that drives `WeatherView`, the ground
 shading and the music's mood. It does not affect play, and is not worth a module of its own. Fog (`Fog`,
-in `src/map/`) is different: it is per-player simulation state (`Simulation.fogs`, by owner) that the AI and
+in `src/sim/state/`) is different: it is per-player simulation state (`Simulation.fogs`, by owner) that the AI and
 `Commands` read to decide what a player may see, explore and build on. `FogView` only draws it.
 
 ## Tests

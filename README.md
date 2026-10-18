@@ -194,12 +194,12 @@ in `src/net/net_session.gd` and the lobby screen in `src/ui/lobby_screen.gd`.
 
 | Folder | What is in it |
 |---|---|
-| `src/sim/` | the simulation: the tick, units, buildings, combat, economy, eras, vision and the command layer (`commands.gd`). No scene or window; it runs headless and deterministically |
-| `src/map/`, `src/ai/` | the ground, fog and tile maths; the computer players |
+| `src/sim/` | the simulation: `simulation.gd` (the game loop), `state/` (units, buildings, the map, fog, the rules' tables) and `systems/` (movement, economy, combat, commands...). No scene or window; it runs headless and deterministically |
+| `src/ai/` | the computer players |
 | `src/replay/` | writing a game down as it is played, and playing it back |
-| `src/client/` | the game as a person plays it: the scene root, the mouse and keyboard, the camera, weather, debug scenes |
+| `src/ui/` | the UI for humans: the HUD and menus, `views/` (everything drawn from the game state: world, buildings, units, fog, weather) and `controls/` (mouse, keys, selection, camera) |
+| `src/app/` | the scene root (`Main`, which also drives the ticks in play) and the debug scenes |
 | `src/art/` | the drawing code that makes every sprite, and team colors |
-| `src/views/` | everything drawn from the game state: world, buildings, units, fog, weather |
 | `src/ui/` | the HUD, buttons, the title screen, the multiplayer lobby and the opening scroll |
 | `src/net/` | multiplayer: hosting, joining and the lobby's roster (`net_session.gd`) |
 | `shaders/` | the ground, fog, weather and team-color shaders |

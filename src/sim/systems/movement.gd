@@ -152,7 +152,7 @@ func _spot_taken(u: Unit, spot: Vector2) -> bool:
 
 ## Face along a movement direction given in tile space.
 func _set_facing(u: Unit, tile_dir: Vector2) -> void:
-	var s := Iso.screen_dir(tile_dir)
+	var s := Vector2(tile_dir.x - tile_dir.y, (tile_dir.x + tile_dir.y) * 0.5)  # the same direction on the isometric screen (Iso.screen_dir, which the simulation does not depend on)
 	if absf(s.x) > 0.05:
 		u.sdir.x = signf(s.x)
 	if absf(s.y) > 0.05:
