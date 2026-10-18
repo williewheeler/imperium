@@ -37,13 +37,13 @@
 
   <!-- Channels -->
   <rect class="prop" x="60" y="350" width="240" height="75" rx="6"/><text class="t" x="180" y="373" text-anchor="middle">View channel</text><text class="s" x="180" y="390" text-anchor="middle">asynchronous, host to client</text><text class="s" x="180" y="405" text-anchor="middle">in-process queue, or NetSession</text>
-  <rect class="prop" x="340" y="350" width="240" height="75" rx="6"/><text class="t" x="460" y="373" text-anchor="middle">Command channel</text><text class="s" x="460" y="390" text-anchor="middle">asynchronous, client to host</text><text class="s" x="460" y="405" text-anchor="middle">in-process queue, or NetSession</text>
+  <rect class="prop" x="470" y="350" width="240" height="75" rx="6"/><text class="t" x="590" y="373" text-anchor="middle">Command channel</text><text class="s" x="590" y="390" text-anchor="middle">asynchronous, client to host</text><text class="s" x="590" y="405" text-anchor="middle">in-process queue, or NetSession</text>
 
   <!-- Host -->
   <rect class="grp" x="30" y="455" width="1150" height="625" rx="10"/>
   <text class="h" x="1165" y="478" text-anchor="end">Host  (where the one simulation runs)</text>
   <rect class="prop" x="60" y="495" width="240" height="60" rx="6"/><text class="t" x="180" y="519" text-anchor="middle">View publisher</text><text class="s" x="180" y="537" text-anchor="middle">sends each player what it may see</text>
-  <rect class="prop" x="340" y="495" width="240" height="60" rx="6"/><text class="t" x="460" y="519" text-anchor="middle">Command receiver</text><text class="s" x="460" y="537" text-anchor="middle">takes commands off the channel</text>
+  <rect class="prop" x="470" y="495" width="240" height="60" rx="6"/><text class="t" x="590" y="519" text-anchor="middle">Command receiver</text><text class="s" x="590" y="537" text-anchor="middle">takes commands off the channel</text>
 
   <rect class="sim" x="45" y="590" width="820" height="470" rx="10"/>
   <text class="h" x="60" y="613">Simulation</text><text class="s" x="850" y="1050" text-anchor="end">src/sim: no scene, no clock</text>
@@ -70,9 +70,9 @@
   <path class="l" d="M460,65 L460,130"/><path class="l" d="M180,130 L180,65"/>
   <path class="l" d="M460,200 L460,245"/><path class="l" d="M180,245 L180,200"/>
   <path class="l" d="M700,245 L700,200"/><path class="l" d="M850,200 L850,245"/>
-  <path class="l" d="M460,320 L460,350"/><path class="l" d="M180,350 L180,320"/>
-  <path class="l" d="M460,425 L460,495"/><path class="l" d="M180,495 L180,425"/>
-  <path class="l" d="M460,555 L460,625"/>
+  <path class="l" d="M590,320 L590,350"/><path class="l" d="M180,350 L180,320"/>
+  <path class="l" d="M590,425 L590,495"/><path class="l" d="M180,495 L180,425"/>
+  <path class="l" d="M590,555 L590,625"/>
   <path class="l" d="M590,685 L590,705"/>
   <path class="l" d="M590,755 L590,780"/>
   <path class="l" d="M340,835 L300,835"/>
