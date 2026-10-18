@@ -288,12 +288,19 @@ func absorb_at(mp: Vector2) -> void:
 
 
 ## Submits `cmd` as the local player and flashes the reason if it was refused. True if it was carried out.
+## (While a replay plays, the commands come from the file and the person's are turned away.)
 func give(cmd: Dictionary) -> bool:
-	cmd["owner"] = Main.LOCAL
-	var err := main.sim.commands.submit(cmd)
+	var err := _submit(cmd)
 	if err != "":
 		main.hud.flash_key(err)
 	return err == ""
+
+
+func _submit(cmd: Dictionary) -> String:
+	if main.replayer != null:
+		return "err.not_allowed"
+	cmd["owner"] = Main.LOCAL
+	return main.sim.commands.submit(cmd)
 
 
 func ids(us: Array) -> Array:
@@ -416,7 +423,7 @@ func command_at(mp: Vector2) -> void:
 
 
 func try_place() -> void:
-	var err := main.sim.commands.submit({"type": "place", "owner": Main.LOCAL, "kind": placing, "tile": placing_tile(), "units": ids(selected_workers())})
+	var err := _submit({"type": "place", "kind": placing, "tile": placing_tile(), "units": ids(selected_workers())})
 	if err != "":
 		main.hud.flash_key(err)
 		if err == "err.not_yet":

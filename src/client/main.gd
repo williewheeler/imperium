@@ -49,6 +49,11 @@ var _perf_last := 0
 
 
 ## How far into the next tick real time has got (0 to 1), for drawing between two ticks.
+func _exit_tree() -> void:
+	if recorder != null:
+		recorder.close()  # says where the game stopped (the file is good without it)
+
+
 func sim_alpha() -> float:
 	if _report or _screenshot_path != "":
 		return 1.0  # a screenshot shows the game exactly as a tick left it
