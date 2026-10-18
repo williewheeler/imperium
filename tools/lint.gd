@@ -6,7 +6,7 @@ extends SceneTree
 func _init() -> void:
 	var bad := 0
 	var n := 0
-	for dir in ["res://src", "res://tools"]:
+	for dir in ["res://src", "res://tools", "res://tests"]:
 		for path in _scripts(dir):
 			n += 1
 			var s: Script = load(path)

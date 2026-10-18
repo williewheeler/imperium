@@ -56,44 +56,44 @@ mp:
 net-test:
     #!/usr/bin/env bash
     set -euo pipefail
-    {{godot}} --headless --path . --script tools/net_test.gd -- host > ${TMPDIR:-/tmp}/imperium-host.log 2>&1 &
+    {{godot}} --headless --path . --script tests/net_test.gd -- host > ${TMPDIR:-/tmp}/imperium-host.log 2>&1 &
     sleep 2
-    {{godot}} --headless --path . --script tools/net_test.gd -- join 127.0.0.1 > ${TMPDIR:-/tmp}/imperium-join.log 2>&1
+    {{godot}} --headless --path . --script tests/net_test.gd -- join 127.0.0.1 > ${TMPDIR:-/tmp}/imperium-join.log 2>&1
     wait
     echo "--- host"; cat ${TMPDIR:-/tmp}/imperium-host.log; echo "--- join"; cat ${TMPDIR:-/tmp}/imperium-join.log
     grep -q "JOIN starting slot=1" ${TMPDIR:-/tmp}/imperium-join.log && echo PASS || { echo FAIL; exit 1; }
 
 # Headless check of attacking, burning and destroying buildings, and of a people being defeated
 siege-test:
-    {{godot}} --headless --path . --script tools/siege_test.gd -- --nosplash --seed=42 --players=3
+    {{godot}} --headless --path . --script tests/siege_test.gd -- --nosplash --seed=42 --players=3
 
 # Headless check that an AI wave marches on an enemy town and burns its buildings down
 war-test:
-    {{godot}} --headless --path . --script tools/war_test.gd -- --nosplash --spectate --seed=3 --size=small --map=continens --terrain=temperate
+    {{godot}} --headless --path . --script tests/war_test.gd -- --nosplash --spectate --seed=3 --size=small --map=continens --terrain=temperate
 
 # Four AIs play each other fast (10x), headless, reporting every 150 game seconds: just ai-test 900
 ai-test seconds="900" *args:
-    {{godot}} --headless --path . --script tools/ai_test.gd -- --nosplash --spectate --terrain=temperate --size=small --map=continens --seed=3 {{seconds}} {{args}}
+    {{godot}} --headless --path . --script tests/ai_test.gd -- --nosplash --spectate --terrain=temperate --size=small --map=continens --seed=3 {{seconds}} {{args}}
 
 # Headless check of settlements: absorbing citizens, growing into a Town Center and a City Center
 settlement-test:
-    {{godot}} --headless --path . --script tools/settlement_test.gd -- --nosplash --seed=42 --players=3
+    {{godot}} --headless --path . --script tests/settlement_test.gd -- --nosplash --seed=42 --players=3
 
 # Headless check of farms: eight plots round a granary, one villager to a plot, a Large Farm at eight citizens
 farm-test:
-    {{godot}} --headless --path . --script tools/farm_test.gd -- --nosplash --seed=42 --players=3
+    {{godot}} --headless --path . --script tests/farm_test.gd -- --nosplash --seed=42 --players=3
 
 # Headless check of the sparse start and of herds that breed and can be hunted out
 herd-test:
-    {{godot}} --headless --path . --script tools/herd_test.gd -- --nosplash --seed=42 --players=3
+    {{godot}} --headless --path . --script tests/herd_test.gd -- --nosplash --seed=42 --players=3
 
 # Headless check of docks, fish and fishing boats
 water-test:
-    {{godot}} --headless --path . --script tools/water_test.gd -- --nosplash --seed=42 --players=3
+    {{godot}} --headless --path . --script tests/water_test.gd -- --nosplash --seed=42 --players=3
 
 # Headless check of the phrase table: both languages present, every key used in the code exists
 phrases-test:
-    {{godot}} --headless --path . --script tools/phrases_test.gd
+    {{godot}} --headless --path . --script tests/phrases_test.gd
 
 # Play a whole game of AIs with no window and write it down: just sim 600 --seed=7 --out=game.replay
 # (options: --seed --players --size --map --terrain --resources --difficulty --report=N --perf; see tools/sim_run.gd)
@@ -110,11 +110,11 @@ replay file *args:
 
 # Headless check of the person's driver (selecting, ordering, the keys) on a real game
 person-test:
-    {{godot}} --headless --path . --script tools/person_test.gd -- --nosplash --seed=42 --players=3
+    {{godot}} --headless --path . --script tests/person_test.gd -- --nosplash --seed=42 --players=3
 
 # Headless check of determinism: two runs of one game agree, a replay of it agrees, a doctored replay does not
 replay-test:
-    {{godot}} --headless --path . --script tools/replay_test.gd
+    {{godot}} --headless --path . --script tests/replay_test.gd
 
 # Parse every script, and check that every member named on the simulation and on Main exists
 lint:
@@ -123,7 +123,7 @@ lint:
 
 # Headless check of the command layer (ownership, payment, orders) on a real game
 commands-test:
-    {{godot}} --headless --path . --script tools/commands_test.gd -- --nosplash --seed=42 --players=2
+    {{godot}} --headless --path . --script tests/commands_test.gd -- --nosplash --seed=42 --players=2
 
 # Redraw the art sheets from src/art/art.gd (overwrites assets/art/*.png!)
 art:

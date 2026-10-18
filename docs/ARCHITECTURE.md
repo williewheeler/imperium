@@ -24,7 +24,8 @@ can move between folders freely. Only `res://` paths (the scene, shaders, assets
 | `src/net/` | Lobby networking (`NetSession`). |
 | `src/infra/` | `GameSettings` (what the player chose; kept in `user://settings.cfg`) and `Perf` (the profiler). |
 | `src/audio/`, `src/text/` | `Music`; `Phrases` and `Latin` (the game's words). |
-| `tools/` | Headless runners and checks (`sim_run`, `replay_check`, the `*_test` scripts, `lint`). |
+| `tools/` | Headless runners and dev tools (`sim_run`, `replay_check`, `lint`, art export). |
+| `tests/` | The headless checks, one script each (`just commands-test`, `just replay-test`...). |
 
 ### The subsystems of a real-time strategy game, and where they are here
 
@@ -115,7 +116,7 @@ submitted it.**
   `road_changed`. `Main` hears them and shows them to the person they concern.
 
 Adding a new action: add a branch in `Commands.submit` and a line in its header comment, make `Person`
-and (if the AI needs it) `AI` call it, and add a case to `tools/commands_test.gd`.
+and (if the AI needs it) `AI` call it, and add a case to `tests/commands_test.gd`.
 
 ## Time and determinism  (**built**)
 
@@ -137,7 +138,7 @@ change to `src/sim/`, `src/ai/` and `src/map/` has to keep:
 - **No wall clock, frame rate, window, input, scene tree or settings screen.** The simulation reads `Defs` and the
   option tables of `GameSettings`, never the player's saved choices: those reach it only through `SimConfig`.
 - **Numbers are per simulation, not global.** Unit and building ids, the eras, the town names all belong to one
-  `Simulation`, so two can run in one process (`tools/replay_test.gd` does) and a replay's ids match the original's.
+  `Simulation`, so two can run in one process (`tests/replay_test.gd` does) and a replay's ids match the original's.
 - **Commands are applied between ticks** (a person's) **or at the start of one** (the AIs'), in the order given.
   `Replayer` puts a recording's commands at the same points, so a command always sees the same game.
 - **Everything the player should hear or see is a signal.** The simulation never calls the HUD.
@@ -157,7 +158,7 @@ a recording notes it, and a replay that then strays says why.
 just sim 600 --seed=7 --out=game.replay      # a whole game of AIs, no window, as fast as the machine allows
 just replay-check game.replay                # play it back with the AIs off; every checksum must match
 just replay game.replay --speed=8            # watch it in the window (nothing is played: the commands come from the file)
-just replay-test                             # determinism and replay checks (tools/replay_test.gd)
+just replay-test                             # determinism and replay checks (tests/replay_test.gd)
 just lint                                    # parse every script and check every member named on the simulation exists
 ```
 
@@ -244,7 +245,7 @@ which take resources and house people. Each think, every goal says how pressing 
 yet afford what it wants **reserves** the resources (`AI.reserve`, `buy`, `place`) once it is within half of
 them, so goals further down leave them alone: that is how an AI saves for a Town Center or an era while still
 feeding its people. Eras are per player (`Eras`, `Simulation.era_of`), so each AI advances by itself and its buildings take
-on its own era's look. `tools/ai_test.gd` (`just ai-test`) plays four AIs against each other at 10x and
+on its own era's look. `tests/ai_test.gd` (`just ai-test`) plays four AIs against each other at 10x and
 reports towns, era, army, exploration and kills every 150 game seconds.
 
 ## Placement and roads  (**built**)

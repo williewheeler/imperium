@@ -206,7 +206,8 @@ in `src/net/net_session.gd` and the lobby screen in `src/ui/lobby_screen.gd`.
 | `assets/` | the art sheets (PNG) and fonts |
 | `docs/` | [`DESIGN.md`](docs/DESIGN.md) (game design and what is built), [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) (technical design), [`LATIN.md`](docs/LATIN.md), [`PERFORMANCE.md`](docs/PERFORMANCE.md) |
 | `src/infra/`, `src/audio/`, `src/text/` | settings and the profiler; music; the game's words (Latin and English) |
-| `tools/` | `export_art.sh` regenerates the art sheets from the drawing code; `sim_run.gd` plays a whole game headless and writes it down, `replay_check.gd` plays one back and checks it; the `*_test.gd` scripts are the headless checks |
+| `tools/` | `export_art.sh` regenerates the art sheets from the drawing code; `sim_run.gd` plays a whole game headless and writes it down, `replay_check.gd` plays one back and checks it; `lint.gd` and `check_members.py` check the scripts |
+| `tests/` | the headless checks (`just *-test`, `just lint`); see `docs/ARCHITECTURE.md`, *Tests* |
 | `justfile` | recipes for running, testing and screenshots (`just` lists them) |
 
 See [`assets/art/README.md`](assets/art/README.md) for the art rules. Note that `tools/export_art.sh`

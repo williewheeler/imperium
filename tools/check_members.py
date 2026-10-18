@@ -24,7 +24,7 @@ MAIN_PARTS = {'person': members('src/client/person.gd'), 'rig': members('src/cli
 NODE_BUILTIN = set('get_tree get_viewport get_viewport_rect add_child position queue_redraw get_window get_global_mouse_position visible name'.split())
 
 bad = 0
-files = [f for f in glob.glob('src/**/*.gd', recursive=True) + glob.glob('tools/*.gd', recursive=True)]
+files = [f for f in glob.glob('src/**/*.gd', recursive=True) + glob.glob('tools/*.gd') + glob.glob('tests/*.gd')]
 for f in files:
     for n, line in enumerate(open(f).read().split('\n'), 1):
         code = line.split('#')[0] if '"' not in line.split('#')[0] else line  # crude: keep lines with strings whole
