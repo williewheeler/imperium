@@ -141,7 +141,9 @@ func _shadow_size(key: String) -> Vector2i:
 	if key.begins_with("berries"):
 		return Vector2i(8, 3)
 	if key.begins_with("stone") or key.begins_with("gold"):
-		return Vector2i(10, 4)
+		return Vector2i(8, 3)
+	if key.begins_with("scrub"):
+		return Vector2i(6, 2)
 	if key.begins_with("herd"):
 		return Vector2i(16, 5)
 	return Vector2i.ZERO
@@ -176,6 +178,7 @@ func _sprite(key: String, foot: Vector2) -> Sprite2D:
 		var sh := Sprite2D.new()
 		sh.texture = _shadow_tex(shadow)
 		sh.show_behind_parent = true
+		sh.position = Vector2(0, -(shadow.y - 1))  # tucked under the base, only its front edge showing, so nothing floats
 		s.add_child(sh)
 	objects.add_child(s)
 	if not _building.is_empty():
