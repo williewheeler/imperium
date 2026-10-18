@@ -77,8 +77,9 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
   was recorded at) and its place in the order. The queue holds them in that order. That is where an inherently
   asynchronous transport meets a simulation that consumes input at fixed ticks, and it is the one place where
   the nondeterminism ends.
-- **The game loop is the heart.** Each tick (one step of the *tick driver*, which turns wall-clock time into ticks): drain
-  the commands now due from the queue, validate them and apply them to the **game state**; run the **game systems** over the state, which is what makes the world
+- **The game loop is the heart, a little like a rules engine.** The **game state** is inert data; the loop invokes the
+  **game systems**, which read it and update it. Each tick (one step of the *tick driver*, which turns wall-clock time into ticks): drain
+  the commands now due from the queue and have the **game systems** validate and apply them; run the systems over the state, which is what makes the world
   move with nobody issuing anything (a fire burns down, a dog walks towards its goal); and let the state publish
   what changed. The clock reaches the world through the loop, and commands reach it through the drain.
 - **Recorder and Replayer are tools, not part of the core, and two sides of one coin.** Whatever is tapped on the way out is what
@@ -88,7 +89,7 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
   switched off, so the queue, the drain and the validation run exactly as they did live. A game is then its config (the seed and
   settings) plus that list, nothing more. Everything inside the loop, such as a gatherer picking a new tree or a path being
   worked out, is recomputed, never recorded. Validation happens when a command is applied, so the interface does not
-  know its answer; the answers can be checked by a passive tap in the loop, and the checksums catch the rest. Recording
+  know its answer (invalid commands are recorded too, and rejected the same way on replay); recording the answers as well, as a check, would be a passive tap in the loop, and the checksums catch the rest. Recording
   commands, not their effects, keeps this compatible with lockstep, where machines exchange commands.
 
 Two consequences. A command no longer gets an answer at once ("err.cant_afford" is flashed in the same frame today), so

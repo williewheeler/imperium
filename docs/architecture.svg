@@ -49,9 +49,9 @@
   <text class="h" x="60" y="613">Simulation</text><text class="s" x="850" y="1050" text-anchor="end">src/sim: no scene, no clock</text>
   <rect class="prop" x="340" y="625" width="500" height="60" rx="6"/><text class="t" x="590" y="648" text-anchor="middle">Command interface</text><text class="s" x="590" y="665" text-anchor="middle">accepts a command from any player or the Replayer, with the</text><text class="s" x="590" y="678" text-anchor="middle">tick it is due (default: next); today Commands.submit, answering at once</text>
   <rect class="prop" x="340" y="705" width="500" height="50" rx="6"/><text class="t" x="590" y="727" text-anchor="middle">Command queue</text><text class="s" x="590" y="744" text-anchor="middle">holds each command with its due tick, in order</text>
-  <rect class="box" x="340" y="780" width="500" height="250" rx="6"/><text class="t" x="590" y="803" text-anchor="middle">Game loop   (Simulation.step)</text><text class="s" x="590" y="829" text-anchor="middle">each tick, 1/30 s of game time:</text><text class="s" x="590" y="848" text-anchor="middle">1  drain the commands now due from the queue,</text><text class="s" x="590" y="864" text-anchor="middle">    validate and apply them to the state</text><text class="s" x="590" y="882" text-anchor="middle">2  run the systems over the state</text><text class="s" x="590" y="899" text-anchor="middle">3  the state publishes what changed</text><text class="s" x="590" y="937" text-anchor="middle">world time is the tick count; it moves only</text><text class="s" x="590" y="953" text-anchor="middle">when the tick driver runs a tick</text>
+  <rect class="box" x="340" y="780" width="500" height="250" rx="6"/><text class="t" x="590" y="803" text-anchor="middle">Game loop   (Simulation.step)</text><text class="s" x="590" y="829" text-anchor="middle">each tick, 1/30 s of game time:</text><text class="s" x="590" y="848" text-anchor="middle">1  drain the commands now due from the queue</text><text class="s" x="590" y="864" text-anchor="middle">    and have the systems validate and apply them</text><text class="s" x="590" y="882" text-anchor="middle">2  run the systems over the state</text><text class="s" x="590" y="899" text-anchor="middle">3  the state publishes what changed</text><text class="s" x="590" y="937" text-anchor="middle">world time is the tick count; it moves only</text><text class="s" x="590" y="953" text-anchor="middle">when the tick driver runs a tick</text>
   <rect class="box" x="60" y="780" width="240" height="110" rx="6"/><text class="t" x="180" y="803" text-anchor="middle">Game state</text><text class="s" x="180" y="825" text-anchor="middle">units and their goals,</text><text class="s" x="180" y="841" text-anchor="middle">buildings, stocks, fogs,</text><text class="s" x="180" y="857" text-anchor="middle">rng, the tick count,</text><text class="s" x="180" y="873" text-anchor="middle">GameMap, Fog, Defs</text>
-  <rect class="box" x="60" y="925" width="240" height="105" rx="6"/><text class="t" x="180" y="946" text-anchor="middle">Game systems</text><text class="s" x="180" y="966" text-anchor="middle">Movement, Economy, Production,</text><text class="s" x="180" y="982" text-anchor="middle">Eras, Vision, Wildlife,</text><text class="s" x="180" y="998" text-anchor="middle">UnitBehavior, Combat, Orders,</text><text class="s" x="180" y="1014" text-anchor="middle">Placement, Roads, Victory</text>
+  <rect class="box" x="60" y="925" width="240" height="105" rx="6"/><text class="t" x="180" y="946" text-anchor="middle">Game systems</text><text class="s" x="180" y="966" text-anchor="middle">Commands, Movement, Economy,</text><text class="s" x="180" y="982" text-anchor="middle">Production, Eras, Vision,</text><text class="s" x="180" y="998" text-anchor="middle">Wildlife, UnitBehavior, Combat,</text><text class="s" x="180" y="1014" text-anchor="middle">Orders, Placement, Roads, Victory</text>
 
   <!-- to the right of the simulation -->
   <rect class="box" x="900" y="595" width="250" height="60" rx="6"/><text class="t" x="1025" y="618" text-anchor="middle">Replayer</text><text class="s" x="1025" y="636" text-anchor="middle">drives the interface from a recording</text>
@@ -75,9 +75,9 @@
   <path class="l" d="M590,555 L590,625"/>
   <path class="l" d="M590,685 L590,705"/>
   <path class="l" d="M590,755 L590,780"/>
-  <path class="l" d="M340,835 L300,835"/>
+  
   <path class="l" d="M340,975 L300,975"/>
-  <path class="l" marker-start="url(#a)" d="M180,890 L180,925"/>
+  <path class="l" d="M180,925 L180,890"/>
   <path class="d" d="M180,780 L180,555"/><text class="s" x="195" y="680">state and events</text>
   <path class="d" d="M840,678 L900,678"/>
   <path class="l" d="M900,630 L840,630"/>
