@@ -31,7 +31,7 @@ var game  # Main
 func submit(cmd: Dictionary) -> String:
 	var owner := int(cmd.get("owner", -1))
 	if owner < 0 or owner >= game.stocks.size():
-		return "Lusor ignotus."
+		return "err.unknown_player"
 	match String(cmd.get("type", "")):
 		"train":
 			return _train(owner, cmd)
@@ -59,7 +59,7 @@ func submit(cmd: Dictionary) -> String:
 			return _pave_work(owner, cmd)
 		"advance":
 			return _advance(owner)
-	return "Imperium ignotum."
+	return "err.unknown_command"
 
 
 # ---------------------------------------------------------------- what the player may name
@@ -97,12 +97,12 @@ func _train(owner: int, cmd: Dictionary) -> String:
 	var b := _building(owner, int(cmd.get("building", -1)))
 	var kind := String(cmd.get("kind", ""))
 	if b == null or not b.complete or not b.trains().has(kind):
-		return "Non licet."
+		return "err.not_allowed"
 	var cost: Array = Defs.UNITS[kind]["cost"]
 	if not game.can_afford(cost, owner):
-		return "Copiae non sufficiunt."
+		return "err.cant_afford"
 	if not game.has_pop_room(owner):
-		return "Domus plures requiruntur."
+		return "err.need_houses"
 	game._pay(cost, owner)
 	b.train_queue.append(kind)
 	return ""
@@ -111,9 +111,9 @@ func _train(owner: int, cmd: Dictionary) -> String:
 func _place(owner: int, cmd: Dictionary) -> String:
 	var kind := String(cmd.get("kind", ""))
 	if not Defs.BUILDINGS.has(kind):
-		return "Non licet."
+		return "err.not_allowed"
 	if game.era < int(Defs.BUILDINGS[kind].get("era", 0)):
-		return "Nondum licet."
+		return "err.not_yet"
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
 	var err: String = game.placement.error(kind, tile, owner)
 	if err != "":
@@ -129,7 +129,7 @@ func _place(owner: int, cmd: Dictionary) -> String:
 func _build(owner: int, cmd: Dictionary) -> String:
 	var b := _building(owner, int(cmd.get("building", -1)))
 	if b == null:
-		return "Non licet."
+		return "err.not_allowed"
 	return _each(owner, cmd, func(u: Unit) -> void: game.orders.build(u, b), true)
 
 
@@ -139,13 +139,13 @@ func _gather(owner: int, cmd: Dictionary) -> String:
 	for u in _units(owner, cmd):
 		if u.kind == "villager" and game.orders.gather(u, tile):
 			any = true
-	return "" if any else "Iter nullum est."
+	return "" if any else "err.no_route"
 
 
 func _dropoff(owner: int, cmd: Dictionary) -> String:
 	var b := _building(owner, int(cmd.get("building", -1)))
 	if b == null or not b.complete:
-		return "Non licet."
+		return "err.not_allowed"
 	return _each(owner, cmd, func(u: Unit) -> void: game.orders.dropoff(u, b), true)
 
 
@@ -154,10 +154,10 @@ func _move(owner: int, cmd: Dictionary, fighting: bool) -> String:
 	var us := _units(owner, cmd)
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
 	if us.is_empty() or not game.map.in_bounds(tile):
-		return "Non licet."
+		return "err.not_allowed"
 	var goals: Array = game.map.spread_goals(tile, us.size())
 	if goals.is_empty():
-		return "Iter nullum est."
+		return "err.no_route"
 	for i in us.size():
 		if fighting:
 			game.combat.order_attack_move(us[i], goals[i % goals.size()])
@@ -169,13 +169,13 @@ func _move(owner: int, cmd: Dictionary, fighting: bool) -> String:
 func _attack(owner: int, cmd: Dictionary) -> String:
 	var foe := _unit(int(cmd.get("target", -1)))
 	if foe == null or foe.dead or foe.owner == owner:
-		return "Non licet."
+		return "err.not_allowed"
 	var any := false
 	for u in _units(owner, cmd):
 		if Combat.fights(u):
 			game.combat.order_attack(u, foe)
 			any = true
-	return "" if any else "Non licet."
+	return "" if any else "err.not_allowed"
 
 
 ## Runs `order` on each of the named units (only the villagers, if `workers_only`).
@@ -186,25 +186,25 @@ func _each(owner: int, cmd: Dictionary, order: Callable, workers_only := false) 
 			continue
 		order.call(u)
 		any = true
-	return "" if any else "Non licet."
+	return "" if any else "err.not_allowed"
 
 
 func _pave(owner: int, cmd: Dictionary) -> String:
 	if game.era < Defs.ROAD_ERA:
-		return "Nondum licet."
+		return "err.not_yet"
 	var tiles: Array[Vector2i] = []
 	for p: Vector2i in cmd.get("tiles", []):
 		if game.roads.tile_error(p, owner) == "":
 			tiles.append(p)
 	if tiles.is_empty():
-		return "Locus liber et planus requiritur."
+		return "err.need_level"
 	var have: Array[int] = game.stock_of(owner)
 	var n := tiles.size()
 	for r in 4:
 		if Defs.ROAD_COST[r] > 0:
 			n = mini(n, have[r] / Defs.ROAD_COST[r])
 	if n == 0:
-		return "Copiae non sufficiunt."
+		return "err.cant_afford"
 	for i in n:
 		game._pay(Defs.ROAD_COST, owner)
 		game.roads.plans[tiles[i]] = null
@@ -216,13 +216,13 @@ func _pave_work(owner: int, cmd: Dictionary) -> String:
 	for u in _units(owner, cmd):
 		if u.kind == "villager" and game.roads.assign_work(u):
 			any = true
-	return "" if any or cmd.get("type") == "pave" else "Non licet."
+	return "" if any or cmd.get("type") == "pave" else "err.not_allowed"
 
 
 func _advance(owner: int) -> String:
 	if owner != 0:  # the era is one for the whole game for now, and the first player's
-		return "Nondum licet."
+		return "err.not_yet"
 	if not game.can_advance():
-		return "Nondum licet."
+		return "err.not_yet"
 	game.start_advance()
 	return ""

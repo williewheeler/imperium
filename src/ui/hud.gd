@@ -227,8 +227,14 @@ func setup(game) -> void:
 
 
 ## Latin text with its English meaning as a hover tooltip.
+## A message from the phrase table (see Phrases).
+func flash_key(key: String, args: Array = []) -> void:
+	flash(Phrases.latin(key, args), Phrases.english(key, args))
+
+
+## A message that is made up as it is shown. Anything fixed belongs in Phrases.
 func flash(latin: String, english := "") -> void:
-	var translation := english if english != "" else Latin.gloss(latin)
+	var translation := english
 	_msg_latin.text = Latin.t(latin)
 	_msg_english.text = translation  # in small letters below, since the message is gone before a tooltip could be read
 	_msg_english.visible = translation != ""
@@ -393,7 +399,7 @@ func _quit_pressed() -> void:
 	_quit_button.caption = Latin.t("Certus?")
 	_quit_button.tooltip_text = "Click again to leave the game"
 	_quit_button.queue_redraw()
-	flash("Iterum preme, ut exeas.", "Click Exi again to leave the game.")
+	flash_key("msg.quit_again")
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -253,7 +253,7 @@ func _ready() -> void:
 	if net_seed >= 0:
 		hud.flash("Lusor %d ex %d." % [session.my_slot() + 1, GameSettings.players], "Multiplayer: you are player %d of %d, on the host's map (seed %d). Play is not synchronized between the machines yet." % [session.my_slot() + 1, GameSettings.players, net_seed])
 	else:
-		hud.flash("Elige colonos et iube eos laborare.")
+		hud.flash_key("msg.welcome")
 
 	_update_fog()
 	if Perf.on:
@@ -406,15 +406,15 @@ func _on_weather_changed(state: int) -> void:
 	_music_context()
 	match state:
 		Weather.State.RAIN:
-			hud.flash("Pluit.", "It begins to rain.")
+			hud.flash_key("msg.rain")
 		Weather.State.STORM:
-			hud.flash("Tonat.", "A storm breaks: thunder and heavy rain.")
+			hud.flash_key("msg.storm")
 		Weather.State.FOG:
-			hud.flash("Nebula oritur.", "Fog is rolling in.")
+			hud.flash_key("msg.fog")
 		Weather.State.CLEAR:
-			hud.flash("Sol lucet.", "The sun shines.")
+			hud.flash_key("msg.sun")
 		Weather.State.CLOUDY:
-			hud.flash("Caelum nubilum est.", "The sky clouds over.")
+			hud.flash_key("msg.clouds")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -437,7 +437,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		command_selected("stop")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
 		fog.set_show_all(not fog.show_all)  # lay the whole map open, and back
-		hud.flash("Tota terra patet." if fog.show_all else "Terra iterum celatur.", "The whole map is shown." if fog.show_all else "The fog returns.")
+		hud.flash_key("msg.map_open" if fog.show_all else "msg.map_closed")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_W:
 		weather.cycle()  # temporary: step through the weather to look at it
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
@@ -651,7 +651,7 @@ func command_selected(action: String) -> void:
 		_do({"type": action, "units": _ids(selected_units())})
 	if action == "attack_move" and not selected_fighters().is_empty():
 		attack_move_mode = true
-		hud.flash("Quo oppugnamus? Sinistra.", "Attack-move: left click where the fighters should go, fighting whatever they meet. (Esc cancels)")
+		hud.flash_key("msg.attack_move")
 
 
 # ---------- The person's driver ----------
@@ -663,7 +663,7 @@ func _do(cmd: Dictionary) -> bool:
 	cmd["owner"] = LOCAL
 	var err := commands.submit(cmd)
 	if err != "":
-		hud.flash(err)
+		hud.flash_key(err)
 	return err == ""
 
 
@@ -719,7 +719,7 @@ func _command_at(mp: Vector2) -> void:
 		b = null  # an AI's building is just ground to us for now
 	var movers := us  # who just walks there
 	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.is_field()))):
-		hud.flash("Milites laborare non possunt.")  # they can only march to the spot
+		hud.flash_key("err.soldiers_cant_work")  # they can only march to the spot
 	if b != null and b.complete and res.x < 0:  # laden villagers go and unload at a depot they click
 		var carriers: Array[Unit] = []
 		for u in workers:
@@ -759,8 +759,8 @@ func _command_at(mp: Vector2) -> void:
 func _try_place() -> void:
 	var err := commands.submit({"type": "place", "owner": LOCAL, "kind": placing, "tile": placing_tile(), "units": _ids(selected_workers())})
 	if err != "":
-		hud.flash(err)
-		if err == "Nondum licet.":
+		hud.flash_key(err)
+		if err == "err.not_yet":
 			placing = ""
 		return
 	placing = ""
@@ -850,7 +850,7 @@ func _drain_marshes() -> void:
 	for p in changed:
 		_world.tile_changed(p)
 	if not changed.is_empty():
-		hud.flash("Palus siccatur.", "The marsh around the city is drained (the Cloaca Maxima).")
+		hud.flash_key("msg.marsh_drained")
 
 
 func _remove_building(b: Building) -> void:
@@ -877,7 +877,7 @@ func _mouse_tile() -> Vector2i:
 
 func start_road_mode() -> void:
 	if era < Defs.ROAD_ERA:
-		hud.flash("Nondum licet.")
+		hud.flash_key("err.not_yet")
 		return
 	placing = ""
 	placing_road = true
@@ -955,7 +955,7 @@ func start_advance() -> void:
 	_pay(advance_data()["cost"])
 	advancing = true
 	advance_progress = 0.0
-	hud.flash("Progredimur.", "Advancing to the next era...")
+	hud.flash_key("msg.advancing")
 
 
 func _update_advance(delta: float) -> void:
@@ -1450,7 +1450,7 @@ func _return_to_dropsite(u: Unit) -> void:
 				best = b
 	if best == null:
 		u.state = Unit.State.IDLE
-		orders.note(u, "Aedifica forum vel horreum.")
+		orders.note(u, "err.need_depot")
 		return
 	var stand := map.stand_tile(best.rect(), u.pos)
 	if stand.x >= 0 and orders.set_path(u, stand):

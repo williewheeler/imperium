@@ -32,11 +32,11 @@ static func line(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 ## Empty if `owner` can have a paved road laid on `p`, otherwise the reason it can't.
 func tile_error(p: Vector2i, owner := 0) -> String:
 	if not game.fog_of(owner).is_explored(p):
-		return "Terra incognita."
+		return "err.unexplored"
 	if not game.map.can_pave(p) or game.placement.building_at(p) != null:
-		return "Locus liber et planus requiritur."
+		return "err.need_level"
 	if plans.has(p):
-		return "Locus occupatus."
+		return "err.spot_taken"
 	return ""
 
 

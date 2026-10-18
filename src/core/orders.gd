@@ -31,7 +31,7 @@ func explore(u: Unit) -> void:
 	else:
 		u.state = Unit.State.IDLE
 		if u.owner == 0:
-			game.hud.flash("Nihil ultra explorandum.", "Nothing reachable is left to explore.")
+			game.hud.flash_key("msg.nothing_to_explore")
 
 
 ## Heads for the nearest unseen, walkable tile that no other explorer is already going to.
@@ -80,9 +80,9 @@ func explore_next(u: Unit) -> bool:
 
 
 ## A message about one of our own units (AIs' troubles are not ours to hear).
-func note(u: Unit, latin: String) -> void:
+func note(u: Unit, key: String) -> void:
 	if u.owner == 0:
-		game.hud.flash(latin)
+		game.hud.flash_key(key)
 
 
 func set_path(u: Unit, goal: Vector2i) -> bool:
@@ -117,7 +117,7 @@ func move(u: Unit, goal: Vector2i) -> void:
 		u.state = Unit.State.MOVE
 		u.target_building = null
 	else:
-		note(u, "Iter nullum est.")
+		note(u, "err.no_route")
 
 
 ## Walk to `b` and hand over what the villager carries. If they were working, they then go back
@@ -127,7 +127,7 @@ func dropoff(u: Unit, b: Building) -> void:
 	var was_working := u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]
 	var stand := game.map.stand_tile(b.rect(), u.pos)
 	if stand.x < 0 or not set_path(u, stand):
-		note(u, "Iter nullum est.")
+		note(u, "err.no_route")
 		return
 	u.state = Unit.State.RETURN
 	u.target_building = null
@@ -142,7 +142,7 @@ func gather(u: Unit, tile: Vector2i) -> bool:
 		return false
 	var stand := game.map.stand_tile(Rect2i(tile, Vector2i.ONE), u.pos)
 	if stand.x < 0 or not set_path(u, stand):
-		note(u, "Iter nullum est.")
+		note(u, "err.no_route")
 		u.state = Unit.State.IDLE
 		return false
 	if u.carry_kind != d.kind:
@@ -161,7 +161,7 @@ func build(u: Unit, b: Building) -> void:
 	game.roads.release(u)
 	var stand := game.map.stand_tile(b.rect(), u.pos)
 	if stand.x < 0 or not set_path(u, stand):
-		note(u, "Iter nullum est.")
+		note(u, "err.no_route")
 		return
 	u.state = Unit.State.BUILD_GO
 	u.target_building = b

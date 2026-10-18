@@ -337,6 +337,10 @@ func _label(text: String, px: int, color: Color) -> Label:
 # ---------------------------------------------------------------- doing things
 
 ## The status under the pages: a Latin line with its English beneath.
+func _say_key(key: String, bad := false) -> void:
+	_say(Phrases.latin(key), Phrases.english(key), bad)
+
+
 func _say(latin: String, english: String, bad := false) -> void:
 	_status_latin.text = Latin.t(latin)
 	_status_latin.add_theme_color_override("font_color", Color("e0604c") if bad else CREAM)
@@ -389,7 +393,7 @@ func _enter_room(session: NetSession) -> void:
 	session.roster_changed.connect(_refresh_room)
 	session.host_lost.connect(func() -> void:
 		_leave_session()
-		_say("Hospes abest.", "The host has left.", true))
+		_say_key("lobby.host_left", true))
 	session.starting.connect(func(_cfg: Dictionary) -> void:
 		game_starting.emit())
 	_join_page.visible = false
@@ -406,11 +410,11 @@ func _enter_room(session: NetSession) -> void:
 		_where_label.text = Latin.t("Aliis dic:") + "  " + "   ".join(shown)
 		_where_label.tooltip_text = "Tell the others one of these addresses. The first ones are for your local network; 127.0.0.1 is for another copy of the game on this same computer. For play over the internet, forward the port on your router and give them your public IP."
 		_where_label.mouse_filter = Control.MOUSE_FILTER_PASS
-		_say("Exspectamus lusores.", "Waiting for players to join.")
+		_say_key("lobby.waiting")
 	else:
 		_where_label.text = Latin.t("Hospes:") + "  %s:%d" % [GameSettings.net_address, GameSettings.net_port]
 		_where_label.tooltip_text = ""
-		_say("In atrio sumus.", "You are in the host's lobby. Press Paratus when you are ready.")
+		_say_key("lobby.in_hall")
 	_refresh_room()
 
 
@@ -447,11 +451,11 @@ func _refresh_room() -> void:
 		_start_button.disabled = problem != ""
 		_problem_label.text = problem
 		if problem == "":
-			_say("Omnes parati sunt.", "Everyone is ready. Press Incipe to begin.")
+			_say_key("lobby.all_ready")
 		elif _session.roster.size() > 1:
 			_say("Exspectamus.", problem)
 		else:
-			_say("Exspectamus lusores.", "Waiting for players to join.")
+			_say_key("lobby.waiting")
 	else:
 		_problem_label.text = ""
 
@@ -469,7 +473,7 @@ func _do_start() -> void:
 		return
 	var err := _session.start_game(GameSettings.lobby_dict(), randi() % 65536)
 	if err != "":
-		_say("Nondum licet.", err, true)
+		_say(Phrases.latin("err.not_yet"), err, true)
 
 
 func _show_join() -> void:

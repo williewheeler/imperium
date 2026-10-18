@@ -4,8 +4,11 @@ Every word the game shows is Latin, in Roman capitals with V for U (`Latin.t()`)
 is on hover. This lists every term in use, so new text stays consistent. Where a name is the game's own
 coinage rather than a period term, it says so. Keep this file up to date when you add text.
 
-Where it lives in the code: building and unit names in `defs.gd`, one-off messages and their English in
-`latin.gd` (`GLOSS`) and at the `hud.flash(...)` calls in `main.gd`, the panel text in `hud.gd`.
+Where it lives in the code: building, unit, resource and era names in `defs.gd`; fixed messages (why a
+command was refused, weather and map notices, the multiplayer hall) in `phrases.gd`, each with a key, its
+Latin and its English (`just phrases-test` checks the table); the lettering rules in `latin.gd`
+(`Latin.t`); the panel text and labels at their place of use in `hud.gd` and the other screens. Add a new
+message to `Phrases` and show it with `hud.flash_key("msg.something")`.
 
 **Grammar conventions.** Names are in the nominative. Each building also has an accusative (`acc`) for
 verbs ("Aedifica **Domum**"), and `done` / `ready` agree with its gender ("Forum **perfectum est**",

@@ -57,6 +57,10 @@ net-test:
     echo "--- host"; cat ${TMPDIR:-/tmp}/imperium-host.log; echo "--- join"; cat ${TMPDIR:-/tmp}/imperium-join.log
     grep -q "JOIN starting slot=1" ${TMPDIR:-/tmp}/imperium-join.log && echo PASS || { echo FAIL; exit 1; }
 
+# Headless check of the phrase table: both languages present, every key used in the code exists
+phrases-test:
+    {{godot}} --headless --path . --script tools/phrases_test.gd
+
 # Headless check of the command layer (ownership, payment, orders) on a real game
 commands-test:
     {{godot}} --headless --path . --script tools/commands_test.gd -- --nosplash --seed=42 --players=2

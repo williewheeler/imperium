@@ -34,23 +34,23 @@ func error(kind: String, tile: Vector2i, owner := 0) -> String:
 	var rect := Rect2i(tile, def["size"])
 	for rt in game.roads.plans:
 		if rect.has_point(rt):
-			return "Locus occupatus."
+			return "err.spot_taken"
 	for other: Building in game.buildings:  # checked first so the message says why (a field's crop tile isn't "free land")
 		if other.rect().intersects(rect):
-			return "Locus occupatus."
+			return "err.spot_taken"
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var p := Vector2i(x, y)
 			if not game.fog_of(owner).is_explored(p):
-				return "Terra incognita."
+				return "err.unexplored"
 			if not game.map.is_free_land(p):
-				return "Locus liber et planus requiritur."
+				return "err.need_level"
 	if not game.map.is_level(rect):  # everything stands on one terrace
-		return "Locus liber et planus requiritur."
+		return "err.need_level"
 	if not def.get("walkable", false):
 		for u: Unit in game.units:
 			if rect.has_point(Vector2i(u.pos)):
-				return "Coloni impediunt."
+				return "err.villagers_in_way"
 	if not game.can_afford(def["cost"], owner):
-		return "Copiae non sufficiunt."
+		return "err.cant_afford"
 	return ""

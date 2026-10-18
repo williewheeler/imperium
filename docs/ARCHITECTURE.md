@@ -84,7 +84,7 @@ submitted it.**
   commands and their fields is listed at the top of `src/core/commands.gd`.
 - **`Commands.submit(cmd) -> String`** is the only gate. It checks that the named units and buildings exist
   and belong to `owner` (anything else is trimmed away), checks the rules (affordable, population room,
-  placement, era), pays, and applies. It returns `""` on success or a Latin reason on refusal, and it never
+  placement, era), pays, and applies. It returns `""` on success or a phrase key on refusal (`"err.cant_afford"`; see *Text*), and it never
   touches the selection, mouse, HUD or markers.
 - **Drivers** decide what to ask for:
   - The person's driver is the input section of `Main` (`_do`, `_command_at`, `_try_place`, `_train_unit`,
@@ -152,6 +152,16 @@ Two small classes own the ground rules that used to live in `Main`, each holding
 at. They are kept out of `Main` so that what is left is the game. `EraPreview.place_display_army` also puts a
 few non-population "display" soldiers by the first town in a normal game; it is a placeholder.
 
+## Text  (**built**)
+
+The simulation never produces display text. `Commands`, `Placement`, `Roads` and `Orders` return or pass
+**keys** (`err.no_route`), and a client turns a key into words: `Hud.flash_key` looks it up in `Phrases`
+(`src/core/phrases.gd`), which holds each message's Latin and English together. That keeps rules separate
+from language, so an AI, a test or a remote client can act on a key without parsing a sentence.
+Names of buildings, units, resources and eras stay as data in `Defs`; one-word labels and text made up at
+the point of use (`"Aetas %s"`, panel readouts) stay where they are drawn. `Latin.t` only applies the
+lettering (capitals, V for U). See `LATIN.md` for the vocabulary.
+
 ## Weather and fog
 
 Weather (`src/core/weather.gd`) is cosmetic: a small state machine that drives `WeatherView`, the ground
@@ -163,6 +173,7 @@ in `src/map/`) is different: it is per-player simulation state (`Main.fogs`, by 
 
 - `just commands-test`: boots a real two-player game headless and submits commands: ownership, payment,
   refusals, orders.
+- `just phrases-test`: every phrase has Latin and English, and every key named in the code exists.
 - `just net-test`: the lobby, host and client in two processes.
 - `--report` (see the justfile): runs a game headless and dumps the state, which is how AI behavior is
   checked.
