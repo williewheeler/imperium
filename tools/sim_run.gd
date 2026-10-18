@@ -5,7 +5,7 @@ extends SceneTree
 ##   godot --headless --path . --script tools/sim_run.gd -- --seed=7 --seconds=600 --out=game.replay
 ##
 ## Options (all optional): --seed=N  --players=N  --size=tiny|small|medium  --map=ID  --terrain=ID
-## --resources=ID  --difficulty=ID  --seconds=N (game time)  --out=FILE  --report=N (print a line every N game seconds)
+## --resources=ID  --difficulty=ID  --rush=SECONDS (AIs attack by then)  --seconds=N (game time)  --out=FILE  --report=N (print a line every N game seconds)
 ## Nothing is read from the settings screen's saved file: the same flags always give the same game.
 
 
@@ -22,6 +22,7 @@ func _init() -> void:
 	config.resources_id = GameSettings.resources_info(String(args.get("resources", "normal")))["id"]
 	config.difficulty_id = GameSettings.difficulty_info(String(args.get("difficulty", "normal")))["id"]
 	config.terrain_id = GameSettings.terrain_info(String(args.get("terrain", "temperate")))["id"]
+	config.rush = float(args.get("rush", 0.0))
 	config.peoples = Defs.AI_ORDER.duplicate()
 	config.humans = []  # nobody is at a keyboard: every people is an AI
 	var seconds := float(args.get("seconds", 300))

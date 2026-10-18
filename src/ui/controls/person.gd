@@ -313,7 +313,7 @@ func absorb_at(mp: Vector2) -> void:
 ## Sends `cmd` as the local player. The game answers a step later, and a refusal is flashed then. True if it was sent.
 ## (While a replay plays, the commands come from the file and the person's are turned away.)
 func give(cmd: Dictionary) -> bool:
-	if main.replayer != null:
+	if main.replayer != null or main.autoplay:
 		main.hud.flash_key("err.not_allowed")
 		return false
 	_send(cmd)
@@ -455,7 +455,7 @@ func command_at(mp: Vector2) -> void:
 
 
 func try_place() -> void:
-	if main.replayer != null:
+	if main.replayer != null or main.autoplay:
 		main.hud.flash_key("err.not_allowed")
 		return
 	if _placing_ticket != 0:

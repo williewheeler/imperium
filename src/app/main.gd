@@ -34,6 +34,7 @@ var _report := false
 var _shot_frame := 20
 var _frame := 0
 var music: Music  # null in scripted runs
+var autoplay := false  # --autoplay: an AI plays the first people (the Romans), and the screen is the usual one, watching them: the person's commands are turned away
 var spectating := false  # --spectate: every player is an AI, and the window shows them all (see Spectator)
 var spectator: Spectator
 var viewers: Array[AI] = []  # --spectate: the AIs whose views are shown, in pane order (each pane has its own fog and layer)
@@ -87,6 +88,7 @@ func _ready() -> void:
 		GameSettings.terrain_id = GameSettings.terrain_info(String(args["terrain"]))["id"]
 	Hud.quiet = args.has("shot")  # a screenshot has no banners over it
 	spectating = args.has("spectate")
+	autoplay = args.has("autoplay")
 	if spectating and not args.has("players"):
 		GameSettings.players = 4  # one pane each (--players=N for another number, up to 8: more than four make a 3x3 grid)
 	var replay: Replay = null
@@ -138,7 +140,8 @@ func _ready() -> void:
 		config = replay.config
 	else:
 		var world_seed := net_seed if net_seed >= 0 else int(args.get("seed", randi() % 65536))
-		config = SimConfig.from_settings(world_seed, [] if spectating else [LOCAL])
+		config = SimConfig.from_settings(world_seed, [] if (spectating or autoplay) else [LOCAL])
+		config.rush = float(args.get("rush", 0.0))
 	var built: Array = []
 	var worker := Thread.new()
 	worker.start(func() -> void: built.append(GameMap.new(config.seed_value, config.tiles(), config.map_type, 0, config.players, config.terrain_id)))

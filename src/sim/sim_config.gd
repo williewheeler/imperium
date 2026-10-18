@@ -15,6 +15,7 @@ var difficulty_id := "normal"
 var terrain_id := "temperate"
 var peoples: Array = []  # the faction of each AI slot (slot 1 first), as chosen on the settings screen
 var humans: Array = [0]  # the players who are people at a keyboard; every other player is run by an AI
+var rush := 0.0  # if above 0 (a game to watch fights in): everyone starts with some stock, and the AIs send their first armies by this many seconds
 
 
 ## The config for a game with the choices now on the settings screen.
@@ -33,7 +34,7 @@ static func from_settings(p_seed: int, p_humans: Array) -> SimConfig:
 
 
 func to_dict() -> Dictionary:
-	return {"seed": seed_value, "map_type": map_type, "size_id": size_id, "players": players,
+	return {"rush": rush, "seed": seed_value, "map_type": map_type, "size_id": size_id, "players": players,
 		"resources_id": resources_id, "difficulty_id": difficulty_id, "terrain_id": terrain_id,
 		"peoples": peoples.duplicate(), "humans": humans.duplicate()}
 
@@ -49,6 +50,7 @@ static func from_dict(d: Dictionary) -> SimConfig:
 	c.terrain_id = GameSettings.terrain_info(String(d.get("terrain_id", c.terrain_id)))["id"]
 	c.peoples = Array(d.get("peoples", Defs.AI_ORDER))
 	c.humans = Array(d.get("humans", [0]))
+	c.rush = float(d.get("rush", 0.0))
 	return c
 
 

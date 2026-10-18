@@ -30,12 +30,18 @@ func _riches() -> float:
 	return float(GameSettings.resources_info(sim.config.resources_id)["amount"])
 
 
+const RUSH_STOCK := [300, 300, 200, 0]  # what everyone is given at the start of a rush game (see SimConfig.rush)
+
+
 ## A player's stores and fog, empty-handed and Era I like everyone's.
 func _open_books(owner: int) -> void:
 	while sim.state.stocks.size() <= owner:
 		sim.state.stocks.append(null)
 	var stock: Array[int] = []
 	stock.assign(Defs.START_STOCK)
+	if sim.config.rush > 0.0:  # a game to watch fights in: everyone starts with enough for barracks and a few fighters
+		for i in stock.size():
+			stock[i] += RUSH_STOCK[i]
 	sim.state.stocks[owner] = stock
 	sim.state.fogs[owner] = Fog.new(sim.state.map.w, sim.state.map.h, not sim.drawn_fogs.has(owner))
 	sim.state.era_level[owner] = 0
@@ -142,6 +148,8 @@ func _make_ai(owner_id: int, faction: String, spot: Vector2i) -> void:
 	ai.faction = faction
 	ai.start = spot
 	ai.set_difficulty(sim.config.difficulty_id)
+	if sim.config.rush > 0.0:
+		ai.rush(sim.config.rush)
 	ai.rng.seed = sim.config.seed_value * 7919 + owner_id * 104729 + 1  # its own dice: the rules' stay out of its decisions
 	ai.fog = sim.state.fogs[owner_id]  # what its people have seen: it knows the ground round its town, and nothing else
 	sim.ais.append(ai)

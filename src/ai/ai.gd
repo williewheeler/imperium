@@ -78,6 +78,14 @@ func set_difficulty(id: String) -> void:
 	shares = [0.35, food, 0.15, 0.15]  # (what is in store shifts this: see WorkersGoal)
 
 
+## A game to watch fights in (see SimConfig.rush): the first army goes out by `seconds` at the latest, and it sends smaller
+## forces.
+func rush(seconds: float) -> void:
+	attack_after = minf(attack_after, seconds)
+	wave_size = mini(wave_size, 4)
+	army_ratio = minf(army_ratio, 0.4)  # (small forces, often: a wave goes out as soon as four and a guard are idle)
+
+
 func tick(delta: float) -> void:
 	if _see_timer <= 2.5 * delta or _timer <= 2.5 * delta:
 		client.want_view()  # it looks in a tick or so, and the host builds its view at the end of each step till then

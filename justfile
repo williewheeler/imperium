@@ -44,6 +44,12 @@ ai4 *args:
 ai8 *args:
     ./run.sh --windowed --nosplash --spectate --players=8 --terrain=temperate --size=1600x900 {{args}}
 
+# Watch the Romans play seven AIs, in the usual game window: you only look. Everyone starts with some stock and the first
+# armies go out about 2.5 game minutes in (4x speed: well under a minute). Drag or click the minimap to look anywhere; M shows
+# the whole map. Options as for any game, e.g. just rome --seed=5 --speed=8 --rush=300
+rome *args:
+    ./run.sh --windowed --nosplash --autoplay --players=8 --map=continens --size=small --terrain=temperate --difficulty=hard --rush=150 --speed=4 --seed=11 {{args}}
+
 # Multiplayer: host a lobby in the title flow (127.0.0.1:7777)
 host *args:
     ./run.sh --windowed --splash --lobby=host {{args}}
