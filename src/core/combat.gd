@@ -98,7 +98,7 @@ func nearest_enemy(u: Unit, radius: float) -> Unit:
 func order_attack(u: Unit, t: Unit, auto := false) -> void:
 	if not fights(u) or t == null or t.dead or t.owner == u.owner:
 		return
-	game._release_road(u)
+	game.roads.release(u)
 	u.dropoff_only = false
 	u.target_building = null
 	u.target = t
@@ -243,7 +243,7 @@ func _die(u: Unit) -> void:
 	u.dead = true
 	u.selected = false
 	u.state = Unit.State.IDLE
-	game._release_road(u)
+	game.roads.release(u)
 	_graveyard.append(u)
 	kills += 1
 
@@ -289,7 +289,7 @@ func _give_up(u: Unit) -> void:
 
 ## A villager that is hit runs for the nearest of its own town centers (or just away from whoever hit it).
 func _flee(v: Unit, from: Unit) -> void:
-	game._release_road(v)
+	game.roads.release(v)
 	v.dropoff_only = false
 	v.target_building = null
 	v.flee_t = FLEE_TIME

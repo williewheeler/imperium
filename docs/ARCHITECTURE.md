@@ -13,7 +13,8 @@ can move between folders freely. Only `res://` paths (the scene, shaders, assets
 
 | Folder | Role |
 |---|---|
-| `src/core/` | The game itself: state, rules, the map, the command layer, the computer players. Today `main.gd` is both the simulation and the person's input handling (see *Known debts*). |
+| `src/core/` | The game itself: state and rules (`main`, `unit`, `building`, `combat`, `defs`), the command layer (`commands`), where things may go (`placement`, `roads`), the computer players (`ai`), settings, weather, music. Today `main.gd` is both the simulation and the person's input handling (see *Known debts*). |
+| `src/map/` | The ground and what is known of it: `GameMap`, `TerrainGen`, `Fog`, `Iso` (tile/screen maths), `Deposit`. Plain classes that never reference `Main`; they depend only on `GameSettings` and `Defs`. |
 | `src/views/` | Drawing the state. Reads the game, never changes it. |
 | `src/ui/` | The HUD, menus, lobby, title. Talks to the game through signals and `Main` calls. |
 | `src/art/` | Sprite drawing code; baked into PNG sheets by `tools/`. |
@@ -122,7 +123,7 @@ between machines. See DESIGN.md for the lobby itself.
 
 ## Known debts
 
-- `Main` (`main.gd`, about 2,400 lines) mixes the simulation (unit movement, gathering, building, combat
+- `Main` (`main.gd`, about 2,250 lines) mixes the simulation (unit movement, gathering, building, combat
   hooks), the person's driver and input, camera, debug modes and startup. The next split is the
   simulation out from the person's driver.
 - The era is one value for the whole game and belongs to player 0, so `advance` is refused for other
@@ -133,6 +134,22 @@ between machines. See DESIGN.md for the lobby itself.
 - `Commands` calls `Main`'s underscore order functions (`_order_move`, `_order_gather`, ...); they are
   `Main`'s private rules for what an order does, and should move with the simulation when it is split out.
 - Stock `stock` is still an alias for `stocks[0]`.
+
+## Placement and roads  (**built**)
+
+Two small classes own the ground rules that used to live in `Main`, each holding a reference to `Main`:
+`Placement` (`building_at`, `rects`, `find_site`, and `error`, the reason a building can't go on a tile) and
+`Roads` (`plans`, the tiles paid for and waiting to be paved and who is on each; `tile_error`,
+`assign_work`, `release`, `finish_tile`; and `Roads.line` for dragging out a road). `Commands`, `AI`,
+`Combat` and the views call them as `game.placement` and `game.roads`. They still reach back into
+`Main` for pathing (`_set_path`) and the world view (`_world`).
+
+## Weather and fog
+
+Weather (`src/core/weather.gd`) is cosmetic: a small state machine that drives `WeatherView`, the ground
+shading and the music's mood. It does not affect play, and is not worth a module of its own. Fog (`Fog`,
+in `src/map/`) is different: it is per-player simulation state (`Main.fogs`, by owner) that the AI and
+`Commands` read to decide what a player may see, explore and build on. `FogView` only draws it.
 
 ## Tests
 

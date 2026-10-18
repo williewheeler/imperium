@@ -1,0 +1,76 @@
+class_name Roads
+extends RefCounted
+## Paved roads: the tiles planned for paving (paid for, waiting for a villager) and who is working on each.
+
+var game  # Main
+var plans := {}  # Vector2i -> Unit or null: tiles queued for paving, and who is on the job
+
+
+## Tiles along a straight line between two tiles (Bresenham), for dragging out a road.
+static func line(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var dx := absi(b.x - a.x)
+	var dy := -absi(b.y - a.y)
+	var sx := 1 if a.x < b.x else -1
+	var sy := 1 if a.y < b.y else -1
+	var err := dx + dy
+	var p := a
+	while out.size() < 80:
+		out.append(p)
+		if p == b:
+			break
+		var e2 := 2 * err
+		if e2 >= dy:
+			err += dy
+			p.x += sx
+		if e2 <= dx:
+			err += dx
+			p.y += sy
+	return out
+
+
+## Empty if `owner` can have a paved road laid on `p`, otherwise the reason it can't.
+func tile_error(p: Vector2i, owner := 0) -> String:
+	if not game.fog_of(owner).is_explored(p):
+		return "Terra incognita."
+	if not game.map.can_pave(p) or game.placement.building_at(p) != null:
+		return "Locus liber et planus requiritur."
+	if plans.has(p):
+		return "Locus occupatus."
+	return ""
+
+
+## Sends `u` to the nearest planned road tile nobody is working on. False if there's none.
+func assign_work(u: Unit) -> bool:
+	var candidates: Array[Vector2i] = []
+	for p: Vector2i in plans:
+		if plans[p] == null:
+			candidates.append(p)
+	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(u.pos) < Vector2(b).distance_squared_to(u.pos))
+	for p in candidates:
+		release(u)
+		if game._set_path(u, p):
+			plans[p] = u
+			u.road_tile = p
+			u.state = Unit.State.ROAD_GO
+			u.target_building = null
+			return true
+	return false
+
+
+## Lets go of the planned tile `u` was heading for, so someone else can take it.
+func release(u: Unit) -> void:
+	if u.road_tile.x >= 0 and plans.get(u.road_tile) == u:
+		plans[u.road_tile] = null
+	u.road_tile = Vector2i(-1, -1)
+
+
+## `u` has paved its tile: make it a road, and on to the next one.
+func finish_tile(u: Unit) -> void:
+	var p := u.road_tile
+	if game.map.make_paved(p) and game._world != null:
+		game._world.road_changed(p)
+	plans.erase(p)
+	u.road_tile = Vector2i(-1, -1)
+	if not assign_work(u):
+		u.state = Unit.State.IDLE

@@ -115,7 +115,7 @@ func _place(owner: int, cmd: Dictionary) -> String:
 	if game.era < int(Defs.BUILDINGS[kind].get("era", 0)):
 		return "Nondum licet."
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
-	var err: String = game.placement_error(kind, tile, owner)
+	var err: String = game.placement.error(kind, tile, owner)
 	if err != "":
 		return err
 	game._pay(Defs.BUILDINGS[kind]["cost"], owner)
@@ -194,7 +194,7 @@ func _pave(owner: int, cmd: Dictionary) -> String:
 		return "Nondum licet."
 	var tiles: Array[Vector2i] = []
 	for p: Vector2i in cmd.get("tiles", []):
-		if game.road_tile_error(p, owner) == "":
+		if game.roads.tile_error(p, owner) == "":
 			tiles.append(p)
 	if tiles.is_empty():
 		return "Locus liber et planus requiritur."
@@ -207,14 +207,14 @@ func _pave(owner: int, cmd: Dictionary) -> String:
 		return "Copiae non sufficiunt."
 	for i in n:
 		game._pay(Defs.ROAD_COST, owner)
-		game.road_plans[tiles[i]] = null
+		game.roads.plans[tiles[i]] = null
 	return _pave_work(owner, cmd)
 
 
 func _pave_work(owner: int, cmd: Dictionary) -> String:
 	var any := false
 	for u in _units(owner, cmd):
-		if u.kind == "villager" and game._assign_road_work(u):
+		if u.kind == "villager" and game.roads.assign_work(u):
 			any = true
 	return "" if any or cmd.get("type") == "pave" else "Non licet."
 

@@ -268,7 +268,7 @@ func _build_chunk(c: Vector2i) -> void:
 					for i in 3:
 						var foot := Iso.to_screen_on(Vector2(x + 0.2 + 0.6 * Pixel.hash2(x, y, 10 + i), y + 0.2 + 0.6 * Pixel.hash2(x, y, 20 + i)), Iso.level_of(p))
 						list.append(_tree(_forest_tree(map.biome_at(p), x, y, i), foot))
-				GameMap.Terrain.MARSH when game.building_at(p) == null:
+				GameMap.Terrain.MARSH when game.placement.building_at(p) == null:
 					for i in 2:  # reeds in every tile...
 						var foot := Iso.to_screen_on(Vector2(x + 0.25 + 0.5 * Pixel.hash2(x, y, 90 + i), y + 0.25 + 0.5 * Pixel.hash2(x, y, 95 + i)), Iso.level_of(p))
 						list.append(_sprite("reeds:%d" % int(Pixel.hash2(x, y, 99 + i) * 2.0), foot))
@@ -277,7 +277,7 @@ func _build_chunk(c: Vector2i) -> void:
 						list.append(_sprite("snag:%d" % int(Pixel.hash2(x, y, 111) * 2.0), Iso.to_screen_on(Vector2(x + 0.3 + 0.4 * Pixel.hash2(x, y, 112), y + 0.3 + 0.4 * Pixel.hash2(x, y, 113)), Iso.level_of(p))))
 					elif bog < 0.26:
 						list.append(_tree("alder:1", Iso.to_screen_on(Vector2(x + 0.3 + 0.4 * Pixel.hash2(x, y, 112), y + 0.3 + 0.4 * Pixel.hash2(x, y, 113)), Iso.level_of(p))))
-				GameMap.Terrain.GRASS when game.building_at(p) == null:  # nothing grows under a building
+				GameMap.Terrain.GRASS when game.placement.building_at(p) == null:  # nothing grows under a building
 					var scenery := _meadow_scenery(map.biome_at(p), x, y)
 					if scenery != "":  # a bush or two, scenery only; and wet edges get the odd willow or alder
 						var at := Iso.to_screen_on(Vector2(x + 0.25 + 0.5 * Pixel.hash2(x, y, 120), y + 0.25 + 0.5 * Pixel.hash2(x, y, 121)), Iso.level_of(p))

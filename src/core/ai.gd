@@ -168,7 +168,7 @@ func _put_up(kind: String, near: Vector2, min_r: int) -> void:
 	var avoid: Array[Vector2i] = []
 	for u: Unit in game.units:
 		avoid.append(Vector2i(u.pos))
-	var site: Vector2i = game.map.find_site(def["size"], Vector2i(near), min_r, 20, avoid, game._building_rects())
+	var site: Vector2i = game.map.find_site(def["size"], Vector2i(near), min_r, 20, avoid, game.placement.rects())
 	if site.x < 0:
 		return
 	var crew: Array[Unit] = []  # the two nearest idle hands (or the nearest gatherer, if nobody is idle) build it

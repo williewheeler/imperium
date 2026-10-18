@@ -44,7 +44,7 @@ func _draw() -> void:
 		d.append(d[0])
 		draw_polyline(d, GOLD, 1.0)
 
-	for p: Vector2i in game.road_plans:  # road tiles waiting to be paved
+	for p: Vector2i in game.roads.plans:  # road tiles waiting to be paved
 		var pts := _diamond(Vector2(p), Vector2.ONE)
 		draw_colored_polygon(pts, Color(0.85, 0.78, 0.55, 0.28))
 		pts.append(pts[0])
@@ -92,7 +92,7 @@ func _bar(at: Vector2, width: float, frac: float, color: Color) -> void:
 func _draw_road_ghost() -> void:
 	var good := 0
 	for p in game.road_drag:
-		var ok: bool = game.road_tile_error(p) == ""
+		var ok: bool = game.roads.tile_error(p) == ""
 		good += 1 if ok else 0
 		var tint := Color(0.35, 1, 0.35) if ok else Color(1, 0.3, 0.3)
 		var pts := _diamond(Vector2(p), Vector2.ONE)
@@ -110,7 +110,7 @@ func _draw_road_ghost() -> void:
 func _draw_ghost() -> void:
 	var def: Dictionary = Defs.BUILDINGS[game.placing]
 	var tile: Vector2i = game.placing_tile()
-	var ok: bool = game.placement_error(game.placing, tile) == ""
+	var ok: bool = game.placement.error(game.placing, tile) == ""
 	var tint := Color(0.35, 1, 0.35) if ok else Color(1, 0.3, 0.3)
 	var pts := _diamond(Vector2(tile), Vector2(def["size"]))
 	draw_colored_polygon(pts, Color(tint, 0.35))
