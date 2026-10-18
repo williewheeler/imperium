@@ -40,7 +40,7 @@ func submit(cmd: Dictionary) -> String:
 
 func _dispatch(cmd: Dictionary) -> String:
 	var owner := int(cmd.get("owner", -1))
-	if owner < 0 or owner >= sim.stocks.size():
+	if owner < 0 or owner >= sim.state.stocks.size():
 		return "err.unknown_player"
 	match String(cmd.get("type", "")):
 		"train":
@@ -84,14 +84,14 @@ func _units(owner: int, cmd: Dictionary) -> Array[Unit]:
 	for id: int in cmd.get("units", []):
 		wanted[id] = true
 	var out: Array[Unit] = []
-	for u: Unit in sim.units:
+	for u: Unit in sim.state.units:
 		if wanted.has(u.id) and u.owner == owner and not u.dead:
 			out.append(u)
 	return out
 
 
 func _unit(id: int) -> Unit:
-	for u: Unit in sim.units:
+	for u: Unit in sim.state.units:
 		if u.id == id:
 			return u
 	return null
@@ -99,7 +99,7 @@ func _unit(id: int) -> Unit:
 
 ## The building with this id, if it is `owner`'s.
 func _building(owner: int, id: int) -> Building:
-	for b: Building in sim.buildings:
+	for b: Building in sim.state.buildings:
 		if b.id == id:
 			return b if b.owner == owner else null
 	return null
@@ -154,7 +154,7 @@ func _absorb(owner: int, cmd: Dictionary) -> String:
 	if b == null or not b.complete or not b.absorbs():
 		return "err.not_allowed"
 	var room := b.max_citizens() - b.citizens
-	for u: Unit in sim.units:  # those already on their way count
+	for u: Unit in sim.state.units:  # those already on their way count
 		if u.state == Unit.State.ABSORB_GO and u.target_building == b:
 			room -= 1
 	if room <= 0:
@@ -170,7 +170,7 @@ func _absorb(owner: int, cmd: Dictionary) -> String:
 func _gather(owner: int, cmd: Dictionary) -> String:
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
 	var at: Building = sim.placement.building_at(tile)
-	if at != null and at.has_plots() and not sim.map.deposits.has(tile):  # a tile of a plot, or the yard: a plot of the farm
+	if at != null and at.has_plots() and not sim.state.map.deposits.has(tile):  # a tile of a plot, or the yard: a plot of the farm
 		var plot := at.plot_at(tile)
 		tile = plot if plot.x >= 0 else at.field_tile()
 	var any := false
@@ -191,7 +191,7 @@ func _dropoff(owner: int, cmd: Dictionary) -> String:
 func _move(owner: int, cmd: Dictionary, fighting: bool) -> String:
 	var us := _units(owner, cmd)
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
-	if us.is_empty() or not sim.map.in_bounds(tile):
+	if us.is_empty() or not sim.state.map.in_bounds(tile):
 		return "err.not_allowed"
 	var walkers: Array[Unit] = []
 	for u in us:
@@ -201,7 +201,7 @@ func _move(owner: int, cmd: Dictionary, fighting: bool) -> String:
 			walkers.append(u)
 	if walkers.is_empty():
 		return ""
-	var goals: Array = sim.map.spread_goals(tile, walkers.size())
+	var goals: Array = sim.state.map.spread_goals(tile, walkers.size())
 	if goals.is_empty():
 		return "err.no_route"
 	for i in walkers.size():
@@ -226,7 +226,7 @@ func _attack(owner: int, cmd: Dictionary) -> String:
 
 func _attack_building(owner: int, cmd: Dictionary) -> String:
 	var target: Building = null
-	for b: Building in sim.buildings:
+	for b: Building in sim.state.buildings:
 		if b.id == int(cmd.get("building", -1)):
 			target = b
 	if target == null or not target.attackable() or target.owner == owner:
@@ -268,7 +268,7 @@ func _pave(owner: int, cmd: Dictionary) -> String:
 		return "err.cant_afford"
 	for i in n:
 		sim.economy.pay(Defs.ROAD_COST, owner)
-		sim.roads.plans[tiles[i]] = null
+		sim.state.road_plans[tiles[i]] = null
 	return _pave_work(owner, cmd)
 
 

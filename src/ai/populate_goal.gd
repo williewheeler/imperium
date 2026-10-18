@@ -32,7 +32,7 @@ func _target() -> Building:
 
 func _incoming(b: Building) -> int:
 	var n := 0
-	for u: Unit in ai.sim.units:
+	for u: Unit in ai.sim.state.units:
 		if u.owner == ai.owner and u.state == Unit.State.ABSORB_GO and u.target_building == b:
 			n += 1
 	return n

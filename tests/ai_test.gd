@@ -31,7 +31,7 @@ func _process(dt: float) -> bool:
 	_last_sim_t = g.sim.time()
 	if elapsed >= next_report or elapsed >= limit:
 		next_report += 150.0
-		print("--- %.0f game seconds: buildings lost=%d kills=%d defeated=%s winner=%d" % [elapsed, g.sim.buildings_lost, g.sim.combat.kills, g.sim.victory.defeated.keys(), g.sim.victory.winner])
+		print("--- %.0f game seconds: buildings lost=%d kills=%d defeated=%s winner=%d" % [elapsed, g.sim.state.buildings_lost, g.sim.state.kills, g.sim.state.defeated.keys(), g.sim.state.winner])
 		for ai: AI in g.sim.ais:
 			var s := ai.summary()
 			var states := {}
@@ -44,8 +44,8 @@ func _process(dt: float) -> bool:
 			var rich := 0
 			for b in ai.hubs():
 				for kind in [Defs.Res.STONE, Defs.Res.GOLD]:
-					for mp: Vector2i in g.sim.map.mines.get(kind, []):
-						if g.sim.map.deposits.has(mp) and Vector2(mp).distance_to(b.center()) <= 16.0:
+					for mp: Vector2i in g.sim.state.map.mines.get(kind, []):
+						if g.sim.state.map.deposits.has(mp) and Vector2(mp).distance_to(b.center()) <= 16.0:
 							rich += 1
 							break
 			print("     storehouses=%d  docks=%d boats=%d  hub-by-stone-or-gold=%d" % [ai.mine("storehouse").size(), ai.mine("dock").size(), ai.boats().size(), rich])

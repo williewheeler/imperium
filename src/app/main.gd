@@ -17,7 +17,7 @@ var era: int:  # the local player's era (the interface and the music follow this
 	get:
 		return sim.eras.of(LOCAL)
 	set(v):
-		sim.eras.level[LOCAL] = v
+		sim.state.era_level[LOCAL] = v
 		_music_context()
 
 var _world: World
@@ -158,9 +158,9 @@ func _ready() -> void:
 	if args.has("replay-out"):  # --replay-out=FILE: write the game down as it is played
 		recorder = Recorder.new(String(args["replay-out"]), sim, {"colors": GameSettings.colors.duplicate(), "ai_peoples": GameSettings.ai_peoples.duplicate()})
 	sim.begin()
-	var map := sim.map
+	var map := sim.state.map
 	Iso.set_terrain(map.w, map.h, map.levels)  # the ground as the founding of the players left it (the Circus and the Temple of Jupiter stand on raised platforms)
-	var start := sim.start
+	var start := sim.state.start
 	if spectating:
 		fog = Fog.new(map.w, map.h)  # nobody plays the first town: this view shows everything, and is not drawn
 		fog.set_show_all(true)
@@ -168,7 +168,7 @@ func _ready() -> void:
 		by_owner.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
 		viewers.assign(by_owner.slice(0, 4))
 	else:
-		fog = sim.fogs[LOCAL]
+		fog = sim.state.fogs[LOCAL]
 	era_preview.game = self
 	debug.game = self
 
@@ -410,7 +410,7 @@ func _update_world_tip() -> void:
 		else:
 			var t := person.deposit_near(mp)
 			if t.x >= 0:
-				var d: Deposit = sim.map.deposits[t]
+				var d: Deposit = sim.state.map.deposits[t]
 				var what: String = "Sheep" if d.herd else ("Fish" if d.fish else ("Field" if d.farm else Defs.DEPOSIT_ENGLISH[d.kind]))
 				tip = "%s: %d left" % [what, d.amount]
 	hud.set_world_tip(tip)
@@ -467,7 +467,7 @@ func _step_sim() -> void:
 ## The replay has played to its end: say whether it held, as the headless check does.
 func _report_replay() -> void:
 	var ok := replayer.ends_well(sim)
-	print("REPLAY %s  %d ticks, %d checksums matched, final %s (recorded %s)%s" % ["OK" if ok else "DIVERGED", sim.tick, replayer.checked, sim.checksum(), replayer.replay.end_hash, "" if replayer.diverged == "" else "  at " + replayer.diverged])
+	print("REPLAY %s  %d ticks, %d checksums matched, final %s (recorded %s)%s" % ["OK" if ok else "DIVERGED", sim.state.tick, replayer.checked, sim.checksum(), replayer.replay.end_hash, "" if replayer.diverged == "" else "  at " + replayer.diverged])
 	if not spectating:
 		hud.flash("Repetitio finita.", "The replay is over.")
 

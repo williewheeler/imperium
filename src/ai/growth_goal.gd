@@ -49,7 +49,7 @@ func _build(hubs: Array[Building]) -> void:
 	if villagers.size() < 3:
 		return
 	var queued := 0
-	for b: Building in ai.sim.buildings:
+	for b: Building in ai.sim.state.buildings:
 		if b.owner == ai.owner:
 			queued += b.train_queue.size()
 	var headroom := ai.sim.economy.pop_cap(ai.owner) - ai.sim.economy.pop_used(ai.owner) - queued

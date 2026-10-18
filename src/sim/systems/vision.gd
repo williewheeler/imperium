@@ -12,15 +12,15 @@ var sim: Simulation
 
 ## Brings every people's fog up to date; done every INTERVAL ticks, or at once if `force`.
 func update(force := false) -> void:
-	if not force and sim.tick % INTERVAL != 0:
+	if not force and sim.state.tick % INTERVAL != 0:
 		return
 	var sources := {}  # owner -> [[position, radius], ...]
-	for owner: int in sim.fogs:
+	for owner: int in sim.state.fogs:
 		sources[owner] = []
-	for u in sim.units:
+	for u in sim.state.units:
 		if sources.has(u.owner):
 			sources[u.owner].append([u.pos, float(Defs.UNITS[u.kind].get("sight", VILLAGER_SIGHT)) + height_sight(u.pos)])
-	for b in sim.buildings:
+	for b in sim.state.buildings:
 		if sources.has(b.owner):
 			sources[b.owner].append([b.center(), (b.def()["sight"] if b.complete else FOUNDATION_SIGHT) + height_sight(b.center())])
 	for owner: int in sources:
@@ -30,4 +30,4 @@ func update(force := false) -> void:
 ## High ground sees farther and low ground less far: about a tile of sight per 0.1 of height
 ## above (or below) the plains.
 func height_sight(pos: Vector2) -> float:
-	return clampf((sim.map.elevation_at(pos) - GameMap.SEA_LEVEL - 0.05) * 10.0, -1.0, 3.0)
+	return clampf((sim.state.map.elevation_at(pos) - GameMap.SEA_LEVEL - 0.05) * 10.0, -1.0, 3.0)

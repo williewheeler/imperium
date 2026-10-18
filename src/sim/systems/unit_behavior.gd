@@ -28,7 +28,7 @@ func update_unit(u: Unit, delta: float) -> void:
 					u.state = Unit.State.IDLE
 		Unit.State.GATHER_GO:
 			if sim.movement.follow(u, delta):
-				if sim.map.deposits.has(u.target_tile):
+				if sim.state.map.deposits.has(u.target_tile):
 					u.state = Unit.State.GATHERING
 				elif not sim.economy.retarget(u):
 					u.state = Unit.State.IDLE
@@ -42,7 +42,7 @@ func update_unit(u: Unit, delta: float) -> void:
 				if u.dropoff_only:
 					u.dropoff_only = false
 					u.state = Unit.State.IDLE
-				elif not (sim.map.deposits.has(u.target_tile) and sim.orders.gather(u, u.target_tile)) and not sim.economy.retarget(u):
+				elif not (sim.state.map.deposits.has(u.target_tile) and sim.orders.gather(u, u.target_tile)) and not sim.economy.retarget(u):
 					u.state = Unit.State.IDLE
 		Unit.State.ROAD_GO:
 			if sim.movement.follow(u, delta):

@@ -45,8 +45,8 @@ in the code, or marked as not built.
 | View publisher, Command receiver | not built (today the simulation's signals reach `Main`, which shows them) |
 | Command interface, Command queue | not built (today `Commands.submit`, which validates and applies at once) |
 | Game loop | `Simulation.step()` in `src/sim/simulation.gd` |
-| Game state | `src/sim/state/`, held by `Simulation` (`units`, `buildings`, `stocks`, `fogs`, `map`, `rng`, `tick`), with debts: see *Known debts* |
-| Game systems | `src/sim/systems/` |
+| Game state | `GameState` (`src/sim/state/game_state.gd`), held as `Simulation.state`: the map, units, buildings, stocks, fogs, tick, rng, eras, road plans, shots in flight, who has fallen. Inert; see *Known debts* for what is still not |
+| Game systems | `src/sim/systems/`: they hold no game state of their own (only the `Movement` grid, which is rebuilt each tick) |
 | Tick driver | `Main._run_sim` (`src/app/main.gd`); `tools/sim_run.gd` and `tools/replay_check.gd` headless |
 | Recorder | `src/replay/recorder.gd` (taps `Commands.submitted` today) |
 | Replayer | `src/replay/replayer.gd` (calls `Commands.submit` today) |
@@ -240,6 +240,7 @@ and sends state back is still open, but the first no longer waits on the simulat
 - **`GameSettings` is two things:** the tables of options the rules read (map types, sizes, terrains, difficulties) and the
   player's saved preferences (colors, volume, speed). The simulation reads only the tables and gets everything else
   through `SimConfig`; the tables should move out to where `Defs` is.
+- **The state is inert, with exceptions.** `GameState` holds everything the game is, and the systems keep nothing between ticks. What is left over: `Simulation` still has `add_unit`, `add_building` and `destroy_building`, which change the state and belong to a system (`Production`); `Building` holds a reference to `Eras`; the AIs' own memory (`AI.blocked`, `scouts`, `wave`...) lives in the AI objects, not in the state; and the entities carry the drawing state below.
 - **Entities carry a little drawing state:** `selected`, `targeted`, `hit_flash`, `bar_t`, `sdir`, `walk`, `anim` on
   `Unit` and `Building`, and `Movement` computes the facing on the isometric screen. None of it is read by the rules (and none is
   in the checksum), but it belongs to the views.

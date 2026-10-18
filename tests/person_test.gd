@@ -47,12 +47,12 @@ func _process(_dt: float) -> bool:
 		0:
 			g.sim.ais.clear()
 			for i in 4:
-				g.sim.stocks[0][i] = 1000
-			villagers.assign(g.sim.units.filter(func(u: Unit) -> bool: return u.owner == 0 and u.kind == "villager"))
+				g.sim.state.stocks[0][i] = 1000
+			villagers.assign(g.sim.state.units.filter(func(u: Unit) -> bool: return u.owner == 0 and u.kind == "villager"))
 			_check("the player starts with villagers", villagers.size(), 5)
 
 			# a box round the town selects the villagers
-			var centre := Iso.to_screen(g.sim.buildings[0].center())
+			var centre := Iso.to_screen(g.sim.state.buildings[0].center())
 			p.finish_select(Rect2(centre - Vector2(120, 120), Vector2(240, 240)), false)
 			_check("a drag box selects the villagers in it", p.selected_units().size(), 5)
 			_check("they are the workers", p.selected_workers().size(), 5)
@@ -63,10 +63,10 @@ func _process(_dt: float) -> bool:
 
 			# a right click on a resource: they go and gather it
 			var best := INF
-			for t: Vector2i in g.sim.map.deposits:
-				var d: Deposit = g.sim.map.deposits[t]
-				if not d.farm and not d.herd and not d.fish and g.fog.is_explored(t) and Vector2(t).distance_to(g.sim.start) < best:
-					best = Vector2(t).distance_to(g.sim.start)
+			for t: Vector2i in g.sim.state.map.deposits:
+				var d: Deposit = g.sim.state.map.deposits[t]
+				if not d.farm and not d.herd and not d.fish and g.fog.is_explored(t) and Vector2(t).distance_to(g.sim.state.start) < best:
+					best = Vector2(t).distance_to(g.sim.state.start)
 					tree = t
 			p.command_at(Iso.to_screen(Vector2(tree) + Vector2(0.5, 0.5)))
 			_check("right click on a resource sends the villagers to gather", _states(g), {"GATHER_GO": 5})
@@ -89,11 +89,11 @@ func _process(_dt: float) -> bool:
 			_check("Esc clears the selection", p.selected_units().size(), 0)
 
 			# the Forum is selected and a villager asked for through the interface
-			g.sim.buildings[0].selected = true
-			_check("the Forum is the selected building", p.selected_building(), g.sim.buildings[0])
+			g.sim.state.buildings[0].selected = true
+			_check("the Forum is the selected building", p.selected_building(), g.sim.state.buildings[0])
 			g.hud.train_requested.emit("villager")
-			_check("the interface's train button queues a villager", g.sim.buildings[0].train_queue, ["villager"])
-			_check("and it is paid for", g.sim.stocks[0][Defs.Res.FOOD] < 1000, true)
+			_check("the interface's train button queues a villager", g.sim.state.buildings[0].train_queue, ["villager"])
+			_check("and it is paid for", g.sim.state.stocks[0][Defs.Res.FOOD] < 1000, true)
 
 			# building: a kind chosen, then the mouse puts it down
 			g.hud.build_requested.emit("house")

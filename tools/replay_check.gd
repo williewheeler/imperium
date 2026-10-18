@@ -33,7 +33,7 @@ func _init() -> void:
 	if player.diverged != "":
 		print("DIVERGED at " + player.diverged)
 	elif replay.end_hash == "":
-		print("the replay has no end record (the game was cut short); %d checksums matched up to tick %d" % [player.checked, sim.tick])
+		print("the replay has no end record (the game was cut short); %d checksums matched up to tick %d" % [player.checked, sim.state.tick])
 		ok = true
-	print("%s  %d ticks in %.1f s, %d checksums matched, final %s (recorded %s)" % ["OK  " if ok else "FAIL", sim.tick, wall, player.checked, sim.checksum(), replay.end_hash if replay.end_hash != "" else "none"])
+	print("%s  %d ticks in %.1f s, %d checksums matched, final %s (recorded %s)" % ["OK  " if ok else "FAIL", sim.state.tick, wall, player.checked, sim.checksum(), replay.end_hash if replay.end_hash != "" else "none"])
 	quit(0 if ok else 1)

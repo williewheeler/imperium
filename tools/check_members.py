@@ -19,6 +19,7 @@ SIM_PARTS = {  # Simulation member -> the class it holds
 }
 sim_members = members('src/sim/simulation.gd')
 part_members = {k: members('src/sim/systems/%s.gd' % v) for k, v in SIM_PARTS.items()}
+state_members = members('src/sim/state/game_state.gd')
 main_members = members('src/app/main.gd')
 MAIN_PARTS = {'person': members('src/ui/controls/person.gd'), 'rig': members('src/ui/controls/camera_rig.gd')}
 NODE_BUILTIN = set('get_tree get_viewport get_viewport_rect add_child position queue_redraw get_window get_global_mouse_position visible name'.split())
@@ -32,6 +33,8 @@ for f in files:
             a, b = m.group(1), m.group(2)
             if a not in sim_members:
                 print('%s:%d: Simulation has no %r' % (f, n, a)); bad += 1
+            elif b and a == 'state' and b not in state_members:
+                print('%s:%d: GameState has no %r' % (f, n, b)); bad += 1
             elif b and a in part_members and b not in part_members[a]:
                 print('%s:%d: %s has no %r' % (f, n, a, b)); bad += 1
         for m in re.finditer(r'(?<![\w.])_?game\.(\w+)(?:\.(\w+))?', code):

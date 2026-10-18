@@ -3,7 +3,6 @@ extends RefCounted
 ## Paved roads: the tiles planned for paving (paid for, waiting for a villager) and who is working on each.
 
 var sim: Simulation
-var plans := {}  # Vector2i -> Unit or null: tiles queued for paving, and who is on the job
 
 
 ## Tiles along a straight line between two tiles (Bresenham), for dragging out a road.
@@ -33,9 +32,9 @@ static func line(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 func tile_error(p: Vector2i, owner := 0) -> String:
 	if not sim.fog_of(owner).is_explored(p):
 		return "err.unexplored"
-	if not sim.map.can_pave(p) or sim.placement.building_at(p) != null:
+	if not sim.state.map.can_pave(p) or sim.placement.building_at(p) != null:
 		return "err.need_level"
-	if plans.has(p):
+	if sim.state.road_plans.has(p):
 		return "err.spot_taken"
 	return ""
 
@@ -43,14 +42,14 @@ func tile_error(p: Vector2i, owner := 0) -> String:
 ## Sends `u` to the nearest planned road tile nobody is working on. False if there's none.
 func assign_work(u: Unit) -> bool:
 	var candidates: Array[Vector2i] = []
-	for p: Vector2i in plans:
-		if plans[p] == null:
+	for p: Vector2i in sim.state.road_plans:
+		if sim.state.road_plans[p] == null:
 			candidates.append(p)
 	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(u.pos) < Vector2(b).distance_squared_to(u.pos))
 	for p in candidates:
 		release(u)
 		if sim.orders.set_path(u, p):
-			plans[p] = u
+			sim.state.road_plans[p] = u
 			u.road_tile = p
 			u.state = Unit.State.ROAD_GO
 			u.target_building = null
@@ -60,17 +59,17 @@ func assign_work(u: Unit) -> bool:
 
 ## Lets go of the planned tile `u` was heading for, so someone else can take it.
 func release(u: Unit) -> void:
-	if u.road_tile.x >= 0 and plans.get(u.road_tile) == u:
-		plans[u.road_tile] = null
+	if u.road_tile.x >= 0 and sim.state.road_plans.get(u.road_tile) == u:
+		sim.state.road_plans[u.road_tile] = null
 	u.road_tile = Vector2i(-1, -1)
 
 
 ## `u` has paved its tile: make it a road, and on to the next one.
 func finish_tile(u: Unit) -> void:
 	var p := u.road_tile
-	if sim.map.make_paved(p):
+	if sim.state.map.make_paved(p):
 		sim.road_changed.emit(p)
-	plans.erase(p)
+	sim.state.road_plans.erase(p)
 	u.road_tile = Vector2i(-1, -1)
 	if not assign_work(u):
 		u.state = Unit.State.IDLE

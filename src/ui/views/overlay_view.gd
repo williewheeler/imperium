@@ -23,7 +23,7 @@ func _diamond(tile: Vector2, size: Vector2) -> PackedVector2Array:
 
 
 func _draw() -> void:
-	for u: Unit in game.sim.units:
+	for u: Unit in game.sim.state.units:
 		if u.selected and not u.path.is_empty():
 			var prev := Iso.to_screen(u.pos)
 			for wp in u.path:
@@ -44,14 +44,14 @@ func _draw() -> void:
 		d.append(d[0])
 		draw_polyline(d, GOLD, 1.0)
 
-	for p: Vector2i in game.sim.roads.plans:  # road tiles waiting to be paved
+	for p: Vector2i in game.sim.state.road_plans:  # road tiles waiting to be paved
 		var pts := _diamond(Vector2(p), Vector2.ONE)
 		draw_colored_polygon(pts, Color(0.85, 0.78, 0.55, 0.28))
 		pts.append(pts[0])
 		draw_polyline(pts, Color(0.95, 0.88, 0.6, 0.8), 1.0)
 	if game.person.placing_road:
 		_draw_road_ghost()
-	for b: Building in game.sim.buildings:
+	for b: Building in game.sim.state.buildings:
 		if b.owner != 0 and not game.fog.is_explored(Vector2i(b.center())):
 			continue
 		var origin := Iso.to_screen_on(Vector2(b.tile + b.size), Iso.level_of(b.tile)).round()

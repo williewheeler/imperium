@@ -41,20 +41,20 @@ func update(delta: float) -> void:
 			dragging = false
 			finish_select(drag_rect, Input.is_key_pressed(KEY_SHIFT))
 	update_road_drag()
-	if selected_deposit.x >= 0 and not main.sim.map.deposits.has(selected_deposit):
+	if selected_deposit.x >= 0 and not main.sim.state.map.deposits.has(selected_deposit):
 		selected_deposit = Vector2i(-1, -1)  # used up
 
 
 func selected_units() -> Array[Unit]:
 	var out: Array[Unit] = []
-	for u in main.sim.units:
+	for u in main.sim.state.units:
 		if u.selected:
 			out.append(u)
 	return out
 
 
 func selected_building() -> Building:
-	for b in main.sim.buildings:
+	for b in main.sim.state.buildings:
 		if b.selected:
 			return b
 	return null
@@ -148,9 +148,9 @@ func handle_input(event: InputEvent) -> void:
 
 
 func clear_selection() -> void:
-	for u in main.sim.units:
+	for u in main.sim.state.units:
 		u.selected = false
-	for b in main.sim.buildings:
+	for b in main.sim.state.buildings:
 		b.selected = false
 	selected_deposit = Vector2i(-1, -1)
 
@@ -160,7 +160,7 @@ func clear_selection() -> void:
 func unit_at(mp: Vector2, enemy := false) -> Unit:
 	var best: Unit = null
 	var best_d := INF
-	for u in main.sim.units:
+	for u in main.sim.state.units:
 		if u.dead or (u.owner != 0) != enemy:
 			continue  # only our own people can be picked (or, with `enemy`, only the other peoples' that we can see)
 		if enemy and not main.fog.is_visible_now(Vector2i(u.pos)):
@@ -184,7 +184,7 @@ func select_same_kind(of: Unit, additive: bool) -> void:
 		clear_selection()
 	var half := main.get_viewport_rect().size / main.rig.camera.zoom.x / 2.0
 	var view := Rect2(main.rig.pos - half, half * 2.0)
-	for u in main.sim.units:
+	for u in main.sim.state.units:
 		if u.owner == 0 and u.kind == of.kind and view.has_point(Iso.to_screen(u.pos)):
 			u.selected = true
 
@@ -195,7 +195,7 @@ func select_same_building(of: Building, additive: bool) -> void:
 		clear_selection()
 	var half := main.get_viewport_rect().size / main.rig.camera.zoom.x / 2.0
 	var view := Rect2(main.rig.pos - half, half * 2.0)
-	for b in main.sim.buildings:
+	for b in main.sim.state.buildings:
 		if b.owner == 0 and b.kind == of.kind and view.has_point(Iso.to_screen_on(b.center(), Iso.level_of(b.tile))):
 			b.selected = true
 
@@ -217,7 +217,7 @@ func finish_select(rect: Rect2, additive: bool) -> void:
 		if tile.x >= 0:
 			selected_deposit = tile
 		return
-	for u in main.sim.units:
+	for u in main.sim.state.units:
 		if u.owner == 0 and rect.has_point(Iso.to_screen(u.pos) + Vector2(0, -6)):
 			u.selected = true
 
@@ -226,7 +226,7 @@ func finish_select(rect: Rect2, additive: bool) -> void:
 ## the actual pixel under the cursor (transparent corners don't count).
 func building_under(mp: Vector2) -> Building:
 	var hit: Building = null
-	for b in main.sim.buildings:
+	for b in main.sim.state.buildings:
 		var origin := Iso.to_screen_on(Vector2(b.stand_tile() + b.stand_size()), Iso.level_of(b.tile)).round() - Art.building_anchor(b.sprite_key())
 		if Art.solid_at(b.sprite_key(), Vector2i((mp - origin).floor())) and (hit == null or b.tile.y > hit.tile.y):
 			hit = b
@@ -238,7 +238,7 @@ func building_under(mp: Vector2) -> Building:
 func deposit_near(mp: Vector2) -> Vector2i:
 	for dy in [0.0, 5.0, 10.0]:
 		var t := Vector2i(Iso.to_tile(mp + Vector2(0, dy)).floor())
-		if main.fog.is_explored(t) and main.sim.map.deposits.has(t):
+		if main.fog.is_explored(t) and main.sim.state.map.deposits.has(t):
 			return t
 	var on := Vector2i(Iso.to_tile(mp).floor())  # anywhere on a farm plot is the plot
 	var farm: Building = main.sim.placement.building_at(on)
@@ -320,7 +320,7 @@ func selected_fighters() -> Array[Unit]:
 func attack_move_to(mp: Vector2) -> void:
 	var fighters := selected_fighters()
 	var tile := Vector2i(Iso.to_tile(mp).floor())
-	if fighters.is_empty() or not main.sim.map.in_bounds(tile):
+	if fighters.is_empty() or not main.sim.state.map.in_bounds(tile):
 		return
 	markers.append({"pos": Iso.to_tile(mp), "t": 0.0, "attack": true})
 	give({"type": "attack_move", "tile": tile, "units": ids(fighters)})
@@ -333,7 +333,7 @@ func command_at(mp: Vector2) -> void:
 	var workers := selected_workers()
 	var pos := Iso.to_tile(mp)
 	var tile := Vector2i(pos.floor())
-	if not main.sim.map.in_bounds(tile):
+	if not main.sim.state.map.in_bounds(tile):
 		return
 	var foe := unit_at(mp, true)
 	var fighters := selected_fighters()
@@ -364,7 +364,7 @@ func command_at(mp: Vector2) -> void:
 		var fish := deposit_near(mp)
 		var dock := building_under(mp)
 		markers.append({"pos": pos, "t": 0.0})
-		if fish.x >= 0 and main.sim.map.deposits[fish].fish:
+		if fish.x >= 0 and main.sim.state.map.deposits[fish].fish:
 			give({"type": "gather", "tile": fish, "units": ids(boats)})
 		elif dock != null and dock.owner == Main.LOCAL and dock.complete and dock.def().get("boats_only", false):
 			give({"type": "dropoff", "building": dock.id, "units": ids(boats)})
@@ -404,7 +404,7 @@ func command_at(mp: Vector2) -> void:
 		var handled := true
 		if res.x >= 0:
 			give({"type": "gather", "tile": res, "units": ids(workers)})
-		elif main.sim.roads.plans.has(tile):  # right-click a marked road tile: go and pave it
+		elif main.sim.state.road_plans.has(tile):  # right-click a marked road tile: go and pave it
 			give({"type": "pave_work", "units": ids(workers)})
 		elif b != null and not b.complete:
 			give({"type": "build", "building": b.id, "units": ids(workers)})
@@ -481,5 +481,5 @@ func commit_road(line: Array[Vector2i]) -> void:
 
 ## Keeps just the units of one kind from the current selection (a click on a tile of the group panel).
 func select_only_kind(kind: String) -> void:
-	for u in main.sim.units:
+	for u in main.sim.state.units:
 		u.selected = u.selected and u.kind == kind

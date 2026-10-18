@@ -13,7 +13,7 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	for p in game.sim.combat.projectiles:
+	for p in game.sim.state.projectiles:
 		var t: Unit = p["target"]
 		var k := clampf(float(p["t"]) / float(p["dur"]), 0.0, 1.0)
 		var tile: Vector2 = (p["from"] as Vector2).lerp(t.pos, k)

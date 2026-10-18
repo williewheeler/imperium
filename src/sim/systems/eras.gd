@@ -5,23 +5,20 @@ extends RefCounted
 ## and population, and takes time at the Forum.
 
 var sim: Simulation
-var level := {}  # owner -> the era the people is in, an index into Defs.ERAS (a player not listed is in Era I)
-var advancing := {}  # owner -> true while an advance is being researched
-var progress := {}  # owner -> seconds into it
 
 
 ## The era `owner` is in.
 func of(owner: int) -> int:
-	return int(level.get(owner, 0))
+	return int(sim.state.era_level.get(owner, 0))
 
 
 func is_advancing(owner: int) -> bool:
-	return advancing.get(owner, false)
+	return sim.state.era_advancing.get(owner, false)
 
 
 ## Seconds `owner` has spent on the advance in progress.
 func progress_of(owner: int) -> float:
-	return float(progress.get(owner, 0.0))
+	return float(sim.state.era_progress.get(owner, 0.0))
 
 
 ## The next advance's data (cost, time, needs) for `owner`, or null if there isn't one yet.
@@ -32,7 +29,7 @@ func data(owner: int) -> Variant:
 
 func _count_built(kind: String, owner: int) -> int:
 	var n := 0
-	for b in sim.buildings:
+	for b in sim.state.buildings:
 		if b.kind == kind and b.complete and b.owner == owner:
 			n += 1
 	return n
@@ -68,26 +65,26 @@ func start(owner: int) -> void:
 	if not can_advance(owner):
 		return
 	sim.economy.pay(data(owner)["cost"], owner)
-	advancing[owner] = true
-	progress[owner] = 0.0
+	sim.state.era_advancing[owner] = true
+	sim.state.era_progress[owner] = 0.0
 	sim.notice.emit(owner, "msg.advancing")
 
 
 func update(delta: float) -> void:
-	for owner: int in advancing.keys():
-		if not advancing[owner]:
+	for owner: int in sim.state.era_advancing.keys():
+		if not sim.state.era_advancing[owner]:
 			continue
-		progress[owner] = progress_of(owner) + delta
-		if progress[owner] >= float(data(owner)["time"]):
-			advancing[owner] = false
+		sim.state.era_progress[owner] = progress_of(owner) + delta
+		if sim.state.era_progress[owner] >= float(data(owner)["time"]):
+			sim.state.era_advancing[owner] = false
 			reach(owner, of(owner) + 1)
 
 
 ## `owner` has reached `value`: new buildings and roads open to them, and their buildings take on the new look.
 func reach(owner: int, value: int) -> void:
-	level[owner] = value
+	sim.state.era_level[owner] = value
 	var home: Building = null
-	for b in sim.buildings:
+	for b in sim.state.buildings:
 		if b.owner == owner and b.kind == "town_center":
 			home = b
 			break
@@ -98,7 +95,7 @@ func reach(owner: int, value: int) -> void:
 
 ## The marsh around the city is drained, as Rome's was by the Cloaca Maxima: it becomes grass.
 func drain_marshes(center: Vector2, owner := -1) -> void:
-	var changed := sim.map.drain_marsh(center, 14.0)
+	var changed := sim.state.map.drain_marsh(center, 14.0)
 	for p in changed:
 		sim.tile_changed.emit(p)
 	if not changed.is_empty():

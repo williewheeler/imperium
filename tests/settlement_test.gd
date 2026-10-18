@@ -50,9 +50,9 @@ func _process(dt: float) -> bool:
 		0:
 			Engine.time_scale = 10.0
 			for i in 4:
-				g.sim.stocks[0][i] = 1000
+				g.sim.state.stocks[0][i] = 1000
 			g.sim.ais.clear()
-			var spot: Vector2i = g.sim.map.find_site(Vector2i(3, 3), Vector2i(g.sim.units[0].pos) + Vector2i(14, 14), 0, 25, [])
+			var spot: Vector2i = g.sim.state.map.find_site(Vector2i(3, 3), Vector2i(g.sim.state.units[0].pos) + Vector2i(14, 14), 0, 25, [])
 			_check("a Town Center cannot be built directly", g.sim.commands.submit({"type": "place", "owner": 0, "kind": "town_center", "tile": spot, "units": []}), "err.not_allowed")
 			_check("a City Center cannot be built directly", g.sim.commands.submit({"type": "place", "owner": 0, "kind": "city_center", "tile": spot, "units": []}), "err.not_allowed")
 			town = g.sim.add_building("settlement", spot, true, 0)
@@ -68,7 +68,7 @@ func _process(dt: float) -> bool:
 			if town.citizens >= 14 or t_stage > 120.0:
 				_check("14 citizens absorbed", town.citizens, 14)
 				_check("still a Settlement at 14", town.kind, "settlement")
-				_check("the villagers are gone from the world", crowd.all(func(u): return not g.sim.units.has(u)), true)
+				_check("the villagers are gone from the world", crowd.all(func(u): return not g.sim.state.units.has(u)), true)
 				var spare := _spawn(g, 1, Vector2(town.tile) + Vector2(3.5, 1.5))
 				g.sim.commands.submit({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(spare)})
 				crowd = spare

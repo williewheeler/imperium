@@ -27,7 +27,7 @@ func pay(cost: Array, owner := 0) -> void:
 ## Population limit: each finished Town Center and House adds room.
 func pop_cap(owner := 0) -> int:
 	var cap := 0
-	for b in sim.buildings:
+	for b in sim.state.buildings:
 		if b.complete and b.owner == owner:
 			cap += b.def()["pop"]
 	return mini(cap, pop_limit())
@@ -36,7 +36,7 @@ func pop_cap(owner := 0) -> int:
 ## The most people one player may have: the game's whole limit split between the peoples playing.
 func pop_limit() -> int:
 	var playing := 0
-	for s in sim.stocks:
+	for s in sim.state.stocks:
 		if s != null:
 			playing += 1
 	return Defs.POP_LIMIT / maxi(1, playing)
@@ -45,10 +45,10 @@ func pop_limit() -> int:
 ## Population in use: everyone except units that are only there for show.
 func pop_used(owner := 0) -> int:
 	var n := 0
-	for u in sim.units:
+	for u in sim.state.units:
 		if not u.display and u.owner == owner:
 			n += 1
-	for b in sim.buildings:
+	for b in sim.state.buildings:
 		if b.owner == owner:
 			n += b.citizens  # the people living in its towns still count
 	return n
@@ -56,7 +56,7 @@ func pop_used(owner := 0) -> int:
 
 func has_pop_room(owner := 0) -> bool:
 	var queued := 0
-	for b in sim.buildings:
+	for b in sim.state.buildings:
 		if b.owner == owner:
 			queued += b.train_queue.size()
 	return pop_used(owner) + queued < pop_cap(owner)
@@ -65,7 +65,7 @@ func has_pop_room(owner := 0) -> bool:
 # ---------------------------------------------------------------- gathering
 
 func gather(u: Unit, delta: float) -> void:
-	var d: Deposit = sim.map.deposits.get(u.target_tile)
+	var d: Deposit = sim.state.map.deposits.get(u.target_tile)
 	if d == null:
 		if u.carry > 0:
 			return_to_dropsite(u)
@@ -85,7 +85,7 @@ func gather(u: Unit, delta: float) -> void:
 			sim.orders.next_plot(u)  # or move to another plot of the farm that is ripe
 		return
 	if d.amount <= 0:
-		if sim.map.remove_deposit(u.target_tile):
+		if sim.state.map.remove_deposit(u.target_tile):
 			sim.tile_changed.emit(u.target_tile)
 	if u.carry >= Defs.CARRY_CAP or (d.amount <= 0 and u.carry > 0):
 		return_to_dropsite(u)
@@ -95,7 +95,7 @@ func return_to_dropsite(u: Unit) -> void:
 	var best: Building = null
 	var best_d := INF
 	var boat: bool = Defs.UNITS[u.kind].get("water", false)
-	for b in sim.buildings:
+	for b in sim.state.buildings:
 		if b.complete and b.owner == u.owner and u.carry_kind in b.def()["accepts"] and bool(b.def().get("boats_only", false)) == boat:  # a boat hands in at a dock, nobody else does
 			var dist := b.center().distance_to(u.pos)
 			if dist < best_d:
@@ -105,7 +105,7 @@ func return_to_dropsite(u: Unit) -> void:
 		u.state = Unit.State.IDLE
 		sim.notice.emit(u.owner, "err.need_depot")
 		return
-	var stand := sim.map.water_next_to(best.rect(), u.pos) if boat else sim.map.stand_tile(best.dropoff_rect(), u.pos)
+	var stand := sim.state.map.water_next_to(best.rect(), u.pos) if boat else sim.state.map.stand_tile(best.dropoff_rect(), u.pos)
 	if stand.x >= 0 and sim.orders.set_path(u, stand):
 		u.state = Unit.State.RETURN
 	else:
@@ -119,10 +119,10 @@ func retarget(u: Unit) -> bool:
 	var best_d := 12.0
 	var here := Vector2i(u.pos)
 	var reach := int(best_d)
-	for y in range(maxi(0, here.y - reach), mini(sim.map.h, here.y + reach + 1)):  # only the ground nearby: a scan of every deposit on the map takes far too long
-		for x in range(maxi(0, here.x - reach), mini(sim.map.w, here.x + reach + 1)):
+	for y in range(maxi(0, here.y - reach), mini(sim.state.map.h, here.y + reach + 1)):  # only the ground nearby: a scan of every deposit on the map takes far too long
+		for x in range(maxi(0, here.x - reach), mini(sim.state.map.w, here.x + reach + 1)):
 			var p := Vector2i(x, y)
-			var d: Deposit = sim.map.deposits.get(p)
+			var d: Deposit = sim.state.map.deposits.get(p)
 			if d == null or d.kind != u.gather_kind or (d.farm and d.owner != u.owner) or d.fish != bool(Defs.UNITS[u.kind].get("water", false)) or not sim.fog_of(u.owner).is_explored(p):
 				continue
 			var dist := (Vector2(p) + Vector2(0.5, 0.5)).distance_to(u.pos)
@@ -137,11 +137,11 @@ func retarget(u: Unit) -> bool:
 func update_plots(b: Building, delta: float) -> void:
 	var regrow := float(b.def()["regrow"])
 	for p in b.plot_tiles():
-		var d: Deposit = sim.map.deposits.get(p)
+		var d: Deposit = sim.state.map.deposits.get(p)
 		if d == null or d.amount > 0:
 			continue
 		var tended := false
-		for u: Unit in sim.units:
+		for u: Unit in sim.state.units:
 			if u.state == Unit.State.GATHERING and u.target_tile == p and not u.dead:
 				tended = true
 				break

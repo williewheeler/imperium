@@ -22,14 +22,14 @@ func _init(path: String, sim: Simulation, view := {}) -> void:
 		"engine": Engine.get_version_info()["string"], "config": sim.config.to_dict(), "view": view}])
 	sim.commands.submitted.connect(_on_command)
 	sim.stepped.connect(_on_step)
-	sim.tainted_by.connect(func(why: String) -> void: _write(["taint", _sim.tick, why]))
+	sim.tainted_by.connect(func(why: String) -> void: _write(["taint", _sim.state.tick, why]))
 
 
 ## Writes the end of the record and closes the file. (Not needed for the file to be good, but it says where the game stopped.)
 func close() -> void:
 	if _file == null:
 		return
-	_write(["end", _sim.tick, _sim.checksum()])
+	_write(["end", _sim.state.tick, _sim.checksum()])
 	_file.close()
 	_file = null
 
@@ -42,9 +42,9 @@ func _write(rec: Array) -> void:
 
 
 func _on_command(cmd: Dictionary, err: String) -> void:
-	_write(["cmd", _sim.tick, cmd, err])
+	_write(["cmd", _sim.state.tick, cmd, err])
 
 
 func _on_step() -> void:
-	if _sim.tick % CHECK_EVERY == 0:
-		_write(["chk", _sim.tick, _sim.checksum()])
+	if _sim.state.tick % CHECK_EVERY == 0:
+		_write(["chk", _sim.state.tick, _sim.checksum()])

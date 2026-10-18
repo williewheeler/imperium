@@ -32,7 +32,7 @@ func _play(c: SimConfig, path: String, person := Callable(), close := true) -> S
 	var sim := Simulation.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
 	var rec: Recorder = Recorder.new(path, sim) if path != "" else null
 	sim.begin()
-	while sim.tick < SECONDS * Simulation.TICKS_PER_SECOND:
+	while sim.state.tick < SECONDS * Simulation.TICKS_PER_SECOND:
 		if person.is_valid():
 			person.call(sim)
 		sim.step()
@@ -57,22 +57,22 @@ func _replay(r: Replay) -> Array:
 
 ## A person's few commands: after a while, send the starting villagers to the nearest wood, then walk one about.
 func _person(sim: Simulation) -> void:
-	if sim.tick == 30:
-		var me := sim.units.filter(func(u: Unit) -> bool: return u.owner == 0)
+	if sim.state.tick == 30:
+		var me := sim.state.units.filter(func(u: Unit) -> bool: return u.owner == 0)
 		var wood := Vector2i(-1, -1)
 		var best := INF
-		for p: Vector2i in sim.map.deposits:
-			var d: Deposit = sim.map.deposits[p]
-			if d.kind == Defs.Res.WOOD and Vector2(p).distance_to(sim.start) < best:
-				best = Vector2(p).distance_to(sim.start)
+		for p: Vector2i in sim.state.map.deposits:
+			var d: Deposit = sim.state.map.deposits[p]
+			if d.kind == Defs.Res.WOOD and Vector2(p).distance_to(sim.state.start) < best:
+				best = Vector2(p).distance_to(sim.state.start)
 				wood = p
 		sim.commands.submit({"type": "gather", "owner": 0, "tile": wood, "units": me.map(func(u: Unit) -> int: return u.id)})
-	if sim.tick == 600:
+	if sim.state.tick == 600:
 		sim.taint("test")
-		var one: Unit = sim.units.filter(func(u: Unit) -> bool: return u.owner == 0)[0]
+		var one: Unit = sim.state.units.filter(func(u: Unit) -> bool: return u.owner == 0)[0]
 		sim.commands.submit({"type": "move", "owner": 0, "tile": Vector2i(one.pos) + Vector2i(6, 3), "units": [one.id]})
-	if sim.tick == 900:
-		var theirs: Unit = sim.units.filter(func(u: Unit) -> bool: return u.owner == 1)[0]
+	if sim.state.tick == 900:
+		var theirs: Unit = sim.state.units.filter(func(u: Unit) -> bool: return u.owner == 1)[0]
 		sim.commands.submit({"type": "stop", "owner": 0, "units": [theirs.id]})  # (not the person's unit, so the game says no)
 
 
@@ -80,7 +80,7 @@ func _init() -> void:
 	var a := _play(_config(11, []), PATH)
 	var b := _play(_config(11, []), "")
 	_check("two runs of one game agree", a.checksum() == b.checksum(), "%s vs %s" % [a.checksum(), b.checksum()])
-	_check("the games had something in them", a.units.size() > 20 and a.buildings.size() > 8, "%d units, %d buildings" % [a.units.size(), a.buildings.size()])
+	_check("the games had something in them", a.state.units.size() > 20 and a.state.buildings.size() > 8, "%d units, %d buildings" % [a.state.units.size(), a.state.buildings.size()])
 	_check("another seed is another game", _play(_config(12, []), "").checksum() != a.checksum())
 
 	var r := Replay.load_file(PATH)
@@ -126,7 +126,7 @@ func _init() -> void:
 	var cut := Replay.load_file(cut_path)
 	_check("a game quit part way is still a replay", cut != null and cut.end_hash == "" and cut.end_tick > 0)
 	var cp := _replay(cut)
-	_check("and plays back as far as it goes", (cp[0] as Replayer).diverged == "" and (cp[1] as Simulation).tick == cut.end_tick, (cp[0] as Replayer).diverged)
+	_check("and plays back as far as it goes", (cp[0] as Replayer).diverged == "" and (cp[1] as Simulation).state.tick == cut.end_tick, (cp[0] as Replayer).diverged)
 
 	print("DONE fails=", fails)
 	quit(1 if fails > 0 else 0)

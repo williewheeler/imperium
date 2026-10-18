@@ -39,13 +39,13 @@ func _init() -> void:
 	var t1 := Time.get_ticks_msec()
 	var ticks := int(seconds * Simulation.TICKS_PER_SECOND)
 	var next_report := 0
-	while sim.tick < ticks:
+	while sim.state.tick < ticks:
 		sim.step()
-		if sim.tick >= next_report:
+		if sim.state.tick >= next_report:
 			print(summary(sim))
 			next_report += int(every * Simulation.TICKS_PER_SECOND)
-		if sim.victory.winner >= 0:
-			print("won by player %d" % sim.victory.winner)
+		if sim.state.winner >= 0:
+			print("won by player %d" % sim.state.winner)
 			break
 	if recorder != null:
 		recorder.close()
@@ -53,8 +53,8 @@ func _init() -> void:
 	print(summary(sim))
 	print("checksum %s" % sim.checksum())
 	if Perf.on:
-		print("ms per tick by part: ", Perf.report(sim.tick))
-	print("%d ticks (%.0f game seconds) in %.1f s: %.0fx real time" % [sim.tick, sim.time(), wall, sim.time() / maxf(wall, 0.001)])
+		print("ms per tick by part: ", Perf.report(sim.state.tick))
+	print("%d ticks (%.0f game seconds) in %.1f s: %.0fx real time" % [sim.state.tick, sim.time(), wall, sim.time() / maxf(wall, 0.001)])
 	if out != "":
 		print("written to %s" % out)
 	quit(0)
@@ -65,4 +65,4 @@ func summary(sim: Simulation) -> String:
 	for ai in sim.ais:
 		var s := ai.summary()
 		parts.append("p%d: era %d, %d towns, %d villagers, %d army" % [ai.owner, s["era"], s["towns"], s["villagers"], s["army"]])
-	return "t=%4.0fs tick %6d  %s  | %d units, %d buildings, %d lost, %d kills" % [sim.time(), sim.tick, " | ".join(parts), sim.units.size(), sim.buildings.size(), sim.buildings_lost, sim.combat.kills]
+	return "t=%4.0fs tick %6d  %s  | %d units, %d buildings, %d lost, %d kills" % [sim.time(), sim.state.tick, " | ".join(parts), sim.state.units.size(), sim.state.buildings.size(), sim.state.buildings_lost, sim.state.kills]

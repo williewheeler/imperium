@@ -44,7 +44,7 @@ func act() -> void:
 	elif _last_target.x >= 0 and _sweeps < 8:
 		# no building left that it knows of, but the people who lived there may not be gone: sweep the ground round it
 		_sweeps += 1
-		tile = (_last_target + Vector2i(ai.rng.randi_range(-24, 24), ai.rng.randi_range(-24, 24))).clamp(Vector2i(2, 2), Vector2i(ai.sim.map.w - 3, ai.sim.map.h - 3))
+		tile = (_last_target + Vector2i(ai.rng.randi_range(-24, 24), ai.rng.randi_range(-24, 24))).clamp(Vector2i(2, 2), Vector2i(ai.sim.state.map.w - 3, ai.sim.state.map.h - 3))
 	else:
 		return  # it has not found anyone yet: the scouts are looking
 	var go := ready.slice(guard)

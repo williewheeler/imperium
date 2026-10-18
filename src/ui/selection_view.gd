@@ -125,8 +125,8 @@ func update() -> void:
 		_show_group(us)
 	elif b != null:
 		_show_building(b)
-	elif _game.person.selected_deposit.x >= 0 and _game.sim.map.deposits.has(_game.person.selected_deposit):
-		_show_deposit(_game.sim.map.deposits[_game.person.selected_deposit])
+	elif _game.person.selected_deposit.x >= 0 and _game.sim.state.map.deposits.has(_game.person.selected_deposit):
+		_show_deposit(_game.sim.state.map.deposits[_game.person.selected_deposit])
 	else:
 		_show_portrait(null)
 		_text(_name, "Nihil electum", "Nothing selected")
@@ -214,7 +214,7 @@ func _show_building(b: Building) -> void:
 		var most := 0
 		var ripe := 0
 		for p in b.plot_tiles():
-			var plot: Deposit = _game.sim.map.deposits.get(p)
+			var plot: Deposit = _game.sim.state.map.deposits.get(p)
 			if plot != null:
 				held += plot.amount
 				most += plot.max_amount
@@ -233,7 +233,7 @@ func _show_building(b: Building) -> void:
 		var held2 := 0
 		var most2 := 0
 		for p in b.plot_tiles():
-			var plot2: Deposit = _game.sim.map.deposits.get(p)
+			var plot2: Deposit = _game.sim.state.map.deposits.get(p)
 			if plot2 != null:
 				held2 += plot2.amount
 				most2 += plot2.max_amount

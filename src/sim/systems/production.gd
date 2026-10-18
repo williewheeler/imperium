@@ -11,7 +11,7 @@ func on_complete(b: Building) -> void:
 	if b.has_plots():  # a farm: eight plots to work
 		for r in b.plot_rects():  # the granary frames out its plots: bare ground until a villager sows it
 			var p := r.position + Vector2i.ONE
-			if not sim.map.deposits.has(p):
+			if not sim.state.map.deposits.has(p):
 				var plot := Deposit.new(int(b.def().get("res", Defs.Res.FOOD)), int(b.def()["crop"]))
 				plot.amount = 0
 				plot.renews = true
@@ -19,7 +19,7 @@ func on_complete(b: Building) -> void:
 				plot.owner = b.owner
 				plot.plot_of = b
 				plot.plot_rect = r
-				sim.map.deposits[p] = plot
+				sim.state.map.deposits[p] = plot
 		return
 	match b.kind:
 		"town_center", "storehouse", "settlement", "city_center":
@@ -27,7 +27,7 @@ func on_complete(b: Building) -> void:
 			for y in range(r.position.y, r.end.y):
 				for x in range(r.position.x, r.end.x):
 					var p := Vector2i(x, y)
-					if not b.rect().has_point(p) and sim.map.make_road(p):
+					if not b.rect().has_point(p) and sim.state.map.make_road(p):
 						sim.road_changed.emit(p)
 
 
@@ -35,7 +35,7 @@ func on_complete(b: Building) -> void:
 func absorb(u: Unit) -> void:
 	var b := u.target_building
 	u.target_building = null
-	if b == null or b.dead or not sim.buildings.has(b) or not b.can_take_citizen() or b.owner != u.owner:
+	if b == null or b.dead or not sim.state.buildings.has(b) or not b.can_take_citizen() or b.owner != u.owner:
 		u.state = Unit.State.IDLE
 		return
 	b.citizens += 1
@@ -56,7 +56,7 @@ func upgrade_building(b: Building, kind: String) -> void:
 	on_complete(b)
 	if b.has_plots():  # richer plots: they hold more and ripen sooner
 		for p in b.plot_tiles():
-			var plot: Deposit = sim.map.deposits.get(p)
+			var plot: Deposit = sim.state.map.deposits.get(p)
 			if plot != null:
 				var gain := int(b.def()["crop"]) - plot.max_amount
 				plot.max_amount += gain
@@ -82,6 +82,6 @@ func update_building(b: Building, delta: float) -> void:
 		u.kind = trains
 		u.owner = b.owner
 		sim.setup.assign_sex(u)
-		var spawn := sim.map.water_next_to(b.rect(), b.center()) if Defs.UNITS[trains].get("water", false) else sim.map.stand_tile(b.rect(), b.center())
+		var spawn := sim.state.map.water_next_to(b.rect(), b.center()) if Defs.UNITS[trains].get("water", false) else sim.state.map.stand_tile(b.rect(), b.center())
 		u.pos = Vector2(spawn) + Vector2(0.5, 0.5)
 		sim.add_unit(u)

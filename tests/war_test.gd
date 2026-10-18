@@ -34,7 +34,7 @@ func _process(dt: float) -> bool:
 		attacker.wave_size = 8
 		attacker.fog.reveal(Vector2(victim.start), 22.0)  # it has seen their town
 		var home := Vector2(attacker.start)
-		var site: Vector2i = g.sim.map.find_site(Vector2i(3, 3), attacker.start, 6, 30, [])
+		var site: Vector2i = g.sim.state.map.find_site(Vector2i(3, 3), attacker.start, 6, 30, [])
 		g.sim.add_building("castra", site, true, attacker.owner)
 		for i in 14:
 			var u := Unit.new()
@@ -44,19 +44,19 @@ func _process(dt: float) -> bool:
 			g.sim.add_unit(u)
 		print("attacker ", attacker.owner, " at ", attacker.start, " victim ", victim.owner, " at ", victim.start, " distance ", snappedf(Vector2(attacker.start).distance_to(Vector2(victim.start)), 1.0))
 		stage = 1
-	if stage == 1 and (g.sim.victory.defeated.has(victim.owner) or t_stage > 900.0):
-		print("after %.0f game seconds: buildings lost=%d kills=%d" % [t_stage, g.sim.buildings_lost, g.sim.combat.kills])
+	if stage == 1 and (g.sim.state.defeated.has(victim.owner) or t_stage > 900.0):
+		print("after %.0f game seconds: buildings lost=%d kills=%d" % [t_stage, g.sim.state.buildings_lost, g.sim.state.kills])
 		var states := {}
-		for u in g.sim.units:
+		for u in g.sim.state.units:
 			if u.owner == attacker.owner and u.kind == "soldier":
 				var k: String = Unit.State.keys()[u.state] + (" bld" if u.atk_building != null else "") + (" unit" if u.target != null else "")
 				states[k] = int(states.get(k, 0)) + 1
 		print("attackers by state: ", states)
-		for b in g.sim.buildings:
+		for b in g.sim.state.buildings:
 			if b.owner == victim.owner and b.attackable():
 				print("  victim building ", b.kind, " hp ", snappedf(b.hp, 1.0), "/", b.max_hp(), " burning ", b.burning)
 		print("victim villagers: ", victim.summary()["villagers"])
-		var ok: bool = g.sim.buildings_lost >= 1 and g.sim.victory.defeated.has(victim.owner)
+		var ok: bool = g.sim.state.buildings_lost >= 1 and g.sim.state.defeated.has(victim.owner)
 		print("ok   an AI wave destroyed the town and the people fell" if ok else "FAIL an AI wave destroyed the town and the people fell")
 		quit(0 if ok else 1)
 	return false

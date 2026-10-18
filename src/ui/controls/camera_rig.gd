@@ -100,5 +100,5 @@ func pan(delta: float) -> void:
 	apply_zoom()
 	pos += dir * PAN_SPEED / camera.zoom.x * delta
 	# stay over the map: its bounding box in world pixels
-	pos = pos.clamp(Vector2(-main.sim.map.h * Iso.HALF_W, 0), Vector2(main.sim.map.w * Iso.HALF_W, (main.sim.map.w + main.sim.map.h) * Iso.HALF_H))
+	pos = pos.clamp(Vector2(-main.sim.state.map.h * Iso.HALF_W, 0), Vector2(main.sim.state.map.w * Iso.HALF_W, (main.sim.state.map.w + main.sim.state.map.h) * Iso.HALF_H))
 	camera.position = pos.round()  # whole world pixels, so sprites don't shimmer

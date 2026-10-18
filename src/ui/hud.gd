@@ -79,7 +79,7 @@ func setup(game) -> void:
 	var tv := VBoxContainer.new()
 	top.add_child(tv)
 	var title := _label("", 12, GOLD)
-	_say(title, "Imperium  ·  sors %d" % _game.sim.map.seed_value, "Empire  ·  map seed %d" % _game.sim.map.seed_value)
+	_say(title, "Imperium  ·  sors %d" % _game.sim.state.map.seed_value, "Empire  ·  map seed %d" % _game.sim.state.map.seed_value)
 	tv.add_child(title)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 22)
@@ -448,7 +448,7 @@ func _say(c: Control, latin: String, english: String) -> void:
 
 
 func map_deposit_for(b: Building) -> Deposit:
-	return _game.sim.map.deposits.get(b.field_tile())
+	return _game.sim.state.map.deposits.get(b.field_tile())
 
 
 ## Pins a control to a screen corner (ax, ay in {0, 1}), growing inward.

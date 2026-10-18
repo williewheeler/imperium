@@ -23,9 +23,6 @@ const FIRE_RATE := 0.015  # share of its full health a burning building loses ea
 const TARGET_MARK := 0.9  # seconds an enemy stays ringed in red after we order an attack on it
 
 var sim: Simulation
-var projectiles: Array[Dictionary] = []  # shots in flight: {from, target, attacker, damage, t, dur}
-var kills := 0  # how many units have died (for tests and reports)
-var _graveyard: Array[Unit] = []  # the dead, removed from the game at the end of the frame
 
 
 func _init(p_sim) -> void:
@@ -79,7 +76,7 @@ func nearest_enemy(u: Unit, radius: float) -> Unit:
 	var best: Unit = null
 	var best_score := INF
 	var r2 := radius * radius
-	for t: Unit in sim.units:
+	for t: Unit in sim.state.units:
 		if t.dead or t.owner == u.owner:
 			continue
 		var d2 := u.pos.distance_squared_to(t.pos)
@@ -100,7 +97,7 @@ func nearest_enemy_building(u: Unit, radius: float) -> Building:
 	var best: Building = null
 	var best_d := radius
 	var seen: Fog = sim.fog_of(u.owner)
-	for b: Building in sim.buildings:
+	for b: Building in sim.state.buildings:
 		if b.owner == u.owner or not b.attackable() or not seen.is_explored(Vector2i(b.center())):
 			continue
 		var d := rect_distance(u.pos, b.rect())
@@ -248,7 +245,7 @@ func update_fight(u: Unit, delta: float) -> void:
 ## A unit attacking a building: walks up to it, then strikes it on the usual cycle.
 func _update_siege(u: Unit, delta: float) -> void:
 	var b := u.atk_building
-	if b == null or b.dead or not sim.buildings.has(b):
+	if b == null or b.dead or not sim.state.buildings.has(b):
 		_after_kill(u)
 		return
 	var d := rect_distance(u.pos, b.rect())
@@ -260,7 +257,7 @@ func _update_siege(u: Unit, delta: float) -> void:
 			u.struck = false
 		else:
 			if u.path.is_empty():
-				var stand: Vector2i = sim.map.stand_tile(b.rect(), u.pos)
+				var stand: Vector2i = sim.state.map.stand_tile(b.rect(), u.pos)
 				if stand.x < 0 or not sim.orders.set_path(u, stand):
 					_give_up(u)
 					return
@@ -300,7 +297,7 @@ func hurt_building(b: Building, amount: float, _attacker: Unit) -> void:
 ## Burning buildings lose health until they fall. Called every frame.
 func update_buildings(delta: float) -> void:
 	var fallen: Array[Building] = []
-	for b: Building in sim.buildings:
+	for b: Building in sim.state.buildings:
 		b.bar_t = maxf(0.0, b.bar_t - delta)
 		if b.burning and not b.dead:
 			b.hp -= b.max_hp() * FIRE_RATE * delta
@@ -335,7 +332,7 @@ func _strike(u: Unit, t: Unit) -> void:
 	var dmg := damage_between(u, t)
 	if is_ranged(u):
 		var dist := u.pos.distance_to(t.pos)
-		projectiles.append({"from": u.pos, "target": t, "attacker": u, "damage": dmg, "t": 0.0, "dur": maxf(0.15, dist / PROJECTILE_SPEED)})
+		sim.state.projectiles.append({"from": u.pos, "target": t, "attacker": u, "damage": dmg, "t": 0.0, "dur": maxf(0.15, dist / PROJECTILE_SPEED)})
 	else:
 		hurt(t, dmg, u)
 	if t.dead:
@@ -366,8 +363,8 @@ func _die(u: Unit) -> void:
 	u.selected = false
 	u.state = Unit.State.IDLE
 	sim.roads.release(u)
-	_graveyard.append(u)
-	kills += 1
+	sim.state.graveyard.append(u)
+	sim.state.kills += 1
 
 
 ## A villager that has gone into a building for good: out of the game, with nothing to show.
@@ -377,7 +374,7 @@ func absorb(u: Unit) -> void:
 	u.state = Unit.State.IDLE
 	u.dead = true
 	u.absorbed = true
-	_graveyard.append(u)
+	sim.state.graveyard.append(u)
 
 
 ## A fighter whose people has fallen: it disbands, leaving the game.
@@ -387,11 +384,11 @@ func disband(u: Unit) -> void:
 
 ## Takes this frame's dead out of the game (done after all the loops over the units).
 func flush_dead() -> void:
-	if _graveyard.is_empty():
+	if sim.state.graveyard.is_empty():
 		return
-	for u in _graveyard:
-		sim.units.erase(u)
-	_graveyard.clear()
+	for u in sim.state.graveyard:
+		sim.state.units.erase(u)
+	sim.state.graveyard.clear()
 
 
 func _after_kill(u: Unit) -> void:
@@ -438,7 +435,7 @@ func _flee(v: Unit, from: Unit) -> void:
 	v.flee_t = FLEE_TIME
 	var home: Building = null
 	var best := INF
-	for b: Building in sim.buildings:
+	for b: Building in sim.state.buildings:
 		if b.owner == v.owner and b.complete and b.kind in Defs.HUBS:
 			var d := v.pos.distance_squared_to(b.center())
 			if d < best:
@@ -446,10 +443,10 @@ func _flee(v: Unit, from: Unit) -> void:
 				home = b
 	var goal := Vector2i(-1, -1)
 	if home != null:
-		goal = sim.map.stand_tile(home.rect(), v.pos)
+		goal = sim.state.map.stand_tile(home.rect(), v.pos)
 	else:
 		var away := (v.pos - from.pos).normalized() * 10.0
-		goal = Vector2i((v.pos + away).clamp(Vector2(1, 1), Vector2(sim.map.w - 2, sim.map.h - 2)))
+		goal = Vector2i((v.pos + away).clamp(Vector2(1, 1), Vector2(sim.state.map.w - 2, sim.state.map.h - 2)))
 	if goal.x >= 0 and sim.orders.set_path(v, goal):
 		v.state = Unit.State.FLEE
 
@@ -464,10 +461,10 @@ func update_flee(u: Unit, delta: float) -> void:
 
 ## Moves the shots in flight and lands them.
 func update_projectiles(delta: float) -> void:
-	if projectiles.is_empty():
+	if sim.state.projectiles.is_empty():
 		return
 	var keep: Array[Dictionary] = []
-	for p in projectiles:
+	for p in sim.state.projectiles:
 		var t: Unit = p["target"]
 		if t.dead:
 			continue
@@ -476,4 +473,4 @@ func update_projectiles(delta: float) -> void:
 			hurt(t, p["damage"], p["attacker"])
 		else:
 			keep.append(p)
-	projectiles = keep
+	sim.state.projectiles = keep

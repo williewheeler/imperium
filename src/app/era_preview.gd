@@ -18,12 +18,12 @@ func _dress_rect_ok(rect: Rect2i, taken: Array, unit_tiles: Dictionary) -> bool:
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var p := Vector2i(x, y)
-			if not game.sim.map.in_bounds(p) or unit_tiles.has(p) or game.sim.map.astar.is_point_solid(p) or game.sim.roads.plans.has(p):
+			if not game.sim.state.map.in_bounds(p) or unit_tiles.has(p) or game.sim.state.map.astar.is_point_solid(p) or game.sim.state.road_plans.has(p):
 				return false
-			var t := game.sim.map.tile(x, y)
+			var t := game.sim.state.map.tile(x, y)
 			if t != GameMap.Terrain.GRASS and t != GameMap.Terrain.FOREST:
 				return false
-			var d: Deposit = game.sim.map.deposits.get(p)
+			var d: Deposit = game.sim.state.map.deposits.get(p)
 			if d != null and d.kind != Defs.Res.WOOD:
 				return false  # berries and mines stay
 	return true
@@ -31,8 +31,8 @@ func _dress_rect_ok(rect: Rect2i, taken: Array, unit_tiles: Dictionary) -> bool:
 
 ## Fells the trees on a tile (debug town growth).
 func _dress_clear(p: Vector2i) -> void:
-	if game.sim.map.in_bounds(p) and game.sim.map.tile(p.x, p.y) == GameMap.Terrain.FOREST:
-		game.sim.map.remove_deposit(p)
+	if game.sim.state.map.in_bounds(p) and game.sim.state.map.tile(p.x, p.y) == GameMap.Terrain.FOREST:
+		game.sim.state.map.remove_deposit(p)
 		game._world.tile_changed(p)
 
 
@@ -41,12 +41,12 @@ func _dress_clear(p: Vector2i) -> void:
 func _dress_place(kind: String, prefs: Array) -> Building:
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var taken := []
-	for other in game.sim.buildings:
+	for other in game.sim.state.buildings:
 		taken.append(other.rect().grow(1))  # a tile of space between buildings
 	var unit_tiles := {}
-	for u in game.sim.units:
+	for u in game.sim.state.units:
 		unit_tiles[Vector2i(u.pos)] = true
-	var forum := game.sim.buildings[0].tile
+	var forum := game.sim.state.buildings[0].tile
 	var site := Vector2i(-1, -1)
 	for pref: Vector2i in prefs + [Vector2i(0, 0)]:
 		var target := forum + pref
@@ -71,10 +71,10 @@ func _dress_place(kind: String, prefs: Array) -> Building:
 
 ## The nearest spot to `at` where no other unit stands (so nobody gets shoved apart on arrival).
 func _free_spot(at: Vector2) -> Vector2:
-	for spot in game.sim.map.spread_goals(Vector2i(at), 60):
+	for spot in game.sim.state.map.spread_goals(Vector2i(at), 60):
 		var c := Vector2(spot) + Vector2(0.5, 0.5)
 		var clear := true
-		for other in game.sim.units:
+		for other in game.sim.state.units:
 			if other.pos.distance_to(c) < 1.0:
 				clear = false
 				break
@@ -93,7 +93,7 @@ func _dress_unit(kind: String, at: Vector2) -> Unit:
 	u.kind = kind
 	game.sim.setup.assign_sex(u)
 	u.pos = _free_spot(at)
-	game.sim.units.append(u)
+	game.sim.state.units.append(u)
 	_dressed_units.append(u)
 	return u
 
@@ -104,7 +104,7 @@ func _dress_era_one() -> void:
 			["storehouse", [Vector2i(0, 6), Vector2i(-6, -3)]]]:
 		_dress_place(plan[0], plan[1])
 	for i in 3:
-		_dress_unit("villager", game.sim.buildings[0].center() + Vector2(float(i) - 1.0, 2.5))
+		_dress_unit("villager", game.sim.state.buildings[0].center() + Vector2(float(i) - 1.0, 2.5))
 
 
 func _dress_era_two() -> void:
@@ -114,23 +114,23 @@ func _dress_era_two() -> void:
 			["house", [Vector2i(-6, -3)]], ["house", [Vector2i(6, 1)]], ["house", [Vector2i(-2, -5)]]]:
 		_dress_place(plan[0], plan[1])
 	# the soldiers stand at ease in a block beside the Forum, where they're easy to see
-	var forum := game.sim.buildings[0]
-	var spots := game.sim.map.spread_goals(Vector2i(forum.tile.x - 2, forum.tile.y + 1), 6)
+	var forum := game.sim.state.buildings[0]
+	var spots := game.sim.state.map.spread_goals(Vector2i(forum.tile.x - 2, forum.tile.y + 1), 6)
 	for spot in spots:
 		_dress_unit("soldier", Vector2(spot) + Vector2(0.5, 0.5))
 	for i in 2:
-		_dress_unit("villager", game.sim.buildings[0].center() + Vector2(float(i) * 1.5, 3.2))
+		_dress_unit("villager", game.sim.state.buildings[0].center() + Vector2(float(i) * 1.5, 3.2))
 	_dress_paved_avenue()
 
 
 ## A paved avenue leading away from the Forum, clearing any woodland in its way: the longest
 ## straight run (up to 9 tiles) that starts beside the Forum and has clear ground.
 func _dress_paved_avenue() -> void:
-	var ring := game.sim.buildings[0].rect().grow(1)
+	var ring := game.sim.state.buildings[0].rect().grow(1)
 	var starts: Array[Vector2i] = []
 	for y in range(ring.position.y, ring.end.y):
 		for x in range(ring.position.x, ring.end.x):
-			if not game.sim.buildings[0].rect().has_point(Vector2i(x, y)):
+			if not game.sim.state.buildings[0].rect().has_point(Vector2i(x, y)):
 				starts.append(Vector2i(x, y))
 	for length: int in [9, 7, 5]:
 		for start in starts:
@@ -138,14 +138,14 @@ func _dress_paved_avenue() -> void:
 				var line := Roads.line(start, start + dir * (length - 1))
 				var ok := line.size() == length
 				for p in line:
-					var t := game.sim.map.tile(p.x, p.y) if game.sim.map.in_bounds(p) else GameMap.Terrain.DEEP
-					var d: Deposit = game.sim.map.deposits.get(p) if game.sim.map.in_bounds(p) else null
+					var t := game.sim.state.map.tile(p.x, p.y) if game.sim.state.map.in_bounds(p) else GameMap.Terrain.DEEP
+					var d: Deposit = game.sim.state.map.deposits.get(p) if game.sim.state.map.in_bounds(p) else null
 					ok = ok and (t == GameMap.Terrain.GRASS or t == GameMap.Terrain.FOREST) and game.sim.placement.building_at(p) == null \
-						and not game.sim.map.astar.is_point_solid(p) and (d == null or d.kind == Defs.Res.WOOD)
+						and not game.sim.state.map.astar.is_point_solid(p) and (d == null or d.kind == Defs.Res.WOOD)
 				if ok:
 					for p in line:
 						_dress_clear(p)
-						if game.sim.map.make_paved(p):
+						if game.sim.state.map.make_paved(p):
 							_dressed_road.append(p)
 							game._world.road_changed(p)
 					return
@@ -154,13 +154,13 @@ func _dress_paved_avenue() -> void:
 func cycle(step: int) -> void:
 	game.era = posmod(game.era + step, Defs.ERAS.size())
 	if game.era >= 1:
-		game.sim.eras.drain_marshes(game.sim.buildings[0].center())
-	game.sim.eras.advancing[Main.LOCAL] = false
+		game.sim.eras.drain_marshes(game.sim.state.buildings[0].center())
+	game.sim.state.era_advancing[Main.LOCAL] = false
 	game.person.clear_selection()
 	game.person.placing = ""
 	game.person.cancel_road_mode()
 	_undress()
-	game.fog.reveal(game.sim.buildings[0].center(), 17.0)
+	game.fog.reveal(game.sim.state.buildings[0].center(), 17.0)
 	_dress_era_one()
 	if game.era >= 1:
 		_dress_era_two()
@@ -174,10 +174,10 @@ func _undress() -> void:
 	_dressed_buildings.clear()
 	for u in _dressed_units:
 		game.sim.roads.release(u)
-		game.sim.units.erase(u)
+		game.sim.state.units.erase(u)
 	_dressed_units.clear()
 	if not _dressed_road.is_empty():
 		for p in _dressed_road:
-			game.sim.map.clear_road(p)
+			game.sim.state.map.clear_road(p)
 		_dressed_road.clear()
 		game._world.roads_rebuilt()

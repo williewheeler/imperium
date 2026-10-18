@@ -1,8 +1,10 @@
 class_name Simulation
 extends RefCounted
-## The game itself: the map, the peoples, their units and buildings, and the rules that move them on. It is
-## a plain object with no scene, window, input, clock or settings screen behind it, so it runs the same in
-## the game, in a headless check and in a replay.
+## The game loop, and the owner of everything the game is made of. The **game state** (`state`, a `GameState`: the map,
+## the peoples, their units and buildings...) is inert data; the **game systems** (Movement, Economy and the rest, in
+## src/sim/systems) read it and change it; `step()` is the loop that runs them, a tick at a time. It is a plain object
+## with no scene, window, input, clock or settings screen behind it, so it runs the same in the game, in a headless
+## check and in a replay.
 ##
 ## **Time is the tick.** `step()` moves the game on by exactly `TICK` seconds, whatever the frame rate. A
 ## client that draws the game calls it as often as real time asks (see Main); a headless run calls it as fast
@@ -12,7 +14,7 @@ extends RefCounted
 ## made *between* ticks, or by an AI at the start of one, and nothing else changes the game from outside.
 ## With the same `SimConfig` and the same commands at the same ticks, a game always comes out the same: that
 ## is what makes replays possible (see Replay). So inside the simulation:
-##   - randomness comes only from `rng`, and only the rules draw from it (an AI has a generator of its own);
+##   - randomness comes only from `state.rng`, and only the rules draw from it (an AI has a generator of its own);
 ##   - nothing reads the wall clock, the frame rate, the settings screen, the mouse or the scene tree;
 ##   - what the simulation wants the person to hear or see is told by a signal, never done itself.
 ##
@@ -39,16 +41,8 @@ signal stepped  # a tick has been taken (a recorder listens)
 signal tainted_by(why: String)  # something other than commands has changed the game (see `taint`)
 
 var config: SimConfig
-var map: GameMap
-var units: Array[Unit] = []
-var buildings: Array[Building] = []
-var stocks: Array = []  # every player's resources, by owner (null for a slot nobody plays)
-var fogs := {}  # owner -> the Fog that player has built up: what it has seen, and nothing more
+var state := GameState.new()  # the game: inert data that the systems act on
 var ais: Array[AI] = []
-var start := Vector2i.ZERO  # where the first player's town stands
-var tick := 0  # steps taken so far
-var rng := RandomNumberGenerator.new()  # the rules' dice: Wildlife, and whatever else the rules leave to chance
-var buildings_lost := 0  # buildings that have burned down (for tests and reports)
 var tainted: Array[String] = []  # what has changed the game other than by commands, so that a replay of it cannot be trusted
 var ai_enabled := true  # false when the commands come from somewhere else (a replay), so the AIs stay quiet
 var drawn_fogs: Array = []  # the players whose Fog also keeps a picture of itself (set by a client that draws them)
@@ -68,23 +62,21 @@ var roads := Roads.new()  # the paved roads laid and planned
 var victory := Victory.new()  # who is still in the game
 var setup := WorldSetup.new()  # founding the players
 
-var _next_unit_id := 1
-var _next_building_id := 1
-var _cities := 0  # towns named so far (they take their names from CITY_NAMES in turn)
 
 
 func _init(p_config: SimConfig, p_map: GameMap) -> void:
 	config = p_config
-	map = p_map
-	rng.seed = config.seed_value * 2654435761 + 9176
+	state.map = p_map
+	state.rng.seed = config.seed_value * 2654435761 + 9176
 	for part: Variant in [movement, economy, production, eras, vision, wildlife, behavior, orders, commands, placement, roads, victory, setup]:
 		part.sim = self
 
 
 ## Founds the players on the map. Call once, before the first step.
 func begin() -> void:
-	start = map.find_start(Vector2i((map.homes[0] * map.w).round()), Vector2i(-1, -1), 0)  # the first player starts on the ring round the map like everyone else
-	setup.found_players(start)
+	var map := state.map
+	state.start = map.find_start(Vector2i((map.homes[0] * map.w).round()), Vector2i(-1, -1), 0)  # the first player starts on the ring round the map like everyone else
+	setup.found_players(state.start)
 	vision.update(true)
 
 
@@ -92,13 +84,13 @@ func begin() -> void:
 
 ## Time in the game, in seconds.
 func time() -> float:
-	return tick * TICK
+	return state.tick * TICK
 
 
 ## One tick: everything that happens in the world in the next 1/30 second.
 func step() -> void:
 	var dt := TICK
-	for u in units:
+	for u in state.units:
 		u.prev_pos = u.pos
 	var t0 := Perf.start()
 	if ai_enabled:
@@ -107,7 +99,7 @@ func step() -> void:
 	Perf.stop("ais", t0)
 	t0 = Perf.start()
 	movement.begin_tick()
-	for u in units:
+	for u in state.units:
 		if Perf.trace:  # name the state, so a slow tick says which kind of work was slow
 			var ts := Perf.start()
 			behavior.update_unit(u, dt)
@@ -120,7 +112,7 @@ func step() -> void:
 	movement.settle_stuck(dt)
 	Perf.stop("separate units", t0)
 	t0 = Perf.start()
-	for b in buildings:
+	for b in state.buildings:
 		production.update_building(b, dt)
 	Perf.stop("buildings", t0)
 	t0 = Perf.start()
@@ -134,7 +126,7 @@ func step() -> void:
 	t0 = Perf.start()
 	vision.update()
 	Perf.stop("fog", t0)
-	tick += 1
+	state.tick += 1
 	stepped.emit()
 
 
@@ -142,11 +134,11 @@ func step() -> void:
 
 ## What the given player has explored (an AI knows only what its own people have seen).
 func fog_of(owner: int) -> Fog:
-	return fogs[owner]
+	return state.fogs[owner]
 
 
 func stock_of(owner: int) -> Array[int]:
-	return stocks[owner]
+	return state.stocks[owner]
 
 
 ## The era `owner` is in.
@@ -166,32 +158,32 @@ func taint(why: String) -> void:
 
 ## Puts a unit into the game and gives it the number commands will call it by.
 func add_unit(u: Unit) -> Unit:
-	u.id = _next_unit_id
-	_next_unit_id += 1
+	u.id = state.next_unit_id
+	state.next_unit_id += 1
 	u.stagger()
 	u.prev_pos = u.pos
-	units.append(u)
+	state.units.append(u)
 	return u
 
 
 func add_building(kind: String, tile: Vector2i, complete: bool, owner := 0) -> Building:
 	var b := Building.new()
-	b.id = _next_building_id
-	_next_building_id += 1
+	b.id = state.next_building_id
+	state.next_building_id += 1
 	b.eras = eras
 	b.kind = kind
 	b.tile = tile
 	b.size = Defs.BUILDINGS[kind]["size"]
 	b.owner = owner  # 0 is the first player's (purple), landmarks included
 	b.complete = complete
-	b.building_name = CITY_NAMES[_cities % CITY_NAMES.size()] if kind == "town_center" else Defs.BUILDINGS[kind]["name"]
+	b.building_name = CITY_NAMES[state.cities % CITY_NAMES.size()] if kind == "town_center" else Defs.BUILDINGS[kind]["name"]
 	if kind == "town_center":
-		_cities += 1
-	buildings.append(b)
+		state.cities += 1
+	state.buildings.append(b)
 	if not Defs.BUILDINGS[kind].get("walkable", false):
-		map.set_solid(b.rect(), true)
+		state.map.set_solid(b.rect(), true)
 	elif Defs.BUILDINGS[kind].get("solid_center", false):
-		map.set_solid(Rect2i(b.granary_tile(), Vector2i.ONE), true)  # a farm's granary stands among its plots
+		state.map.set_solid(Rect2i(b.granary_tile(), Vector2i.ONE), true)  # a farm's granary stands among its plots
 	if complete:
 		production.on_complete(b)
 	return b
@@ -199,8 +191,8 @@ func add_building(kind: String, tile: Vector2i, complete: bool, owner := 0) -> B
 
 ## The next name for a town, so that no two share one.
 func next_city_name() -> String:
-	var name: String = CITY_NAMES[_cities % CITY_NAMES.size()]
-	_cities += 1
+	var name: String = CITY_NAMES[state.cities % CITY_NAMES.size()]
+	state.cities += 1
 	return name
 
 
@@ -208,7 +200,7 @@ func next_city_name() -> String:
 func destroy_building(b: Building) -> void:
 	if b.dead:
 		return
-	buildings_lost += 1
+	state.buildings_lost += 1
 	b.dead = true
 	b.burning = true  # it burns out its last moments on screen (see World)
 	b.hp = 0.0
@@ -219,15 +211,15 @@ func destroy_building(b: Building) -> void:
 
 
 func remove_building(b: Building) -> void:
-	buildings.erase(b)
+	state.buildings.erase(b)
 	if not b.def().get("walkable", false):
-		map.set_solid(b.rect(), false)
+		state.map.set_solid(b.rect(), false)
 	elif b.def().get("solid_center", false):
-		map.set_solid(Rect2i(b.granary_tile(), Vector2i.ONE), false)
+		state.map.set_solid(Rect2i(b.granary_tile(), Vector2i.ONE), false)
 	if b.has_plots():
 		for p in b.plot_tiles():
-			map.deposits.erase(p)
-	for u in units:
+			state.map.deposits.erase(p)
+	for u in state.units:
 		if u.target_building == b:
 			u.target_building = null
 			u.state = Unit.State.IDLE
@@ -235,57 +227,6 @@ func remove_building(b: Building) -> void:
 
 # ---------------------------------------------------------------- the checksum
 
-## A fingerprint of the whole game as it stands: two games that have played the same have the same one. A
-## replay carries these to show it has not strayed from the game it records.
+## A fingerprint of the whole game as it stands (see GameState.checksum).
 func checksum() -> String:
-	var buf := StreamPeerBuffer.new()
-	buf.put_64(tick)
-	buf.put_64(rng.state)
-	for s: Variant in stocks:
-		if s == null:
-			buf.put_8(0)
-			continue
-		for n: int in s:
-			buf.put_32(n)
-	for owner: int in eras.level:
-		buf.put_32(owner)
-		buf.put_32(int(eras.level[owner]))
-		buf.put_8(1 if eras.advancing.get(owner, false) else 0)
-		buf.put_double(float(eras.progress.get(owner, 0.0)))
-	for u in units:
-		buf.put_32(u.id)
-		buf.put_data(u.kind.to_utf8_buffer())
-		buf.put_8(u.owner)
-		buf.put_double(u.pos.x)
-		buf.put_double(u.pos.y)
-		buf.put_double(u.hp)
-		buf.put_8(u.state)
-		buf.put_32(u.carry)
-		buf.put_32(u.path.size())
-		buf.put_32(u.target.id if u.target != null else 0)
-	for b in buildings:
-		buf.put_32(b.id)
-		buf.put_data(b.kind.to_utf8_buffer())
-		buf.put_8(b.owner)
-		buf.put_32(b.tile.x)
-		buf.put_32(b.tile.y)
-		buf.put_double(b.hp)
-		buf.put_double(b.work)
-		buf.put_8(1 if b.complete else 0)
-		buf.put_double(b.train_progress)
-		buf.put_32(b.train_queue.size())
-		buf.put_32(b.citizens)
-	for p: Vector2i in map.deposits:
-		var d: Deposit = map.deposits[p]
-		buf.put_32(p.x)
-		buf.put_32(p.y)
-		buf.put_32(d.amount)
-	buf.put_32(roads.plans.size())
-	buf.put_32(victory.defeated.size())
-	buf.put_32(combat.kills)
-	var ctx := HashingContext.new()
-	ctx.start(HashingContext.HASH_SHA256)
-	ctx.update(buf.data_array)
-	for owner: int in fogs:  # and what each people has seen
-		ctx.update((fogs[owner] as Fog).state)
-	return ctx.finish().hex_encode().substr(0, 16)
+	return state.checksum()

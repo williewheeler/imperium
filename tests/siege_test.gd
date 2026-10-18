@@ -35,11 +35,11 @@ func _process(dt: float) -> bool:
 		0:
 			Engine.time_scale = 10.0
 			for i in 4:
-				g.sim.stocks[0][i] = 1000
+				g.sim.state.stocks[0][i] = 1000
 			g.sim.ais.clear()  # no AI thinking: only what the test does
 			# four soldiers of ours beside a finished enemy hut
-			var base := Vector2(g.sim.units[0].pos) + Vector2(12, 12)
-			var site: Vector2i = g.sim.map.find_site(Vector2i(1, 1), Vector2i(base), 0, 20, [])
+			var base := Vector2(g.sim.state.units[0].pos) + Vector2(12, 12)
+			var site: Vector2i = g.sim.state.map.find_site(Vector2i(1, 1), Vector2i(base), 0, 20, [])
 			hut = g.sim.add_building("hut", site, true, 1)
 			for i in 4:
 				var u := Unit.new()
@@ -64,29 +64,29 @@ func _process(dt: float) -> bool:
 		2:
 			if hut.dead or t_stage > 180.0:
 				_check("the hut was destroyed", hut.dead, true)
-				_check("and removed from the game", g.sim.buildings.has(hut), false)
+				_check("and removed from the game", g.sim.state.buildings.has(hut), false)
 				# now defeat a people: take away player 1's town and villagers
-				var gone := g.sim.units.filter(func(u): return u.owner == 1)
+				var gone := g.sim.state.units.filter(func(u): return u.owner == 1)
 				for u in gone:
-					g.sim.units.erase(u)
-				var town: Building = g.sim.buildings.filter(func(b): return b.owner == 1 and b.kind == "town_center")[0]
+					g.sim.state.units.erase(u)
+				var town: Building = g.sim.state.buildings.filter(func(b): return b.owner == 1 and b.kind == "town_center")[0]
 				g.sim.destroy_building(town)
 				g.sim.victory.check()
-				_check("a people with no town and no villagers is defeated", g.sim.victory.defeated.has(1), true)
-				_check("the game goes on while two peoples stand", g.sim.victory.winner, -1)
-				for u in g.sim.units.filter(func(u): return u.owner == 2):
-					g.sim.units.erase(u)
-				for b in g.sim.buildings.filter(func(b): return b.owner == 2 and b.kind == "town_center"):
+				_check("a people with no town and no villagers is defeated", g.sim.state.defeated.has(1), true)
+				_check("the game goes on while two peoples stand", g.sim.state.winner, -1)
+				for u in g.sim.state.units.filter(func(u): return u.owner == 2):
+					g.sim.state.units.erase(u)
+				for b in g.sim.state.buildings.filter(func(b): return b.owner == 2 and b.kind == "town_center"):
 					g.sim.destroy_building(b)
 				g.sim.victory.check()
-				_check("the last people standing wins", g.sim.victory.winner, 0)
+				_check("the last people standing wins", g.sim.state.winner, 0)
 				stage = 3
 				t_stage = 0.0
 		3:
 			if t_stage > 10.0:
 				_check("nobody is still attacking the fallen hut", troops.all(func(u): return u.atk_building != hut), true)
 				g.sim.victory.check()
-				print("winner: ", g.sim.victory.winner, " defeated: ", g.sim.victory.defeated.keys())
+				print("winner: ", g.sim.state.winner, " defeated: ", g.sim.state.defeated.keys())
 				print("DONE fails=", fails)
 				quit(1 if fails > 0 else 0)
 	return false

@@ -6,7 +6,7 @@ var sim: Simulation
 
 
 func building_at(tile: Vector2i) -> Building:
-	for b: Building in sim.buildings:
+	for b: Building in sim.state.buildings:
 		if b.rect().has_point(tile):
 			return b
 	return null
@@ -15,7 +15,7 @@ func building_at(tile: Vector2i) -> Building:
 ## The footprints of every building.
 func rects() -> Array:
 	var out := []
-	for b: Building in sim.buildings:
+	for b: Building in sim.state.buildings:
 		out.append(b.rect())
 	return out
 
@@ -23,19 +23,19 @@ func rects() -> Array:
 ## Closest clear spot for `kind` near `near`, avoiding the tiles villagers are standing on.
 func find_site(kind: String, near: Vector2i, min_r: int) -> Vector2i:
 	var avoid: Array[Vector2i] = []
-	for u: Unit in sim.units:
+	for u: Unit in sim.state.units:
 		avoid.append(Vector2i(u.pos))
-	return sim.map.find_site(Defs.BUILDINGS[kind]["size"], near, min_r, 16, avoid)
+	return sim.state.map.find_site(Defs.BUILDINGS[kind]["size"], near, min_r, 16, avoid)
 
 
 ## Empty string if `owner` can build `kind` with its top-left at `tile`, else the reason it can't.
 func error(kind: String, tile: Vector2i, owner := 0) -> String:
 	var def: Dictionary = Defs.BUILDINGS[kind]
 	var rect := Rect2i(tile, def["size"])
-	for rt in sim.roads.plans:
+	for rt in sim.state.road_plans:
 		if rect.has_point(rt):
 			return "err.spot_taken"
-	for other: Building in sim.buildings:  # checked first so the message says why (a field's crop tile isn't "free land")
+	for other: Building in sim.state.buildings:  # checked first so the message says why (a field's crop tile isn't "free land")
 		if other.rect().intersects(rect):
 			return "err.spot_taken"
 	if def.get("shore", false):  # a dock stands in the shallows, touching the shore
@@ -44,9 +44,9 @@ func error(kind: String, tile: Vector2i, owner := 0) -> String:
 				var q := Vector2i(x, y)
 				if not sim.fog_of(owner).is_explored(q):
 					return "err.unexplored"
-				if sim.map.tile(x, y) != GameMap.Terrain.SHALLOW or sim.map.deposits.has(q) or sim.map.blocked_water.has(q):
+				if sim.state.map.tile(x, y) != GameMap.Terrain.SHALLOW or sim.state.map.deposits.has(q) or sim.state.map.blocked_water.has(q):
 					return "err.need_shore"
-		if not sim.map.land_adjacent(rect):
+		if not sim.state.map.land_adjacent(rect):
 			return "err.need_shore"
 		return "" if sim.economy.can_afford(def["cost"], owner) else "err.cant_afford"
 	for y in range(rect.position.y, rect.end.y):
@@ -54,17 +54,17 @@ func error(kind: String, tile: Vector2i, owner := 0) -> String:
 			var p := Vector2i(x, y)
 			if not sim.fog_of(owner).is_explored(p):
 				return "err.unexplored"
-			if not sim.map.is_free_land(p):
+			if not sim.state.map.is_free_land(p):
 				return "err.need_level"
-	if not sim.map.is_level(rect):  # everything stands on one terrace
+	if not sim.state.map.is_level(rect):  # everything stands on one terrace
 		return "err.need_level"
 	if not def.get("walkable", false):
-		for u: Unit in sim.units:
+		for u: Unit in sim.state.units:
 			if rect.has_point(Vector2i(u.pos)):
 				return "err.villagers_in_way"
 	elif def.get("solid_center", false):  # a farm's granary stands on its middle tile
 		var middle := Rect2i(tile + (def["size"] as Vector2i) / 2, Vector2i.ONE)
-		for u: Unit in sim.units:
+		for u: Unit in sim.state.units:
 			if middle.has_point(Vector2i(u.pos)):
 				return "err.villagers_in_way"
 	if not sim.economy.can_afford(def["cost"], owner):

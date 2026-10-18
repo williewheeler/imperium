@@ -24,7 +24,7 @@ var grid := UnitGrid.new()  # who stands where (see begin_tick)
 ## Once a tick, before anyone moves: notes who stands where, so that the questions below about who is near
 ## look at a handful of units instead of all of them.
 func begin_tick() -> void:
-	grid.rebuild(sim.units)
+	grid.rebuild(sim.state.units)
 
 
 func follow(u: Unit, delta: float) -> bool:
@@ -52,7 +52,7 @@ func follow(u: Unit, delta: float) -> bool:
 		var last := u.path.size() == 1
 		var to_wp := wp - u.pos
 		var dist := to_wp.length()
-		var speed := walk_speed(u, sim.map.move_cost(Vector2i(u.pos)))
+		var speed := walk_speed(u, sim.state.map.move_cost(Vector2i(u.pos)))
 		var step := speed * budget
 		if u.detour == Vector2.INF and u.detour_cooldown <= 0.0 and dist > WAYPOINT_REACH:
 			var around := _detour_around(u, to_wp / dist)
@@ -82,7 +82,7 @@ func follow(u: Unit, delta: float) -> bool:
 		var before := u.pos
 		_move_unit(u, u.pos + heading * step)
 		var moved := u.pos.distance_to(before)
-		if moved > 0.0 and sim.map.add_wear(Vector2i(u.pos), moved):
+		if moved > 0.0 and sim.state.map.add_wear(Vector2i(u.pos), moved):
 			sim.road_changed.emit(Vector2i(u.pos))
 		u.walk += moved * WALK_CYCLE_PER_TILE
 		u.moving = true
@@ -99,7 +99,7 @@ func _avoidance(u: Unit, dir: Vector2) -> Vector2:
 	var side := dir.rotated(PI / 2.0)
 	var steer := Vector2.ZERO
 	for i in grid.near(u.pos):
-		var o := sim.units[i]
+		var o := sim.state.units[i]
 		if o == u:
 			continue
 		var r := o.pos - u.pos
@@ -122,7 +122,7 @@ func _detour_around(u: Unit, dir: Vector2) -> Vector2:
 	var blocker: Unit = null
 	var blocker_ahead := DETOUR_LOOK
 	for i in grid.near(u.pos):
-		var o := sim.units[i]
+		var o := sim.state.units[i]
 		if o == u:
 			continue
 		var r := o.pos - u.pos
@@ -136,7 +136,7 @@ func _detour_around(u: Unit, dir: Vector2) -> Vector2:
 	var first := -signf(lat) if absf(lat) > 0.05 else 1.0  # away from them; dead ahead: go right
 	for s in [first, -first]:
 		var point: Vector2 = blocker.pos + side * s * (AVOID_CLEARANCE + 0.2) + dir * 0.7
-		if sim.map.is_walkable(Vector2i(point.floor())):
+		if sim.state.map.is_walkable(Vector2i(point.floor())):
 			return point
 	return Vector2.INF
 
@@ -144,7 +144,7 @@ func _detour_around(u: Unit, dir: Vector2) -> Vector2:
 ## Is another villager already standing on (or right beside) this spot?
 func _spot_taken(u: Unit, spot: Vector2) -> bool:
 	for i in grid.near(spot):
-		var o := sim.units[i]
+		var o := sim.state.units[i]
 		if o != u and not o.moving and o.pos.distance_to(spot) < UNIT_SPACING:
 			return true
 	return false
@@ -168,7 +168,7 @@ func face(u: Unit, target_tile_pos: Vector2) -> void:
 ## tick (blocked, or pushed back by the separation of the crowd it is in) has been stuck a little longer. After
 ## STUCK_TIME of that it stops giving way to the people standing still, and they give way to it.
 func settle_stuck(delta: float) -> void:
-	for u in sim.units:
+	for u in sim.state.units:
 		if u.moving:
 			var got := u.pos.distance_to(u.prev_pos)
 			u.stuck = u.stuck + delta if got < u.intended * 0.3 else maxf(0.0, u.stuck - delta * 2.0)
@@ -177,14 +177,14 @@ func settle_stuck(delta: float) -> void:
 ## Last-resort overlap fix (steering handles almost everything). A walker gives way to anyone
 ## standing still and never shoves them, unless it has been blocked for a while.
 func separate_units() -> void:
-	grid.rebuild(sim.units)
+	grid.rebuild(sim.state.units)
 	for _pass in 2:
-		for i in sim.units.size():
-			var a := sim.units[i]
+		for i in sim.state.units.size():
+			var a := sim.state.units[i]
 			for j in grid.near(a.pos):  # (ascending, so the pairs come in the order a full loop gives them)
 				if j <= i:
 					continue
-				var b := sim.units[j]
+				var b := sim.state.units[j]
 				var d := b.pos - a.pos
 				var dist := d.length()
 				if dist >= UNIT_SPACING:
@@ -212,7 +212,7 @@ func _move_unit(u: Unit, p: Vector2) -> void:
 	var from := Vector2i(u.pos.floor())
 	for candidate in [p, Vector2(p.x, u.pos.y), Vector2(u.pos.x, p.y)]:
 		var to := Vector2i(candidate.floor())
-		var open := func(q: Vector2i) -> bool: return sim.map.can_sail(q) if boat else sim.map.is_walkable(q)
+		var open := func(q: Vector2i) -> bool: return sim.state.map.can_sail(q) if boat else sim.state.map.is_walkable(q)
 		if not open.call(to):
 			continue
 		# no squeezing through the corner between two diagonal obstacles (pathfinding never routes that way, but a
