@@ -655,7 +655,7 @@ func find_start(c := Vector2i(-1, -1), reach_from := Vector2i(-1, -1), first_lev
 				if not _grass_block(p, 1):
 					continue
 				if not reach.is_empty() and reach[p.y * w + p.x] == 0:
-					continue  # a rival's town must be somewhere we can walk to
+					continue  # an AI's town must be somewhere we can walk to
 				if level == 3:
 					return p
 				if _forest_count(p, 14) < (12 if level < 2 else 3):

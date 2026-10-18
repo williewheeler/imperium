@@ -91,7 +91,7 @@ func _ready() -> void:
 		_banner.visible = false
 
 
-## Whether the building is shown at all: a rival's town stays hidden until its ground has been explored.
+## Whether the building is shown at all: an AI's town stays hidden until its ground has been explored.
 func set_seen(seen: bool) -> void:
 	if visible == seen:
 		return

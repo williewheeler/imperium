@@ -201,10 +201,10 @@ func _build_players_page(page: VBoxContainer) -> void:
 	top.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(top)
-	var count_row := _option_row(top, "Numerus", "Peoples playing: you and the rest computer-run rivals", "tab:players")
+	var count_row := _option_row(top, "Numerus", "Peoples playing: you and the rest AI players", "tab:players")
 	for count in range(GameSettings.MIN_PLAYERS, GameSettings.MAX_PLAYERS + 1):
 		var b := _toggle(_numeral(count), 52, 17)
-		b.tooltip_text = "%d peoples: you and %d computer-run rivals" % [count, count - 1]
+		b.tooltip_text = "%d peoples: you and %d AI players" % [count, count - 1]
 		b.pressed.connect(_pick_players.bind(count))
 		_player_buttons[count] = b
 		count_row.add_child(b)
@@ -272,7 +272,7 @@ func _rebuild_slots() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var faction: String = "romans" if slot == 0 else GameSettings.rival_peoples[slot - 1]
+		var faction: String = "romans" if slot == 0 else GameSettings.ai_peoples[slot - 1]
 		var info: Dictionary = Defs.FACTIONS[faction]
 		var shield := TextureRect.new()
 		shield.texture = Icons.tex("shield:%s" % faction, Defs.color_of(slot))
@@ -294,7 +294,7 @@ func _rebuild_slots() -> void:
 		peoples.add_theme_constant_override("separation", 4)
 		peoples.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if slot > 0:
-			for f: String in Defs.RIVAL_ORDER:
+			for f: String in Defs.AI_ORDER:
 				var b := Button.new()
 				b.custom_minimum_size = Vector2(40, 40)
 				b.icon = Icons.tex("shield:%s" % f, Color("6a5a48"))

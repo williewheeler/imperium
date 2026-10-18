@@ -33,14 +33,14 @@ func _run() -> void:
 	var theirs: Array = g.units.filter(func(u): return u.owner == 1)
 	var ids := func(a: Array) -> Array: return a.map(func(u): return u.id)
 	var tc: Building = g.buildings.filter(func(b): return b.owner == 0 and b.kind == "town_center")[0]
-	var rival_tc: Building = g.buildings.filter(func(b): return b.owner == 1 and b.kind == "town_center")[0]
+	var ai_tc: Building = g.buildings.filter(func(b): return b.owner == 1 and b.kind == "town_center")[0]
 	var food_before: int = g.stock_of(0)[Defs.Res.FOOD]
 	_check("unknown command", c.submit({"type": "nope", "owner": 0}), "Imperium ignotum.")
 	_check("unknown player", c.submit({"type": "stop", "owner": 9}), "Lusor ignotus.")
 	_check("train villager", c.submit({"type": "train", "owner": 0, "building": tc.id, "kind": "villager"}), "")
 	_check("queue grew", tc.train_queue.size(), 1)
 	_check("it was paid for", g.stock_of(0)[Defs.Res.FOOD] < food_before, true)
-	_check("cannot train at another's building", c.submit({"type": "train", "owner": 0, "building": rival_tc.id, "kind": "villager"}) != "", true)
+	_check("cannot train at another's building", c.submit({"type": "train", "owner": 0, "building": ai_tc.id, "kind": "villager"}) != "", true)
 	_check("cannot order another's units", c.submit({"type": "move", "owner": 0, "tile": Vector2i(g.units[0].pos) + Vector2i(2, 0), "units": ids.call(theirs)}) != "", true)
 	_check("move own units", c.submit({"type": "move", "owner": 0, "tile": Vector2i(mine[0].pos) + Vector2i(3, 0), "units": ids.call(mine.slice(0, 2))}), "")
 	_check("moving", mine[0].state, Unit.State.MOVE)

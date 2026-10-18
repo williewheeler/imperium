@@ -1,6 +1,6 @@
 class_name Commands
 extends RefCounted
-## The one way a player acts on the game. A driver (the person at the keyboard, a Rival, later a remote
+## The one way a player acts on the game. A driver (the person at the keyboard, a AI, later a remote
 ## peer) builds a command, a plain Dictionary of numbers, strings and tiles, and gives it to `submit`. This
 ## checks that it is the player's to give and that the rules allow it, pays for it, and carries it out. It
 ## never learns who gave it: nothing here reads the selection, the mouse or the HUD.

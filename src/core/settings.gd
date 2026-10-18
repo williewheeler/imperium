@@ -20,7 +20,7 @@ const SIZES := [
 ## The kinds of land. TerrainGen has a recipe of stamped shapes for each (see there); here are the
 ## settings that tune how wet the ground is (`wet`), how thick the woods grow (`forest`) and how much of
 ## the low ground turns to marsh (`marsh`), the last two as offsets from the usual amount.
-## `connected`: rivals' towns must be reachable on foot from Rome (not on a map of islands, where they
+## `connected`: AIs' towns must be reachable on foot from Rome (not on a map of islands, where they
 ## stand on islands of their own, or one split by a river or strait).
 const MAP_TYPES := [
 	{"id": "continens", "latin": "Continens", "english": "Continent",
@@ -128,19 +128,19 @@ const DIFFICULTIES := [
 	{"id": "easy", "latin": "Facilis", "english": "Easy", "think": 2.6, "grow": 45.0, "cap": 20, "builds": 1, "food": 0.4, "army": 0.12, "wave": 9, "attack_after": 840.0,
 		"about": "Slow to decide and slow to grow. A gentle neighbor."},
 	{"id": "normal", "latin": "Aequus", "english": "Normal", "think": 1.2, "grow": 25.0, "cap": 40, "builds": 2, "food": 0.55, "army": 0.22, "wave": 8, "attack_after": 600.0,
-		"about": "A steady rival that plays like a patient person."},
+		"about": "A steady opponent that plays like a patient person."},
 	{"id": "hard", "latin": "Difficilis", "english": "Hard", "think": 0.6, "grow": 14.0, "cap": 70, "builds": 3, "food": 0.6, "army": 0.32, "wave": 7, "attack_after": 420.0,
 		"about": "Quick, efficient and ambitious. Still plays by the same rules as you."},
 ]
 
 static var map_type := "continens"
 static var size_id := "medium"
-static var players := 4  # you and three rivals
+static var players := 4  # you and three AIs
 static var resources_id := "normal"
 static var difficulty_id := "normal"
 static var terrain_id := "temperate"
-static var rival_peoples: Array = []  # the faction of each computer-run slot (Defs.RIVAL_ORDER by default)
-static var colors: Array = []  # the color index (into Defs.PLAYER_COLORS) of each slot: you first, then the rivals'
+static var ai_peoples: Array = []  # the faction of each computer-run slot (Defs.AI_ORDER by default)
+static var colors: Array = []  # the color index (into Defs.PLAYER_COLORS) of each slot: you first, then the AIs'
 static var speed := 1.0
 static var music := 3  # volume notches, 0 to VOLUME_STEPS
 static var effects := 4
@@ -150,29 +150,29 @@ static var net_address := "127.0.0.1"
 static var net_port := 7777
 
 
-## The starting arrangement: the first peoples in Defs.RIVAL_ORDER, each in its traditional color.
+## The starting arrangement: the first peoples in Defs.AI_ORDER, each in its traditional color.
 static func default_peoples() -> void:
-	rival_peoples = Defs.RIVAL_ORDER.duplicate()
+	ai_peoples = Defs.AI_ORDER.duplicate()
 	colors = [0]
-	for f: String in Defs.RIVAL_ORDER:
+	for f: String in Defs.AI_ORDER:
 		colors.append(int(Defs.FACTIONS[f]["owner"]))
 
 
 ## Makes the peoples and colors valid after a change of the count or a bad save: every people and every
 ## color is used at most once, and everything has a value.
 static func tidy_players() -> void:
-	if rival_peoples.size() != Defs.RIVAL_ORDER.size() or colors.size() != Defs.RIVAL_ORDER.size() + 1:
+	if ai_peoples.size() != Defs.AI_ORDER.size() or colors.size() != Defs.AI_ORDER.size() + 1:
 		default_peoples()
 		return
 	var seen_p := {}
-	for i in rival_peoples.size():
-		var f: String = rival_peoples[i]
-		if not Defs.RIVAL_ORDER.has(f) or seen_p.has(f):
-			for g: String in Defs.RIVAL_ORDER:
+	for i in ai_peoples.size():
+		var f: String = ai_peoples[i]
+		if not Defs.AI_ORDER.has(f) or seen_p.has(f):
+			for g: String in Defs.AI_ORDER:
 				if not seen_p.has(g):
 					f = g
 					break
-		rival_peoples[i] = f
+		ai_peoples[i] = f
 		seen_p[f] = true
 	var seen_c := {}
 	for i in colors.size():
@@ -194,17 +194,17 @@ static func set_color(slot: int, c: int) -> void:
 	colors[slot] = c
 
 
-## Gives rival `slot` (1 for the first) the people `faction`; whoever had it takes that slot's old one.
+## Gives AI `slot` (1 for the first) the people `faction`; whoever had it takes that slot's old one.
 static func set_people(slot: int, faction: String) -> void:
-	var other := rival_peoples.find(faction)
+	var other := ai_peoples.find(faction)
 	if other >= 0 and other != slot - 1:
-		rival_peoples[other] = rival_peoples[slot - 1]
-	rival_peoples[slot - 1] = faction
+		ai_peoples[other] = ai_peoples[slot - 1]
+	ai_peoples[slot - 1] = faction
 
 
 ## The peoples that play this game, in slot order.
 static func playing_peoples() -> Array:
-	return rival_peoples.slice(0, players - 1)
+	return ai_peoples.slice(0, players - 1)
 
 
 ## The choices that shape a game (not the interface ones), as sent from the host of a multiplayer game to
@@ -212,7 +212,7 @@ static func playing_peoples() -> Array:
 static func lobby_dict() -> Dictionary:
 	return {"map_type": map_type, "size_id": size_id, "players": players, "resources_id": resources_id,
 		"difficulty_id": difficulty_id, "terrain_id": terrain_id,
-		"rival_peoples": rival_peoples.duplicate(), "colors": colors.duplicate()}
+		"ai_peoples": ai_peoples.duplicate(), "colors": colors.duplicate()}
 
 
 ## Takes the host's choices in place of ours (for this run only: nothing is saved). Anything odd is mended.
@@ -223,7 +223,7 @@ static func apply_lobby(d: Dictionary) -> void:
 	resources_id = resources_info(String(d.get("resources_id", resources_id)))["id"]
 	difficulty_id = difficulty_info(String(d.get("difficulty_id", difficulty_id)))["id"]
 	terrain_id = terrain_info(String(d.get("terrain_id", terrain_id)))["id"]
-	rival_peoples = Array(d.get("rival_peoples", rival_peoples))
+	ai_peoples = Array(d.get("ai_peoples", ai_peoples))
 	colors = Array(d.get("colors", colors))
 	tidy_players()
 
@@ -312,7 +312,7 @@ static func load_saved() -> void:
 	resources_id = resources_info(String(cfg.get_value("game", "resources", resources_id)))["id"]
 	difficulty_id = difficulty_info(String(cfg.get_value("game", "difficulty", difficulty_id)))["id"]
 	terrain_id = terrain_info(String(cfg.get_value("game", "terrain", terrain_id)))["id"]
-	rival_peoples = Array(cfg.get_value("players", "peoples", rival_peoples))
+	ai_peoples = Array(cfg.get_value("players", "peoples", ai_peoples))
 	colors = Array(cfg.get_value("players", "colors", colors))
 	tidy_players()
 	speed = float(speed_info(float(cfg.get_value("interface", "speed", speed)))["id"])
@@ -332,7 +332,7 @@ static func save() -> void:
 	cfg.set_value("game", "resources", resources_id)
 	cfg.set_value("game", "difficulty", difficulty_id)
 	cfg.set_value("game", "terrain", terrain_id)
-	cfg.set_value("players", "peoples", rival_peoples)
+	cfg.set_value("players", "peoples", ai_peoples)
 	cfg.set_value("players", "colors", colors)
 	cfg.set_value("interface", "speed", speed)
 	cfg.set_value("interface", "music", music)

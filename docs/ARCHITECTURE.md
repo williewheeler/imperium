@@ -29,7 +29,7 @@ C++ engine extension.)
 flowchart TD
     subgraph drivers [Drivers: decide what to ask for]
         person["Person's driver<br/>(input section of Main)"]
-        rival["Rival<br/>(computer player)"]
+        AI["AI<br/>(computer player)"]
         remote["Remote peer<br/>(decided, not built)"]
     end
 
@@ -50,12 +50,12 @@ flowchart TD
     net["net/NetSession<br/>lobby only today"]
 
     person --> commands
-    rival --> commands
+    AI --> commands
     remote -.-> commands
     commands --> main
     main --> combat
     main --> map
-    rival -. "reads, through its own Fog" .-> main
+    AI -. "reads, through its own Fog" .-> main
     views -- "reads" --> main
     ui -- "reads" --> main
     ui -- "signals: train, build, advance" --> person
@@ -70,7 +70,7 @@ submitted it.**
 
 ```
  person (mouse, keys, selection)  ─┐
- Rival (computer player)          ─┼─►  Commands.submit(cmd) ─►  game state (units, buildings, stocks)
+ AI (computer player)          ─┼─►  Commands.submit(cmd) ─►  game state (units, buildings, stocks)
  remote peer (network)  [decided] ─┤        validate · pay · apply
  replay, test script              ─┘
 ```
@@ -89,7 +89,7 @@ submitted it.**
   - The person's driver is the input section of `Main` (`_do`, `_command_at`, `_try_place`, `_train_unit`,
     `_commit_road`, ...). It turns clicks and the selection into commands, flashes a refusal, and keeps
     purely interface state (markers, placement mode, attack-move mode) to itself.
-  - `Rival` (`src/core/rival.gd`) thinks about once a second and submits commands as its owner through its
+  - `AI` (`src/core/ai.gd`) thinks about once a second and submits commands as its owner through its
     own `_do`. It sees the world through its own `Fog`, so it knows only what its people have seen.
 - **What is not a command.** Things the simulation does on its own are not player intent and call the order
   functions directly: a gatherer finding a new tree, a fighter picking a fight (`Combat`), a builder
@@ -97,12 +97,12 @@ submitted it.**
   things directly.
 
 Adding a new action: add a branch in `Commands.submit` and a line in its header comment, make the person's
-driver and (if the AI needs it) `Rival` call it, and add a case to `tools/commands_test.gd`.
+driver and (if the AI needs it) `AI` call it, and add a case to `tools/commands_test.gd`.
 
 ## Time and determinism  (**open**)
 
 The simulation advances in `Main._process(delta)` with real frame time, and uses unseeded randomness in
-places (`randf()` in `Unit` and `Rival`). It is therefore **not deterministic**. That is fine for one
+places (`randf()` in `Unit` and `AI`). It is therefore **not deterministic**. That is fine for one
 machine; it decides what multiplayer can be:
 
 - **Host-authoritative** (**proposed**): clients send commands to the host, the host runs the one
@@ -127,7 +127,7 @@ between machines. See DESIGN.md for the lobby itself.
   simulation out from the person's driver.
 - The era is one value for the whole game and belongs to player 0, so `advance` is refused for other
   players. Eras and the stuff they unlock should be per player.
-- Drivers read raw `Main.units` and `Main.buildings`. The `Rival` filters by its own fog by discipline, not
+- Drivers read raw `Main.units` and `Main.buildings`. The `AI` filters by its own fog by discipline, not
   by construction. A per-player view (fog-filtered queries) would enforce it, and is what a remote client
   would receive.
 - `Commands` calls `Main`'s underscore order functions (`_order_move`, `_order_gather`, ...); they are

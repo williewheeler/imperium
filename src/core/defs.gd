@@ -86,15 +86,15 @@ const FACTIONS := {
 # The people player number `owner` plays: you are the Romans, the computer-run slots follow the settings.
 static func faction_of(owner: int) -> Dictionary:
 	var i := owner - 1
-	if owner > 0 and i < GameSettings.rival_peoples.size():
-		return FACTIONS[GameSettings.rival_peoples[i]]
-	if owner > 0 and i < RIVAL_ORDER.size():
-		return FACTIONS[RIVAL_ORDER[i]]
+	if owner > 0 and i < GameSettings.ai_peoples.size():
+		return FACTIONS[GameSettings.ai_peoples[i]]
+	if owner > 0 and i < AI_ORDER.size():
+		return FACTIONS[AI_ORDER[i]]
 	return FACTIONS["romans"]
 
 
 # Who joins first when more peoples play: the neighbors of early Rome, then the south.
-const RIVAL_ORDER := ["etruscans", "sabines", "latins", "greeks", "samnites", "volsci", "aequi"]
+const AI_ORDER := ["etruscans", "sabines", "latins", "greeks", "samnites", "volsci", "aequi"]
 
 # The eras of Roman history, as the game's progression. Years are the traditional dates.
 const ERAS := [

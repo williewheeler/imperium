@@ -35,9 +35,9 @@ var fog: Fog
 var units: Array[Unit] = []
 var buildings: Array[Building] = []
 var markers: Array[Dictionary] = []  # {pos: Vector2, t: float}
-var stock: Array[int] = []  # the first player's (ours); rivals keep theirs in `stocks`
+var stock: Array[int] = []  # the first player's (ours); AIs keep theirs in `stocks`
 var stocks: Array = []  # every player's resources, by owner (stocks[0] is `stock`)
-var rivals: Array[Rival] = []
+var ais: Array[AI] = []
 var fogs := {}  # owner -> the Fog that player has built up: what it has seen, and nothing more (fogs[0] is `fog`)
 var _rome_start := Vector2i.ZERO
 var camera: Camera2D
@@ -228,7 +228,7 @@ func _ready() -> void:
 	map.place_resources(start, float(GameSettings.resources_info(GameSettings.resources_id)["amount"]))  # after the Town Center, so berries and mines go around it
 	_place_circus(start)
 	_rome_start = start
-	_place_rivals(start)
+	_place_ais(start)
 
 	_world = World.new()
 	add_child(_world)
@@ -309,7 +309,7 @@ func _ready() -> void:
 			if spot.x >= 0:
 				var b := _add_building(specs[i][0], spot, specs[i][1] >= 1.0)
 				b.work = float(b.def()["build_time"]) * float(specs[i][1])
-	if args.has("skirmish"):  # debug: --skirmish=KIND:KIND (or just --skirmish): two small armies a few tiles apart, ours (purple) and the first rival's
+	if args.has("skirmish"):  # debug: --skirmish=KIND:KIND (or just --skirmish): two small armies a few tiles apart, ours (purple) and the first AI's
 		var spec: Array = Array(str(args["skirmish"]).split(":")) if str(args["skirmish"]).contains(":") else ["soldier,spearman,slinger,horseman", "soldier,spearman,slinger,horseman"]
 		var base := Vector2(start) + Vector2(-9, 5)
 		for side in 2:
@@ -469,7 +469,7 @@ func building_at(tile: Vector2i) -> Building:
 	return null
 
 
-## What the given player has explored (a rival knows only what its own people have seen).
+## What the given player has explored (an AI knows only what its own people have seen).
 func fog_of(owner: int) -> Fog:
 	return fogs[owner]
 
@@ -922,7 +922,7 @@ func _command_at(mp: Vector2) -> void:
 	var res := deposit_near(mp)
 	var b := building_under(mp)
 	if b != null and b.owner != LOCAL:
-		b = null  # a rival's building is just ground to us for now
+		b = null  # an AI's building is just ground to us for now
 	var movers := us  # who just walks there
 	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.is_field()))):
 		hud.flash("Milites laborare non possunt.")  # they can only march to the spot
@@ -962,7 +962,7 @@ func _command_at(mp: Vector2) -> void:
 	_do({"type": "move", "tile": tile, "units": _ids(movers)})
 
 
-## A message about one of our own units (rivals' troubles are not ours to hear).
+## A message about one of our own units (AIs' troubles are not ours to hear).
 func _note(u: Unit, latin: String) -> void:
 	if u.owner == 0:
 		hud.flash(latin)
@@ -1313,8 +1313,8 @@ func _place_circus(start: Vector2i) -> void:
 
 ## The other peoples each get a town of their own, spaced round the map like you (see
 ## GameMap.home_points), with five villagers and the same stores as ours. How many play is set on the
-## settings screen. Each is run by a Rival.
-func _place_rivals(rome: Vector2i) -> void:
+## settings screen. Each is run by a AI.
+func _place_ais(rome: Vector2i) -> void:
 	var connected: bool = GameSettings.type_info(GameSettings.map_type)["connected"]
 	var middle := Vector2(0.5, 0.5)
 	var slot := 0
@@ -1330,7 +1330,7 @@ func _place_rivals(rome: Vector2i) -> void:
 			var want := Vector2i(((home + attempt) * map.w).round()).clamp(Vector2i(12, 12), Vector2i(map.w - 13, map.h - 13))
 			var found := map.find_start(want, rome if connected else Vector2i(-1, -1), 1)
 			var too_close := found.distance_to(Vector2(rome)) < 0.1 * map.w
-			for r in rivals:
+			for r in ais:
 				too_close = too_close or found.distance_to(Vector2(r.start)) < 0.1 * map.w
 			if not too_close:
 				spot = found
@@ -1342,9 +1342,9 @@ func _place_rivals(rome: Vector2i) -> void:
 			continue
 		while stocks.size() <= owner_id:
 			stocks.append(null)
-		var rival_stock: Array[int] = []
-		rival_stock.assign(Defs.START_STOCK)
-		stocks[owner_id] = rival_stock
+		var ai_stock: Array[int] = []
+		ai_stock.assign(Defs.START_STOCK)
+		stocks[owner_id] = ai_stock
 		for off in GameMap.START_OFFSETS:
 			var u := Unit.new()
 			u.pos = Vector2(spot + off) + Vector2(0.5, 0.5)
@@ -1354,16 +1354,16 @@ func _place_rivals(rome: Vector2i) -> void:
 		var town := _add_building("town_center", site, true, owner_id)
 		town.building_name = info["town"]
 		map.place_start_resources(spot, float(GameSettings.resources_info(GameSettings.resources_id)["amount"]))
-		var rival := Rival.new()
-		rival.game = self
-		rival.owner = owner_id
-		rival.faction = faction
-		rival.start = spot
-		rival.set_difficulty(GameSettings.difficulty_id)
-		rival.fog = Fog.new(map.w, map.h, true)
-		fogs[owner_id] = rival.fog
-		rival.see()  # it knows the ground round its town, and nothing else
-		rivals.append(rival)
+		var ai := AI.new()
+		ai.game = self
+		ai.owner = owner_id
+		ai.faction = faction
+		ai.start = spot
+		ai.set_difficulty(GameSettings.difficulty_id)
+		ai.fog = Fog.new(map.w, map.h, true)
+		fogs[owner_id] = ai.fog
+		ai.see()  # it knows the ground round its town, and nothing else
+		ais.append(ai)
 
 
 ## Fighting men standing near the start, just to look at (they take no population): the kinds an early
@@ -1737,9 +1737,9 @@ func _process(delta: float) -> void:
 	_pan_camera(delta)
 	Perf.stop("pan", t0)
 	t0 = Perf.start()
-	for r in rivals:
+	for r in ais:
 		r.tick(delta)
-	Perf.stop("rivals", t0)
+	Perf.stop("ais", t0)
 	t0 = Perf.start()
 	for u in units:
 		if Perf.trace:  # name the state, so a slow frame says which kind of work was slow
@@ -1855,7 +1855,7 @@ func _height_sight(pos: Vector2) -> float:
 func _update_fog() -> void:
 	var sources := []
 	for u in units:
-		if u.owner == 0:  # a rival's people see for themselves, not for us
+		if u.owner == 0:  # an AI's people see for themselves, not for us
 			sources.append([u.pos, VILLAGER_SIGHT + _height_sight(u.pos)])
 	for b in buildings:
 		if b.owner == 0:

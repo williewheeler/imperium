@@ -1,4 +1,4 @@
-class_name Rival
+class_name AI
 extends RefCounted
 ## A computer-run people. It plays by the same rules as you: it has its own stores, trains villagers
 ## at its town, sends them to gather, and builds huts, fields and a storehouse as it grows. It thinks

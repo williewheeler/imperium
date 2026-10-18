@@ -15,7 +15,7 @@ map sizes, six kinds of ground (temperate, grassland, hilly, wooded, snowy and d
 peoples (pick which peoples play and in what colors), three levels of resources and three levels of
 computer skill, plus game speed, volume and screen mode. Everything is kept for next time. Land is
 built by stamping shapes (continents, islands, ranges, lakes) onto the sea, so the maps read as places,
-with open ground to build on. The rivals are computer-run and play by the same rules as you; they never
+with open ground to build on. The AIs are computer-run and play by the same rules as you; they never
 get free resources, on any setting.
 
 ![The settings screen, with eighteen kinds of map to choose from](docs/screenshots/settings.png)
