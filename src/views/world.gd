@@ -462,7 +462,7 @@ func _process(delta: float) -> void:
 			_falling.erase(v)
 	for u: Unit in _unit_views.keys():  # things that no longer exist
 		if not game.units.has(u):
-			if u.dead and _unit_views[u].visible:  # a fighter that fell where we can see it: show it fall
+			if u.dead and not u.absorbed and _unit_views[u].visible:  # a fighter that fell where we can see it: show it fall
 				_unit_views[u].start_death()
 				_falling.append(_unit_views[u])
 			else:

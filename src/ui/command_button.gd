@@ -98,7 +98,7 @@ func _draw_cost(y: float, text_color: Color) -> void:
 
 
 func _draw_icon(c: Vector2) -> void:
-	if icon_kind in ["explore", "stop", "start", "quit", "settings", "attack_move", "help", "multi"]:
+	if icon_kind in ["explore", "stop", "start", "quit", "settings", "attack_move", "help", "multi", "absorb"]:
 		_draw_action_icon(c)
 		return
 	var key := icon_kind + ":idle:f:0" if icon_kind in UNIT_ICONS else icon_kind
@@ -145,6 +145,12 @@ func _draw_action_icon(c: Vector2) -> void:
 				draw_line(Vector2(-9.0 * s, 9.0), Vector2(8.0 * s, -8.0), _t(CREAM), 2.5)  # the blade
 				draw_line(Vector2(-6.0 * s - 2.0, 6.0 - 2.0 * s), Vector2(-6.0 * s + 2.0, 6.0 + 2.0 * s), _t(GOLD), 2.0)  # the crossguard
 			draw_circle(Vector2.ZERO, 1.6, _t(Color("e0604c")))
+		"absorb":  # a house with an arrow going in
+			draw_colored_polygon(PackedVector2Array([Vector2(-10, 2), Vector2(0, -9), Vector2(10, 2)]), _t(GOLD))  # the roof
+			draw_rect(Rect2(Vector2(-7, 2), Vector2(14, 8)), _t(CREAM))
+			draw_rect(Rect2(Vector2(-2, 5), Vector2(4, 5)), _t(Color("5e1414")))  # the door
+			draw_line(Vector2(-13, -8), Vector2(-5, -1), _t(Color("e0604c")), 2.2)  # the arrow, coming in
+			draw_colored_polygon(PackedVector2Array([Vector2(-7, -5), Vector2(-3, 0), Vector2(-9, 0)]), _t(Color("e0604c")))
 		"help":  # a question mark in a ring
 			draw_arc(Vector2.ZERO, 11.0, 0.0, TAU, 32, _t(GOLD), 2.0)
 			draw_arc(Vector2(0, -3), 4.0, PI * 1.05, PI * 2.55, 14, _t(CREAM), 2.2)

@@ -26,6 +26,7 @@ var complete := false
 var selected := false
 var train_queue: Array[String] = []  # the units waiting to be trained, in order (the first is in training)
 var train_progress := 0.0
+var citizens := 0  # villagers absorbed into it for good (settlements and towns)
 var dead := false  # destroyed (burned down): no longer in the game
 var burning := false  # on fire: it takes damage until it falls
 var bar_t := 0.0  # seconds its health bar stays up after a hit
@@ -93,6 +94,16 @@ func sprite_key() -> String:
 ## The tile at the middle of the footprint (where a field's crop lives).
 func field_tile() -> Vector2i:
 	return tile + size / 2
+
+
+## Does it take citizens in (a Settlement, Town Center or City Center)?
+func absorbs() -> bool:
+	return def().get("absorbs", false)
+
+
+## Can another villager be absorbed into it now?
+func can_take_citizen() -> bool:
+	return complete and not dead and absorbs() and citizens < Defs.CITIZENS_MAX
 
 
 func max_hp() -> float:

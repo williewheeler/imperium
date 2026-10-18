@@ -1,9 +1,9 @@
 class_name ExpandGoal
 extends AIGoal
-## Founds new towns. Land is finite and the deposits round a town run out, so once it has the people for it an
-## AI looks for the richest explored ground a good way from its own towns (and from anyone else's), and sends
-## a crew to put up a Town Center there. A new town is more room, more food and a second place to make
-## villagers; it also carries the AI towards its neighbors, which is where the fighting starts.
+## Founds new settlements. Land is finite and the deposits round a town run out, so once it has the people for it
+## an AI looks for the richest explored ground a good way from its own towns (and from anyone else's), and sends a
+## crew to put up a Settlement there. A Settlement takes in every resource; PopulateGoal then fills it with
+## citizens until it grows into a town. It also carries the AI towards its neighbors, where the fighting starts.
 
 const CELL := 12  # tiles: deposits are counted in squares of this size
 const WEIGHT := [1.0, 1.4, 2.0, 2.4]  # what a deposit is worth, by resource: wood, food, stone, gold
@@ -17,8 +17,8 @@ var _rejected := {}  # cell -> age until which it is not tried again
 
 
 func _wants() -> bool:
-	var done := ai.towns()
-	var all := ai.towns(false)
+	var done := ai.hubs()
+	var all := ai.hubs(false)
 	if done.is_empty() or all.size() >= ai.max_towns or ai.age < 120.0 or ai.under_attack:
 		return false
 	for b in all:
@@ -39,14 +39,14 @@ func act() -> void:
 		_site = _find_site()
 	if _site.x < 0:
 		return
-	var cost: Array = Defs.BUILDINGS["town_center"]["cost"]
+	var cost: Array = Defs.BUILDINGS["settlement"]["cost"]
 	if not ai.afford(cost):
 		ai.reserve(cost)
 		return
 	var crew := ai.crew_for(Vector2(_site), 4)
 	if crew.size() < 2:
 		return
-	var err := ai.do({"type": "place", "kind": "town_center", "tile": _site, "units": crew.map(func(u: Unit) -> int: return u.id)})
+	var err := ai.do({"type": "place", "kind": "settlement", "tile": _site, "units": crew.map(func(u: Unit) -> int: return u.id)})
 	if err != "" and err != "err.cant_afford":  # no good after all: not that ground for a while
 		_rejected[_cell(_site)] = ai.age + 90.0
 	_site = Vector2i(-1, -1)
@@ -60,7 +60,7 @@ func _cell(p: Vector2i) -> Vector2i:
 ## everyone's towns to have room. (-1, -1) if there is none it knows of.
 func _find_site() -> Vector2i:
 	var own: Array[Vector2] = []
-	for b in ai.towns(false):
+	for b in ai.hubs(false):
 		own.append(b.center())
 	var foes: Array[Vector2] = []
 	for b in ai.enemy_buildings(own[0]):
@@ -93,11 +93,11 @@ func _find_site() -> Vector2i:
 			d_foe = minf(d_foe, f.distance_to(center))
 		if d_foe < MIN_FROM_ENEMY:
 			continue
-		var site: Vector2i = ai.game.map.find_site(Defs.BUILDINGS["town_center"]["size"], Vector2i(center), 0, 8, avoid, rects)
+		var site: Vector2i = ai.game.map.find_site(Defs.BUILDINGS["settlement"]["size"], Vector2i(center), 0, 8, avoid, rects)
 		if site.x < 0:
 			_rejected[c] = ai.age + 90.0
 			continue
-		var err: String = ai.game.placement.error("town_center", site, ai.owner)
+		var err: String = ai.game.placement.error("settlement", site, ai.owner)
 		if err == "" or err == "err.cant_afford":
 			return site
 		_rejected[c] = ai.age + 90.0

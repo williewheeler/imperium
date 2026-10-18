@@ -33,6 +33,8 @@ Some buildings change name and picture between eras (`"early"` entry in `Defs.BU
 | Latin (Era I → Era II) | English | Notes |
 |---|---|---|
 | Casa Romuli → Forum | Hut of Romulus → Town Center | the thatched hut said to be Romulus's home on the Palatine (a real monument, kept up for centuries); the marble Forum replaces it in Era II. Trains villagers, takes every resource |
+| Vicus | Settlement | a village: three thatched huts round a yard. *Vicus* is the ordinary Latin word for a village or quarter of a town. Takes every resource, cannot train villagers; at 15 citizens it becomes the Town Center. The game's own mechanic, not a period one |
+| Civitas | City Center | what a Town Center becomes at 30 citizens: the Forum crowned with a gilded tholos. *Civitas* is the community of citizens, and later a city. Not built, only grown |
 | Casa | Hut | the Era I house. `Casae` is the plural |
 | Ager | Wheat field | a renewable crop |
 | Horreum | Storehouse | a granary; takes wood, stone and gold |
@@ -67,6 +69,7 @@ The HUD says "milites" for any group of fighting men, whatever their kind.
 |---|---|---|
 | Explora | Explore: walk toward unseen land until none reachable is left | X |
 | Siste | Stop: drop the current order and stand still | S |
+| Incorpora | Absorb: villagers go into a Settlement or town for good, as its citizens | I |
 | Progredere | Advance to the next era (at the Forum) | |
 | Pone *(building)* | Place *(building)* | |
 | Elige | Select | left click |

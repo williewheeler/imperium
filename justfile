@@ -75,6 +75,10 @@ war-test:
 ai-test seconds="900" *args:
     {{godot}} --headless --path . --script tools/ai_test.gd -- --nosplash --spectate --terrain=temperate --size=small --map=continens --seed=3 {{seconds}} {{args}}
 
+# Headless check of settlements: absorbing citizens, growing into a Town Center and a City Center
+settlement-test:
+    {{godot}} --headless --path . --script tools/settlement_test.gd -- --nosplash --seed=42 --players=3
+
 # Headless check of the phrase table: both languages present, every key used in the code exists
 phrases-test:
     {{godot}} --headless --path . --script tools/phrases_test.gd

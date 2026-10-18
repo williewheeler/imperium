@@ -51,7 +51,7 @@ var _explored_clock := 0.0
 
 
 func _init() -> void:
-	for goal: AIGoal in [WorkersGoal.new(), GrowthGoal.new(), ExploreGoal.new(), ExpandGoal.new(), MilitaryGoal.new(), AttackGoal.new(), DefendGoal.new(), AdvanceGoal.new()]:
+	for goal: AIGoal in [WorkersGoal.new(), GrowthGoal.new(), ExploreGoal.new(), ExpandGoal.new(), PopulateGoal.new(), MilitaryGoal.new(), AttackGoal.new(), DefendGoal.new(), AdvanceGoal.new()]:
 		goal.ai = self
 		goals.append(goal)
 
@@ -86,7 +86,7 @@ func tick(delta: float) -> void:
 	if _timer > 0.0:
 		return
 	_timer = think_interval
-	if towns().is_empty() and mine("town_center").is_empty():
+	if hubs(false).is_empty() and villagers().is_empty():
 		return  # nothing to think with
 	_think()
 
@@ -156,26 +156,43 @@ func _sense() -> void:
 
 # ---------------------------------------------------------------- what it has
 
-## Its finished town centers (or all of them, foundations too).
+## Its towns: Town Centers and City Centers, which make villagers (or all of them, foundations too).
 func towns(only_done := true) -> Array[Building]:
-	return mine("town_center", only_done)
+	return mine_of(Defs.TOWNS, only_done)
 
 
+## Everything that takes resources in and houses its people: Settlements as well as towns.
+func hubs(only_done := true) -> Array[Building]:
+	return mine_of(Defs.HUBS, only_done)
+
+
+## Its main town, or failing that its first Settlement.
 func main_town() -> Building:
 	var t := towns()
-	return t[0] if not t.is_empty() else null
+	if not t.is_empty():
+		return t[0]
+	var h := hubs()
+	return h[0] if not h.is_empty() else null
 
 
-## The nearest of its towns to `pos`, or null.
+## The nearest of its hubs to `pos`, or null.
 func nearest_town(pos: Vector2) -> Building:
 	var best: Building = null
 	var best_d := INF
-	for b in towns():
+	for b in hubs():
 		var d := b.center().distance_squared_to(pos)
 		if d < best_d:
 			best_d = d
 			best = b
 	return best
+
+
+func mine_of(kinds: Array, only_done := false) -> Array[Building]:
+	var out: Array[Building] = []
+	for b: Building in game.buildings:
+		if b.owner == owner and b.kind in kinds and (b.complete or not only_done):
+			out.append(b)
+	return out
 
 
 func mine(kind: String, only_done := false) -> Array[Building]:
@@ -346,7 +363,10 @@ func summary() -> Dictionary:
 				break
 	elif not mine("castra", true).is_empty() and not army().is_empty():
 		status = "spec.arming"
-	return {"era": game.era_of(owner), "towns": t.size(), "explored": _explored, "villagers": villagers().size(), "army": army().size(),
+	var citizens := 0
+	for b in hubs():
+		citizens += b.citizens
+	return {"era": game.era_of(owner), "towns": hubs().size(), "citizens": citizens, "explored": _explored, "villagers": villagers().size(), "army": army().size(),
 		"buildings": game.buildings.filter(func(b: Building) -> bool: return b.owner == owner).size(),
 		"pop": game.pop_used(owner), "cap": game.pop_cap(owner), "stock": game.stock_of(owner), "status": status}
 

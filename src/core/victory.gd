@@ -37,7 +37,7 @@ func check() -> void:
 ## Can `owner` still make villagers or hasn't lost them all?
 func _has_people(owner: int) -> bool:
 	for b: Building in game.buildings:
-		if b.owner == owner and b.complete and b.kind == "town_center":
+		if b.owner == owner and b.complete and b.kind in Defs.TOWNS:
 			return true
 	for u: Unit in game.units:
 		if u.owner == owner and u.kind == "villager" and not u.dead:

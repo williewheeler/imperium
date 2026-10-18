@@ -25,6 +25,7 @@ const TABLE := {
 	"err.cant_afford": ["Copiae non sufficiunt.", "Not enough resources."],
 	"err.need_houses": ["Domus plures requiruntur.", "Population limit reached: build more Houses."],
 	"err.soldiers_cant_work": ["Milites laborare non possunt.", "Fighting men can't work: only villagers gather and build. They just walk to the spot."],
+	"err.full": ["Plena est.", "It is full: it holds no more than 50 citizens."],
 	"err.need_depot": ["Aedifica forum vel horreum.", "Build a Town Center or Storehouse to drop off resources."],
 	# --- what the game says
 	"msg.welcome": ["Elige colonos et iube eos laborare.", "Select villagers and order them to work: right-click a tree, berry bush or mine."],
@@ -38,6 +39,9 @@ const TABLE := {
 	"msg.building_lost": ["Aedificium nostrum deletum est.", "One of your buildings has burned down."],
 	"msg.victory": ["Vicisti.", "Victory: every other people has fallen."],
 	"msg.defeat": ["Victus es.", "Defeat: no Town Center and no villagers left."],
+	"msg.absorb_prompt": ["Quo incorporamus? Sinistra.", "Absorb: left click a Settlement, Town Center or City Center to take the selected villagers into it for good. (Esc cancels)"],
+	"msg.grew_town": ["Vicus in oppidum crevit.", "Your Settlement has grown into a Town Center: it can make villagers now."],
+	"msg.grew_city": ["Oppidum in civitatem crevit.", "Your Town Center has grown into a City Center."],
 	"msg.rain": ["Pluit.", "It begins to rain."],
 	"msg.storm": ["Tonat.", "A storm breaks: thunder and heavy rain."],
 	"msg.fog": ["Nebula oritur.", "Fog is rolling in."],

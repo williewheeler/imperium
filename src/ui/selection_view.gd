@@ -199,12 +199,16 @@ func _show_building(b: Building) -> void:
 	var def := b.def()
 	var key := b.sprite_key()
 	_show_portrait(Art.icon(key, 84) if not b.is_field() else Art.tex(key))
-	var city := "  —  " + b.building_name if b.kind == "town_center" else ""
+	var city := "  —  " + b.building_name if b.kind in Defs.TOWNS else ""
 	_text(_name, "%s%s" % [def["name"], city], "%s%s" % [def["english"], city])
 	_show_people(b.owner)
 	var n := 0
 	if int(def.get("pop", 0)) > 0:
 		n = _stat(n, "Populus +%d" % int(def["pop"]), "Raises the population limit by %d" % int(def["pop"]))
+	if b.absorbs() and b.complete:
+		var grows: Variant = Defs.GROWTH.get(b.kind)
+		var next := ("It grows into a %s at %d citizens." % [Defs.BUILDINGS[grows[1]]["english"], int(grows[0])]) if grows != null else "It is as grown as a town gets."
+		n = _stat(n, "Cives %d/%d" % [b.citizens, Defs.CITIZENS_MAX], "Citizens: villagers taken into this %s for good (at most %d). %s They cannot be taken out again." % [String(def["english"]).to_lower(), Defs.CITIZENS_MAX, next])
 	if b.is_field():
 		n = _stat(n, "Fructus %d" % int(def["yield"]), "Yield: villagers carry the crop home")
 	if not b.complete:

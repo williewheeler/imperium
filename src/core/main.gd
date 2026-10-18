@@ -101,6 +101,7 @@ var victory := Victory.new()  # who is still in the game
 var commands := Commands.new()  # how a player acts on the game: every driver submits to it (see docs/ARCHITECTURE.md)
 signal building_destroyed(b: Building)  # it fell: the view shows the ruin
 const LOCAL := 0  # the player at this keyboard
+var absorb_mode := false  # the next left click on a town takes the selected villagers into it for good (key I)
 var attack_move_mode := false  # the next left click sends the selected fighters there to fight on the way (key A)
 
 
@@ -449,8 +450,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_Q:
 		get_tree().quit()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-		if attack_move_mode:
+		if attack_move_mode or absorb_mode:
 			attack_move_mode = false
+			absorb_mode = false
 		elif placing_road:  # Esc backs out of whatever is being placed, or else clears the selection
 			_cancel_road_mode()
 		elif placing != "":
@@ -461,6 +463,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		command_selected("explore")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_A and not event.ctrl_pressed and not event.meta_pressed:
 		command_selected("attack_move")
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I and not event.ctrl_pressed and not event.meta_pressed:
+		command_selected("absorb")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_S and not event.ctrl_pressed and not event.meta_pressed:
 		command_selected("stop")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
@@ -473,7 +477,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
-				if attack_move_mode:
+				if absorb_mode:
+					absorb_mode = false
+					_absorb_at(get_global_mouse_position())
+				elif attack_move_mode:
 					attack_move_mode = false
 					_attack_move_to(get_global_mouse_position())
 				elif placing_road:
@@ -496,8 +503,9 @@ func _unhandled_input(event: InputEvent) -> void:
 						dragging = true
 						_drag_start = get_global_mouse_position()
 			MOUSE_BUTTON_RIGHT:
-				if attack_move_mode:
+				if attack_move_mode or absorb_mode:
 					attack_move_mode = false
+					absorb_mode = false
 				elif placing_road:
 					_cancel_road_mode()
 				elif placing != "":
@@ -680,6 +688,18 @@ func command_selected(action: String) -> void:
 	if action == "attack_move" and not selected_fighters().is_empty():
 		attack_move_mode = true
 		hud.flash_key("msg.attack_move")
+	if action == "absorb" and not selected_workers().is_empty():
+		absorb_mode = true
+		hud.flash_key("msg.absorb_prompt")
+
+
+## Left click in absorb mode: the selected villagers go into the town clicked, and are its citizens for good.
+func _absorb_at(mp: Vector2) -> void:
+	var b := building_under(mp)
+	if b == null or b.owner != LOCAL or not b.absorbs() or not b.complete:
+		hud.flash_key("err.not_allowed")
+		return
+	_do({"type": "absorb", "building": b.id, "units": _ids(selected_workers())})
 
 
 # ---------- The person's driver ----------
@@ -839,13 +859,41 @@ func _on_complete(b: Building) -> void:
 		map.deposits[b.field_tile()] = d
 		return
 	match b.kind:
-		"town_center", "storehouse":
+		"town_center", "storehouse", "settlement", "city_center":
 			var r := b.rect().grow(1)
 			for y in range(r.position.y, r.end.y):
 				for x in range(r.position.x, r.end.x):
 					var p := Vector2i(x, y)
 					if not b.rect().has_point(p) and map.make_road(p) and _world != null:
 						_world.road_changed(p)
+
+
+## `u` has walked up to the building it was sent into: it becomes one of its citizens, for good.
+func _absorb(u: Unit) -> void:
+	var b := u.target_building
+	u.target_building = null
+	if b == null or b.dead or not buildings.has(b) or not b.can_take_citizen() or b.owner != u.owner:
+		u.state = Unit.State.IDLE
+		return
+	b.citizens += 1
+	combat.absorb(u)
+	var g: Variant = Defs.GROWTH.get(b.kind)
+	if g != null and b.citizens >= int(g[0]):
+		upgrade_building(b, String(g[1]))
+
+
+## A town has taken in enough citizens: it becomes the next kind of town, keeping its share of health. Its
+## buildings and people stay as they are; it looks, sees and houses as the new kind does.
+func upgrade_building(b: Building, kind: String) -> void:
+	var share := b.hp / maxf(b.max_hp(), 1.0)
+	b.kind = kind
+	b.hp = b.max_hp() * share
+	if kind == "town_center" and not CITY_NAMES.has(b.building_name):
+		b.building_name = CITY_NAMES[_cities % CITY_NAMES.size()]  # a town has a name of its own
+		_cities += 1
+	_on_complete(b)
+	if b.owner == LOCAL and not spectating and hud != null:
+		hud.flash_key("msg.grew_town" if kind == "town_center" else "msg.grew_city")
 
 
 ## Population limit: each finished Town Center and House adds room.
@@ -863,6 +911,9 @@ func pop_used(owner := 0) -> int:
 	for u in units:
 		if not u.display and u.owner == owner:
 			n += 1
+	for b in buildings:
+		if b.owner == owner:
+			n += b.citizens  # the people living in its towns still count
 	return n
 
 
@@ -1189,7 +1240,7 @@ func _update_world_tip() -> void:
 		var mp := get_global_mouse_position()
 		var b := building_under(mp)
 		if b != null and fog.is_explored(b.tile):
-			tip = b.def()["english"] if b.kind != "town_center" else "%s (%s)" % [b.building_name, b.def()["english"]]
+			tip = b.def()["english"] if not (b.kind in Defs.TOWNS) else "%s (%s)" % [b.building_name, b.def()["english"]]
 		else:
 			var t := deposit_near(mp)
 			if t.x >= 0:
@@ -1488,6 +1539,9 @@ func _update_unit(u: Unit, delta: float) -> void:
 			if _follow(u, delta):
 				var b := u.target_building
 				u.state = Unit.State.BUILDING if b != null and not b.complete else Unit.State.IDLE
+		Unit.State.ABSORB_GO:
+			if _follow(u, delta):
+				_absorb(u)
 		Unit.State.BUILDING:
 			var b := u.target_building
 			if b.complete:

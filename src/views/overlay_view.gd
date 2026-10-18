@@ -65,7 +65,7 @@ func _draw() -> void:
 			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.build_fraction(), Color("7dff7d"))
 		elif not b.train_queue.is_empty():
 			_bar(origin + Vector2(-w / 4.0, 5), w / 2.0, b.train_progress / float(Defs.UNITS[b.train_queue[0]]["time"]), GOLD)
-		if b.complete and (b.kind == "town_center" or b.kind == "circus"):  # landmarks wear their name
+		if b.complete and (b.kind in Defs.TOWNS or b.kind == "circus"):  # landmarks wear their name
 			var anchor := Art.building_anchor(b.sprite_key())
 			var label := Latin.t(b.building_name)
 			var pos := origin + Vector2(-100, -anchor.y + 6)

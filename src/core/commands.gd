@@ -12,6 +12,7 @@ extends RefCounted
 ##   build        building, units                 go and work on a foundation already there
 ##   gather       tile, units                     work the deposit (or field) on `tile`
 ##   dropoff      building, units                 go and unload at a depot
+##   absorb       building, units                 villagers go into a Settlement or town for good (see Defs.GROWTH)
 ##   move         tile, units                     walk there (the group spreads out round the tile)
 ##   attack_move  tile, units                     walk there, fighting whatever is met on the way
 ##   attack       target, units                   fight one enemy unit
@@ -44,6 +45,8 @@ func submit(cmd: Dictionary) -> String:
 			return _gather(owner, cmd)
 		"dropoff":
 			return _dropoff(owner, cmd)
+		"absorb":
+			return _absorb(owner, cmd)
 		"move":
 			return _move(owner, cmd, false)
 		"attack_move":
@@ -115,6 +118,8 @@ func _place(owner: int, cmd: Dictionary) -> String:
 	var kind := String(cmd.get("kind", ""))
 	if not Defs.BUILDINGS.has(kind):
 		return "err.not_allowed"
+	if Defs.BUILDINGS[kind].get("upgrade_only", false):
+		return "err.not_allowed"  # a town is grown from a Settlement, not built
 	if game.era_of(owner) < int(Defs.BUILDINGS[kind].get("era", 0)):
 		return "err.not_yet"
 	var tile: Vector2i = cmd.get("tile", Vector2i(-1, -1))
@@ -134,6 +139,24 @@ func _build(owner: int, cmd: Dictionary) -> String:
 	if b == null:
 		return "err.not_allowed"
 	return _each(owner, cmd, func(u: Unit) -> void: game.orders.build(u, b), true)
+
+
+func _absorb(owner: int, cmd: Dictionary) -> String:
+	var b := _building(owner, int(cmd.get("building", -1)))
+	if b == null or not b.complete or not b.absorbs():
+		return "err.not_allowed"
+	var room := Defs.CITIZENS_MAX - b.citizens
+	for u: Unit in game.units:  # those already on their way count
+		if u.state == Unit.State.ABSORB_GO and u.target_building == b:
+			room -= 1
+	if room <= 0:
+		return "err.full"
+	var sent := 0
+	for u in _units(owner, cmd):
+		if u.kind == "villager" and sent < room:
+			game.orders.absorb(u, b)
+			sent += 1
+	return "" if sent > 0 else "err.not_allowed"
 
 
 func _gather(owner: int, cmd: Dictionary) -> String:

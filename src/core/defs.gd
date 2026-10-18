@@ -52,9 +52,16 @@ const UNITS := {
 # of fighter works against buildings (a blow's attack times this; villagers do nothing). Swords and axes do the
 # most, spears and shot little, and a horse none to speak of. A building that falls to 40% health catches fire
 # and burns down on its own (see Combat).
-const BUILDING_HP := {"town_center": 1200, "hut": 150, "house": 300, "storehouse": 250, "castra": 600, "stabulum": 500,
+const BUILDING_HP := {"settlement": 500, "city_center": 1800, "town_center": 1200, "hut": 150, "house": 300, "storehouse": 250, "castra": 600, "stabulum": 500,
 	"temple": 450, "curia": 600, "aqueduct": 500, "farm": 0, "vineyard": 0, "circus": 0}
 const SIEGE := {"soldier": 0.6, "spearman": 0.35, "slinger": 0.2, "horseman": 0.25}
+# Towns grow by taking in citizens. A villager sent into a Settlement, Town Center or City Center is absorbed for
+# good (the building counts how many, up to CITIZENS_MAX). A Settlement takes every resource but cannot make
+# villagers; at GROWTH[kind][0] citizens it becomes the next kind. HUBS take resources in; TOWNS also make villagers.
+const CITIZENS_MAX := 50
+const GROWTH := {"settlement": [15, "town_center"], "town_center": [30, "city_center"]}
+const HUBS := ["settlement", "town_center", "city_center"]
+const TOWNS := ["town_center", "city_center"]
 const MELEE_REACH := 0.9  # tiles between centers for a melee blow (a horseman reaches a little farther)
 
 # Paved Roman road ("via"): cost per tile and the time one villager needs to lay a tile.
@@ -131,8 +138,19 @@ const BUILDINGS := {
 	"town_center": {
 		"name": "Forum", "acc": "Forum", "english": "Town Center", "done": "perfectum est", "ready": "Paratum",
 		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": ["villager"],
-		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3], "pop": 10,
+		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3], "pop": 10, "absorbs": true, "upgrade_only": true,
 		"early": {"name": "Casa Romuli", "acc": "Casam Romuli", "english": "Hut of Romulus", "look": "regia", "done": "perfecta est", "ready": "Parata"},
+	},
+	"settlement": {
+		"name": "Vicus", "acc": "Vicum", "english": "Settlement", "done": "perfectus est", "ready": "Paratus",
+		"size": Vector2i(3, 3), "cost": [100, 0, 50, 0], "absorbs": true,
+		"build_time": 25.0, "sight": 8.0, "accepts": [0, 1, 2, 3], "pop": 5,
+		"about": "A village near the land you want to work. Takes every resource, but cannot make villagers: take 15 of them into it and it grows into a Town Center.",
+	},
+	"city_center": {
+		"name": "Civitas", "acc": "Civitatem", "english": "City Center", "done": "perfecta est", "ready": "Parata",
+		"size": Vector2i(3, 3), "cost": [0, 0, 0, 0], "trains": ["villager"], "absorbs": true, "upgrade_only": true,
+		"build_time": 40.0, "sight": 12.0, "accepts": [0, 1, 2, 3], "pop": 20,
 	},
 	"hut": {
 		"name": "Casa", "acc": "Casam", "english": "Hut", "done": "perfecta est", "ready": "Parata",

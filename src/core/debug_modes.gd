@@ -82,7 +82,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 					counts[w] = int(counts.get(w, 0)) + 1
 					u.selected = true
 	if args.has("town"):  # debug: a built-up town round the Forum: one of most kinds of building, finished
-		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple"]
+		var kinds := ["house", "vineyard", "curia", "house", "storehouse", "castra", "house", "stabulum", "aqueduct", "farm", "house", "temple", "settlement"]
 		for i in kinds.size():
 			var kind: String = kinds[i]
 			if not Defs.BUILDINGS.has(kind):

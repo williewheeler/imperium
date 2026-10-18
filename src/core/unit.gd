@@ -1,7 +1,7 @@
 class_name Unit
 extends RefCounted
 
-enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING, EXPLORE, ATTACK_GO, ATTACKING, FLEE }
+enum State { IDLE, MOVE, GATHER_GO, GATHERING, RETURN, BUILD_GO, BUILDING, ROAD_GO, PAVING, EXPLORE, ATTACK_GO, ATTACKING, FLEE, ABSORB_GO }
 
 static var _made := 0
 
@@ -54,6 +54,7 @@ var scan_t := randf() * 0.4  # seconds until the next look round for enemies
 var flee_t := 0.0  # seconds left of running away
 var repath_t := 0.0  # seconds until a chase may plan a new path
 var dead := false
+var absorbed := false  # it went into a building for good (not dead: nothing to show)
 var targeted := 0.0  # seconds left of the red ring shown on a unit the player has ordered an attack on
 var bar_t := 0.0  # seconds the health bar stays up after a fight
 

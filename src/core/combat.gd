@@ -370,6 +370,16 @@ func _die(u: Unit) -> void:
 	kills += 1
 
 
+## A villager that has gone into a building for good: out of the game, with nothing to show.
+func absorb(u: Unit) -> void:
+	game.roads.release(u)
+	u.selected = false
+	u.state = Unit.State.IDLE
+	u.dead = true
+	u.absorbed = true
+	_graveyard.append(u)
+
+
 ## A fighter whose people has fallen: it disbands, leaving the game.
 func disband(u: Unit) -> void:
 	_die(u)
@@ -429,7 +439,7 @@ func _flee(v: Unit, from: Unit) -> void:
 	var home: Building = null
 	var best := INF
 	for b: Building in game.buildings:
-		if b.owner == v.owner and b.complete and b.kind == "town_center":
+		if b.owner == v.owner and b.complete and b.kind in Defs.HUBS:
 			var d := v.pos.distance_squared_to(b.center())
 			if d < best:
 				best = d

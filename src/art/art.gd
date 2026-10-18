@@ -62,6 +62,8 @@ const BUILDING_GEOM := {
 	"storehouse": {"a": 2, "b": 2, "ridge": 25.0},
 	"hut": {"a": 1, "b": 1, "ridge": 22.0},
 	"regia": {"a": 3, "b": 3, "ridge": 30.0},
+	"settlement": {"a": 3, "b": 3, "ridge": 28.0},
+	"city_center": {"a": 3, "b": 3, "ridge": 55.0},
 	"farm": {"a": 3, "b": 3, "ridge": 6.0},
 	"vineyard": {"a": 3, "b": 3, "ridge": 9.0},
 	"curia": {"a": 3, "b": 3, "ridge": 33.0},
@@ -184,6 +186,10 @@ static func image(key: String) -> Image:
 			return _hut()
 		"regia":
 			return _regia()
+		"settlement":
+			return _settlement()
+		"city_center":
+			return _city_center()
 		"farm":  # farm:<stage> 0 ripe .. 3 freshly sown
 			return _farm(variant)
 		"town_center":
@@ -825,7 +831,7 @@ static func scenery_keys() -> Array[String]:
 
 
 static func building_keys() -> Array[String]:
-	return ["town_center", "regia", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
+	return ["town_center", "regia", "settlement", "city_center", "house", "storehouse", "hut", "farm:0", "farm:1", "farm:2", "farm:3",
 		"curia", "aqueduct", "castra", "arx", "stabulum", "circus", "aedes", "temple", "vineyard:0", "vineyard:1", "vineyard:2", "vineyard:3"]
 
 
@@ -1011,6 +1017,71 @@ static func _regia() -> Image:
 	Pixel.rect(img, int(h.x) - 2, int(h.y) - 1, 4, 2, Color("3a2418"))
 	# (the flames and smoke are animated in code: see hearth_fire.gd)
 	return Pixel.outlined(img, OUT_WARM)
+
+
+## A Settlement (art key "settlement"): a village of three thatched huts of one size round a trodden yard,
+## with a few stakes behind and a drying rack. It has no great hall: that is what it becomes. 3x3 tiles.
+static func _settlement() -> Image:
+	var n := 3.0
+	var hs := int(n * 16 + 28.0 + 8.0)
+	var img := Pixel.blank(int(n * 32), hs)
+	var f := Frame.new(Vector2(n * 16, hs - 1 - n * 16))
+	_dirt_patch(img, f, n, 0.0)
+	for i in 2:  # a few stakes along the two back edges
+		for k in 13:
+			if k % 3 == 1:
+				var a := f.p(0.15 + k * 0.225, 0.0, 0.0) if i == 0 else f.p(0.0, 0.15 + k * 0.225, 0.0)
+				Pixel.rect(img, int(a.x), int(a.y) - 6, 2, 6, WOOD[1 + (k % 2)])
+				Pixel.put(img, int(a.x), int(a.y) - 7, WOOD[0])
+	for p: Vector2 in [Vector2(0.8, 0.95), Vector2(2.1, 0.85), Vector2(1.15, 2.1)]:  # back to front
+		var c := f.p(p.x, p.y, 0.0)
+		_round_hut(img, c.x, c.y, 0.95)
+	var r := f.p(2.3, 2.2, 0.0)  # a rack of drying hides
+	Pixel.rect(img, int(r.x) - 7, int(r.y) - 9, 2, 9, WOOD[1])
+	Pixel.rect(img, int(r.x) + 5, int(r.y) - 9, 2, 9, WOOD[1])
+	Pixel.rect(img, int(r.x) - 7, int(r.y) - 9, 14, 1, WOOD[2])
+	Pixel.rect(img, int(r.x) - 4, int(r.y) - 8, 3, 5, Color("a98a5a"))
+	Pixel.rect(img, int(r.x) + 1, int(r.y) - 8, 3, 4, Color("8a6a40"))
+	return Pixel.outlined(img, OUT_WARM)
+
+
+## A City Center (art key "city_center"): the Forum with a gilded tholos raised on its roof, as a town that
+## has grown into a city. 3x3 tiles. (Built on the Forum's picture so the two read as the same kind of place.)
+static func _city_center() -> Image:
+	var base := _forum()  # already outlined: 2 pixels larger each way
+	var extra := 20
+	var w := base.get_width()
+	var h := base.get_height() + extra
+	var out := Pixel.blank(w, h)
+	out.blit_rect(base, Rect2i(0, 0, base.get_width(), base.get_height()), Vector2i(0, extra))
+	var peak := 0  # the top of the Forum's roof, in the new picture
+	for y in base.get_height():
+		if base.get_pixel(w / 2, y).a > 0.5:
+			peak = y + extra
+			break
+	var add := Pixel.blank(w - 2, h - 2)  # what is added, drawn as the unoutlined picture is (one pixel in from `out`)
+	var cx := (w - 2) / 2
+	var ty := peak - 1
+	var drum_top := ty - 8
+	Pixel.rect(add, cx - 8, drum_top, 16, 12, Pixel.ramp(MARBLE, 0.7, 1, 1, 0.0))  # the drum
+	Pixel.rect(add, cx + 2, drum_top, 6, 12, Pixel.ramp(MARBLE, 0.38, 1, 2, 0.0))  # its shaded side
+	for k in 5:  # columns
+		Pixel.rect(add, cx - 7 + k * 3, drum_top + 2, 1, 9, MARBLE[2])
+	Pixel.rect(add, cx - 10, drum_top - 2, 20, 3, MARBLE[0])  # the cornice
+	Pixel.rect(add, cx - 10, drum_top, 20, 1, MARBLE[2])
+	for y in range(drum_top - 12, drum_top - 1):  # a gilded dome
+		for x in range(cx - 9, cx + 10):
+			var dx := (x + 0.5 - cx) / 9.0
+			var dy := (y + 0.5 - (drum_top - 2)) / 10.0
+			if dx * dx + dy * dy <= 1.0 and y < drum_top - 2:
+				Pixel.put(add, x, y, Pixel.ramp(GOLD, 0.62 - dx * 0.4 + (Pixel.hash2(x, y, 5) - 0.5) * 0.12, x, y, 0.1))
+	Pixel.rect(add, cx, drum_top - 18, 1, 7, GOLD[2])  # the spire
+	Pixel.put(add, cx, drum_top - 19, GOLD[0])
+	Pixel.put(add, cx - 1, drum_top - 18, GOLD[1])
+	for s in [-12, 11]:  # a gilded acroterion at each end of the roof
+		Pixel.rect(add, cx + s, ty + 8, 2, 4, GOLD[1])
+	out.blend_rect(Pixel.outlined(add, OUT_WARM), Rect2i(0, 0, w, h), Vector2i(0, 0))
+	return out
 
 
 ## Ager: a 3x3 wheat field. Stage 0 ripe, 1 half-harvested, 2 stubble, 3 freshly sown.

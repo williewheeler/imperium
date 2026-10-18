@@ -165,3 +165,16 @@ func build(u: Unit, b: Building) -> void:
 		return
 	u.state = Unit.State.BUILD_GO
 	u.target_building = b
+
+
+## Walk to `b` and be absorbed into it: the villager becomes one of its citizens, for good.
+func absorb(u: Unit, b: Building) -> void:
+	Combat.clear(u)
+	u.dropoff_only = false
+	game.roads.release(u)
+	var stand: Vector2i = game.map.stand_tile(b.rect(), u.pos)
+	if stand.x < 0 or not set_path(u, stand):
+		note(u, "err.no_route")
+		return
+	u.state = Unit.State.ABSORB_GO
+	u.target_building = b

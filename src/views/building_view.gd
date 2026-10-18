@@ -192,6 +192,9 @@ func _update_banner(anchor: Vector2) -> void:
 
 
 func update_view() -> void:
+	if _fire == null and building.kind in ["town_center", "temple"]:  # a Settlement that has grown into a town gets its hearth
+		_fire = HearthFire.new()
+		objects.add_child(_fire)
 	var anchor := Art.building_anchor(building.sprite_key())
 	if _life != null:
 		_life.visible = building.complete

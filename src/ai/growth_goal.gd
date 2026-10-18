@@ -12,19 +12,21 @@ func priority() -> float:
 
 
 func act() -> void:
-	var towns := ai.towns()
-	if towns.is_empty():
+	var hubs := ai.hubs()
+	if hubs.is_empty():
 		return
-	_train(towns)
-	_build(towns)
+	_train(ai.towns(), hubs.size())
+	_build(hubs)
 
 
-func _train(towns: Array[Building]) -> void:
+func _train(towns: Array[Building], hub_count: int) -> void:
+	if towns.is_empty():
+		return  # only Settlements so far: they cannot make villagers
 	var queued := 0
 	for t in towns:
 		queued += t.train_queue.size()
 	var surplus := maxi(0, int(ai.stock()[Defs.Res.FOOD]) - 200) / 150  # plenty of food: grow faster than the schedule
-	var want := mini(ai.villagers_per_town * towns.size(), 8 + int(ai.age / ai.grow_seconds) + surplus)
+	var want := mini(ai.villagers_per_town * hub_count, 8 + int(ai.age / ai.grow_seconds) + surplus)
 	if ai.villagers().size() + queued >= want:
 		return
 	var best: Building = null  # the town with the shortest queue
@@ -35,7 +37,7 @@ func _train(towns: Array[Building]) -> void:
 		ai.buy({"type": "train", "building": best.id, "kind": "villager"}, Defs.VILLAGER_COST)
 
 
-func _build(towns: Array[Building]) -> void:
+func _build(hubs: Array[Building]) -> void:
 	var open := 0
 	for kind in ["hut", "house", "farm", "vineyard", "storehouse", "aqueduct"]:
 		for b in ai.mine(kind):
@@ -51,25 +53,25 @@ func _build(towns: Array[Building]) -> void:
 		if b.owner == ai.owner:
 			queued += b.train_queue.size()
 	var headroom := ai.game.pop_cap(ai.owner) - ai.game.pop_used(ai.owner) - queued
-	var home := towns[_round % towns.size()]
+	var home := hubs[_round % hubs.size()]
 	if headroom < maxi(6, ai.game.pop_cap(ai.owner) / 8) or ai.need_housing:  # keep a tenth or so free: an army fills it fast
 		_round += 1
 		_house(home)
 		return
 	if ai.mine("storehouse").is_empty() and villagers.size() >= 6:  # by the nearest woods (food is only dropped at a town)
-		var wood := ai.nearest_deposit(Defs.Res.WOOD, towns[0].center(), 5)
+		var wood := ai.nearest_deposit(Defs.Res.WOOD, hubs[0].center(), 5)
 		if wood.x >= 0 and ai.place("storehouse", Vector2(wood), 1):
 			return
 	var fields := ai.mine("farm")
-	for t in towns:  # about one field for every three villagers at each town, up to six
+	for t in hubs:  # about one field for every three villagers at each town, up to six
 		var here := 0
 		for f in fields:
 			if f.center().distance_to(t.center()) < 11.0:
 				here += 1
-		if here < clampi(villagers.size() / towns.size() / 3, 1, 6):
+		if here < clampi(villagers.size() / hubs.size() / 3, 1, 6):
 			if ai.place("farm", t.center(), 3):
 				return
-	if ai.game.era_of(ai.owner) >= 1 and int(ai.stock()[Defs.Res.GOLD]) < 250 and ai.mine("vineyard").size() < towns.size() * 2:
+	if ai.game.era_of(ai.owner) >= 1 and int(ai.stock()[Defs.Res.GOLD]) < 250 and ai.mine("vineyard").size() < hubs.size() * 2:
 		ai.place("vineyard", home.center(), 3)  # wine is sold: it brings in gold
 
 

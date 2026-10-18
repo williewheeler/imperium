@@ -149,15 +149,17 @@ it does is organized as **goals** (`AIGoal`, one file each), not one long script
 | Goal | What it is for |
 |---|---|
 | `WorkersGoal` | idle villagers go to the resource they are most short of (its usual share, less what is in store); hands move off a glut onto what has run out |
-| `GrowthGoal` | villagers at every town, houses (aqueducts later) before it runs out of room, fields at each town, a storehouse by the woods, vineyards in Era II |
+| `GrowthGoal` | villagers at every Town or City Center (Settlements cannot), houses (aqueducts later) before it runs out of room, fields at each town, a storehouse by the woods, vineyards in Era II |
 | `ExploreGoal` | scouts (one, then two or three while the map is mostly unseen): it has to find land, resources and enemies |
-| `ExpandGoal` | new Town Centers: the richest explored ground a good way from its own and everyone's towns, once it has the people |
+| `ExpandGoal` | new Settlements: the richest explored ground a good way from its own and everyone's towns, once it has the people |
+| `PopulateGoal` | sends villagers into its Settlements (15 to become a Town Center) and, with people to spare, its Town Centers (30 to become a City Center) |
 | `MilitaryGoal` | an army in proportion to its villagers (barracks as it grows, a stable, counters to what it has seen) |
 | `AttackGoal` | waves, attack-moving at the nearest enemy building it has explored; a force cut to 40% falls back |
 | `DefendGoal` | idle fighters march at enemy fighters near its buildings; a far-off wave is called home if needed |
 | `AdvanceGoal` | saves for and begins the next era once its requirements are met |
 
-Each think, every goal says how pressing it is (`priority()`), and they act in that order. A goal that cannot
+`AI.towns()` are the buildings that make villagers (Town and City Centers); `AI.hubs()` also includes Settlements,
+which take resources and house people. Each think, every goal says how pressing it is (`priority()`), and they act in that order. A goal that cannot
 yet afford what it wants **reserves** the resources (`AI.reserve`, `buy`, `place`) once it is within half of
 them, so goals further down leave them alone: that is how an AI saves for a Town Center or an era while still
 feeding its people. Eras are per player (`Main.era_of`), so each AI advances by itself and its buildings take
@@ -243,6 +245,7 @@ in `src/map/`) is different: it is per-player simulation state (`Main.fogs`, by 
 - `just ai-test`: four AIs play each other at 10x for a few thousand game seconds, and it prints each one's towns,
   era, army, how much of the map it has explored, and the kills, every 150 game seconds. This is how AI changes
   are judged: there is no pass/fail, so read the numbers.
+- `just settlement-test`: a Settlement absorbing citizens, growing into a Town Center at 15 and a City Center at 30, and refusing more than 50.
 - `just net-test`: the lobby, host and client in two processes.
 - `--report` (see the justfile): runs a game headless and dumps the state, which is how AI behavior is
   checked.

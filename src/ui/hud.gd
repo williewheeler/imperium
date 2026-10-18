@@ -27,6 +27,7 @@ const STATES := {  # unit state -> [Latin, English]
 	Unit.State.ATTACK_GO: ["Hostem persequitur", "Closing on the enemy"],
 	Unit.State.ATTACKING: ["Pugnat", "Fighting"],
 	Unit.State.FLEE: ["Fugit", "Fleeing"],
+	Unit.State.ABSORB_GO: ["In urbem it", "Going into the town"],
 }
 const HELP := [  # [Latin, English]
 	["Sinistra  elige", "Left click: select a unit, building or resource (see how much is left). Drag a box: select a group. Double click a unit: select all of that kind on the screen. Click empty ground: deselect."],
@@ -329,14 +330,14 @@ func _rebuild_buttons(mode: String) -> void:
 	_buttons.clear()
 	var parts := mode.split(":")
 	if parts[0] in ["villagers", "soldiers"]:
-		_add_actions(parts.size() > 1 and parts[1] == "f")
+		_add_actions(parts.size() > 1 and parts[1] == "f", parts[0] == "villagers")
 	match parts[0]:
 		"villagers":
 			for kind: String in Defs.BUILDINGS:
-				if Defs.BUILDINGS[kind].get("landmark", false):
-					continue  # landmarks aren't something the player builds
+				if Defs.BUILDINGS[kind].get("landmark", false) or Defs.BUILDINGS[kind].get("upgrade_only", false):
+					continue  # landmarks aren't something the player builds, and towns are grown from Settlements
 				var def: Dictionary = Building.def_for(kind)
-				_add_button(kind, def["name"], "Build a %s (%s)" % [def["english"], _cost_text(def["cost"])],
+				_add_button(kind, def["name"], "Build a %s (%s)%s" % [def["english"], _cost_text(def["cost"]), (". " + String(def["about"])) if def.has("about") else ""],
 					def["cost"], func() -> void: build_requested.emit(kind))
 				_buttons[-1].set_meta("era", def.get("era", 0))
 				_buttons[-1].compact = true
@@ -352,7 +353,7 @@ func _rebuild_buttons(mode: String) -> void:
 					tip += ". " + unit["about"]
 				_add_button(unit_kind, unit["name"], tip, unit["cost"], func() -> void: train_requested.emit(unit_kind))
 				_buttons[-1].set_meta("train", true)
-			if parts[1] == "town_center":
+			if parts[1] in Defs.TOWNS:
 				var adv: Variant = _game.advance_data()
 				_add_button("advance", "Progredere", "", adv["cost"] if adv != null else [0, 0, 0, 0], func() -> void: advance_requested.emit())
 				_buttons[-1].set_meta("advance", true)
@@ -360,10 +361,12 @@ func _rebuild_buttons(mode: String) -> void:
 
 ## The orders any selected unit can be given, ahead of the buildings. The captions are Latin
 ## imperatives; the hotkey badge and tooltip say what they do.
-func _add_actions(fighters := false) -> void:
+func _add_actions(fighters := false, workers := false) -> void:
 	var orders: Array = [
 			["explore", "Explora", "Explore: walk the unit toward unseen land until none is left (X)", "X"],
 			["stop", "Siste", "Stop: drop the current order and stand still (S)", "S"]]
+	if workers:
+		orders.append(["absorb", "Incorpora", "Absorb: click a Settlement or town and the selected villagers go into it for good, as its citizens (I). A Settlement grows into a Town Center at 15, a Town Center into a City Center at 30; none can be taken out again.", "I"])
 	if fighters:
 		orders.append(["attack_move", "Oppugna", "Attack-move: click a spot and the fighters march there, attacking whatever they meet (A). Right-click an enemy to attack it; a plain right-click on the ground is a move that ignores the enemy, to pull back.", "A"])
 	for a: Array in orders:
