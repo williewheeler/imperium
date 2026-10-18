@@ -126,7 +126,7 @@ func place_display_army(start: Vector2i) -> void:
 		var u := Unit.new()
 		u.kind = kinds[i]
 		u.display = true
-		game._assign_sex(u)
+		game.setup.assign_sex(u)
 		u.pos = spots[i]
 		game.units.append(u)
 
@@ -134,7 +134,7 @@ func place_display_army(start: Vector2i) -> void:
 func _dress_unit(kind: String, at: Vector2) -> Unit:
 	var u := Unit.new()
 	u.kind = kind
-	game._assign_sex(u)
+	game.setup.assign_sex(u)
 	u.pos = _free_spot(at)
 	game.units.append(u)
 	_dressed_units.append(u)

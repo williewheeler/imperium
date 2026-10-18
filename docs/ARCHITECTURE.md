@@ -13,7 +13,7 @@ can move between folders freely. Only `res://` paths (the scene, shaders, assets
 
 | Folder | Role |
 |---|---|
-| `src/core/` | The game itself: state and rules (`main`, `unit`, `building`, `combat`, `defs`), the command layer (`commands`), where things may go (`placement`, `roads`), the computer players (`ai`), settings, weather, music. Today `main.gd` is both the simulation and the person's input handling (see *Known debts*). |
+| `src/core/` | The game itself: state and rules (`main`, `unit`, `building`, `combat`, `defs`), the command layer (`commands`), what an order does to a unit (`orders`), where things may go (`placement`, `roads`), founding the players (`world_setup`), the computer players (`ai`), settings, weather, music, and the debug scaffolding (`debug_modes`, `era_preview`). Today `main.gd` is both the simulation and the person's input handling (see *Known debts*). |
 | `src/map/` | The ground and what is known of it: `GameMap`, `TerrainGen`, `Fog`, `Iso` (tile/screen maths), `Deposit`. Plain classes that never reference `Main`; they depend only on `GameSettings` and `Defs`. |
 | `src/views/` | Drawing the state. Reads the game, never changes it. |
 | `src/ui/` | The HUD, menus, lobby, title. Talks to the game through signals and `Main` calls. |
@@ -123,7 +123,7 @@ between machines. See DESIGN.md for the lobby itself.
 
 ## Known debts
 
-- `Main` (`main.gd`, about 2,300 lines) mixes the simulation (unit movement, gathering, building, combat
+- `Main` (`main.gd`, about 1,500 lines) mixes the simulation (unit movement, gathering, building, combat
   hooks), the person's driver and input, camera, debug modes and startup. The next split is the
   simulation out from the person's driver.
 - The era is one value for the whole game and belongs to player 0, so `advance` is refused for other
@@ -131,8 +131,9 @@ between machines. See DESIGN.md for the lobby itself.
 - Drivers read raw `Main.units` and `Main.buildings`. The `AI` filters by its own fog by discipline, not
   by construction. A per-player view (fog-filtered queries) would enforce it, and is what a remote client
   would receive.
-- `Commands` calls `Main`'s underscore order functions (`_order_move`, `_order_gather`, ...); they are
-  `Main`'s private rules for what an order does, and should move with the simulation when it is split out.
+- `Orders`, `Placement`, `Roads` and `Commands` each hold a reference to `Main` and reach back into it for
+  state and for pathing (`_set_path` is now `Orders.set_path`, but the movement code is still in `Main`).
+  They should depend on a smaller simulation interface once `Main` is split.
 - Stock `stock` is still an alias for `stocks[0]`.
 
 ## Placement and roads  (**built**)
@@ -143,6 +144,13 @@ Two small classes own the ground rules that used to live in `Main`, each holding
 `assign_work`, `release`, `finish_tile`; and `Roads.line` for dragging out a road). `Commands`, `AI`,
 `Combat` and the views call them as `game.placement` and `game.roads`. They still reach back into
 `Main` for pathing (`_set_path`) and the world view (`_world`).
+
+## Scaffolding that is not the game  (**built**)
+
+`DebugModes` (`--demo`, `--showcase`, `--skirmish`, `--town`, ... and the headless `--report`) and
+`EraPreview` (the E key, which dresses a fake town for each era) hold code that sets scenes up for looking
+at. They are kept out of `Main` so that what is left is the game. `EraPreview.place_display_army` also puts a
+few non-population "display" soldiers by the first town in a normal game; it is a placeholder.
 
 ## Weather and fog
 

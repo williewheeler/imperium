@@ -69,8 +69,6 @@ var _rec_frame := 0
 var _draws_since_switch := 0
 var weather: Weather
 var _cities := 0
-var _villagers_made := 0  # alternates the sexes of new villagers
-var _looks_made := {}  # unit kind -> how many have been made, to hand out the looks in turn
 var _screenshot_path := ""
 var _report := false
 var _shot_frame := 20
@@ -80,6 +78,7 @@ var combat := Combat.new(self)  # who fights whom
 var placement := Placement.new()  # where things may go
 var debug := DebugModes.new()  # the --flags that set a scene up
 var orders := Orders.new()  # what an order does to a unit
+var setup := WorldSetup.new()  # founding the players
 var era_preview := EraPreview.new()  # debug: the E key
 var roads := Roads.new()  # the paved roads laid and planned
 var commands := Commands.new()  # how a player acts on the game: every driver submits to it (see docs/ARCHITECTURE.md)
@@ -211,23 +210,13 @@ func _ready() -> void:
 	placement.game = self
 	roads.game = self
 	era_preview.game = self
+	setup.game = self
 	orders.game = self
 	debug.game = self
 	stock.assign(Defs.START_STOCK)
 	stocks = [stock]
 
-	for off in GameMap.START_OFFSETS:
-		var u := Unit.new()
-		u.pos = Vector2(start + off) + Vector2(0.5, 0.5)
-		_assign_sex(u)
-		units.append(u)
-	var site := placement.find_site("town_center", start, 3)
-	if site.x >= 0:
-		_add_building("town_center", site, true)
-	map.place_resources(start, float(GameSettings.resources_info(GameSettings.resources_id)["amount"]))  # after the Town Center, so berries and mines go around it
-	_place_circus(start)
-	_rome_start = start
-	_place_ais(start)
+	setup.found_players(start)
 
 	_world = World.new()
 	add_child(_world)
@@ -880,92 +869,6 @@ func _reveal_around(center: Vector2, radius: float) -> void:
 	fog.reveal(center, radius)
 
 
-## The Circus Maximus stands in the valley near the city from the start: the nearest level patch of
-## open ground big enough for it that doesn't crowd the Forum.
-func _place_circus(start: Vector2i) -> void:
-	var avoid: Array[Vector2i] = []
-	for off in GameMap.START_OFFSETS:
-		avoid.append(start + off)
-	var rects: Array = []
-	for b in buildings:
-		rects.append(b.rect().grow(2))
-	var size: Vector2i = Defs.BUILDINGS["circus"]["size"]
-	var site := map.find_site(size, start, 6, 40, avoid, rects, true)  # woods in the way are felled, marsh drained, the ground leveled and raised
-	if site.x >= 0:
-		var apron := Rect2i(site, size).grow(1)  # a tile of cleared ground all round it
-		map.clear_ground(apron)  # the valley floor: woods felled, marsh drained, no scrub left growing
-		map.level_ground(apron, 2)  # and raised on a platform of its own, two terraces up
-		Iso.set_terrain(map.w, map.h, map.levels)
-		var circus := _add_building("circus", site, true)
-		circus.work = 1.0
-
-
-## The other peoples each get a town of their own, spaced round the map like you (see
-## GameMap.home_points), with five villagers and the same stores as ours. How many play is set on the
-## settings screen. Each is run by a AI.
-func _place_ais(rome: Vector2i) -> void:
-	var connected: bool = GameSettings.type_info(GameSettings.map_type)["connected"]
-	var middle := Vector2(0.5, 0.5)
-	var slot := 0
-	for faction: String in GameSettings.playing_peoples():
-		slot += 1  # you are player 0; the peoples follow in the order chosen on the settings screen
-		var info: Dictionary = Defs.FACTIONS[faction]
-		var owner_id := slot
-		var spot := Vector2i(-1, -1)
-		var home: Vector2 = map.homes[slot]
-		var inward := (middle - home).normalized()
-		var along := inward.rotated(PI / 2.0)
-		for attempt in [Vector2.ZERO, inward * 0.05, inward * 0.1, along * 0.06, -along * 0.06, inward * 0.15]:  # if the first try has no room, shift a little
-			var want := Vector2i(((home + attempt) * map.w).round()).clamp(Vector2i(12, 12), Vector2i(map.w - 13, map.h - 13))
-			var found := map.find_start(want, rome if connected else Vector2i(-1, -1), 1)
-			var too_close := found.distance_to(Vector2(rome)) < 0.1 * map.w
-			for r in ais:
-				too_close = too_close or found.distance_to(Vector2(r.start)) < 0.1 * map.w
-			if not too_close:
-				spot = found
-				break
-		if spot.x < 0:
-			continue  # no room for this people: it stays home
-		var site := placement.find_site("town_center", spot, 3)
-		if site.x < 0:
-			continue
-		while stocks.size() <= owner_id:
-			stocks.append(null)
-		var ai_stock: Array[int] = []
-		ai_stock.assign(Defs.START_STOCK)
-		stocks[owner_id] = ai_stock
-		for off in GameMap.START_OFFSETS:
-			var u := Unit.new()
-			u.pos = Vector2(spot + off) + Vector2(0.5, 0.5)
-			u.owner = owner_id
-			_assign_sex(u)
-			units.append(u)
-		var town := _add_building("town_center", site, true, owner_id)
-		town.building_name = info["town"]
-		map.place_start_resources(spot, float(GameSettings.resources_info(GameSettings.resources_id)["amount"]))
-		var ai := AI.new()
-		ai.game = self
-		ai.owner = owner_id
-		ai.faction = faction
-		ai.start = spot
-		ai.set_difficulty(GameSettings.difficulty_id)
-		ai.fog = Fog.new(map.w, map.h, true)
-		fogs[owner_id] = ai.fog
-		ai.see()  # it knows the ground round its town, and nothing else
-		ais.append(ai)
-
-
-## Villagers alternate between men and women; fighting men take the kind's looks in turn.
-func _assign_sex(u: Unit) -> void:
-	if u.kind == "villager":
-		u.female = _villagers_made % 2 == 1
-		_villagers_made += 1
-	elif Art.UNIT_LOOKS.has(u.kind):  # fighting men go in turn through the kind's looks
-		var n: int = _looks_made.get(u.kind, 0)
-		u.look = n % int(Art.UNIT_LOOKS[u.kind])
-		_looks_made[u.kind] = n + 1
-
-
 # ---------- Paved roads ----------
 
 func _mouse_tile() -> Vector2i:
@@ -1605,7 +1508,7 @@ func _update_building(b: Building, delta: float) -> void:
 		var u := Unit.new()
 		u.kind = trains
 		u.owner = b.owner
-		_assign_sex(u)
+		setup.assign_sex(u)
 		var spawn := map.stand_tile(b.rect(), b.center())
 		u.pos = Vector2(spawn) + Vector2(0.5, 0.5)
 		units.append(u)
