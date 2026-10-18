@@ -20,7 +20,6 @@ var objects: Node2D  # the depth-sorted layer the halves live in
 var game: Main
 
 var _key := ""
-var _flat: Sprite2D  # fields
 var _halves: Array[Node2D] = []  # standing buildings: one strip per tile along the left wall, then along the right
 var _sprites: Array[Sprite2D] = []
 var _plots: Array[Sprite2D] = []  # a farm: one flat picture for each of its eight plots
@@ -43,19 +42,13 @@ func _ready() -> void:
 	position = _corner(Vector2(building.stand_tile() + building.stand_size())).round()
 	_key = building.sprite_key()
 	var tex := Art.tex(_key)
-	if building.is_field():
-		_flat = Sprite2D.new()
-		_flat.centered = false
-		_flat.texture = tex
-		add_child(_flat)
-		return
 	if building.has_plots():  # the plots lie flat on the ground, under everyone's feet
 		_plot_tiles = building.plot_tiles()
-		var anchor := Art.building_anchor("farm")
+		var anchor := Art.building_anchor(String(building.def().get("plot_art", "farm")))
 		for r in building.plot_rects():
 			var plot := Sprite2D.new()
 			plot.centered = false
-			plot.texture = Art.tex("farm:3")
+			plot.texture = Art.tex("%s:3" % building.def().get("plot_art", "farm"))
 			plot.offset = -anchor  # the field's front corner on the plot's
 			plot.position = _corner(Vector2(r.position + r.size)).round() - position
 			add_child(plot)
@@ -222,8 +215,6 @@ func update_view() -> void:
 	if building.sprite_key() != _key:
 		_key = building.sprite_key()
 		var tex := Art.tex(_key)
-		if _flat != null:
-			_flat.texture = tex
 		for sprite in _sprites:
 			sprite.texture = tex
 	for i in _plots.size():  # each plot shows how ripe it is
@@ -232,7 +223,7 @@ func update_view() -> void:
 		if plot != null:
 			var frac := float(plot.amount) / float(maxi(1, plot.max_amount))
 			stage = 0 if frac >= 0.66 else (1 if frac >= 0.33 else (2 if plot.amount > 0 else 3))
-		_plots[i].texture = Art.tex("farm:%d" % stage)
+		_plots[i].texture = Art.tex("%s:%d" % [building.def().get("plot_art", "farm"), stage])
 	var size := Art.tex(_key).get_size()
 	var y0 := 0.0
 	if not building.complete:
@@ -241,26 +232,19 @@ func update_view() -> void:
 	if building.attackable() and building.hp < building.max_hp():  # scorched as it weakens
 		var char_amount := clampf((1.0 - building.hp / building.max_hp()) * (1.6 if building.burning else 0.8), 0.0, 0.8)
 		tint = tint.lerp(Color(0.2, 0.16, 0.15, tint.a), char_amount)
-	if _flat != null:
-		_flat.region_enabled = not building.complete
-		if not building.complete:
-			_flat.region_rect = Rect2(0, y0, size.x, size.y - y0)
-		_flat.offset = Vector2(-anchor.x, -anchor.y + y0)
-		_flat.modulate = tint
-	else:
-		var right_w := size.x - anchor.x
-		var cuts := []  # the columns each strip covers: the left wall's, then the right wall's
-		var ss := building.stand_size()
-		for k in ss.x:
-			cuts.append([floori(anchor.x * k / ss.x), floori(anchor.x * (k + 1) / ss.x)])
-		for k in ss.y:
-			cuts.append([floori(anchor.x + right_w * k / ss.y), floori(anchor.x + right_w * (k + 1) / ss.y)])
-		for i in _sprites.size():
-			var region := Rect2(cuts[i][0], y0, cuts[i][1] - cuts[i][0], size.y - y0)
-			_sprites[i].region_rect = region
-			# where the full sprite's top-left would be, plus this strip's offset into it
-			_sprites[i].position = position - anchor + region.position - _halves[i].position
-			_sprites[i].modulate = tint
+	var right_w := size.x - anchor.x
+	var cuts := []  # the columns each strip covers: the left wall's, then the right wall's
+	var ss := building.stand_size()
+	for k in ss.x:
+		cuts.append([floori(anchor.x * k / ss.x), floori(anchor.x * (k + 1) / ss.x)])
+	for k in ss.y:
+		cuts.append([floori(anchor.x + right_w * k / ss.y), floori(anchor.x + right_w * (k + 1) / ss.y)])
+	for i in _sprites.size():
+		var region := Rect2(cuts[i][0], y0, cuts[i][1] - cuts[i][0], size.y - y0)
+		_sprites[i].region_rect = region
+		# where the full sprite's top-left would be, plus this strip's offset into it
+		_sprites[i].position = position - anchor + region.position - _halves[i].position
+		_sprites[i].modulate = tint
 	queue_redraw()
 
 

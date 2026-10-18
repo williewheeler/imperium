@@ -198,7 +198,7 @@ func _show_group(us: Array[Unit]) -> void:
 func _show_building(b: Building) -> void:
 	var def := b.def()
 	var key := b.sprite_key()
-	_show_portrait(Art.icon(key, 84) if not b.is_field() else Art.tex(key))
+	_show_portrait(Art.icon(key, 84))
 	var city := "  —  " + b.building_name if b.kind in Defs.TOWNS else ""
 	_text(_name, "%s%s" % [def["name"], city], "%s%s" % [def["english"], city])
 	_show_people(b.owner)
@@ -219,9 +219,7 @@ func _show_building(b: Building) -> void:
 				held += plot.amount
 				most += plot.max_amount
 				ripe += 1 if plot.amount > 0 else 0
-		n = _stat(n, "Areae %d/%d" % [ripe, b.plot_tiles().size()], "Plots with a crop to pick: %d of %d. A villager works one plot, standing on it, and carries the crop to the granary. An emptied plot ripens again in time." % [ripe, b.plot_tiles().size()])
-	if b.is_field():
-		n = _stat(n, "Fructus %d" % int(def["yield"]), "Yield: villagers carry the crop home")
+		n = _stat(n, "Areae %d/%d" % [ripe, b.plot_tiles().size()], "Plots with a crop to pick: %d of %d. One villager works a plot, standing on it, and carries the crop to the granary. An emptied plot ripens again in time." % [ripe, b.plot_tiles().size()])
 	if not b.complete:
 		var pct := int(b.build_fraction() * 100)
 		_show_work(b.build_fraction(), 1.0, Latin.t("Aedificatur %d%%" % pct), "Under construction: %d%%" % pct)
@@ -239,12 +237,7 @@ func _show_building(b: Building) -> void:
 			if plot2 != null:
 				held2 += plot2.amount
 				most2 += plot2.max_amount
-		_show_work(float(held2), float(maxi(1, most2)), Latin.t("Reliquum %d/%d" % [held2, most2]), "Remaining in the plots: %d of %d food" % [held2, most2], Art.RES_COLORS[Defs.Res.FOOD])
-		_text(_state, def["ready"], "Ready")
-	elif b.is_field() and _game.map.deposits.has(b.field_tile()):
-		var fd: Deposit = _game.map.deposits[b.field_tile()]
-		var english := "Remaining: %d of %d %s%s" % [fd.amount, fd.max_amount, Defs.RES_ENGLISH[fd.kind].to_lower(), "  (ripening again...)" if fd.amount <= 0 else ""]
-		_show_work(float(fd.amount), float(fd.max_amount), Latin.t("Reliquum %d/%d" % [fd.amount, fd.max_amount]), english, Art.RES_COLORS[fd.kind])
+		_show_work(float(held2), float(maxi(1, most2)), Latin.t("Reliquum %d/%d" % [held2, most2]), "Remaining in the plots: %d of %d %s" % [held2, most2, Defs.RES_ENGLISH[int(def.get("res", Defs.Res.FOOD))].to_lower()], Art.RES_COLORS[int(def.get("res", Defs.Res.FOOD))])
 		_text(_state, def["ready"], "Ready")
 	else:
 		_text(_state, def["ready"], "Ready")

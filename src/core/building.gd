@@ -41,8 +41,6 @@ var hp: float:  # health; starts full
 	set(v):
 		_hp = v
 		_hp_set = true
-var stage := 0  # fields: 0 ripe .. 3 freshly sown
-var regrow := 0.0  # fields: seconds since they were emptied
 
 
 ## The era this building's owner is in (a landmark: the local player's).
@@ -136,19 +134,14 @@ func stand_size() -> Vector2i:
 	return Vector2i.ONE if has_plots() else size
 
 
-## Fields (vines) are flat, renewable crops that villagers work.
-func is_field() -> bool:
-	return def().get("field", false)
-
-
 ## Key of the sprite to draw (fields change picture as they're harvested).
 func sprite_key() -> String:
-	return "%s:%d" % [kind, stage] if is_field() else look_key(kind, owner_era())
+	return look_key(kind, owner_era())
 
 
-## The tile at the middle of the footprint (where a field's crop lives).
+## One of a farm's plots (its middle tile), for sending a worker to the farm.
 func field_tile() -> Vector2i:
-	return plot_tiles()[0] if has_plots() else tile + size / 2  # (a farm: one of its plots)
+	return plot_tiles()[0]
 
 
 ## Does it take citizens in (a Settlement, Town Center or City Center)?

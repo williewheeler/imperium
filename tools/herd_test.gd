@@ -47,12 +47,46 @@ func _process(_dt: float) -> bool:
 	_check("herds to hunt near the town", herds >= 2, true)
 	_check("no stone right at the town", stone_near, 0)
 	_check("and no gold", gold_near, 0)
+	# gold is spread out: no mine with two others close by
+	var gold: Array = g.map.mines.get(Defs.Res.GOLD, [])
+	var crowded := 0
+	var nearest_pair := INF
+	for i in gold.size():
+		var close := 0
+		for j in gold.size():
+			if i != j:
+				var dd := Vector2(gold[i]).distance_to(Vector2(gold[j]))
+				if dd < 12.0:
+					close += 1
+				if dd > 4.0:
+					nearest_pair = minf(nearest_pair, dd)
+		if close >= 2:
+			crowded += 1
+	print("gold mines: %d, crowded %d, nearest separate pair %.0f tiles" % [gold.size(), crowded, nearest_pair if nearest_pair < INF else -1.0])
+	_check("no dense gold", crowded, 0)
+	_check("separate gold is far apart", nearest_pair >= 20.0, true)
 	# a herd breeds, up to a limit
 	var spot := Vector2i(-1, -1)
 	for p: Vector2i in g.map.herds:
 		spot = p
 		break
 	var herd: Deposit = g.map.deposits[spot]
+	# a herd wanders, but only within its range of where it began
+	var farthest := 0.0
+	var moved := false
+	var at := spot
+	for i in 400:
+		herd.move_t = 0.0
+		g._graze(at, herd, 0.1)
+		for p: Vector2i in g.map.herds:
+			if g.map.deposits.get(p) == herd:
+				if p != at:
+					moved = true
+				at = p
+		farthest = maxf(farthest, Vector2(at).distance_to(Vector2(herd.home)))
+	_check("a herd moves about", moved, true)
+	_check("but stays within its range", farthest <= Defs.HERD_RANGE + 0.01, true)
+	spot = at
 	herd.amount = 100
 	for i in 200:
 		g._update_herds(1.0)
@@ -67,6 +101,9 @@ func _process(_dt: float) -> bool:
 	for i in 100:
 		g._update_herds(1.0)
 	_check("one too small does not recover", herd.amount, 10)
+	for p: Vector2i in g.map.herds:
+		if g.map.deposits.get(p) == herd:
+			spot = p
 	herd.amount = 0
 	g.map.remove_deposit(spot)
 	g._update_herds(1.0)

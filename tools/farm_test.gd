@@ -68,27 +68,27 @@ func _process(dt: float) -> bool:
 			for i in 30:
 				g._update_plots(farm, 1.0)
 			_check("an untended plot grows nothing", plots.all(func(p): return g.map.deposits[p].amount == 0), true)
-			crew = _spawn(g, 30, Vector2(spot) + Vector2(10.5, 1.5))
+			crew = _spawn(g, 12, Vector2(spot) + Vector2(10.5, 1.5))
 			var sent := 0
 			for u in crew:
 				if g.orders.gather(u, farm.field_tile()):
 					sent += 1
-			_check("three villagers to a plot: 24 can work a farm", sent, 24)
+			_check("one villager to a plot: eight can work a farm", sent, 8)
 			var per_plot := {}
 			var spots := {}
 			for u in crew:
 				if u.state == Unit.State.GATHER_GO:
 					per_plot[u.target_tile] = int(per_plot.get(u.target_tile, 0)) + 1
 					spots[u.work_spot] = true
-			_check("no plot has more than three", per_plot.values().all(func(n): return n <= 3), true)
+			_check("no plot has more than one", per_plot.values().all(func(n): return n <= 1), true)
 			_check("they use every plot", per_plot.size(), 8)
-			_check("each stands on a tile of its own", spots.size(), 24)
+			_check("each stands on a tile of its own", spots.size(), 8)
 			_check("and on its plot", crew.all(func(u): return u.state != Unit.State.GATHER_GO or g.map.deposits[u.target_tile].plot_rect.has_point(u.work_spot)), true)
 			stage = 1
 			t_stage = 0.0
 		1:
 			var working := crew.filter(func(u): return u.state == Unit.State.GATHERING or u.carry > 0 or u.state == Unit.State.RETURN)
-			if working.size() >= 20 and t_stage > 25.0:
+			if working.size() >= 8 and t_stage > 25.0:
 				print("working: ", working.size(), " food in store ", g.stock_of(0)[Defs.Res.FOOD])
 				stage = 2
 				t_stage = 0.0

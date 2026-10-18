@@ -64,17 +64,17 @@ func _build(hubs: Array[Building]) -> void:
 		if wood.x >= 0 and ai.place("storehouse", Vector2(wood), 1):
 			return
 	var fields := ai.mine_of(["farm", "large_farm"])
-	for t in hubs:  # a farm has eight plots of three workers: about one for every twenty villagers at each town, more if food is short
+	for t in hubs:  # a farm has eight plots, one worker to each: about one for every twelve villagers at each town, more if food is short
 		var here := 0
 		for f in fields:
 			if f.center().distance_to(t.center()) < 22.0:
 				here += 1
 		var short_of_food := 1 if int(ai.stock()[Defs.Res.FOOD]) < 200 else 0
-		if here < clampi(villagers.size() / hubs.size() / 20 + short_of_food, 1, 3):
+		if here < clampi(villagers.size() / hubs.size() / 12 + short_of_food, 1, 4):
 			if ai.place("farm", t.center(), 4, 2, 30):
 				return
-	if ai.game.era_of(ai.owner) >= 1 and int(ai.stock()[Defs.Res.GOLD]) < 250 and ai.mine("vineyard").size() < hubs.size() * 2:
-		ai.place("vineyard", home.center(), 3)  # wine is sold: it brings in gold
+	if ai.game.era_of(ai.owner) >= 1 and int(ai.stock()[Defs.Res.GOLD]) < 250 and ai.mine_of(["vineyard", "large_vineyard"]).size() < hubs.size():
+		ai.place("vineyard", home.center(), 4, 2, 30)  # wine is sold: it brings in gold
 
 
 func _house(home: Building) -> void:

@@ -44,6 +44,7 @@ var levels := PackedByteArray()  # per tile terrace: 0 (shore and plains) up to 
 var relief := PackedByteArray()  # per tile light on the ground from the top-left: 128 flat, brighter when facing the light
 var slope_factor := PackedFloat32Array()  # per tile walking-cost multiplier from steepness (1.0 = flat)
 var deposits := {}  # Vector2i -> Deposit
+var mines := {}  # kind -> Array[Vector2i]: where stone and gold lie, to keep them spread out
 var herds: Array[Vector2i] = []  # where the herds graze (see Defs.HERD_*)
 var astar_rough: AStarGrid2D  # built the first time a dog needs a route (see find_path_rough)
 var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 2 paved road
@@ -512,7 +513,38 @@ func find_path_rough(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 		to = nearest_walkable(to)
 		if to.x < 0:
 			return []
-	return astar_rough.get_id_path(from, to)
+	return _straighten(astar_rough.get_id_path(from, to))
+
+
+## Cuts a route down to the corners that matter: wherever a straight line between two of its points is clear of
+## obstacles, everything between them is dropped, so a dog runs in long straight lines rather than stair-stepping.
+func _straighten(path: Array[Vector2i]) -> Array[Vector2i]:
+	if path.size() < 3:
+		return path
+	var out: Array[Vector2i] = [path[0]]
+	var i := 0
+	while i < path.size() - 1:
+		var j := mini(path.size() - 1, i + 80)
+		while j > i + 1 and not _line_clear(path[i], path[j]):
+			j -= 1
+		out.append(path[j])
+		i = j
+	return out
+
+
+## Is the straight line between the centers of two tiles over open ground all the way?
+func _line_clear(a: Vector2i, b: Vector2i) -> bool:
+	var from := Vector2(a) + Vector2(0.5, 0.5)
+	var to := Vector2(b) + Vector2(0.5, 0.5)
+	var steps := int(ceil(from.distance_to(to) * 3.0))
+	for k in range(1, steps):
+		var p := from.lerp(to, float(k) / float(steps))
+		if not is_walkable(Vector2i(p.floor())):
+			return false
+		# no squeezing between two diagonal obstacles
+		if not is_walkable(Vector2i(int(floor(p.x - 0.2)), int(floor(p.y - 0.2)))) or not is_walkable(Vector2i(int(floor(p.x + 0.2)), int(floor(p.y + 0.2)))):
+			return false
+	return true
 
 
 func _build_nav() -> void:
@@ -802,9 +834,13 @@ func _place_start_clusters(rng: RandomNumberGenerator, start: Vector2i, density:
 func _place_scattered(rng: RandomNumberGenerator, density: float) -> void:
 	var blocks := maxi(1, w * h / 6400)  # one for every 80x80 tiles
 	for i in int(round(3 * blocks * density)):  # a few mines scattered over the whole world, for exploring armies and villagers to find
-		for attempt in 20:
+		var kind: int = Defs.Res.STONE if i % 2 == 0 else Defs.Res.GOLD
+		for attempt in 30:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
-			if _place_cluster(rng, c, 0.0, 0.0, Defs.Res.STONE if i % 2 == 0 else Defs.Res.GOLD, 3, 1):
+			if _mine_too_near(c, kind):
+				continue
+			# mostly a lone mine; now and then two together
+			if _place_cluster(rng, c, 0.0, 0.0, kind, 1 if rng.randf() < 0.7 else 2, 1):
 				break
 	for i in int(round(2 * blocks * density)):  # and berry patches
 		for attempt in 20:
@@ -819,6 +855,18 @@ func _place_scattered(rng: RandomNumberGenerator, density: float) -> void:
 
 
 ## A herd of grazing animals on one tile, somewhere between `min_r` and `max_r` tiles from `center`.
+## Is there a mine of this kind too close to `c`? Gold is kept well apart (28 tiles); stone a little closer (16).
+func _mine_too_near(c: Vector2i, kind: int) -> bool:
+	var gap := 28.0 if kind == Defs.Res.GOLD else 16.0
+	for home in homes:  # and none right at anyone's starting town
+		if Vector2(home * float(w)).distance_to(Vector2(c)) < (26.0 if kind == Defs.Res.GOLD else 18.0):
+			return true
+	for p: Vector2i in mines.get(kind, []):
+		if Vector2(p).distance_to(Vector2(c)) < gap:
+			return true
+	return false
+
+
 func _place_herd(rng: RandomNumberGenerator, center: Vector2i, min_r: float, max_r: float) -> bool:
 	for attempt in 40:
 		var a := rng.randf() * TAU
@@ -827,10 +875,17 @@ func _place_herd(rng: RandomNumberGenerator, center: Vector2i, min_r: float, max
 		if _site_ok(p, Defs.Res.FOOD):
 			var d := Deposit.new(Defs.Res.FOOD, Defs.HERD_AMOUNT)
 			d.herd = true
+			d.home = p
+			d.move_t = rng.randf_range(0.0, Defs.HERD_MOVE_EVERY)
 			deposits[p] = d
 			herds.append(p)
 			return true
 	return false
+
+
+## Can a herd graze on this tile?
+func can_graze(p: Vector2i) -> bool:
+	return _site_ok(p, Defs.Res.FOOD)
 
 
 func _site_ok(p: Vector2i, kind: int) -> bool:
@@ -860,6 +915,9 @@ func _place_cluster(rng: RandomNumberGenerator, center: Vector2i, min_r: float, 
 			deposits[p] = Deposit.new(kind, Defs.DEPOSIT_AMOUNT[kind])
 			if kind != Defs.Res.FOOD:
 				_set_solid_at(p, true)  # mines are obstacles; gatherers stand beside them
+				if not mines.has(kind):
+					mines[kind] = []
+				mines[kind].append(p)
 			placed += 1
 	return placed > 0
 

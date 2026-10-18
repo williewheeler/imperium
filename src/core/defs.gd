@@ -16,6 +16,8 @@ const HERD_AMOUNT := 240
 const HERD_BREED_MIN := 0.15
 const HERD_BREED_EVERY := 8.0
 const HERD_BREED_GAIN := 4
+const HERD_RANGE := 5.0  # tiles a herd grazes from where it started: it does not wander off
+const HERD_MOVE_EVERY := 7.0  # seconds between steps
 const CARRY_CAP := 15
 
 # Costs are [wood, food, stone, gold].
@@ -43,7 +45,7 @@ const UNITS := {
 	"villager": {"name": "Colonus", "english": "Villager", "cost": VILLAGER_COST, "time": VILLAGER_TRAIN_TIME,
 		"hp": 25, "attack": 0.0, "cooldown": 1.0, "range": 0.0, "armor": [0.0, 0.0], "bonus": {}, "speed": 1.0},
 	"dog": {"name": "Canis", "english": "Dog", "cost": DOG_COST, "time": 10.0,
-		"hp": 22, "attack": 0.0, "cooldown": 1.0, "range": 0.0, "armor": [0.0, 0.0], "bonus": {}, "speed": 2.6, "sight": 9.0, "rough": true,
+		"hp": 22, "attack": 0.0, "cooldown": 1.0, "range": 0.0, "armor": [0.0, 0.0], "bonus": {}, "speed": 5.2, "sight": 9.0, "rough": true,
 		"about": "A fast, fragile scout: it cannot fight or work. Forest, marsh and hills do not slow it, but it cannot cross water or mountains."},
 	"soldier": {"name": "Miles Gravis", "english": "Heavy Infantry", "cost": SOLDIER_COST, "time": SOLDIER_TRAIN_TIME,
 		"hp": 80, "attack": 9.0, "cooldown": 1.1, "range": 0.0, "armor": [0.30, 0.10], "bonus": {"villager": 1.5, "spearman": 1.4}, "speed": 0.8,
@@ -63,14 +65,14 @@ const UNITS := {
 # most, spears and shot little, and a horse none to speak of. A building that falls to 40% health catches fire
 # and burns down on its own (see Combat).
 const BUILDING_HP := {"settlement": 500, "city_center": 1800, "town_center": 1200, "hut": 150, "house": 300, "storehouse": 250, "castra": 600, "stabulum": 500,
-	"temple": 450, "curia": 600, "aqueduct": 500, "farm": 0, "large_farm": 0, "vineyard": 0, "circus": 0}
+	"temple": 450, "curia": 600, "aqueduct": 500, "farm": 0, "large_farm": 0, "large_vineyard": 0, "vineyard": 0, "circus": 0}
 const SIEGE := {"soldier": 0.6, "spearman": 0.35, "slinger": 0.2, "horseman": 0.25}
 # Towns grow by taking in citizens. A villager sent into a Settlement, Town Center or City Center is absorbed for
 # good (the building counts how many, up to CITIZENS_MAX). A Settlement takes every resource but cannot make
 # villagers; at GROWTH[kind][0] citizens it becomes the next kind. HUBS take resources in; TOWNS also make villagers.
 const POP_LIMIT := 1200  # the most units in the whole game: each player may have an equal share (300 of 4)
 const CITIZENS_MAX := 50
-const GROWTH := {"settlement": [15, "town_center"], "town_center": [30, "city_center"], "farm": [8, "large_farm"]}
+const GROWTH := {"settlement": [15, "town_center"], "town_center": [30, "city_center"], "farm": [8, "large_farm"], "vineyard": [8, "large_vineyard"]}
 const HUBS := ["settlement", "town_center", "city_center"]
 const TOWNS := ["town_center", "city_center"]
 const MELEE_REACH := 0.9  # tiles between centers for a melee blow (a horseman reaches a little farther)
@@ -176,21 +178,28 @@ const BUILDINGS := {
 	"farm": {
 		"name": "Ager", "acc": "Agrum", "english": "Farm", "done": "perfectus est", "ready": "Paratus", "look": "granary",
 		"size": Vector2i(9, 9), "cost": [100, 0, 0, 0], "walkable": true, "solid_center": true,
-		"plots": true, "plot_workers": 3, "crop": 250, "regrow": 20.0, "citizens_max": 8, "absorbs": true,
+		"plots": true, "plot_workers": 1, "crop": 250, "regrow": 20.0, "citizens_max": 8, "absorbs": true,
 		"build_time": 25.0, "sight": 6.0, "accepts": [1], "pop": 0,
-		"about": "A big field: a granary in the middle, framing eight plots round it. Building the granary lays out the plots; then send villagers onto them (up to three to a plot) and they sow, tend and harvest by themselves, carrying the crop to the granary. Take 8 villagers into the granary for good and it grows into a Large Farm with richer plots.",
+		"about": "A big field: a granary in the middle, framing eight plots round it. Building the granary lays out the plots; then send villagers onto them (one to a plot) and they sow, tend and harvest by themselves, carrying the crop to the granary. Take 8 villagers into the granary for good and it grows into a Large Farm with richer plots.",
 	},
 	"large_farm": {
 		"name": "Ager Magnus", "acc": "Agrum Magnum", "english": "Large Farm", "done": "perfectus est", "ready": "Paratus", "look": "large_granary",
 		"size": Vector2i(9, 9), "cost": [0, 0, 0, 0], "walkable": true, "solid_center": true, "upgrade_only": true,
-		"plots": true, "plot_workers": 3, "crop": 375, "regrow": 14.0, "citizens_max": 8, "absorbs": true,
+		"plots": true, "plot_workers": 1, "crop": 375, "regrow": 14.0, "citizens_max": 8, "absorbs": true,
 		"build_time": 25.0, "sight": 7.0, "accepts": [1], "pop": 0,
 	},
 	"vineyard": {
-		"name": "Vinea", "acc": "Vineam", "english": "Vineyard", "done": "perfecta est", "ready": "Parata", "era": 1,
-		"size": Vector2i(3, 3), "cost": [80, 0, 0, 0], "walkable": true,
-		"field": true, "yield": 3, "crop": 200, "regrow": 30.0,  # wine, sold: it yields gold
-		"build_time": 25.0, "sight": 4.0, "accepts": [], "pop": 0,
+		"name": "Vinea", "acc": "Vineam", "english": "Vineyard", "done": "perfecta est", "ready": "Parata", "era": 1, "look": "granary",
+		"size": Vector2i(9, 9), "cost": [150, 0, 0, 0], "walkable": true, "solid_center": true,
+		"plots": true, "plot_art": "vineyard", "res": Res.GOLD, "plot_workers": 1, "crop": 150, "regrow": 25.0, "citizens_max": 8, "absorbs": true,
+		"build_time": 30.0, "sight": 6.0, "accepts": [3], "pop": 0,
+		"about": "A farm of vines: eight plots round a press-house, worked like a farm's, but the crop is wine, sold for gold. Take 8 villagers into it for good and it grows into a Large Vineyard.",
+	},
+	"large_vineyard": {
+		"name": "Vinea Magna", "acc": "Vineam Magnam", "english": "Large Vineyard", "done": "perfecta est", "ready": "Parata", "look": "large_granary",
+		"size": Vector2i(9, 9), "cost": [0, 0, 0, 0], "walkable": true, "solid_center": true, "upgrade_only": true,
+		"plots": true, "plot_art": "vineyard", "res": Res.GOLD, "plot_workers": 1, "crop": 225, "regrow": 18.0, "citizens_max": 8, "absorbs": true,
+		"build_time": 30.0, "sight": 7.0, "accepts": [3], "pop": 0,
 	},
 	"storehouse": {
 		"name": "Horreum", "acc": "Horreum", "english": "Storehouse", "done": "perfectum est", "ready": "Paratum",

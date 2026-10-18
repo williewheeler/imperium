@@ -783,7 +783,7 @@ func _command_at(mp: Vector2) -> void:
 	if b != null and b.owner != LOCAL:
 		b = null  # an AI's building is just ground to us for now
 	var movers := us  # who just walks there
-	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.is_field() or b.has_plots()))):
+	if workers.is_empty() and (res.x >= 0 or (b != null and (not b.complete or b.has_plots()))):
 		hud.flash_key("err.soldiers_cant_work")  # they can only march to the spot
 	if b != null and b.complete and res.x < 0:  # laden villagers go and unload at a depot they click
 		var carriers: Array[Unit] = []
@@ -807,7 +807,7 @@ func _command_at(mp: Vector2) -> void:
 			_do({"type": "pave_work", "units": _ids(workers)})
 		elif b != null and not b.complete:
 			_do({"type": "build", "building": b.id, "units": _ids(workers)})
-		elif b != null and (b.is_field() or b.has_plots()):
+		elif b != null and b.has_plots():
 			_do({"type": "gather", "tile": b.field_tile(), "units": _ids(workers)})
 		else:
 			handled = false
@@ -863,7 +863,7 @@ func _on_complete(b: Building) -> void:
 		for r in b.plot_rects():  # the granary frames out its plots: bare ground until a villager sows it
 			var p := r.position + Vector2i.ONE
 			if not map.deposits.has(p):
-				var plot := Deposit.new(Defs.Res.FOOD, int(b.def()["crop"]))
+				var plot := Deposit.new(int(b.def().get("res", Defs.Res.FOOD)), int(b.def()["crop"]))
 				plot.amount = 0
 				plot.renews = true
 				plot.farm = true
@@ -871,13 +871,6 @@ func _on_complete(b: Building) -> void:
 				plot.plot_of = b
 				plot.plot_rect = r
 				map.deposits[p] = plot
-		return
-	if b.is_field():
-		var d := Deposit.new(b.def()["yield"], b.def()["crop"])
-		d.renews = true
-		d.farm = true
-		d.owner = b.owner
-		map.deposits[b.field_tile()] = d
 		return
 	match b.kind:
 		"town_center", "storehouse", "settlement", "city_center":
@@ -1005,8 +998,6 @@ func _remove_building(b: Building) -> void:
 	if b.has_plots():
 		for p in b.plot_tiles():
 			map.deposits.erase(p)
-	elif b.is_field():
-		map.deposits.erase(b.field_tile())
 	for u in units:
 		if u.target_building == b:
 			u.target_building = null
@@ -1670,6 +1661,30 @@ func _retarget(u: Unit) -> bool:
 	return best.x >= 0 and orders.gather(u, best)
 
 
+## A herd moves a step now and then, but never farther than Defs.HERD_RANGE from where it started, and not
+## while somebody is hunting it.
+func _graze(p: Vector2i, d: Deposit, delta: float) -> void:
+	d.move_t -= delta
+	if d.move_t > 0.0:
+		return
+	d.move_t = Defs.HERD_MOVE_EVERY * randf_range(0.6, 1.4)
+	for u: Unit in units:
+		if (u.state == Unit.State.GATHERING or u.state == Unit.State.GATHER_GO) and u.target_tile == p:
+			return
+	var options: Array[Vector2i] = []
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var q := p + Vector2i(dx, dy)
+			if q != p and Vector2(q).distance_to(Vector2(d.home)) <= Defs.HERD_RANGE and map.can_graze(q) and placement.building_at(q) == null:
+				options.append(q)
+	if options.is_empty():
+		return
+	var to: Vector2i = options[randi() % options.size()]
+	map.deposits.erase(p)
+	map.deposits[to] = d
+	map.herds[map.herds.find(p)] = to
+
+
 ## Herds breed: while enough of one is left it grows back, slowly, up to a limit. One hunted to nothing is gone.
 func _update_herds(delta: float) -> void:
 	for p: Vector2i in map.herds.duplicate():
@@ -1677,6 +1692,7 @@ func _update_herds(delta: float) -> void:
 		if d == null or not d.herd:
 			map.herds.erase(p)
 			continue
+		_graze(p, d, delta)
 		if d.amount >= int(float(d.max_amount) * Defs.HERD_BREED_MIN) and d.amount < d.max_amount:
 			d.regrow += delta
 			if d.regrow >= Defs.HERD_BREED_EVERY:
@@ -1703,27 +1719,10 @@ func _update_plots(b: Building, delta: float) -> void:
 				d.amount = d.max_amount
 
 
-func _update_farm(b: Building, delta: float) -> void:
-	var d: Deposit = map.deposits.get(b.field_tile())
-	if d == null:
-		return
-	if d.amount <= 0:
-		b.regrow += delta
-		if b.regrow >= float(b.def()["regrow"]):
-			b.regrow = 0.0
-			d.amount = d.max_amount
-	var frac := float(d.amount) / d.max_amount
-	b.stage = 0 if frac >= 0.66 else (1 if frac >= 0.33 else (2 if d.amount > 0 else 3))
-
-
 func _update_building(b: Building, delta: float) -> void:
 	if b.has_plots():
 		if b.complete:
 			_update_plots(b, delta)
-		return
-	if b.is_field():
-		if b.complete:
-			_update_farm(b, delta)
 		return
 	if not b.complete or b.train_queue.is_empty():
 		return

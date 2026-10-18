@@ -246,8 +246,8 @@ in `src/map/`) is different: it is per-player simulation state (`Main.fogs`, by 
   era, army, how much of the map it has explored, and the kills, every 150 game seconds. This is how AI changes
   are judged: there is no pass/fail, so read the numbers.
 - `just settlement-test`: a Settlement absorbing citizens, growing into a Town Center at 15 and a City Center at 30, and refusing more than 50.
-- `just farm-test`: a 9x9 farm's eight plots round a granary, three villagers to a plot, bare plots growing only while tended, food reaching the granary, a Large Farm at 8 citizens.
-- `just herd-test`: the sparse start (a couple of berry bushes, herds, no gold or stone by the town) and herds breeding, capping and being hunted out.
+- `just farm-test`: a 9x9 farm's eight plots round a granary, one villager to a plot, bare plots growing only while tended, food reaching the granary, a Large Farm at 8 citizens.
+- `just herd-test`: the sparse start (a couple of berry bushes, herds, no gold or stone by the town) herds wandering within their range, breeding, capping and being hunted out, and gold spread thinly.
 - `just net-test`: the lobby, host and client in two processes.
 - `--report` (see the justfile): runs a game headless and dumps the state, which is how AI behavior is
   checked.

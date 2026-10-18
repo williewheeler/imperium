@@ -381,11 +381,9 @@ func _build_chunk(c: Vector2i) -> void:
 				GameMap.Terrain.MOUNTAIN:
 					list.append(_sprite("mountain:%d" % int(Pixel.hash2(x, y, 70) * 4.0), Iso.to_screen_on(Vector2(x + 1, y + 1), Iso.level_of(p))))
 			var d: Deposit = map.deposits.get(p)
-			if d != null and d.kind != Defs.Res.WOOD and not d.farm:  # trees are the forest tile's own sprites; a field draws its own crop
+			if d != null and d.kind != Defs.Res.WOOD and not d.farm and not d.herd:  # trees are the forest tile's own sprites; a farm draws its own crops; herds move, so they have nodes of their own
 				var key := "berries"
-				if d.herd:
-					key = "herd:%d" % _herd_size(d)
-				elif d.kind == Defs.Res.STONE:
+				if d.kind == Defs.Res.STONE:
 					key = "stone:%d" % int(Pixel.hash2(x, y, 80) * 2.0)
 				elif d.kind == Defs.Res.GOLD:
 					key = "gold:%d" % int(Pixel.hash2(x, y, 81) * 2.0)
@@ -507,11 +505,38 @@ func _process(delta: float) -> void:
 		if not game.map.deposits.has(p):
 			_deposit_nodes[p].queue_free()
 			_deposit_nodes.erase(p)
-		elif game.map.deposits[p].herd and is_instance_valid(_deposit_nodes[p]):  # a herd shows fewer animals as it is hunted
-			var n := _herd_size(game.map.deposits[p])
-			if _deposit_nodes[p].get_meta("herd_n", -1) != n:
-				_deposit_nodes[p].set_meta("herd_n", n)
-				_deposit_nodes[p].texture = Art.tex("herd:%d" % n)
+	_update_herd_views(delta)
+
+
+var _herd_nodes := {}  # Deposit -> Sprite2D: a herd moves, so it has a node of its own, not a tile's
+
+
+## Draws the herds: each walks, rather than jumps, to the next tile it grazes, and shows fewer animals as it is hunted.
+func _update_herd_views(delta: float) -> void:
+	var live := {}
+	for p: Vector2i in game.map.herds:
+		var d: Deposit = game.map.deposits.get(p)
+		if d == null:
+			continue
+		live[d] = true
+		var target := Iso.to_screen_on(Vector2(p) + Vector2(0.5, 0.5), Iso.level_of(p)) + Vector2(0, 4)
+		var n := _herd_size(d)
+		var node: Sprite2D = _herd_nodes.get(d)
+		if node == null or not is_instance_valid(node):
+			node = _sprite("herd:%d" % n, target)
+			node.set_meta("herd_n", n)
+			_herd_nodes[d] = node
+		else:
+			node.position = node.position.lerp(target, 1.0 - exp(-delta * 1.5)).round()
+		if node.get_meta("herd_n", -1) != n:
+			node.set_meta("herd_n", n)
+			node.texture = Art.tex("herd:%d" % n)
+		node.visible = game.spectating or game.fog.is_explored(p)
+	for d: Deposit in _herd_nodes.keys():
+		if not live.has(d):
+			if is_instance_valid(_herd_nodes[d]):
+				_herd_nodes[d].queue_free()
+			_herd_nodes.erase(d)
 
 
 ## How many animals to draw for a herd, one to four.
