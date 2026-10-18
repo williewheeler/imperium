@@ -61,25 +61,34 @@ reads its state to draw it.
 *The key is in the picture. The client is `Views` (the world, the minimap, the HUD's readouts) and `Controls` (the mouse
 and keys, which `Person` handles, and the buttons); yellow boxes are proposed, not built.*
 
-**The two channels and the command queue (proposed).** The client should not know whether the simulation is in the same
-process. Between client and host there would be two channels side by side, each an in-process queue or `NetSession`,
-and each **asynchronous**:
+**The end state (proposed; the picture above).** None of the yellow boxes exist yet. They are where the design is going:
 
-- the **command channel**, client to host: `Controls` make commands, the channel carries them, and a *command receiver*
-  on the host takes them off and gives them to the simulation's command interface;
-- the **view channel**, host to client: a *view publisher* puts what the views need on the channel (today the
-  simulation's signals; later state, or for lockstep, where every machine runs its own copy, the ordered commands of
-  all the players). The `Views` read it. Today they read the `Simulation` directly, which only works in one process.
+- **A headless client per player, human or AI.** It holds the player's fog-filtered model of the world and takes their
+  commands. The human UI (`Views` and `Controls`, with `Person` as the thing that handles the mouse and keys) is a
+  front end wrapped round it, and an AI is another. So a human and an AI see and do exactly the same things, and
+  neither can look at the real state. (Today the AIs read `Simulation.units` and the like directly, and only
+  discipline keeps them to their own fog.)
+- **Two asynchronous channels between client and host**, each an in-process queue or `NetSession`: the **command
+  channel** (client to host) and the **view channel** (host to client). On the host a *command receiver* takes commands
+  off the first, and a *view publisher* sends each player what it may see, from the game state, on the second.
+- **A command interface and queue in the simulation.** Commands from every player enter through the interface, which is
+  the only thing that writes to the queue. The queue is drained at the start of each tick, in order. That is where an
+  inherently asynchronous transport meets a simulation that consumes input at fixed ticks.
+- **The game loop is the heart.** Each tick (one step of the *tick driver*, which turns wall-clock time into ticks): apply
+  the drained commands to the **game state**; run the **game systems** over the state, which is what makes the world
+  move with nobody issuing anything (a fire burns down, a dog walks towards its goal); and let the state publish
+  what changed. The clock reaches the world through the loop, and commands reach it through the drain.
+- **Recorder and Replayer are tools, not part of the core.** The Recorder taps the drain and writes down what came out
+  of it. The Replayer plays a recording in place of the queue, so it bypasses the interface and the validation. What is
+  recorded is what the world was told from outside the loop (here, the commands, which keeps recording compatible with
+  lockstep, where machines exchange commands); everything inside the loop, such as a gatherer picking a new tree or a
+  path being worked out, is recomputed, not recorded.
 
-The simulation's **command interface** is the one way in, and everything that gives the simulation commands goes through
-it: the command receiver, the AIs and `Replayer` (the AIs submit to the simulation, not to a transport). Behind the
-interface is a **command queue**, written only by the interface, and drained at the start of each tick, in order, into
-`Commands` (validate, pay, apply). That is what lets an inherently asynchronous transport meet a simulation that
-consumes input at fixed ticks, gives one deterministic order, one place to record, and room to batch commands later.
-
-The cost is that `submit` stops answering at once ("err.cant_afford" is flashed in the same frame today). The `Controls`
-would show a refusal when it arrives; the AIs, whose `buy` logic reads the answer, would need either late answers or a
-synchronous "would this be allowed?" check beside the queued submit. Nothing of this is built.
+Two consequences. A command no longer gets an answer at once ("err.cant_afford" is flashed in the same frame today), so
+the `Controls` show a refusal when it comes back and the AIs, whose `buy` logic reads the answer, need late answers or a
+synchronous "would this be allowed?" check. And for a game to stay the same game from the same seed, the host has to
+deliver each tick's update to every client and collect their commands in a fixed order (by player), inside the tick
+boundary; the cost is that an AI reacts a tick late.
 
 ## Players, drivers and commands  (**built**)
 
