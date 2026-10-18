@@ -110,7 +110,7 @@ func see() -> void:
 	var sources := []
 	for u: Unit in game.units:
 		if u.owner == owner:
-			sources.append([u.pos, game.VILLAGER_SIGHT + game._height_sight(u.pos)])
+			sources.append([u.pos, float(Defs.UNITS[u.kind].get("sight", game.VILLAGER_SIGHT)) + game._height_sight(u.pos)])
 	for b: Building in game.buildings:
 		if b.owner == owner:
 			sources.append([b.center(), (b.def()["sight"] if b.complete else game.FOUNDATION_SIGHT) + game._height_sight(b.center())])
@@ -216,6 +216,15 @@ func army() -> Array[Unit]:
 	var out: Array[Unit] = []
 	for u: Unit in game.units:
 		if u.owner == owner and Combat.fights(u):
+			out.append(u)
+	return out
+
+
+## Its dogs (scouts).
+func dogs() -> Array[Unit]:
+	var out: Array[Unit] = []
+	for u: Unit in game.units:
+		if u.owner == owner and u.kind == "dog" and not u.dead:
 			out.append(u)
 	return out
 

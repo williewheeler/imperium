@@ -44,6 +44,7 @@ var levels := PackedByteArray()  # per tile terrace: 0 (shore and plains) up to 
 var relief := PackedByteArray()  # per tile light on the ground from the top-left: 128 flat, brighter when facing the light
 var slope_factor := PackedFloat32Array()  # per tile walking-cost multiplier from steepness (1.0 = flat)
 var deposits := {}  # Vector2i -> Deposit
+var astar_rough: AStarGrid2D  # built the first time a dog needs a route (see find_path_rough)
 var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 2 paved road
 var wear := PackedFloat32Array()  # distance walked over each tile so far
 var astar := AStarGrid2D.new()
@@ -483,6 +484,36 @@ func elevation_at(pos: Vector2) -> float:
 	return elevation[clampi(p.y, 0, h - 1) * w + clampi(p.x, 0, w - 1)] if in_bounds(p) else SEA_LEVEL
 
 
+## Marks a tile solid (or open) for every grid that is kept.
+func _set_solid_at(p: Vector2i, solid: bool) -> void:
+	astar.set_point_solid(p, solid)
+	if astar_rough != null:
+		astar_rough.set_point_solid(p, solid)
+
+
+## A route for a walker that terrain does not slow (a dog): the same obstacles, but every open tile costs the same.
+func find_path_rough(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	if astar_rough == null:
+		astar_rough = AStarGrid2D.new()
+		astar_rough.region = Rect2i(0, 0, w, h)
+		astar_rough.cell_size = Vector2.ONE
+		astar_rough.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+		astar_rough.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+		astar_rough.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+		astar_rough.update()
+		for y in h:
+			for x in w:
+				if astar.is_point_solid(Vector2i(x, y)):
+					astar_rough.set_point_solid(Vector2i(x, y), true)
+	if not is_walkable(from):
+		return []
+	if not is_walkable(to):
+		to = nearest_walkable(to)
+		if to.x < 0:
+			return []
+	return astar_rough.get_id_path(from, to)
+
+
 func _build_nav() -> void:
 	astar.region = Rect2i(0, 0, w, h)
 	astar.cell_size = Vector2.ONE
@@ -494,7 +525,7 @@ func _build_nav() -> void:
 		for x in w:
 			var cost: float = MOVE_COST[tile(x, y)]
 			if is_inf(cost):
-				astar.set_point_solid(Vector2i(x, y), true)
+				_set_solid_at(Vector2i(x, y), true)
 			else:
 				astar.set_point_weight_scale(Vector2i(x, y), cost * slope_factor[y * w + x])
 
@@ -589,7 +620,7 @@ func is_free_land(p: Vector2i) -> bool:
 func set_solid(rect: Rect2i, solid: bool) -> void:
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
-			astar.set_point_solid(Vector2i(x, y), solid)
+			_set_solid_at(Vector2i(x, y), solid)
 
 
 ## Removes a depleted deposit. Returns true if the terrain under it changed (felled forest).
@@ -599,7 +630,7 @@ func remove_deposit(p: Vector2i) -> bool:
 		tiles[p.y * w + p.x] = Terrain.GRASS
 		astar.set_point_weight_scale(p, MOVE_COST[Terrain.GRASS] * slope_factor[p.y * w + p.x])
 		return true
-	astar.set_point_solid(p, MOVE_COST[tile(p.x, p.y)] == INF)
+	_set_solid_at(p, MOVE_COST[tile(p.x, p.y)] == INF)
 	return false
 
 
@@ -806,7 +837,7 @@ func _place_cluster(rng: RandomNumberGenerator, center: Vector2i, min_r: float, 
 		if _site_ok(p, kind):
 			deposits[p] = Deposit.new(kind, Defs.DEPOSIT_AMOUNT[kind])
 			if kind != Defs.Res.FOOD:
-				astar.set_point_solid(p, true)  # mines are obstacles; gatherers stand beside them
+				_set_solid_at(p, true)  # mines are obstacles; gatherers stand beside them
 			placed += 1
 	return placed > 0
 

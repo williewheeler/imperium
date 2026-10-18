@@ -76,7 +76,7 @@ func update_view() -> void:
 	_body.texture = Art.tex(key)
 	_body.flip_h = flip
 	var w := _body.texture.get_width()
-	var feet := Art.HORSE_FEET if unit.kind == "horseman" else Art.VILLAGER_FEET
+	var feet := Art.HORSE_FEET if unit.kind == "horseman" else (Art.DOG_FEET if unit.kind == "dog" else Art.VILLAGER_FEET)
 	_body.offset = Vector2(-(w - feet.x) if flip else -feet.x, -feet.y)
 	_body.position = _lunge() if fighting else Vector2.ZERO
 	var glow := 1.0 + unit.hit_flash * 1.4  # a flash of white when hurt

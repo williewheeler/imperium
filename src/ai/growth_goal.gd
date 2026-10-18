@@ -54,7 +54,8 @@ func _build(hubs: Array[Building]) -> void:
 			queued += b.train_queue.size()
 	var headroom := ai.game.pop_cap(ai.owner) - ai.game.pop_used(ai.owner) - queued
 	var home := hubs[_round % hubs.size()]
-	if headroom < maxi(6, ai.game.pop_cap(ai.owner) / 8) or ai.need_housing:  # keep a tenth or so free: an army fills it fast
+	var capped := ai.game.pop_cap(ai.owner) >= ai.game.pop_limit()  # no more houses will help
+	if not capped and (headroom < maxi(6, ai.game.pop_cap(ai.owner) / 8) or ai.need_housing):  # keep a tenth or so free: an army fills it fast
 		_round += 1
 		_house(home)
 		return

@@ -96,7 +96,7 @@ func _set_path_inner(u: Unit, goal: Vector2i) -> bool:
 	var from := Vector2i(u.pos)
 	if not game.map.is_walkable(from):  # shoved against an obstacle: start from the nearest open tile
 		from = game.map.nearest_walkable(from)
-	var ids := game.map.find_path(from, goal)
+	var ids: Array[Vector2i] = game.map.find_path_rough(from, goal) if Defs.UNITS[u.kind].get("rough", false) else game.map.find_path(from, goal)
 	if ids.is_empty():
 		return false
 	var path: Array[Vector2] = []

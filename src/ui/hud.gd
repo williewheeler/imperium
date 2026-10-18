@@ -265,7 +265,7 @@ func refresh() -> void:
 		_res_icons[i].tooltip_text = tip
 	var pop: int = _game.pop_used()
 	var cap: int = _game.pop_cap()
-	var pop_tip := "Populus (population): %d of %d villagers (build Casae and Domus to raise the limit)" % [pop, cap]
+	var pop_tip := "Populus (population): %d of %d people (build Casae and Domus to raise the limit; no one may have more than %d, the game's %d shared out between the peoples)" % [pop, cap, _game.pop_limit(), Defs.POP_LIMIT]
 	_say(_pop_label, "%d/%d" % [pop, cap], pop_tip)
 	_res_icons[4].tooltip_text = pop_tip
 

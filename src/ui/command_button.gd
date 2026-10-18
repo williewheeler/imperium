@@ -2,7 +2,7 @@ class_name CommandButton
 extends Button
 ## A square command icon with a short Latin caption and its cost. Hover for the English tooltip.
 
-const UNIT_ICONS := ["villager", "soldier", "spearman", "slinger", "horseman"]
+const UNIT_ICONS := ["villager", "soldier", "spearman", "slinger", "horseman", "dog"]
 const GOLD := Color("e8c766")
 const CREAM := Color("f3e6c4")
 const FILL := {

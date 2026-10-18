@@ -16,6 +16,7 @@ const CARRY_CAP := 15
 const START_STOCK := [300, 200, 100, 50]
 const VILLAGER_COST := [0, 50, 0, 0]
 const VILLAGER_TRAIN_TIME := 8.0
+const DOG_COST := [0, 30, 0, 0]
 const SOLDIER_COST := [30, 50, 0, 0]
 const SOLDIER_TRAIN_TIME := 12.0
 
@@ -35,6 +36,9 @@ const HORSEMAN_COST := [0, 70, 0, 40]
 const UNITS := {
 	"villager": {"name": "Colonus", "english": "Villager", "cost": VILLAGER_COST, "time": VILLAGER_TRAIN_TIME,
 		"hp": 25, "attack": 0.0, "cooldown": 1.0, "range": 0.0, "armor": [0.0, 0.0], "bonus": {}, "speed": 1.0},
+	"dog": {"name": "Canis", "english": "Dog", "cost": DOG_COST, "time": 10.0,
+		"hp": 22, "attack": 0.0, "cooldown": 1.0, "range": 0.0, "armor": [0.0, 0.0], "bonus": {}, "speed": 2.6, "sight": 9.0, "rough": true,
+		"about": "A fast, fragile scout: it cannot fight or work. Forest, marsh and hills do not slow it, but it cannot cross water or mountains."},
 	"soldier": {"name": "Miles Gravis", "english": "Heavy Infantry", "cost": SOLDIER_COST, "time": SOLDIER_TRAIN_TIME,
 		"hp": 80, "attack": 9.0, "cooldown": 1.1, "range": 0.0, "armor": [0.30, 0.10], "bonus": {"villager": 1.5, "spearman": 1.4}, "speed": 0.8,
 		"about": "Armored and sturdy. Crushes spearmen and villagers, but slingers wear it down from afar."},
@@ -58,6 +62,7 @@ const SIEGE := {"soldier": 0.6, "spearman": 0.35, "slinger": 0.2, "horseman": 0.
 # Towns grow by taking in citizens. A villager sent into a Settlement, Town Center or City Center is absorbed for
 # good (the building counts how many, up to CITIZENS_MAX). A Settlement takes every resource but cannot make
 # villagers; at GROWTH[kind][0] citizens it becomes the next kind. HUBS take resources in; TOWNS also make villagers.
+const POP_LIMIT := 1200  # the most units in the whole game: each player may have an equal share (300 of 4)
 const CITIZENS_MAX := 50
 const GROWTH := {"settlement": [15, "town_center"], "town_center": [30, "city_center"]}
 const HUBS := ["settlement", "town_center", "city_center"]
@@ -137,7 +142,7 @@ const ROAD_ERA := 1  # paved roads are Era II (the Via Appia dates from 312 BC)
 const BUILDINGS := {
 	"town_center": {
 		"name": "Forum", "acc": "Forum", "english": "Town Center", "done": "perfectum est", "ready": "Paratum",
-		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": ["villager"],
+		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": ["villager", "dog"],
 		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3], "pop": 10, "absorbs": true, "upgrade_only": true,
 		"early": {"name": "Casa Romuli", "acc": "Casam Romuli", "english": "Hut of Romulus", "look": "regia", "done": "perfecta est", "ready": "Parata"},
 	},
@@ -149,7 +154,7 @@ const BUILDINGS := {
 	},
 	"city_center": {
 		"name": "Civitas", "acc": "Civitatem", "english": "City Center", "done": "perfecta est", "ready": "Parata",
-		"size": Vector2i(3, 3), "cost": [0, 0, 0, 0], "trains": ["villager"], "absorbs": true, "upgrade_only": true,
+		"size": Vector2i(3, 3), "cost": [0, 0, 0, 0], "trains": ["villager", "dog"], "absorbs": true, "upgrade_only": true,
 		"build_time": 40.0, "sight": 12.0, "accepts": [0, 1, 2, 3], "pop": 20,
 	},
 	"hut": {

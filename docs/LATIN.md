@@ -56,6 +56,7 @@ with slings. Each fighting kind has three looks (tunic color, how much armor). S
 | Latin | English | Notes |
 |---|---|---|
 | Colonus (pl. *coloni*) | Villager | men and women alike. A *colonus* is a settler or farmer |
+| Canis | Dog | a fast scout trained at a Town Center: it cannot fight or work, is not slowed by forest, marsh or hills, and cannot cross water or mountains |
 | Eques (pl. *equites*) | Horseman | the wealthy, who could afford a horse. Trained at the Stabulum. The kings' cavalry were traditionally the *celeres* |
 | Miles Gravis (pl. *milites graves*) | Heavy infantry | helmet, breastplate, round shield, spear. *Miles* is the ordinary word for a soldier; "gravis" (heavy-armed) is the game's label, not an attested unit name |
 | Pedes | Spearman | a foot soldier with a shield and spear but no armor. *Pedes* is singular and plural alike |

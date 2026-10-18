@@ -902,7 +902,16 @@ func pop_cap(owner := 0) -> int:
 	for b in buildings:
 		if b.complete and b.owner == owner:
 			cap += b.def()["pop"]
-	return cap
+	return mini(cap, pop_limit())
+
+
+## The most people one player may have: the game's whole limit split between the peoples playing.
+func pop_limit() -> int:
+	var playing := 0
+	for s in stocks:
+		if s != null:
+			playing += 1
+	return Defs.POP_LIMIT / maxi(1, playing)
 
 
 ## Population in use: everyone except units that are only there for show.
@@ -1286,7 +1295,7 @@ func _update_fog() -> void:
 	var sources := []
 	for u in units:
 		if u.owner == 0:  # an AI's people see for themselves, not for us
-			sources.append([u.pos, VILLAGER_SIGHT + _height_sight(u.pos)])
+			sources.append([u.pos, float(Defs.UNITS[u.kind].get("sight", VILLAGER_SIGHT)) + _height_sight(u.pos)])
 	for b in buildings:
 		if b.owner == 0:
 			sources.append([b.center(), (b.def()["sight"] if b.complete else FOUNDATION_SIGHT) + _height_sight(b.center())])
@@ -1484,6 +1493,8 @@ func select_only_kind(kind: String) -> void:
 
 
 func _walk_speed(u: Unit, cost: float) -> float:
+	if Defs.UNITS[u.kind].get("rough", false):  # a dog is not slowed by forest, marsh or hills
+		return VILLAGER_SPEED * float(Defs.UNITS[u.kind].get("speed", 1.0))
 	if u.kind == "horseman":
 		return minf(VILLAGER_SPEED * HORSE_SPEED_FACTOR / (cost * cost), HORSE_MAX_SPEED)
 	return VILLAGER_SPEED * float(Defs.UNITS[u.kind].get("speed", 1.0)) / cost

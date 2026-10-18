@@ -35,6 +35,7 @@ const VILLAGER_FRAMES := {"idle": 2, "walk": 6, "chop": 6, "mine": 6, "forage": 
 const ATTACK_FRAMES := 4
 const UNIT_LOOKS := {"soldier": 3, "spearman": 3, "slinger": 3, "horseman": 3}
 const HORSE_FEET := Vector2(18, 31)
+const DOG_FEET := Vector2(11, 14)
 ## Where the villager's feet are inside each villager image (for anchoring).
 const VILLAGER_FEET := Vector2(11, 20)
 
@@ -160,6 +161,8 @@ static func image(key: String) -> Image:
 			return _villager(parts[1], parts[2] == "b", int(parts[3]), "female")
 		"soldier", "spearman", "slinger":  # <kind>:<anim>:<f|b>:<frame>[:<look>]
 			return _villager(parts[1], parts[2] == "b", int(parts[3]), parts[0], int(parts[4]) if parts.size() > 4 else 0)
+		"dog":  # dog:<anim>:<f|b>:<frame>; the dog always faces right
+			return _dog(parts[1], int(parts[3]))
 		"horseman":  # horseman:<anim>:<f|b>:<frame>[:<look>]; the horse always faces right
 			return _horseman(parts[1], int(parts[3]), int(parts[4]) if parts.size() > 4 else 0)
 		"stabulum":
@@ -1462,6 +1465,37 @@ const HORSE_COATS := [
 
 ## A horseman (an eques: the wealthiest citizens fought mounted, on their own horses). The horse
 ## is drawn side-on, always facing right; the game mirrors it for left. 36x34, hooves on the bottom.
+## A dog, seen from the side and facing right: a lean tawny body, a pricked ear, a curled tail and four legs
+## that run when it walks (6 frames) and a tail that wags when it stands (2 frames). 22x16.
+static func _dog(anim: String, frame: int) -> Image:
+	var img := Pixel.blank(24, 16)
+	var coat := [Color("e0b878"), Color("c0904c"), Color("8c6430"), Color("5a3e1c")]
+	var walking := anim == "walk"
+	var ph := float(frame) / float(VILLAGER_FRAMES["walk"]) if walking else 0.0
+	var bob := (-1 if absf(sin(ph * TAU * 2.0)) < 0.4 else 0) if walking else 0
+	var cy := 7.0 + bob
+	# far legs, then the tail, the body, the near legs, neck and head
+	for pair in [[16.0, 0.5, true], [6.0, 0.0, true], [14.0, 0.0, false], [8.0, 0.5, false]]:
+		var x: float = pair[0]
+		var swing := sin((ph + float(pair[1])) * TAU) * 3.0 if walking else 0.0
+		var col: Color = coat[2] if pair[2] else coat[1]
+		Pixel.line(img, Vector2i(int(x), int(cy) + 2), Vector2i(int(x + swing), 14), col)
+		Pixel.put(img, int(x + swing), 14, coat[3])  # a paw
+		Pixel.put(img, int(x + swing) + 1, 14, coat[3])
+	var wag := (1 if frame % 2 == 1 else 0) if not walking else int(sin(ph * TAU * 2.0) * 1.2)
+	Pixel.line(img, Vector2i(5, int(cy) - 1), Vector2i(2, int(cy) - 5 + wag), coat[1])  # the tail, carried up
+	Pixel.line(img, Vector2i(5, int(cy)), Vector2i(3, int(cy) - 4 + wag), coat[1])
+	Pixel.put(img, 2, int(cy) - 6 + wag, coat[0])
+	Pixel.poly(img, [Vector2(5.0, cy - 2.5), Vector2(16.0, cy - 3.0), Vector2(18.0, cy), Vector2(16.0, cy + 2.5), Vector2(6.0, cy + 2.5), Vector2(4.0, cy)], func(x: int, y: int) -> Color:
+		return Pixel.ramp(coat, 0.72 - (y - (cy - 3.0)) / 8.0 - (x - 5.0) / 60.0 + (Pixel.hash2(x, y, 5) - 0.5) * 0.12, x, y, 0.2))
+	Pixel.poly(img, [Vector2(15.0, cy - 3.0), Vector2(17.0, cy - 5.5), Vector2(19.5, cy - 4.5), Vector2(17.0, cy - 0.5)], coat[1])  # the neck
+	Pixel.poly(img, [Vector2(17.0, cy - 6.5), Vector2(20.0, cy - 6.5), Vector2(23.5, cy - 3.5), Vector2(23.5, cy - 2.5), Vector2(20.0, cy - 1.5), Vector2(17.0, cy - 2.5)], coat[0])  # the head and a long snout
+	Pixel.put(img, 22, int(cy) - 4, Color("2a1a10"))  # the nose
+	Pixel.put(img, 19, int(cy) - 5, Color("2a1a10"))  # the eye
+	Pixel.poly(img, [Vector2(17.0, cy - 6.5), Vector2(18.0, cy - 9.5), Vector2(19.5, cy - 6.5)], coat[2])  # a pointed ear
+	return Pixel.outlined(img, OUT_VILLAGER)
+
+
 static func _horseman(anim: String, frame: int, look: int) -> Image:
 	var coat: Array = HORSE_COATS[look % 3]
 	var mane := WOOD[2] if look != 2 else Color("6a6458")
