@@ -19,7 +19,7 @@ in the code, or marked as not built.
 | `src/sim/` | **The simulation**: everything that decides what happens, and nothing that shows it. No scene, no window, no input, no clock. At the top, `Simulation` (the game loop, `step()`, and the owner of the parts) and `SimConfig` (the choices that shape a game). |
 | `src/sim/state/` | The **game state**, inert data: `Unit`, `Building`, `Deposit`, `GameMap` and `TerrainGen` (the ground), `Fog` (what each people has seen), and `Defs` (the rules' tables). |
 | `src/sim/systems/` | The **game systems**, which act on the state: `Commands`, `Orders`, `Movement` (with `UnitGrid`), `Economy`, `Production`, `Eras`, `Vision`, `Wildlife`, `UnitBehavior`, `Combat`, `Placement`, `Roads`, `Victory`, `WorldSetup`. |
-| `src/client/` | The **headless client**: `HeadlessClient` (a player's side of the game with no screen: what it knows and a way to act), `PlayerView` (the fog-filtered model: what the player may know, and the news that concerns it), `UnitInfo` and `BuildingInfo` (a unit or building as the client knows it: kept up to date, carrying the client's own marks, selection included). A *god* view (`PlayerView.god`) knows everything, for a spectator. |
+| `src/client/` | The **headless client**: `HeadlessClient` (a player's end of the queues, with no screen: a way to act, and the latest view), `PlayerView` (that view, and questions about it: what the player may know, and the news that concerns it), `UnitInfo` and `BuildingInfo` (a unit or building as the client knows it: kept up to date, carrying the client's own marks, selection included). A *god* view (`PlayerView.god`) knows everything, for a spectator. |
 | `src/ai/` | The computer players: `AI` and one class per goal. They read the game only through a `PlayerView` and act only through a `HeadlessClient`. See *The AIs*. |
 | `src/replay/` | `Replay` (the file), `Recorder`, `Replayer`. See *Headless play and replays*. |
 | `src/ui/` | **The UI, for humans only**: the HUD, menus, lobby, title and opening scroll. Nothing under `src/ui/` names the simulation (`tools/check_members.py` fails if it does): it reads `game.view` and acts through `game.client`. |
@@ -66,8 +66,8 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 
 - **A headless client per player, human or AI.** It is the player's end of the queues: it sends their commands, holds the latest view it was sent (already
   filtered by the step) and answers questions about it. A human's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
-  and keys) are wrapped round it. Each AI has a client of its own, the same class, in the AIs' part of the picture. Each client attaches to its
-  the queues. So a human and an AI see and do exactly the same things, and
+  and keys) are wrapped round it. Each AI has a client of its own, the same class, in the AIs' part of the picture. Each client attaches to the
+  queues. So a human and an AI see and do exactly the same things, and
   neither can look at the real state. (Today the AIs read `Simulation.units` and the like directly, and only
   discipline keeps them to their own fog.)
 - **The AIs run in the host**, in the game server's process, as they do now: in principle an AI could run elsewhere and
