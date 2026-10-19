@@ -12,6 +12,7 @@ var host: Host  # the one simulation, and the AIs that run beside it (null on a 
 var sim: Simulation  # (the host's; null on a remote player's machine, which has only its client)
 var remote := false  # a multiplayer game, and this is not the host: the world is the host's, and this machine plays through the network
 var me := LOCAL  # the player at this keyboard: the first, unless this is a remote player's machine
+var _place_hints := 0  # how many times the hint about shift-clicking has been shown
 var net_play: NetPlay  # a multiplayer host: the network side of the game
 var client: HeadlessClient  # the player at this keyboard, with no screen of its own (null when spectating)
 var view: PlayerView  # what that player knows: everything the screen shows comes from here (when spectating: a view of the whole world)
@@ -232,7 +233,10 @@ func _ready() -> void:
 	hud.setup(self)
 	hud.build_requested.connect(func(kind: String) -> void:
 		person.placing = kind
-		person.cancel_road_mode())
+		person.cancel_road_mode()
+		if _place_hints < 3:  # (a reminder the first few times)
+			_place_hints += 1
+			hud.flash_key("msg.place_many"))
 	hud.road_requested.connect(person.start_road_mode)
 	weather.changed.connect(_on_weather_changed)
 	hud.advance_requested.connect(func() -> void: person.give({"type": "advance"}))

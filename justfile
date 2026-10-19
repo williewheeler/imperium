@@ -142,6 +142,14 @@ raze-test:
 person-test:
     {{godot}} --headless --path . --script tests/person_test.gd -- --nosplash --seed=42 --players=3 --map=continens --size=medium --terrain=temperate --resources=normal --difficulty=normal
 
+# Headless check of lining buildings up (shift-click) and of builders going to work when a depot is done
+build-queue-test:
+    {{godot}} --headless --path . --script tests/build_queue_test.gd
+
+# Headless check that iron can be mined and brought home
+iron-test:
+    {{godot}} --headless --path . --script tests/iron_test.gd
+
 # Headless check of the headless client: what a player's view shows, hides and lets it do
 view-test:
     {{godot}} --headless --path . --script tests/view_test.gd

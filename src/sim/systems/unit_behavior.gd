@@ -55,14 +55,17 @@ func update_unit(u: Unit, delta: float) -> void:
 		Unit.State.BUILD_GO:
 			if sim.movement.follow(u, delta):
 				var b := u.target_building
-				u.state = Unit.State.BUILDING if b != null and not b.complete else Unit.State.IDLE
+				if b != null and not b.complete:
+					u.state = Unit.State.BUILDING
+				else:
+					sim.orders.after_build(u, b)
 		Unit.State.ABSORB_GO:
 			if sim.movement.follow(u, delta):
 				sim.production.absorb(u)
 		Unit.State.BUILDING:
 			var b := u.target_building
 			if b.complete:
-				u.state = Unit.State.IDLE
+				sim.orders.after_build(u, b)
 			else:
 				sim.movement.face(u, b.center())
 				b.work += delta
@@ -70,4 +73,5 @@ func update_unit(u: Unit, delta: float) -> void:
 					b.complete = true
 					sim.production.on_complete(b)
 					sim.building_completed.emit(b)
+					sim.orders.after_build(u, b)
 

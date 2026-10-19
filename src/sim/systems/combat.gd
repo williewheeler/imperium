@@ -180,6 +180,7 @@ func order_attack_move(u: Unit, goal: Vector2i) -> void:
 
 ## Drops any fight (a move, stop or other order).
 static func clear(u: Unit) -> void:
+	u.build_queue.clear()  # (any new order puts the buildings lined up for it out of mind)
 	u.target = null
 	u.atk_building = null
 	u.amove = false

@@ -444,6 +444,8 @@ its frames. `FogView` draws the client's.
 - `just view-test`: the headless client: a player's view holds its own people and buildings and no one else's; ground it has not explored is closed to it (no deposits there, no building sites); another people's unit is seen only while in sight, and then as what it is and where it stands, not what it is doing; buildings on explored ground are known, not what they train; a command goes out in the client's own name and cannot order another people's unit; and an AI plays a game through it.
 - `just map-view-test`: the ground and fog a client is told of: exactly what it has explored, up to date where it sees, nothing of the rest, a map laid open
   told as a whole; and the rules on the client's picture (where buildings and roads may go, where a site is) give the engine's answers on what it sees.
+- `just build-queue-test`: buildings lined up with shift-click are built in the order they were put down, a plain order puts the line out of mind, and when a depot (a Settlement) is finished its builders all go to work the nearest resource it takes, no more than six to a deposit.
+- `just iron-test`: iron is found near the first town, a mine holds 5000, and iron is mined and brought home to the store like the other resources.
 - `just raze-test`: an army razes a building it has seen when no defenders are about, drops it for a defender who turns up and goes back to it after,
   and a building the person sent a man at is not dropped.
 - `just person-test`: the person's driver (selecting, ordering, the keys, the camera stopping at the edge of the map).

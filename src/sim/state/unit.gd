@@ -54,6 +54,7 @@ var gather_kind := -1  # Defs.Res being gathered
 var target_building: Building
 var carry_kind := -1
 var carry := 0
+var build_queue: Array[int] = []  # foundations still to be built after this one, by building number (shift-clicked buildings)
 var dropoff_only := false  # was sent to unload by hand: stand idle afterwards instead of resuming work
 var road_tile := Vector2i(-1, -1)  # the planned road tile this villager is laying
 var work_spot := Vector2i(-1, -1)  # the tile of its plot it stands on, when it works a farm plot

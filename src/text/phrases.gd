@@ -46,6 +46,7 @@ const TABLE := {
 	"msg.grew_farm": ["Ager auctus est.", "Your farm has grown into a Large Farm: richer plots."],
 	"msg.rain": ["Pluit.", "It begins to rain."],
 	"msg.storm": ["Tonat.", "A storm breaks: thunder and heavy rain."],
+	"msg.place_many": ["Preme Shift ad plura ponenda.", "Shift-click to put down several: your builders take them in turn."],
 	"msg.fog": ["Nebula oritur.", "Fog is rolling in."],
 	"msg.sun": ["Sol lucet.", "The sun shines."],
 	"msg.clouds": ["Caelum nubilum est.", "The sky clouds over."],

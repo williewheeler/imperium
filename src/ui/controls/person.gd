@@ -20,6 +20,7 @@ var absorb_mode := false  # the next left click on a town takes the selected vil
 var attack_move_mode := false  # the next left click sends the selected fighters there to fight on the way (key A)
 
 var _placing_ticket := 0  # the foundation just asked for, whose answer is awaited (the ghost stays up till then)
+var _place_tickets := {}  # ticket -> true if it was shift-clicked: the building mode stays up, to put down another
 var _drag_start := Vector2.ZERO
 var _road_dragging := false
 var _road_start := Vector2i.ZERO
@@ -327,10 +328,13 @@ func _send(cmd: Dictionary) -> int:
 
 
 func _on_answer(ticket: int, _cmd: Dictionary, err: String) -> void:
-	if ticket == _placing_ticket:
-		_placing_ticket = 0
-		if err == "" or err == "err.not_yet":
-			placing = ""  # (placed, or not to be)
+	if _place_tickets.has(ticket):
+		var keep: bool = _place_tickets[ticket]
+		_place_tickets.erase(ticket)
+		if ticket == _placing_ticket:
+			_placing_ticket = 0
+		if err == "err.not_yet" or (err == "" and not keep):
+			placing = ""  # (placed, and that was the last: or not to be)
 	if err != "":
 		main.hud.flash_key(err)
 
@@ -458,9 +462,13 @@ func try_place() -> void:
 	if main.replayer != null or main.autoplay:
 		main.hud.flash_key("err.not_allowed")
 		return
-	if _placing_ticket != 0:
+	var more := Input.is_key_pressed(KEY_SHIFT)  # shift-click: put this one down and go on to the next (the builders line them up and build them in turn)
+	if _placing_ticket != 0 and not more:
 		return  # the last click is not answered yet
-	_placing_ticket = _send({"type": "place", "kind": placing, "tile": placing_tile(), "units": ids(selected_workers())})
+	var ticket := _send({"type": "place", "kind": placing, "tile": placing_tile(), "units": ids(selected_workers()), "queue": more})
+	_place_tickets[ticket] = more
+	if not more:
+		_placing_ticket = ticket
 
 
 ## Train a `kind` of unit at the selected building: villagers at the Forum, fighting men at the Castra or Stabulum.

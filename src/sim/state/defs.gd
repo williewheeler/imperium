@@ -161,19 +161,19 @@ const BUILDINGS := {
 	"town_center": {
 		"name": "Forum", "acc": "Forum", "english": "Town Center", "done": "perfectum est", "ready": "Paratum",
 		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": ["villager", "dog"],
-		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3], "pop": 10, "absorbs": true, "upgrade_only": true,
+		"build_time": 40.0, "sight": 10.0, "accepts": [0, 1, 2, 3, 4], "pop": 10, "absorbs": true, "upgrade_only": true,
 		"early": {"name": "Casa Romuli", "acc": "Casam Romuli", "english": "Hut of Romulus", "look": "regia", "done": "perfecta est", "ready": "Parata"},
 	},
 	"settlement": {
 		"name": "Vicus", "acc": "Vicum", "english": "Settlement", "done": "perfectus est", "ready": "Paratus",
-		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "absorbs": true,
-		"build_time": 25.0, "sight": 8.0, "accepts": [0, 1, 2, 3], "pop": 5,
+		"size": Vector2i(3, 3), "cost": [150, 0, 0, 0], "absorbs": true,
+		"build_time": 25.0, "sight": 8.0, "accepts": [0, 1, 2, 3, 4], "pop": 5,
 		"about": "A village near the land you want to work. Takes every resource, but cannot make villagers: take 15 of them into it and it grows into a Town Center.",
 	},
 	"city_center": {
 		"name": "Civitas", "acc": "Civitatem", "english": "City Center", "done": "perfecta est", "ready": "Parata",
 		"size": Vector2i(3, 3), "cost": [0, 0, 0, 0], "trains": ["villager", "dog"], "absorbs": true, "upgrade_only": true,
-		"build_time": 40.0, "sight": 12.0, "accepts": [0, 1, 2, 3], "pop": 20,
+		"build_time": 40.0, "sight": 12.0, "accepts": [0, 1, 2, 3, 4], "pop": 20,
 	},
 	"dock": {
 		"name": "Portus", "acc": "Portum", "english": "Dock", "done": "perfectus est", "ready": "Paratus",
@@ -220,7 +220,7 @@ const BUILDINGS := {
 	"storehouse": {
 		"name": "Horreum", "acc": "Horreum", "english": "Storehouse", "done": "perfectum est", "ready": "Paratum",
 		"size": Vector2i(2, 2), "cost": [120, 0, 0, 0],
-		"build_time": 15.0, "sight": 5.0, "accepts": [0, 2, 3], "pop": 0,
+		"build_time": 15.0, "sight": 5.0, "accepts": [0, 2, 3, 4], "pop": 0,
 	},
 	"curia": {
 		"name": "Curia", "acc": "Curiam", "english": "Senate House", "done": "perfecta est", "ready": "Parata", "era": 1,
@@ -234,7 +234,7 @@ const BUILDINGS := {
 	},
 	"castra": {
 		"name": "Castra", "acc": "Castra", "english": "Barracks", "done": "perfecta sunt", "ready": "Parata",
-		"size": Vector2i(3, 3), "cost": [200, 0, 100, 0], "trains": ["soldier", "spearman", "slinger"],
+		"size": Vector2i(3, 3), "cost": [225, 0, 0, 0], "trains": ["soldier", "spearman", "slinger"],
 		"build_time": 35.0, "sight": 8.0, "accepts": [], "pop": 0,
 		# in the Kingdom the soldiers' base was the stockaded hilltop fortress
 		"early": {"name": "Arx", "acc": "Arcem", "english": "Citadel (Barracks)", "look": "arx", "done": "perfecta est", "ready": "Parata"},

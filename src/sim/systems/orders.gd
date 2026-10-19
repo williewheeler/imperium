@@ -125,6 +125,7 @@ func move(u: Unit, goal: Vector2i) -> void:
 ## Walk to `b` and hand over what the villager carries. If they were working, they then go back
 ## to it; otherwise they stand idle by the depot.
 func dropoff(u: Unit, b: Building) -> void:
+	u.build_queue.clear()
 	sim.roads.release(u)
 	var was_working := u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN]
 	var boat: bool = Defs.UNITS[u.kind].get("water", false)
@@ -138,6 +139,7 @@ func dropoff(u: Unit, b: Building) -> void:
 
 
 func gather(u: Unit, tile: Vector2i) -> bool:
+	u.build_queue.clear()
 	u.dropoff_only = false
 	sim.roads.release(u)
 	var d: Deposit = sim.state.map.deposits.get(tile)
@@ -257,7 +259,17 @@ func next_plot(u: Unit) -> bool:
 	return spot.x >= 0 and spot != u.target_tile and gather(u, spot)
 
 
-func build(u: Unit, b: Building) -> void:
+## Sends `u` to build `b`. If `queued` and it is busy building another foundation, `b` is lined up to be built after it (and what else is
+## lined up); any other order clears the line.
+func build(u: Unit, b: Building, queued := false) -> void:
+	if queued and u.state in [Unit.State.BUILD_GO, Unit.State.BUILDING] and u.target_building != null and not u.target_building.complete:
+		u.build_queue.append(b.id)
+		return
+	u.build_queue.clear()
+	_go_build(u, b)
+
+
+func _go_build(u: Unit, b: Building) -> void:
 	u.dropoff_only = false
 	sim.roads.release(u)
 	var stand := sim.state.map.stand_tile(b.rect(), u.pos)
@@ -279,3 +291,47 @@ func absorb(u: Unit, b: Building) -> void:
 		return
 	u.state = Unit.State.ABSORB_GO
 	u.target_building = b
+
+
+## `u` has no more to do at `b` (it is finished, or gone): on to the next building lined up for it, else, if `b` was a depot (a Settlement, a
+## Storehouse...), to work the nearest resource it takes, else it stands idle.
+func after_build(u: Unit, b: Building) -> void:
+	while not u.build_queue.is_empty():
+		var next := _foundation(u, u.build_queue.pop_front())
+		if next != null:
+			_go_build(u, next)
+			if u.state == Unit.State.BUILD_GO:
+				return
+	if b != null and b.complete and not b.has_plots() and not (b.def().get("accepts", []) as Array).is_empty() and not b.def().get("boats_only", false) and auto_gather(u, b):
+		return
+	u.state = Unit.State.IDLE
+
+
+func _foundation(u: Unit, id: int) -> Building:
+	for b: Building in sim.state.buildings:
+		if b.id == id:
+			return b if b.owner == u.owner and not b.complete else null
+	return null
+
+
+## Sends `u` to the nearest deposit (by the depot `b`) of a kind `b` takes, that its people have found and that has room for another worker: if the
+## nearest has six at work on it, the next. True if it went.
+func auto_gather(u: Unit, b: Building) -> bool:
+	var takes: Array = b.def()["accepts"]
+	var seen: Fog = sim.fog_of(u.owner)
+	var map := sim.state.map
+	var center := Vector2i(b.center())
+	for r in range(1, 17):
+		var found: Array[Vector2i] = []
+		for p in map.ring(center, r):
+			var d: Deposit = map.deposits.get(p)
+			if d == null or d.farm or d.fish or d.herd or d.amount <= 0 or not takes.has(d.kind) or not seen.is_explored(p):
+				continue
+			if workers_at(p, u) >= Defs.MAX_WORKERS:
+				continue
+			found.append(p)
+		found.sort_custom(func(a: Vector2i, c: Vector2i) -> bool: return Vector2(a).distance_squared_to(u.pos) < Vector2(c).distance_squared_to(u.pos))
+		for p in found:
+			if gather(u, p):
+				return true
+	return false

@@ -57,7 +57,7 @@ func _process(dt: float) -> bool:
 			_check("a City Center cannot be built directly", g.sim.commands.apply({"type": "place", "owner": 0, "kind": "city_center", "tile": spot, "units": []}), "err.not_allowed")
 			town = g.sim.add_building("settlement", spot, true, 0)
 			_check("a Settlement trains nobody", town.trains().is_empty(), true)
-			_check("but takes every resource", town.def()["accepts"], [0, 1, 2, 3])
+			_check("but takes every resource", town.def()["accepts"], [0, 1, 2, 3, 4])
 			var before := g.sim.economy.pop_used(0)
 			crowd = _spawn(g, 14, Vector2(spot) + Vector2(3.5, 1.5))
 			_check("the settlement is not full", g.sim.commands.apply({"type": "absorb", "owner": 0, "building": town.id, "units": _ids(crowd)}), "")

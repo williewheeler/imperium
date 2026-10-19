@@ -9,8 +9,8 @@ extends RefCounted
 ## Every command has `type` and `owner` (the player giving it). Units and buildings are named by `id`.
 ##
 ##   train        building, kind                  queue a `kind` of unit at a building
-##   place        kind, tile, units               lay a foundation; `units` go to build it
-##   build        building, units                 go and work on a foundation already there
+##   place        kind, tile, units, queue        lay a foundation; `units` go to build it (with `queue`, after the foundation they are building)
+##   build        building, units, queue          go and work on a foundation already there (with `queue`, after the one they are building)
 ##   gather       tile, units                     work the deposit (or field) on `tile`
 ##   dropoff      building, units                 go and unload at a depot
 ##   absorb       building, units                 villagers go into a Settlement or town for good (see Defs.GROWTH)
@@ -139,7 +139,7 @@ func _place(owner: int, cmd: Dictionary) -> String:
 	var b: Building = sim.add_building(kind, tile, false, owner)
 	for u in _units(owner, cmd):
 		if u.kind == "villager":
-			sim.orders.build(u, b)
+			sim.orders.build(u, b, bool(cmd.get("queue", false)))
 	return ""
 
 
@@ -147,7 +147,7 @@ func _build(owner: int, cmd: Dictionary) -> String:
 	var b := _building(owner, int(cmd.get("building", -1)))
 	if b == null:
 		return "err.not_allowed"
-	return _each(owner, cmd, func(u: Unit) -> void: sim.orders.build(u, b), true)
+	return _each(owner, cmd, func(u: Unit) -> void: sim.orders.build(u, b, bool(cmd.get("queue", false))), true)
 
 
 func _absorb(owner: int, cmd: Dictionary) -> String:
