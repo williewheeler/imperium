@@ -126,7 +126,7 @@ func update() -> void:
 	elif b != null:
 		_show_building(b)
 	elif _game.person.selected_deposit.x >= 0 and _game.view.deposit_at(_game.person.selected_deposit) != null:
-		_show_deposit(_game.view.deposit_at(_game.person.selected_deposit))
+		_show_deposit(_game.view.deposit_at(_game.person.selected_deposit), _game.person.selected_deposit)
 	else:
 		_show_portrait(null)
 		_text(_name, "Nihil electum", "Nothing selected")
@@ -243,10 +243,13 @@ func _show_building(b: Building) -> void:
 		_text(_state, def["ready"], "Ready")
 
 
-func _show_deposit(d: Deposit) -> void:
+func _show_deposit(d: Deposit, tile: Vector2i) -> void:
 	var res: String = Defs.RES_ENGLISH[d.kind].to_lower()
 	var key := "berries"
-	if d.herd:
+	var farm: BuildingInfo = _game.view.building_at(tile) if d.farm else null  # (a plot of a farm or a vineyard: it is part of the building it lies in)
+	if d.farm:
+		key = ("%s:0" % farm.kind.trim_prefix("large_")) if farm != null else "farm:0"
+	elif d.herd:
 		key = "herd:%d" % clampi(ceili(4.0 * float(d.amount) / float(maxi(1, d.max_amount))), 1, 4)
 	elif d.kind == Defs.Res.STONE:
 		key = "stone:0"
@@ -257,7 +260,10 @@ func _show_deposit(d: Deposit) -> void:
 	elif d.kind == Defs.Res.WOOD:
 		key = "oak:0"
 	_show_portrait(Art.tex(key))
-	if d.herd:
+	if d.farm:
+		var plot_of: Dictionary = farm.def() if farm != null else Defs.BUILDINGS["farm"]
+		_text(_name, "Area · %s" % plot_of["name"], "%s plot: one villager works it, standing on it, and carries the crop to the granary. Once emptied it ripens again in time." % plot_of["english"])
+	elif d.herd:
 		_text(_name, "Pecus", "Herd: grazing animals. Hunt too hard and it is gone for good; left alone it breeds back slowly.")
 	else:
 		_text(_name, Defs.DEPOSIT_LATIN[d.kind], "%s: a source of %s" % [Defs.DEPOSIT_ENGLISH[d.kind], res])

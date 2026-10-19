@@ -313,7 +313,12 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 	if args.has("showcase"):
 		_show_duration = float(args.get("duration", 60.0))
 		showcase_setup()
-
+	if args.has("plot"):  # debug: --plot selects the first plot of the first farm there is, to look at its panel
+		game.view.catch_up()  # (the client has to know of the plots first)
+		for b in game.sim.state.buildings:
+			if b.has_plots() and not b.plot_tiles().is_empty():
+				game.person.selected_deposit = b.plot_tiles()[0]
+				break
 
 
 func report_text() -> String:
