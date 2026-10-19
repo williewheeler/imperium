@@ -8,8 +8,11 @@ const LOCAL := 0  # the player at this keyboard
 const STEP_BUDGET_USEC := 40000  # the most of a frame the simulation may take, in microseconds, before the frame is drawn
 const TIP_WIDTH := 56  # tooltips are never one long line: they are broken into lines of about this many characters
 
-var host: Host  # the one simulation, and the AIs that run beside it
-var sim: Simulation  # (the host's)
+var host: Host  # the one simulation, and the AIs that run beside it (null on a remote player's machine)
+var sim: Simulation  # (the host's; null on a remote player's machine, which has only its client)
+var remote := false  # a multiplayer game, and this is not the host: the world is the host's, and this machine plays through the network
+var me := LOCAL  # the player at this keyboard: the first, unless this is a remote player's machine
+var net_play: NetPlay  # a multiplayer host: the network side of the game
 var client: HeadlessClient  # the player at this keyboard, with no screen of its own (null when spectating)
 var view: PlayerView  # what that player knows: everything the screen shows comes from here (when spectating: a view of the whole world)
 var fog: Fog  # what the player at this keyboard has seen, for drawing it (when spectating: a view that shows everything, which is not drawn)
@@ -20,7 +23,8 @@ var era: int:  # the local player's era (the interface and the music follow this
 	get:
 		return view.era()
 	set(v):
-		sim.state.era_level[LOCAL] = v
+		if sim != null:
+			sim.state.era_level[LOCAL] = v
 		_music_context()
 
 var _world: World
@@ -61,6 +65,8 @@ func _exit_tree() -> void:
 func sim_alpha() -> float:
 	if _report or _screenshot_path != "":
 		return 1.0  # a screenshot shows the game exactly as a tick left it
+	if remote:
+		return (client.link as NetLink).alpha()  # (since the last view came in)
 	return _sim_acc / Simulation.TICK
 
 
@@ -124,60 +130,85 @@ func _ready() -> void:
 	if args.has("splash") or args.has("intro") or (not scripted and DisplayServer.get_name() != "headless"):
 		await _title_sequence(args)  # the opening scroll and the title screen come first; the world is built when you press Incipe
 
-	var session := NetSession.current  # a multiplayer game: the host's choices and seed replace ours, so every machine builds the same world
+	var session := NetSession.current  # a multiplayer game: the host's choices replace ours; the host builds the world, and the others play on it over the network
 	var net_seed := -1
 	if session != null and session.started:
 		GameSettings.apply_lobby(session.config)
-		net_seed = int(session.config["seed"])
-		print("NET multiplayer game: slot %d of %d, seed %d, map %s" % [session.my_slot(), GameSettings.players, net_seed, GameSettings.map_type])
+		remote = not session.is_host
+		if not remote:
+			net_seed = int(session.config["seed"])
+		print("NET multiplayer game: %s, slot %d of %d, map %s" % ["remote player" if remote else "host", session.my_slot(), GameSettings.players, GameSettings.map_type])
 	Team.reset()  # the colors may have been changed on the settings screen
 	var _t_a := Time.get_ticks_msec()
 	# The world is built on a worker thread while a loading screen draws its progress bar; the game
 	# itself stays switched off until everything is ready.
 	var loading := Loading.new()
 	add_child(loading)
-	var config: SimConfig
-	if replay != null:
-		config = replay.config
-	else:
-		var world_seed := net_seed if net_seed >= 0 else int(args.get("seed", randi() % 65536))
-		config = SimConfig.from_settings(world_seed, [] if (spectating or autoplay) else [LOCAL])
-		config.rush = float(args.get("rush", 0.0))
-	var built: Array = []
-	var worker := Thread.new()
-	worker.start(func() -> void: built.append(GameMap.new(config.seed_value, config.tiles(), config.map_type, 0, config.players, config.terrain_id)))
-	while built.is_empty():
-		loading.show_progress(GameMap.progress, GameMap.stage)
-		await get_tree().process_frame
-	worker.wait_to_finish()
-	loading.show_progress(1.0, "Orbis pingitur")
-	await get_tree().process_frame  # let that last line draw before the world is set up
-	await get_tree().process_frame
-	if Perf.on:
-		print("PERF startup: map generated in ", Time.get_ticks_msec() - _t_a, " ms (engine up for ", Time.get_ticks_msec(), " ms)")
-
-	host = Host.new(config, built[0])
-	sim = host.sim
-	host.drawn_fogs = range(config.players) if spectating else []  # the AIs whose clients keep a picture of their fog, to draw it (a spectator's panes)
-	if replay != null:
-		host.ai_enabled = false  # the commands come from the file
-		replayer = Replayer.new(replay)
-	if args.has("replay-out"):  # --replay-out=FILE: write the game down as it is played
-		recorder = Recorder.new(String(args["replay-out"]), sim, {"colors": GameSettings.colors.duplicate(), "ai_peoples": GameSettings.ai_peoples.duplicate()})
-	host.begin()
-	var map := sim.state.map
-	var start := sim.state.start
-	if spectating:
-		fog = Fog.new(map.w, map.h)  # nobody plays the first town: this view shows everything, and is not drawn
-		fog.set_show_all(true)
-		view = PlayerView.god(sim)  # a spectator sees every people at once
-		var by_owner: Array[AI] = host.ais.duplicate()
-		by_owner.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
-		viewers.assign(by_owner.slice(0, Spectator.MAX_PANES))
-	else:
-		client = HeadlessClient.new(sim, LOCAL, 1, true, true)  # the screen is wrapped round it: it knows what the player may know, and the person acts through it
+	var start := Vector2i.ZERO  # where this player's first town stands
+	var weather_seed := 0
+	if remote:  # the world is the host's: wait for its first view, which says how big it is and where our town is
+		me = session.my_slot()
+		client = HeadlessClient.new(me, session.play.link, true)
+		while not (client.link as NetLink).has_heard():
+			loading.show_progress(0.5, "Cum hospite coniungimur")
+			await get_tree().process_frame
+		client.view.refresh()
 		view = client.view
 		fog = view.fog()
+		start = view.start()
+		session.host_lost.connect(func() -> void:
+			print("NET the host has left")
+			get_tree().quit())
+	else:
+		var config: SimConfig
+		if replay != null:
+			config = replay.config
+		else:
+			var world_seed := net_seed if net_seed >= 0 else int(args.get("seed", randi() % 65536))
+			var humans: Array = [LOCAL]
+			if net_seed >= 0:
+				humans = (session.config["people"] as Array).map(func(p: Dictionary) -> int: return int(p["slot"]))
+			config = SimConfig.from_settings(world_seed, [] if (spectating or autoplay) else humans)
+			config.rush = float(args.get("rush", 0.0))
+		var built: Array = []
+		var worker := Thread.new()
+		worker.start(func() -> void: built.append(GameMap.new(config.seed_value, config.tiles(), config.map_type, 0, config.players, config.terrain_id)))
+		while built.is_empty():
+			loading.show_progress(GameMap.progress, GameMap.stage)
+			await get_tree().process_frame
+		worker.wait_to_finish()
+		loading.show_progress(1.0, "Orbis pingitur")
+		await get_tree().process_frame  # let that last line draw before the world is set up
+		await get_tree().process_frame
+		if Perf.on:
+			print("PERF startup: map generated in ", Time.get_ticks_msec() - _t_a, " ms (engine up for ", Time.get_ticks_msec(), " ms)")
+
+		host = Host.new(config, built[0])
+		sim = host.sim
+		host.drawn_fogs = range(config.players) if spectating else []  # the AIs whose clients keep a picture of their fog, to draw it (a spectator's panes)
+		if replay != null:
+			host.ai_enabled = false  # the commands come from the file
+			replayer = Replayer.new(replay)
+		if args.has("replay-out"):  # --replay-out=FILE: write the game down as it is played
+			recorder = Recorder.new(String(args["replay-out"]), sim, {"colors": GameSettings.colors.duplicate(), "ai_peoples": GameSettings.ai_peoples.duplicate()})
+		host.begin()
+		var map := sim.state.map
+		start = sim.state.start
+		weather_seed = map.seed_value
+		if spectating:
+			fog = Fog.new(map.w, map.h)  # nobody plays the first town: this view shows everything, and is not drawn
+			fog.set_show_all(true)
+			view = PlayerView.god(sim)  # a spectator sees every people at once
+			var by_owner: Array[AI] = host.ais.duplicate()
+			by_owner.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
+			viewers.assign(by_owner.slice(0, Spectator.MAX_PANES))
+		else:
+			client = HeadlessClient.local(sim, LOCAL, 1, true, true)  # the screen is wrapped round it: it knows what the player may know, and the person acts through it
+			view = client.view
+			fog = view.fog()
+		if net_seed >= 0:  # a multiplayer host: the other players' views and commands go over the network
+			net_play = session.play
+			net_play.host_setup(sim, host)
 	_terraces_changed()  # the ground as the client knows it (the Circus and the Temple of Jupiter stand on raised platforms)
 	era_preview.game = self
 	debug.game = self
@@ -191,7 +222,7 @@ func _ready() -> void:
 	person = Person.new(self)
 
 	weather = Weather.new()
-	weather.setup(map.seed_value)
+	weather.setup(weather_seed)
 	add_child(weather)
 	var weather_view := WeatherView.new()
 	weather_view.weather = weather
@@ -213,8 +244,8 @@ func _ready() -> void:
 	hud.train_requested.connect(person.train_unit)
 	hud.minimap.jump_requested.connect(func(tile_pos: Vector2) -> void: rig.pos = Iso.to_screen(tile_pos))
 	_hear_view()
-	if net_seed >= 0:
-		hud.flash("Lusor %d ex %d." % [session.my_slot() + 1, GameSettings.players], "Multiplayer: you are player %d of %d, on the host's map (seed %d). Play is not synchronized between the machines yet." % [session.my_slot() + 1, GameSettings.players, net_seed])
+	if session != null and session.started:
+		hud.flash("Lusor %d ex %d." % [session.my_slot() + 1, GameSettings.players], "Multiplayer: you are player %d of %d%s." % [session.my_slot() + 1, GameSettings.players, " (you host the game)" if not remote else ", playing on the host's world over the network"])
 	elif replay != null:
 		hud.flash("Repetitio.", "Replay: %s, %d seconds of play." % [GameSettings.summary(), replay.end_tick / Simulation.TICKS_PER_SECOND])
 	else:
@@ -228,7 +259,8 @@ func _ready() -> void:
 	if Perf.on:
 		print("PERF startup: ready at ", Time.get_ticks_msec(), " ms")
 	view.refresh()
-	debug.apply(args, start)  # the --flags that set a scene up
+	if not remote:
+		debug.apply(args, start)  # the --flags that set a scene up
 	_music_context()
 	if _record_dir != "":
 		DirAccess.make_dir_recursive_absolute(_record_dir)
@@ -240,7 +272,7 @@ func _ready() -> void:
 	set_physics_process(true)
 	set_process_unhandled_input(not spectating and replay == null)
 	Engine.time_scale = float(args.get("speed", GameSettings.speed))
-	_screenshot_path = args.get("shot", "")
+	_screenshot_path = args.get("shot", args.get("netshot", ""))  # (--netshot=FILE: the same, but only once the game begins, for a multiplayer game that starts from the lobby)
 	_report = args.has("report")
 	if args.has("pan"):
 		var v := String(args["pan"]).split(",")
@@ -450,6 +482,8 @@ func advance_tooltip() -> String:
 
 ## Turns real time into ticks: as many as `delta` seconds of (speed-scaled) time make, and no more.
 func _run_sim(delta: float) -> void:
+	if remote:
+		return  # the host runs the world; its views come in as they are made
 	if _report:
 		_step_sim()  # one tick a frame, so a headless run is the same every time
 		sim.publish_views()
@@ -466,6 +500,8 @@ func _run_sim(delta: float) -> void:
 			break
 	if stepped:
 		sim.publish_views()  # the screen's view is of the last tick of the frame (the ticks before it did not build one)
+		if net_play != null:
+			net_play.pump()  # and the remote players' views go out
 
 
 func _step_sim() -> void:
@@ -499,7 +535,7 @@ func _hear_view() -> void:
 	view.people_fell.connect(_on_people_fell)
 	view.game_won.connect(func(winner: int) -> void:
 		if not spectating:
-			hud.flash_key("msg.victory" if winner == LOCAL else "msg.defeat"))
+			hud.flash_key("msg.victory" if winner == me else "msg.defeat"))
 	view.tile_changed.connect(_world.tile_changed)
 	view.road_changed.connect(_world.road_changed)
 	view.ground_changed.connect(func(tiles: PackedInt32Array) -> void:
@@ -516,6 +552,8 @@ func _terraces_changed() -> void:
 
 ## A debug aid: lay the whole map open, and back. (It changes what the player's fog holds, which is the game's: a replay of this game would not see what it saw.)
 func toggle_whole_map() -> void:
+	if remote:
+		return  # (the world is the host's)
 	var real: Fog = sim.state.fogs[LOCAL]  # (the real one: the client is told what changes)
 	real.set_show_all(not real.show_all)
 	sim.taint("M (map laid open)")
@@ -524,6 +562,8 @@ func toggle_whole_map() -> void:
 
 ## A debug aid: jump through the eras, dressing a town for each.
 func cycle_eras(step: int) -> void:
+	if remote:
+		return
 	era_preview.cycle(step)
 	sim.taint("E (era preview)")
 
@@ -538,7 +578,7 @@ func _on_era_reached(value: int) -> void:
 func _on_people_fell(owner: int) -> void:
 	if spectating:
 		return
-	if owner == LOCAL:
+	if owner == me:
 		hud.flash_key("msg.defeat")
 	else:
 		var people: Dictionary = Defs.faction_of(owner)

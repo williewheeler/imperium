@@ -18,7 +18,7 @@ func _setup() -> void:
 		s.joined.connect(func(): print("JOIN joined"))
 		s.failed.connect(func(r): print("JOIN failed: ", r))
 		s.roster_changed.connect(func(): print("JOIN roster: ", s.roster))
-		s.starting.connect(func(c): print("JOIN starting slot=", s.my_slot(), " seed=", c["seed"], " players=", c["players"], " map=", c["map_type"]))
+		s.starting.connect(func(c): print("JOIN starting slot=", s.my_slot(), " seed=", c.get("seed", "none"), " players=", c["players"], " map=", c["map_type"]))
 var inited := false
 func _process(dt: float) -> bool:
 	if not inited:

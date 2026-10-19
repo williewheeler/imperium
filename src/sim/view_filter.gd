@@ -197,7 +197,7 @@ func _tell_of_ground(f: ViewFrame, fog: Fog) -> void:
 		f.fog_all = fog.state.duplicate()
 		_fog_epoch = fog.epoch
 		if _first:
-			f.welcome = {"w": map.w, "h": map.h}
+			f.welcome = {"w": map.w, "h": map.h, "start": _sim.state.starts.get(player, Vector2i.ZERO)}
 			_first = false
 		for i in map.w * map.h:
 			if fog.state[i] != Fog.HIDDEN:

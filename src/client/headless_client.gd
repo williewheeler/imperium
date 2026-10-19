@@ -5,38 +5,36 @@ extends RefCounted
 ## person's screen (the Views and Controls) is wrapped round one too, so that a person and an AI see and do exactly the same
 ## things, and neither can look at the real game.
 ##
-## A command goes on the simulation's command queue, and its answer (done, or why not) comes back later, as `answered`,
-## once the step has dealt with it. What the player may see comes the other way, on its view queue: the view takes it.
+## A command goes to the host, and its answer (done, or why not) comes back later, as `answered`, once the host has dealt with it. What
+## the player may see comes the other way: the view takes it. Where they go to and come from is the client's *link*: the queues of a
+## Simulation in this process (`HeadlessClient.local`), or the network (`HeadlessClient.new(owner, NetLink)`).
 
-signal answered(ticket: int, cmd: Dictionary, err: String)  # the game has dealt with one of this player's commands: err is "" if it was carried out
+signal answered(ticket: int, cmd: Dictionary, err: String)  # the host has dealt with one of this player's commands: err is "" if it was carried out
 
 var owner: int
 var view: PlayerView
-var _sim: Simulation
-var _asked := {}  # tickets of this player's commands that have no answer yet
+var link: ClientLink
 
 
-## `every` is how often the host builds this player's view, in ticks (0: only when asked: see `want_view`); `paths`: also the routes
-## of its own units; `picture`: keep a picture of the fog, to draw it.
-func _init(sim: Simulation, p_owner: int, every := 0, paths := false, picture := false) -> void:
-	_sim = sim
+## `picture`: keep a picture of the fog, to draw it.
+func _init(p_owner: int, p_link: ClientLink, picture := false) -> void:
 	owner = p_owner
-	view = PlayerView.new(sim, p_owner, every, paths, picture)
-	sim.answered.connect(_on_answered)
+	link = p_link
+	link.answered.connect(func(ticket: int, cmd: Dictionary, err: String) -> void: answered.emit(ticket, cmd, err))
+	view = PlayerView.new(p_owner, p_link, picture)
 
 
-## Puts a command on the queue as this player (whoever the command says it is from). Returns its ticket.
+## A client in the host's process, attached to the queues of `sim`. `every` is how often the host builds the player's view, in ticks (0:
+## only when asked: see `want_view`); `paths`: also the routes of its own units.
+static func local(sim: Simulation, p_owner: int, every := 0, paths := false, picture := false) -> HeadlessClient:
+	return HeadlessClient.new(p_owner, LocalLink.new(sim, p_owner, every, paths), picture)
+
+
+## Puts a command on its way to the host. Returns its ticket.
 func submit(cmd: Dictionary) -> int:
-	var ticket := _sim.put_command(cmd, owner)
-	_asked[ticket] = true
-	return ticket
+	return link.submit(cmd)
 
 
 ## Asks the host to build this player's view at the end of the step that is running.
 func want_view() -> void:
 	view.want()
-
-
-func _on_answered(ticket: int, cmd: Dictionary, err: String) -> void:
-	if _asked.erase(ticket):
-		answered.emit(ticket, cmd, err)

@@ -35,10 +35,18 @@ func step(publish_periodic := true) -> void:
 	sim.step(publish_periodic)
 
 
+## A player's people carry on under an AI (a remote player left the game).
+func take_over(owner: int) -> void:
+	for ai in ais:
+		if ai.owner == owner:
+			return
+	_make_ai(owner)
+
+
 ## An AI to run player `owner`, whose town stands at its start. It knows only the ground its people have seen.
 func _make_ai(owner: int) -> void:
 	var ai := AI.new()
-	ai.client = HeadlessClient.new(sim, owner, 0, false, drawn_fogs.has(owner))
+	ai.client = HeadlessClient.local(sim, owner, 0, false, drawn_fogs.has(owner))
 	ai.view = ai.client.view
 	ai.owner = owner
 	ai.faction = "romans" if owner == 0 else String(sim.config.playing_peoples()[owner - 1])

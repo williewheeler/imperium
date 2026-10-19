@@ -46,7 +46,7 @@ func _init() -> void:
 	var host := Host.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
 	var sim := host.sim
 	host.begin()
-	var mine := HeadlessClient.new(sim, 0, 1)  # a person's client: its people explore
+	var mine := HeadlessClient.local(sim, 0, 1)  # a person's client: its people explore
 	var view := mine.view
 	var ai_view: PlayerView = host.ais[0].view
 	var near := Vector2i(sim.state.start)

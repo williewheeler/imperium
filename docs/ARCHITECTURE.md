@@ -19,7 +19,7 @@ in the code, or marked as not built.
 | `src/sim/` | **The simulation**: everything that decides what happens, and nothing that shows it. No scene, no window, no input, no clock. At the top, `Simulation` (`step()`, and the owner of the parts), `SimConfig` (the choices that shape a game), the queues that are its interface (`CommandQueue`, and `ViewQueue` with `ViewFilter`, the fog, and `ViewFrame`, what is put on it) and the world the rules are run on (`RulesWorld`, `SimWorld`). |
 | `src/sim/state/` | The **game state**, inert data: `Unit`, `Building`, `Deposit`, `GameMap` and `TerrainGen` (the ground), `Fog` (what each people has seen), and `Defs` (the rules' tables: five resources, wood, food, stone, gold and iron). |
 | `src/sim/systems/` | The **game systems**, which act on the state: `Commands`, `Orders`, `Movement` (with `UnitGrid`), `Economy`, `Production`, `Eras`, `Vision`, `Wildlife`, `UnitBehavior`, `Combat`, `Placement`, `Roads` (whose rules, `Placement.check` and `Roads.check`, are run on a `RulesWorld`), `Victory`, `WorldSetup`. |
-| `src/client/` | The **headless client**: `HeadlessClient` (a player's end of the queues, with no screen: a way to act, and the latest view), `PlayerView` (that view, and questions about it: what the player may know, the news that concerns it, and where things may be built), `ClientMap` (the ground it has been told of), `ClientWorld` (what the rules are run on, on the client), `UnitInfo` and `BuildingInfo` (a unit or building as the client knows it: kept up to date, carrying the client's own marks, selection included). A *god* view (`PlayerView.god`) knows everything, for a spectator. |
+| `src/client/` | The **headless client**: `ClientLink` (where a client's views come from and its commands go: `LocalLink` for the host's own process, `NetLink` for the network), `HeadlessClient` (a player's end of the queues, with no screen: a way to act, and the latest view), `PlayerView` (that view, and questions about it: what the player may know, the news that concerns it, and where things may be built), `ClientMap` (the ground it has been told of), `ClientWorld` (what the rules are run on, on the client), `UnitInfo` and `BuildingInfo` (a unit or building as the client knows it: kept up to date, carrying the client's own marks, selection included). A *god* view (`PlayerView.god`) knows everything, for a spectator. |
 | `src/host/` | `Host`: the one `Simulation` and the AIs beside it. It founds the players, gives each computer-run people its `AI` and a headless client, and its `step` is what the tick driver calls: the AIs think (they put commands on the queue), then the Simulation steps. |
 | `src/ai/` | The computer players: `AI` and one class per goal. They read the game only through a `PlayerView` and act only through a `HeadlessClient`. See *The AIs*. |
 | `src/replay/` | `Replay` (the file), `Recorder`, `Replayer`. See *Headless play and replays*. |
@@ -27,7 +27,7 @@ in the code, or marked as not built.
 | `src/ui/views/` | Drawing the state: `World` and the unit, building, ground, fog, weather and overlay views, the minimap, `Iso` (tile and screen maths), `Weather` (cosmetic). Read the simulation, never change it. |
 | `src/ui/controls/` | `Person` (mouse, keys, selection, command targeting) and `CameraRig`. |
 | `src/app/` | The application: `Main` (starts the world, wires the parts, and is the **tick driver** in play) and the debug scaffolding (`DebugModes`, `EraPreview`). |
-| `src/net/` | Networking (`NetSession`, the lobby so far; later the links between clients and the host). |
+| `src/net/` | Networking: `NetSession` (the lobby: hosting, joining, the roster, starting the game), `NetPlay` (the game in play: carries the two queues between the host and each remote player) and `NetLink` (a remote player's `ClientLink`). |
 | `src/art/` | Sprite drawing code; baked into PNG sheets by `tools/`. |
 | `src/infra/` | `GameSettings` (what the player chose; kept in `user://settings.cfg`) and `Perf` (the profiler). |
 | `src/audio/`, `src/text/` | `Music`; `Phrases` and `Latin` (the game's words). |
@@ -44,9 +44,9 @@ in the code, or marked as not built.
 | Controls | `src/ui/controls/` (`Person`, `CameraRig`), and the HUD's buttons in `src/ui/`; commands go through `game.client` |
 | AIs | `src/ai/`, run by the `Host` (`src/host/host.gd`) between one step and the next; the Simulation knows nothing of them |
 | Headless client (a local human's, inside the UI) | `src/client/`, made once in `Main` (`Main.client`, `Main.view`); built. It takes its views from its view queue and runs the rules on its own picture (`PlayerView.placement_error`, `find_site`...) |
-| Headless client (a remote human's, on another machine) | not built: the same client, on the other machine, speaking queue through Networking |
+| Headless client (a remote human's, on another machine) | `src/client/`, made in `Main` on a remote player's machine (`Main.remote`) with a `NetLink` for its link; built: the same client, with no `Simulation` at all, speaking queue through Networking |
 | Headless client (the AIs') | `src/client/`, made for each AI in `WorldSetup` (`AI.client`, `AI.view`); built, as above |
-| Networking | not built (`src/net/`: today `NetSession` is the lobby only): the host's end of the connection to a remote human's client; it puts its commands on the command queue and reads that player's view queue |
+| Networking | `NetPlay` (`src/net/net_play.gd`), under the `NetSession` on every machine; built. On the host it puts a remote player's commands on the command queue (the connection says who, never the command), sends back the answer to each, and sends each tick's view of that player; on a remote player's machine it hands the views and answers to its `NetLink`. Frames are serialized (`ViewFrame.to_bytes`), compressed and sent on a reliable channel (ENet, over UDP) |
 | Command queue (one for all) | `CommandQueue` (`src/sim/command_queue.gd`), held as `Simulation.command_queue`; built. A client's `submit` puts a command on it with the player and the due tick; `Simulation.step()` drains it first thing, in (tick, player, order given) order, and each answer comes back as `Simulation.answered` (the client's `answered`) |
 | View queue (one for each player; it also carries the fog and the ground, see *Map and fog*) | `ViewQueue` (`src/sim/view_queue.gd`), opened with `Simulation.open_view`; built. The step builds a view at its end for each queue that is due (`ViewFilter`, `src/sim/view_filter.gd`: the one place the fog is applied; a `ViewFrame`, `src/sim/view_frame.gd`: plain data, with its events), and the queue keeps only the latest, folding in any it had not read. The client's `PlayerView.refresh` takes it. A person's client asks for one every tick; an AI asks, a tick ahead, when it is about to look (`HeadlessClient.want_view`) |
 | Simulation step | `Simulation.step()` in `src/sim/simulation.gd`: drains the command queue, runs the systems, and puts the views that are due on the view queues |
@@ -64,7 +64,7 @@ reads its state to draw it.
 *The key is in the picture. The client is `Views` (the world, the minimap, the HUD's readouts) and `Controls` (the mouse
 and keys, which `Person` handles, and the buttons); yellow boxes are proposed, not built.*
 
-**The design (the picture above).** Everything in it is built except the yellow box, Networking. It is how the parts fit:
+**The design (the picture above).** Everything in it is built. It is how the parts fit:
 
 - **A headless client per player, human or AI.** It is the player's end of the queues: it sends their commands, holds the latest view it was sent (already
   filtered by the step) and answers questions about it. A human's client is part of the UI: `Views` and `Controls` (with `Person` as the thing that handles the mouse
@@ -83,7 +83,7 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
   side sets (Networking from the connection, never from what a remote client claims), and the tick it is due: the next tick for a live command, an
   agreed one for a lockstep peer's. That is where an inherently asynchronous world meets a simulation that consumes input at fixed ticks, and the
   one place where the nondeterminism ends: what is drained, in what order, is what the game is made of.
-- **Networking is only a wrapper (proposed).** A client on another machine talks to a Networking box (`NetSession`), which talks to the
+- **Networking is only a wrapper (`NetPlay`).** A client on another machine talks to a Networking box (`NetSession`), which talks to the
   command queue and its player's view queue. The AIs, and a person playing in the host's own process, attach to the queues directly. There are no
   separate receiver, publisher or channel components.
 - **The simulation step is where it all happens**, and *the loop* is the tick driver running one step after another. A step:
@@ -252,18 +252,31 @@ A replay is a few tens of kilobytes for ten game minutes. It records what was *d
 it is small and stays valid when the code that carries commands out is fixed, as long as the fix is not meant to
 change what happens: when it is, old recordings stop matching (a checksum differs), and that is the point of them.
 
-## Multiplayer today  (**built**: lobby only)
+## Multiplayer  (**built**)
 
-`NetSession` (`src/net/net_session.gd`, ENet and RPC, a node at `/root/NetSession`) runs the lobby: hosting,
-joining, the roster, ready flags, and handing every machine the same settings, world seed and slot. Each
-machine then builds the same world. After that **play is not synchronized**; commands are not yet sent
-between machines. See DESIGN.md for the lobby itself.
+`NetSession` (`src/net/net_session.gd`, ENet and RPC, a node at `/root/NetSession`) runs the lobby: hosting, joining, the roster, ready flags,
+and handing everyone the host's settings and their place in the game (the host is player 0, the rest follow in the order they joined). The
+others are **not** told the seed: they do not build the world.
 
-What is in place for it: the command layer, a fixed tick, a deterministic simulation and a checksum to detect
-desynchronization. What is missing is the exchange itself: each machine sends its person's commands stamped with a
-future tick, every machine puts all of them on its queue due at that tick (as `Replayer` does), and
-they compare checksums now and then. The choice between that (lockstep) and a host that runs the one simulation
-and sends state back is still open, but the first no longer waits on the simulation.
+When the host starts the game, `Main` on the host builds the world and the AIs (a `Host`), makes a headless client for its own person as before,
+and attaches `NetPlay`, which opens a view queue for each remote player and listens for their commands. Every other machine runs `Main` as a **remote
+player** (`Main.remote`): no `Simulation`, no map, no AIs; its client has a `NetLink`, so its commands go to the host and what comes back is its views
+(the first says how big the world is and where its town stands; after that the ground, the fog, its people and what it can see of the others') and the
+answers to its commands. Everything else is as for a person on the host: the same `PlayerView`, the same views and controls, the same rules run on the
+client's own picture. If a remote player leaves, an AI takes over its people.
+
+```
+just mp                  # two windows on this machine, over 127.0.0.1: the host starts when the joiner is ready
+just host / just join <address>      # two machines on a LAN: the address is the one the host's lobby shows
+just net-play-test       # a host and a remote player in two processes: its command is carried out and answered, a refused one is
+                         #   refused, it sees its unit move, it is not told the seed or any ground it has not explored
+```
+
+What is not done: a frame is the whole of what a player may see (the units and buildings in it are not sent as changes), so the traffic is a few
+hundred kilobytes a second in a big game, which a LAN does not mind and a poor link would; the channel is reliable and ordered, so a frame that is slow
+makes the next wait (a client takes only the latest of those that have come in); a client that fell out of step has no way to ask for a fresh
+snapshot (see *Known debts*); the remote player's view is drawn between frames by the time since the last came in, not smoothed; and a remote
+player cannot pause, change the speed or use the debug aids (the world is the host's).
 
 ## Known debts
 
@@ -293,7 +306,9 @@ and sends state back is still open, but the first no longer waits on the simulat
 - **A client is not yet checked against the engine.** Every frame overwrites the client's picture, but frames carry no sequence number and
   no hash of the view, so a client cannot notice that it missed one or drifted. The plan: a sequence number and a hash of what the client should
   now hold; on a gap or a mismatch the client asks for a snapshot of what it may know, which the first frame (and a fog laid open) already
-  sends and a resync would reuse. It belongs with Networking, where frames can be lost.
+  sends and a resync would reuse. Over ENet's reliable channel a frame is not lost, so it matters when the transport is not reliable.
+- **Frames are whole, not deltas.** Each frame carries every unit and building the player knows, so a big game sends a few hundred kilobytes a
+  second to each remote player (compressed). The ground and the fog are already deltas; units and buildings could be.
 - Saved games are not built. The pieces are there (the whole state is plain data), but a replay can only begin from the start.
 
 ## The AIs  (**built**)

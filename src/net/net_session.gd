@@ -23,8 +23,9 @@ static var current: NetSession
 var is_host := false
 var my_name := "Player"
 var roster: Array[Dictionary] = []  # {id, name, ready}, the host first; the same list on every machine
-var config := {}  # what the host started the game with (empty until it does)
+var config := {}  # what the host started the game with (empty until it does; a joiner's has no seed: it is not told the map)
 var started := false
+var play: NetPlay  # the game in play, once it has started (see NetPlay)
 var _in_lobby := false  # a client: the host has let us in
 
 
@@ -178,7 +179,11 @@ func start_game(settings: Dictionary, world_seed: int) -> String:
 	cfg["seed"] = world_seed
 	cfg["people"] = people
 	cfg["players"] = maxi(int(cfg["players"]), people.size())
-	_s_start.rpc(cfg)
+	var told := cfg.duplicate()
+	told.erase("seed")  # the others play on the host's world and are told of it as they explore it: not of how it was made
+	for p: Dictionary in people:
+		if int(p["id"]) != 1:
+			_s_start.rpc_id(int(p["id"]), told)
 	_apply_start(cfg)
 	return ""
 
@@ -195,6 +200,8 @@ func my_slot() -> int:
 func _apply_start(cfg: Dictionary) -> void:
 	config = cfg
 	started = true
+	play = NetPlay.new(self)
+	add_child(play)
 	starting.emit(cfg)
 
 

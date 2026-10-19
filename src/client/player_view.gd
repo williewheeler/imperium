@@ -32,13 +32,12 @@ signal ground_changed(tiles: PackedInt32Array)  # ground the client has newly be
 
 var owner: int  # -1 for a god view
 var _god := false
-var _paths := false
 var _fog: Fog  # what the player has explored, as the host told it (null for a god view)
 var _map: GameMap  # the ground the player knows (a ClientMap; a god view reads the real one)
 var _picture := false  # does the fog keep a picture of itself, to be drawn?
-var _sim: Simulation  # only to attach to the host's queues (and, for a test or a debug aid, to ask for a view now)
+var _link: ClientLink  # where the views come from (the host's queue in this process, or the network)
 var _world: ClientWorld  # the rules' view of what the client knows
-var _queue: ViewQueue  # where the host puts what the player may see
+var _start := Vector2i.ZERO  # where the player's first town stands, as the first frame told it
 var _frame := ViewFrame.new()  # the latest view taken
 var _units := {}  # id -> UnitInfo, for everyone known
 var _buildings := {}  # id -> BuildingInfo
@@ -50,23 +49,19 @@ var _my_buildings: Array[BuildingInfo] = []
 var _known_buildings: Array[BuildingInfo] = []  # other peoples', on explored ground
 
 
-## A view of the whole world, for a spectator.
+## A view of the whole world, for a spectator (who reads the real ground).
 static func god(sim: Simulation) -> PlayerView:
-	return PlayerView.new(sim, -1)
+	return PlayerView.new(-1, LocalLink.new(sim, -1, 1, false), false, sim.state.map)
 
 
-## `every` is how often the host puts a view on the queue, in ticks (0: only when `want` asks); `paths`: also the routes of the
-## player's own units (a person's screen draws the route of what is selected).
-func _init(sim: Simulation, p_owner: int, every := 1, paths := false, picture := false) -> void:
-	_sim = sim
+## `link` is where the views come from; `picture`: the fog keeps a picture of itself, to be drawn.
+func _init(p_owner: int, link: ClientLink, picture := false, god_map: GameMap = null) -> void:
 	owner = p_owner
 	_god = p_owner < 0
-	_paths = paths
 	_picture = picture
-	if _god:
-		_map = sim.state.map
+	_map = god_map
+	_link = link
 	_world = ClientWorld.new(self)
-	_queue = sim.open_view(p_owner, every, paths)
 	refresh()
 
 
@@ -74,20 +69,20 @@ func _init(sim: Simulation, p_owner: int, every := 1, paths := false, picture :=
 
 ## Brings the model up to date with the latest view the host has put on the queue (if it has put one since the last).
 func refresh() -> void:
-	var frame := _queue.take()
+	var frame := _link.take()
 	if frame != null:
 		_apply(frame)
 
 
 ## Asks the host for a view at the end of the step that is running, for a client that does not have one every tick.
 func want() -> void:
-	_queue.want()
+	_link.want()
 
 
 ## Has the host build a view now, and takes it. (For a debug aid or a test that has changed the game by hand: in play, the
 ## step puts the views on the queue.)
 func catch_up() -> void:
-	_sim.publish_view(_queue)
+	_link.catch_up()
 	refresh()
 
 
@@ -184,6 +179,7 @@ func _apply(f: ViewFrame) -> void:
 func _learn_ground(f: ViewFrame) -> void:
 	if not f.welcome.is_empty():
 		_map = ClientMap.new(int(f.welcome["w"]), int(f.welcome["h"]))
+		_start = f.welcome.get("start", Vector2i.ZERO)
 		_fog = Fog.new(_map.w, _map.h, not _picture)
 	if not f.fog_all.is_empty():
 		_fog.set_all(f.fog_all)
@@ -233,8 +229,8 @@ func _copy_unit(info: UnitInfo, r: ViewFrame.UnitRecord) -> void:
 	info.gather_kind = r.gather_kind
 	info.working_farm = r.working_farm
 	info.target_building_id = r.target_building_id
-	if _paths and r.own:
-		info.path = r.path
+	if r.own:
+		info.path = r.path  # (empty unless the client asked the host for routes)
 
 
 func _copy_building(info: BuildingInfo, r: ViewFrame.BuildingRecord) -> void:
@@ -354,6 +350,16 @@ func shots() -> Array[Dictionary]:
 ## The ground the player knows, for drawing it. (Terrain and deposits of ground it has not explored are not in it: see ClientMap.)
 func map() -> GameMap:
 	return _map
+
+
+## Where the player's first town stands (told in the first frame).
+func start() -> Vector2i:
+	return _start
+
+
+## Has the host told this client of the world yet? (The first frame can be late, if it has to come over the network.)
+func is_ready() -> bool:
+	return _god or _map != null
 
 
 ## The fog that shows what the player has explored, for drawing it. (A god view has none.)

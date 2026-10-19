@@ -58,7 +58,8 @@ host *args:
 join addr="127.0.0.1" *args:
     ./run.sh --windowed --splash --lobby=join:{{addr}} {{args}}
 
-# Multiplayer: both copies on this machine; the host starts as soon as the joiner is ready
+# Multiplayer on this machine, two windows over 127.0.0.1: the host starts as soon as the joiner is ready, and the joiner plays on the
+# host's world through the network (it is sent only what it sees). For two machines: `just host` on one, `just join <its LAN address>` on the other.
 mp:
     ./run.sh --windowed --splash --lobby=host --autostart --size=1000x620 & sleep 3; ./run.sh --windowed --splash --lobby=join:127.0.0.1 --size=1000x620; wait
 
@@ -72,6 +73,17 @@ net-test:
     wait
     echo "--- host"; cat ${TMPDIR:-/tmp}/imperium-host.log; echo "--- join"; cat ${TMPDIR:-/tmp}/imperium-join.log
     grep -q "JOIN starting slot=1" ${TMPDIR:-/tmp}/imperium-join.log && echo PASS || { echo FAIL; exit 1; }
+
+# Headless check of a game played over the network: a host and a remote player in two processes (127.0.0.1)
+net-play-test:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {{godot}} --headless --path . --script tests/net_play_test.gd -- host > ${TMPDIR:-/tmp}/imperium-play-host.log 2>&1 &
+    sleep 2
+    {{godot}} --headless --path . --script tests/net_play_test.gd -- join 127.0.0.1 > ${TMPDIR:-/tmp}/imperium-play-join.log 2>&1 || true
+    wait
+    echo "--- host"; grep "HOST" ${TMPDIR:-/tmp}/imperium-play-host.log; echo "--- join"; grep "JOIN" ${TMPDIR:-/tmp}/imperium-play-join.log
+    grep -q "HOST PASS" ${TMPDIR:-/tmp}/imperium-play-host.log && grep -q "JOIN PASS" ${TMPDIR:-/tmp}/imperium-play-join.log && echo PASS || { echo FAIL; exit 1; }
 
 # Headless check of attacking, burning and destroying buildings, and of a people being defeated
 siege-test:

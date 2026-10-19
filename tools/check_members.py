@@ -60,7 +60,7 @@ for f in glob.glob('src/ui/**/*.gd', recursive=True):
                 print('%s:%d: the UI may not touch the simulation (%s); use game.view and game.client' % (f, n, code.strip()[:60])); bad += 1
                 break
 # a client reads nothing of the simulation but its own frames: the only touches are attaching to the queues (and asking for a view now), and a spectator's god view reading the real ground
-ALLOWED_CLIENT = ('sim.open_view(', '_map = sim.state.map', '_sim.open_view(', '_sim.publish_view(', '_sim.put_command(', 'sim.answered.connect(', 'Simulation.TICK')
+ALLOWED_CLIENT = ('false, sim.state.map)', 'sim.open_view(', '_map = sim.state.map', '_sim.open_view(', '_sim.publish_view(', '_sim.put_command(', 'sim.answered.connect(', 'Simulation.TICK')
 for f in glob.glob('src/client/*.gd'):
     for n, line in enumerate(open(f).read().split('\n'), 1):
         code = line.split('#')[0]
