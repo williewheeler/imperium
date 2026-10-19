@@ -164,7 +164,6 @@ func _ready() -> void:
 		recorder = Recorder.new(String(args["replay-out"]), sim, {"colors": GameSettings.colors.duplicate(), "ai_peoples": GameSettings.ai_peoples.duplicate()})
 	sim.begin()
 	var map := sim.state.map
-	Iso.set_terrain(map.w, map.h, map.levels)  # the ground as the founding of the players left it (the Circus and the Temple of Jupiter stand on raised platforms)
 	var start := sim.state.start
 	if spectating:
 		fog = Fog.new(map.w, map.h)  # nobody plays the first town: this view shows everything, and is not drawn
@@ -174,9 +173,10 @@ func _ready() -> void:
 		by_owner.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
 		viewers.assign(by_owner.slice(0, Spectator.MAX_PANES))
 	else:
-		client = HeadlessClient.new(sim, LOCAL, 1, true)  # the screen is wrapped round it: it knows what the player may know, and the person acts through it
+		client = HeadlessClient.new(sim, LOCAL, 1, true, true)  # the screen is wrapped round it: it knows what the player may know, and the person acts through it
 		view = client.view
 		fog = view.fog()
+	_terraces_changed()  # the ground as the client knows it (the Circus and the Temple of Jupiter stand on raised platforms)
 	era_preview.game = self
 	debug.game = self
 
@@ -500,13 +500,24 @@ func _hear_view() -> void:
 			hud.flash_key("msg.victory" if winner == LOCAL else "msg.defeat"))
 	view.tile_changed.connect(_world.tile_changed)
 	view.road_changed.connect(_world.road_changed)
+	view.ground_changed.connect(func(tiles: PackedInt32Array) -> void:
+		_terraces_changed()
+		_world.ground_changed(tiles)
+		hud.minimap.ground_changed(tiles))
+
+
+## The terraces the client knows of are different (it has been told of new ground): the projection follows them.
+func _terraces_changed() -> void:
+	var map: GameMap = view.map()
+	Iso.set_terrain(map.w, map.h, map.levels)
 
 
 ## A debug aid: lay the whole map open, and back. (It changes what the player's fog holds, which is the game's: a replay of this game would not see what it saw.)
 func toggle_whole_map() -> void:
-	fog.set_show_all(not fog.show_all)
+	var real: Fog = sim.state.fogs[LOCAL]  # (the real one: the client is told what changes)
+	real.set_show_all(not real.show_all)
 	sim.taint("M (map laid open)")
-	hud.flash_key("msg.map_open" if fog.show_all else "msg.map_closed")
+	hud.flash_key("msg.map_open" if real.show_all else "msg.map_closed")
 
 
 ## A debug aid: jump through the eras, dressing a town for each.

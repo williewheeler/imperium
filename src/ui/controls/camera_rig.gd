@@ -77,6 +77,13 @@ func drain_zoom_accum() -> void:
 		zoom_step(-1)
 
 
+## The nearest place to `p` that is over the map itself, not just inside its bounding box: the map is a diamond on the screen, and
+## the camera stops at its edge instead of going on over open sea.
+func keep_over_map(p: Vector2) -> Vector2:
+	var size := Vector2(main.view.map_size())
+	return Iso.to_screen_flat(Iso.to_tile_flat(p).clamp(Vector2.ZERO, size))
+
+
 func pan(delta: float) -> void:
 	if main.spectating:
 		return
@@ -99,6 +106,5 @@ func pan(delta: float) -> void:
 	dir = dir.clamp(Vector2(-1, -1), Vector2(1, 1))
 	apply_zoom()
 	pos += dir * PAN_SPEED / camera.zoom.x * delta
-	# stay over the map: its bounding box in world pixels
-	pos = pos.clamp(Vector2(-main.view.map_size().y * Iso.HALF_W, 0), Vector2(main.view.map_size().x * Iso.HALF_W, (main.view.map_size().x + main.view.map_size().y) * Iso.HALF_H))
+	pos = keep_over_map(pos)
 	camera.position = pos.round()  # whole world pixels, so sprites don't shimmer

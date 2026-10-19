@@ -17,11 +17,11 @@ var _asked := {}  # tickets of this player's commands that have no answer yet
 
 
 ## `every` is how often the host builds this player's view, in ticks (0: only when asked: see `want_view`); `paths`: also the routes
-## of its own units.
-func _init(sim: Simulation, p_owner: int, every := 0, paths := false) -> void:
+## of its own units; `picture`: keep a picture of the fog, to draw it.
+func _init(sim: Simulation, p_owner: int, every := 0, paths := false, picture := false) -> void:
 	_sim = sim
 	owner = p_owner
-	view = PlayerView.new(sim, p_owner, every, paths)
+	view = PlayerView.new(sim, p_owner, every, paths, picture)
 	sim.answered.connect(_on_answered)
 
 

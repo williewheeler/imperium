@@ -27,6 +27,8 @@ func _graze(p: Vector2i, d: Deposit, delta: float) -> void:
 	var to: Vector2i = options[sim.state.rng.randi() % options.size()]
 	sim.state.map.deposits.erase(p)
 	sim.state.map.deposits[to] = d
+	sim.state.map.touch(p)
+	sim.state.map.touch(to)
 	sim.state.map.herds[sim.state.map.herds.find(p)] = to
 
 
@@ -43,3 +45,4 @@ func update(delta: float) -> void:
 			if d.regrow >= Defs.HERD_BREED_EVERY:
 				d.regrow = 0.0
 				d.amount = mini(d.max_amount, d.amount + Defs.HERD_BREED_GAIN)
+				sim.state.map.touch(p)

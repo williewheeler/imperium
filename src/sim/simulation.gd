@@ -53,7 +53,7 @@ var tainted: Array[String] = []  # what has changed the game other than by comma
 var command_queue := CommandQueue.new()  # where the players' commands wait for the step
 var view_queues: Array[ViewQueue] = []  # where each player's views wait for its client (see `open_view`)
 var ai_enabled := true  # false when the commands come from somewhere else (a replay), so the AIs stay quiet
-var drawn_fogs: Array = []  # the players whose Fog also keeps a picture of itself (set by a client that draws them)
+var drawn_fogs: Array = []  # the AIs whose clients keep a picture of their fog, to draw it (set by the screen that shows them)
 
 var movement := Movement.new()
 var economy := Economy.new()
@@ -86,6 +86,8 @@ func begin() -> void:
 	state.start = map.find_start(Vector2i((map.homes[0] * map.w).round()), Vector2i(-1, -1), 0)  # the first player starts on the ring round the map like everyone else
 	setup.found_players(state.start)
 	vision.update(true)
+	for q in view_queues:  # the clients made while founding the players were told of a world nobody had looked at yet
+		publish_view(q)
 
 
 # ---------------------------------------------------------------- the clock
@@ -272,6 +274,7 @@ func remove_building(b: Building) -> void:
 	if b.has_plots():
 		for p in b.plot_tiles():
 			state.map.deposits.erase(p)
+			state.map.touch(p)
 	for u in state.units:
 		if u.target_building == b:
 			u.target_building = null

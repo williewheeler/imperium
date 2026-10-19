@@ -20,6 +20,7 @@ func on_complete(b: Building) -> void:
 				plot.plot_of = b
 				plot.plot_rect = r
 				sim.state.map.deposits[p] = plot
+				sim.state.map.touch(p)
 		return
 	match b.kind:
 		"town_center", "storehouse", "settlement", "city_center":
@@ -62,6 +63,7 @@ func upgrade_building(b: Building, kind: String) -> void:
 				plot.max_amount += gain
 				if plot.amount > 0:
 					plot.amount += gain
+				sim.state.map.touch(p)
 	sim.notice.emit(b.owner, "msg.grew_town" if kind == "town_center" else ("msg.grew_city" if kind == "city_center" else "msg.grew_farm"))
 
 

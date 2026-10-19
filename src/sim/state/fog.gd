@@ -18,6 +18,12 @@ var show_all := false  # the whole map laid open (a debug view), instead of what
 var _saved_state := PackedByteArray()
 var _headless := false
 var _last_key := ""  # what the last refresh was drawn from, so an unchanged scene costs nothing
+var _log := PackedInt32Array()  # the changes of state, in order, each as tile * 4 + new state: what the clients are told of
+var _log_base := 0  # how many entries have been dropped from the front of `_log`
+var _readers := {}  # reader -> how many entries (counting the dropped) it has taken
+var _next_reader := 1
+var epoch := 0  # counts the times the whole fog was changed at once (the map laid open), which a log of changes cannot tell
+var _mark := PackedByteArray()  # scratch for `update`: 1 for a tile that was in sight, 2 once it is seen to still be
 
 
 ## `headless` is for a computer-run people's memory of the map: it keeps what has been seen but draws nothing.
@@ -56,10 +62,17 @@ func update(sources: Array) -> void:
 	if key == _last_key:
 		return
 	_last_key = key
+	var logging := not _readers.is_empty()
+	if logging:
+		if _mark.size() != w * h:
+			_mark.resize(w * h)
+		for i in _visible:
+			_mark[i] = 1
 	for i in _visible:  # what was in sight is now only remembered
 		state[i] = EXPLORED
 		if not _headless:
 			_bytes[i * 4 + 3] = ALPHA[EXPLORED]
+	var was := _visible
 	_visible = PackedInt32Array()
 	for s in sources:
 		var c: Vector2 = s[0]
@@ -76,6 +89,16 @@ func update(sources: Array) -> void:
 						if not _headless:
 							_bytes[i * 4 + 3] = ALPHA[VISIBLE]
 						_visible.append(i)
+						if logging:
+							if _mark[i] == 1:
+								_mark[i] = 2  # (it was in sight and still is: no change to tell)
+							else:
+								_log.append(i * 4 + VISIBLE)
+	if logging:
+		for i in was:
+			if _mark[i] == 1:
+				_log.append(i * 4 + EXPLORED)  # out of sight now
+			_mark[i] = 0
 	_upload()
 
 
@@ -88,6 +111,8 @@ func reveal(center: Vector2, radius: float) -> void:
 			var i := y * w + x
 			if state[i] == HIDDEN and Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius:
 				state[i] = EXPLORED
+				if not _readers.is_empty():
+					_log.append(i * 4 + EXPLORED)
 				if not _headless:
 					_bytes[i * 4 + 3] = ALPHA[EXPLORED]
 	_upload()
@@ -97,21 +122,77 @@ func reveal(center: Vector2, radius: float) -> void:
 func set_show_all(on: bool) -> void:
 	if on == show_all:
 		return
+	epoch += 1  # everything changed at once: the readers start again from the whole
+	_log = PackedInt32Array()
+	_log_base = 0
+	for r: int in _readers:
+		_readers[r] = 0
 	show_all = on
 	if on:
 		_saved_state = state.duplicate()
 		state.fill(VISIBLE)
-		for i in w * h:
-			_bytes[i * 4 + 3] = ALPHA[VISIBLE]
+		if not _headless:
+			for i in w * h:
+				_bytes[i * 4 + 3] = ALPHA[VISIBLE]
 		_visible = PackedInt32Array()
 	else:
 		state = _saved_state
 		_visible = PackedInt32Array()
 		for i in w * h:
-			_bytes[i * 4 + 3] = ALPHA[state[i]]
+			if not _headless:
+				_bytes[i * 4 + 3] = ALPHA[state[i]]
 			if state[i] == VISIBLE:
 				_visible.append(i)
 		_last_key = ""
+	_upload()
+
+
+# ---------- What changed, for the clients ----------
+
+## A new reader of the log of changes (a ViewFilter): it is given what changes from now on.
+func open_log() -> int:
+	var id := _next_reader
+	_next_reader += 1
+	_readers[id] = _log_base + _log.size()
+	return id
+
+
+## The changes (tile * 4 + new state) since `reader` last asked, oldest first.
+func take_changes(reader: int) -> PackedInt32Array:
+	var from: int = int(_readers[reader]) - _log_base
+	var out := _log.slice(from)
+	_readers[reader] = _log_base + _log.size()
+	var lowest := INF
+	for r: int in _readers.values():
+		lowest = minf(lowest, float(r))
+	var drop := int(lowest) - _log_base
+	if drop > 8192:  # the front that every reader has taken is let go
+		_log = _log.slice(drop)
+		_log_base += drop
+	return out
+
+
+## Puts the fog as the host sent it (a client's picture of it): every tile at once.
+func set_all(new_state: PackedByteArray) -> void:
+	state = new_state.duplicate()
+	_visible = PackedInt32Array()
+	if not _headless:
+		for i in w * h:
+			_bytes[i * 4 + 3] = ALPHA[state[i]]
+	_upload()
+
+
+## Applies changes of state the host sent (see `take_changes`): a client's picture of the fog.
+func apply(changes: PackedInt32Array) -> void:
+	for c in changes:
+		var i := c >> 2
+		var st := c & 3
+		if show_all:
+			_saved_state[i] = st  # (the map is laid open: what it is under that is kept for when it is put back)
+			continue
+		state[i] = st
+		if not _headless:
+			_bytes[i * 4 + 3] = ALPHA[st]
 	_upload()
 
 

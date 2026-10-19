@@ -47,7 +47,7 @@ in the code, or marked as not built.
 | Headless client (the AIs') | `src/client/`, made for each AI in `WorldSetup` (`AI.client`, `AI.view`); built, as above |
 | Networking | not built (`src/net/`: today `NetSession` is the lobby only): the host's end of the connection to a remote human's client; it puts its commands on the command queue and reads that player's view queue |
 | Command queue (one for all) | `CommandQueue` (`src/sim/command_queue.gd`), held as `Simulation.command_queue`; built. A client's `submit` puts a command on it with the player and the due tick; `Simulation.step()` drains it first thing, in (tick, player, order given) order, and each answer comes back as `Simulation.answered` (the client's `answered`) |
-| View queue (one for each player) | `ViewQueue` (`src/sim/view_queue.gd`), opened with `Simulation.open_view`; built. The step builds a view at its end for each queue that is due (`ViewFilter`, `src/sim/view_filter.gd`: the one place the fog is applied; a `ViewFrame`, `src/sim/view_frame.gd`: plain data, with its events), and the queue keeps only the latest, folding in any it had not read. The client's `PlayerView.refresh` takes it. A person's client asks for one every tick; an AI asks, a tick ahead, when it is about to look (`HeadlessClient.want_view`) |
+| View queue (one for each player; it also carries the fog and the ground, see *Map and fog*) | `ViewQueue` (`src/sim/view_queue.gd`), opened with `Simulation.open_view`; built. The step builds a view at its end for each queue that is due (`ViewFilter`, `src/sim/view_filter.gd`: the one place the fog is applied; a `ViewFrame`, `src/sim/view_frame.gd`: plain data, with its events), and the queue keeps only the latest, folding in any it had not read. The client's `PlayerView.refresh` takes it. A person's client asks for one every tick; an AI asks, a tick ahead, when it is about to look (`HeadlessClient.want_view`) |
 | Simulation step | `Simulation.step()` in `src/sim/simulation.gd`: today it runs the AIs (which are clients, and will leave it), drains the command queue, runs the systems, and puts the views that are due on the view queues |
 | Game state | `GameState` (`src/sim/state/game_state.gd`), held as `Simulation.state`: the map, units, buildings, stocks, fogs, tick, rng, eras, road plans, shots in flight, who has fallen. Inert; see *Known debts* for what is still not |
 | Game systems | `src/sim/systems/`: they hold no game state of their own (only the `Movement` grid, which is rebuilt each tick) |
@@ -101,6 +101,14 @@ and keys, which `Person` handles, and the buttons); yellow boxes are proposed, n
 - **Recording and replaying are not part of this design.** There are tools for them (`src/replay/`, see *Headless play and
   replays*), built on the command layer and the checksum, and they would attach to the queues; the design leaves room for them
   (commands are stamped with a due tick, and what is drained is what the game is made of) but does not depend on them.
+
+**Map and fog (built).** A client is told of the ground and the fog as it explores, never the whole map and never the seed. The first frame
+tells the size of the map; after that each frame carries the fog's changes (`Fog` keeps a log of them for each reader), and the ground and
+deposits (`ViewFrame.ground`, `deposits`) of the tiles that are newly explored, or that changed where the client can see (`GameMap.touch` logs
+the changes, and `ViewFilter` tells a client of one on a tile in sight at once, and of one out of sight when it is next seen). The client keeps
+what it is told in a `ClientMap` (a `GameMap` filled in tile by tile, `known` says which) and a `Fog` that keeps a picture of itself if it is
+to be drawn. The views redraw what is newly known (`PlayerView.ground_changed`). `tests/map_view_test.gd` checks that a client knows exactly
+what it has explored, is up to date where it sees, and has nothing of the rest. A spectator's god view reads the real ground.
 
 Two consequences. A command no longer gets an answer at once ("err.cant_afford" is flashed in the same frame today), so
 the `Controls` show a refusal when it comes back and the AIs, whose `buy` logic reads the answer, need late answers or a
@@ -265,20 +273,17 @@ and sends state back is still open, but the first no longer waits on the simulat
 - The views are still tied to one local viewer in normal play (`game.fog`, "owner 0 is mine"). The spectator
   gets per-AI views with a parallel path (`viewers`, layers) rather than a viewer passed through every view;
   a single `Viewer` object would unify the two.
-- **The headless client still reads the simulation for the ground and the rules.** The units, buildings, stores, eras, shots and news come
-  in the frames, but `PlayerView` still reads the `Simulation` for the terrain and deposits (`view.map()`, which the ground view and the minimap draw;
-  the terrain and deposits of unexplored ground are handed to the client, and `Deposit`s are the live objects, not copies), for its `Fog`
-  (the fog is shared, not sent as it is explored), and for the questions the rules answer (`find_site`, `placement_error`, `road_error`,
-  `unit_speed`), which a client on another machine would put to the rules itself. `UnitInfo` and
-  `BuildingInfo` are-a `Unit` and `Building` so the views and the rules' helpers work on them, which carries every entity field
-  with it (only what the client may know is filled in). The AIs still run inside `Simulation.step()` (they are clients and belong in the host,
-  outside the step), and `Simulation.step()` is where the command queue is drained and the views are built. The debug scenes (`src/app/`) are
-  god-mode scaffolding and still touch the simulation directly, and a spectator watches through a god view and each AI's own view.
-- **Sync with the engine's truth (when the clients get the ground and the rules their own).** The plan: the map and fog come to a client as
-  deltas on its view queue (what newly became explored, what is visible now, what changed), never the whole map or the seed; the
-  rules run on the client's own data for instant answers (is this site good?), and the engine still checks every command at the
-  drain. Every frame is authoritative and overwrites the client's picture; frames carry a sequence number and a hash of the view, and a
-  client that sees a gap or a mismatch asks for a full snapshot of what it may know (which is also sent when it joins).
+- **The headless client still reads the simulation for the rules' answers.** The units, buildings, stores, eras, shots, news, and now the
+  fog and the ground, come in the frames (see *Map and fog*, below); but `PlayerView` still asks the `Simulation` for `find_site`,
+  `placement_error`, `road_error` and `unit_speed`, which a client would run itself on its own map, and `find_site` still
+  consults the real ground and fog. `UnitInfo` and `BuildingInfo` are-a `Unit` and `Building` so the views and the rules' helpers work on
+  them, which carries every entity field with it (only what the client may know is filled in). The AIs still run inside
+  `Simulation.step()` (they are clients and belong in the host, outside the step). The debug scenes (`src/app/`) are god-mode scaffolding and
+  still touch the simulation directly, and a spectator watches through a god view (which reads the real ground) and each AI's own view.
+- **Sync with the engine's truth.** Every frame is authoritative and overwrites the client's picture. Still to build: frames carrying a sequence
+  number and a hash of the view, so that a client that sees a gap or a mismatch asks for a full snapshot of what it may know (the first
+  frame, and a fog laid open, already tell the whole fog and ground; a resync would use the same path), and the rules on the client's own map
+  for instant answers, with the engine checking every command at the drain as it does.
 - Saved games are not built. The pieces are there (the whole state is plain data), but a replay can only begin from the start.
 
 ## The AIs  (**built**)

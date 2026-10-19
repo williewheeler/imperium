@@ -22,6 +22,7 @@ func _init() -> void:
 	var ai: AI = sim.ais[0]
 	var client: HeadlessClient = ai.client
 	var view: PlayerView = ai.view
+	view.refresh()  # (the first thing the AI does: take the view the host built once the players were founded)
 	var me := ai.owner
 	var foe := 0
 	var town := ai.main_town()

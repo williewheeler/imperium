@@ -9,6 +9,7 @@ const MARGIN_TILES := 14
 var fog: Fog
 var map_size := Vector2i(240, 240)
 var levels: PackedByteArray
+var _levels_texture: ImageTexture
 
 
 func _ready() -> void:
@@ -22,9 +23,17 @@ func _ready() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/fog.gdshader")
 	mat.set_shader_parameter("fog_tex", fog.texture)
-	mat.set_shader_parameter("levels", ImageTexture.create_from_image(Image.create_from_data(map_size.x, map_size.y, false, Image.FORMAT_R8, levels)))
+	_levels_texture = ImageTexture.create_from_image(Image.create_from_data(map_size.x, map_size.y, false, Image.FORMAT_R8, levels))
+	mat.set_shader_parameter("levels", _levels_texture)
 	mat.set_shader_parameter("map_size", Vector2(map_size))
 	mat.set_shader_parameter("origin", position)
 	mat.set_shader_parameter("lift_px", Iso.LIFT)
 	mat.set_shader_parameter("max_level", float(Iso.max_level()))
 	material = mat
+
+
+## The terraces are different (the client was told of new ground): the fog follows the lifted ground.
+func refresh_levels(new_levels: PackedByteArray) -> void:
+	levels = new_levels
+	if _levels_texture != null:
+		_levels_texture.update(Image.create_from_data(map_size.x, map_size.y, false, Image.FORMAT_R8, levels))

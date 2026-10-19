@@ -52,6 +52,10 @@ var astar_rough: AStarGrid2D  # built the first time a dog needs a route (see fi
 var road := PackedByteArray()  # per tile: 0 none, 1 dirt road worn by walking, 2 paved road
 var wear := PackedFloat32Array()  # distance walked over each tile so far
 var astar := AStarGrid2D.new()
+var _touched := PackedInt32Array()  # tiles whose ground or deposit changed, as tile numbers, in order: what the clients are told of (see `touch`)
+var _touched_base := 0  # how many entries have been dropped from the front of `_touched`
+var _touch_readers := {}  # reader -> how many entries (counting the dropped) it has taken
+var _next_reader := 1
 var _gen: TerrainGen
 var homes: Array[Vector2] = []  # where each player starts, as fractions of the map's side: you first (see home_points)
 
@@ -64,10 +68,21 @@ static var stage := ""
 ## `p_size` is the map's side in tiles, `p_type` one of GameSettings.MAP_TYPES and `p_players` how many
 ## peoples play (the map is shaped so each has somewhere to start). With `p_preview_px` only the land
 ## shape is laid, on a grid that size, for drawing a thumbnail with `preview` (no map is built).
-func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview_px := 0, p_players := 4, p_terrain := "temperate") -> void:
+func _init(p_seed: int, p_size := 320, p_type := "continens", p_preview_px := 0, p_players := 4, p_terrain := "temperate", p_blank := false) -> void:
 	seed_value = p_seed
 	w = p_size
 	h = p_size
+	if p_blank:  # an empty map for a client to fill in as it learns of the ground (see ClientMap): nothing is generated
+		tiles.resize(w * h)
+		levels.resize(w * h)
+		relief.resize(w * h)
+		biomes.resize(w * h)
+		road.resize(w * h)
+		astar.region = Rect2i(0, 0, w, h)
+		astar.cell_size = Vector2.ONE
+		astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+		astar.update()
+		return
 	_gen = TerrainGen.new(p_seed, p_size, p_type, p_preview_px if p_preview_px > 0 else p_size, home_points(p_players, p_type, p_seed), p_terrain)
 	homes = _gen.homes
 	if p_preview_px > 0:
@@ -430,6 +445,7 @@ func clear_ground(rect: Rect2i) -> void:
 			var p := Vector2i(x, y)
 			if not in_bounds(p):
 				continue
+			touch(p)
 			if herds.has(p):  # a flock or a bush in the way goes; the ground is for the landmark
 				herds.erase(p)
 				deposits.erase(p)
@@ -464,6 +480,7 @@ func level_ground(rect: Rect2i, raise := 0) -> void:
 		for x in range(rect.position.x, rect.end.x):
 			if in_bounds(Vector2i(x, y)):
 				levels[y * w + x] = mini(best + raise, MAX_LEVEL)
+				touch(Vector2i(x, y))
 
 
 ## Terrace of the tile under a position in tile coordinates.
@@ -696,9 +713,41 @@ func can_pave(p: Vector2i) -> bool:
 	return t == Terrain.GRASS or t == Terrain.BEACH
 
 
+# ---------- What changed, for the clients ----------
+
+## Says that the ground or the deposit on `p` has changed. (Only recorded while someone is reading: see `open_touch_log`.)
+func touch(p: Vector2i) -> void:
+	if not _touch_readers.is_empty() and in_bounds(p):
+		_touched.append(p.y * w + p.x)
+
+
+## A new reader of the log of changed tiles (a ViewFilter): it will be given what changes from now on.
+func open_touch_log() -> int:
+	var id := _next_reader
+	_next_reader += 1
+	_touch_readers[id] = _touched_base + _touched.size()
+	return id
+
+
+## The tiles (as tile numbers) that have changed since `reader` last asked, oldest first.
+func take_touched(reader: int) -> PackedInt32Array:
+	var from: int = int(_touch_readers[reader]) - _touched_base
+	var out := _touched.slice(from)
+	_touch_readers[reader] = _touched_base + _touched.size()
+	var lowest := INF
+	for r: int in _touch_readers.values():
+		lowest = minf(lowest, float(r))
+	var drop := int(lowest) - _touched_base
+	if drop > 4096:  # the front that every reader has taken is let go
+		_touched = _touched.slice(drop)
+		_touched_base += drop
+	return out
+
+
 ## Takes a road (dirt or paved) back off a tile.
 func clear_road(p: Vector2i) -> void:
 	if in_bounds(p) and road[p.y * w + p.x] != 0:
+		touch(p)
 		road[p.y * w + p.x] = 0
 		wear[p.y * w + p.x] = 0.0
 		astar.set_point_weight_scale(p, float(MOVE_COST[tile(p.x, p.y)]))
@@ -708,6 +757,7 @@ func make_paved(p: Vector2i) -> bool:
 	if not can_pave(p):
 		return false
 	road[p.y * w + p.x] = 2
+	touch(p)
 	astar.set_point_weight_scale(p, float(MOVE_COST[tile(p.x, p.y)]) / PAVED_SPEED)
 	return true
 
@@ -724,6 +774,7 @@ func make_road(p: Vector2i) -> bool:
 	if not can_road(p):
 		return false
 	road[p.y * w + p.x] = 1
+	touch(p)
 	astar.set_point_weight_scale(p, float(MOVE_COST[tile(p.x, p.y)]) / ROAD_SPEED)  # pathfinding prefers roads
 	return true
 
@@ -751,6 +802,7 @@ func set_solid(rect: Rect2i, solid: bool) -> void:
 ## Removes a depleted deposit. Returns true if the terrain under it changed (felled forest).
 func remove_deposit(p: Vector2i) -> bool:
 	deposits.erase(p)
+	touch(p)
 	if tile(p.x, p.y) == Terrain.FOREST:
 		tiles[p.y * w + p.x] = Terrain.GRASS
 		astar.set_point_weight_scale(p, MOVE_COST[Terrain.GRASS] * slope_factor[p.y * w + p.x])
@@ -789,6 +841,7 @@ func drain_marsh(center: Vector2, radius: float) -> Array[Vector2i]:
 		for x in range(maxi(0, int(center.x - radius)), mini(w, int(center.x + radius) + 1)):
 			if tile(x, y) == Terrain.MARSH and Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius:
 				tiles[y * w + x] = Terrain.GRASS
+				touch(Vector2i(x, y))
 				astar.set_point_weight_scale(Vector2i(x, y), MOVE_COST[Terrain.GRASS] * slope_factor[y * w + x])
 				out.append(Vector2i(x, y))
 	return out

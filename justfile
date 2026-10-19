@@ -118,6 +118,10 @@ replay-check file:
 replay file *args:
     ./run.sh --windowed --nosplash --replay={{file}} {{args}}
 
+# Headless check that a client is told of the ground and the fog as it should be (what it explored, up to date where it sees)
+map-view-test:
+    {{godot}} --headless --path . --script tests/map_view_test.gd
+
 # Headless check of how an army fights: razes what it sees, drops a building for a defender, and goes back to it
 raze-test:
     {{godot}} --headless --path . --script tests/raze_test.gd

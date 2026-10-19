@@ -109,6 +109,14 @@ func _process(_dt: float) -> bool:
 			g.rig.pan(0.5)
 			_check("the camera pans", g.rig.pos.x > before.x, true)
 			_check("and the zoom is a whole number of pixels", g.rig.zoom_px >= 1, true)
+			for i in 200:  # kept on, the camera comes to the edge of the world and stops there
+				g.rig.pan(1.0)
+			var at := Iso.to_tile_flat(g.rig.pos)
+			var side := float(g.view.map_size().x)
+			_check("the camera stops at the edge of the map", at.x >= -0.5 and at.y >= -0.5 and at.x <= side + 0.5 and at.y <= side + 0.5, true)
+			var edge := g.rig.pos
+			g.rig.pan(1.0)
+			_check("and stays there", g.rig.pos.distance_to(edge) < 1.0, true)
 			print("DONE fails=", fails)
 			quit(1 if fails > 0 else 0)
 	return false

@@ -32,7 +32,7 @@ func _process(dt: float) -> bool:
 				ai.think_interval = 1.0e9
 		attacker.attack_after = 0.0
 		attacker.wave_size = 8
-		attacker.fog.reveal(Vector2(victim.start), 22.0)  # it has seen their town
+		g.sim.state.fogs[attacker.owner].reveal(Vector2(victim.start), 22.0)  # it has seen their town
 		var home := Vector2(attacker.start)
 		var site: Vector2i = g.sim.state.map.find_site(Vector2i(3, 3), attacker.start, 6, 30, [])
 		g.sim.add_building("castra", site, true, attacker.owner)

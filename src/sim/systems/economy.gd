@@ -78,6 +78,7 @@ func gather(u: Unit, delta: float) -> void:
 		u.work -= 1.0
 		u.carry += 1
 		d.amount -= 1
+		sim.state.map.touch(u.target_tile)
 	if d.amount <= 0 and d.renews:  # an emptied field: wait for it to ripen again
 		if u.carry > 0:
 			return_to_dropsite(u)
@@ -150,4 +151,5 @@ func update_plots(b: Building, delta: float) -> void:
 			if d.regrow >= regrow:
 				d.regrow = 0.0
 				d.amount = d.max_amount
+				sim.state.map.touch(p)
 

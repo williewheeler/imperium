@@ -14,10 +14,10 @@ extends RefCounted
 ##
 ## A *god* view (`PlayerView.god`) knows everything: it is for a spectator, who watches every people at once.
 ##
-## What is still not through the queue, and reads the Simulation in place: the ground (`map`, `fog`, the deposits, which a
-## client of another machine would be told as it explored), and the questions the rules answer (`find_site`,
-## `placement_error`, `road_error`, `unit_speed`), which a client would put to the rules itself. The units, buildings, stores,
-## eras, shots and news all come in the frames.
+## The ground comes in the frames too: the map (a ClientMap) and the fog are filled in from what the host tells the client, as its
+## people explore and as the ground changes where they can see (a spectator's god view reads the real ground instead). What is
+## still not through the queue, and reads the Simulation in place: the questions the rules answer (`find_site`, `placement_error`,
+## `road_error`, `unit_speed`), which a client would put to the rules itself.
 
 signal notice(key: String)  # a message for the player, as a phrase key
 signal building_completed(b: BuildingInfo)
@@ -27,12 +27,15 @@ signal people_fell(people: int)
 signal game_won(winner: int)
 signal tile_changed(p: Vector2i)  # the ground there is different, and the player knows that ground
 signal road_changed(p: Vector2i)
+signal ground_changed(tiles: PackedInt32Array)  # ground the client has newly been told of, or whose terrace changed (tile numbers): the views redraw it
 
 var owner: int  # -1 for a god view
 var _god := false
 var _paths := false
-var _fog: Fog  # what the player has explored (null for a god view)
-var _sim: Simulation  # for the ground and the rules' answers (see above); the world itself comes in the frames
+var _fog: Fog  # what the player has explored, as the host told it (null for a god view)
+var _map: GameMap  # the ground the player knows (a ClientMap; a god view reads the real one)
+var _picture := false  # does the fog keep a picture of itself, to be drawn?
+var _sim: Simulation  # for the rules' answers (see above); the world itself comes in the frames
 var _queue: ViewQueue  # where the host puts what the player may see
 var _frame := ViewFrame.new()  # the latest view taken
 var _units := {}  # id -> UnitInfo, for everyone known
@@ -52,13 +55,14 @@ static func god(sim: Simulation) -> PlayerView:
 
 ## `every` is how often the host puts a view on the queue, in ticks (0: only when `want` asks); `paths`: also the routes of the
 ## player's own units (a person's screen draws the route of what is selected).
-func _init(sim: Simulation, p_owner: int, every := 1, paths := false) -> void:
+func _init(sim: Simulation, p_owner: int, every := 1, paths := false, picture := false) -> void:
 	_sim = sim
 	owner = p_owner
 	_god = p_owner < 0
 	_paths = paths
-	if not _god:
-		_fog = sim.state.fogs[p_owner]
+	_picture = picture
+	if _god:
+		_map = sim.state.map
 	_queue = sim.open_view(p_owner, every, paths)
 	refresh()
 
@@ -86,6 +90,8 @@ func catch_up() -> void:
 
 func _apply(f: ViewFrame) -> void:
 	_frame = f
+	if not _god:
+		_learn_ground(f)
 	var live_units := {}
 	_all_units = []
 	_mine_units = []
@@ -160,10 +166,43 @@ func _apply(f: ViewFrame) -> void:
 				people_fell.emit(e[1])
 			"game_won":
 				game_won.emit(e[1])
-			"tile_changed":
+			"tile_changed":  # (a spectator's: the ground is the real one)
 				tile_changed.emit(e[1])
 			"road_changed":
 				road_changed.emit(e[1])
+
+
+## Folds in what the host told of the fog and the ground.
+func _learn_ground(f: ViewFrame) -> void:
+	if not f.welcome.is_empty():
+		_map = ClientMap.new(int(f.welcome["w"]), int(f.welcome["h"]))
+		_fog = Fog.new(_map.w, _map.h, not _picture)
+	if not f.fog_all.is_empty():
+		_fog.set_all(f.fog_all)
+	if not f.fog_changes.is_empty():
+		_fog.apply(f.fog_changes)
+	var cm := _map as ClientMap
+	var fresh := PackedInt32Array()
+	var changed_tiles: Array[Vector2i] = []
+	var changed_roads: Array[Vector2i] = []
+	for k in f.ground_at.size():
+		var i := f.ground_at[k]
+		var o := k * 5
+		var what := cm.set_ground(i, f.ground[o], f.ground[o + 1], f.ground[o + 2], f.ground[o + 3], f.ground[o + 4])
+		if what & 1 or what & 8:
+			fresh.append(i)
+		if what & 2 and not what & 1:
+			changed_tiles.append(Vector2i(i % cm.w, i / cm.w))
+		if what & 4 and not what & 1:
+			changed_roads.append(Vector2i(i % cm.w, i / cm.w))
+	for r in f.deposits:
+		cm.set_deposit(r)
+	if not fresh.is_empty():
+		ground_changed.emit(fresh)
+	for p in changed_tiles:
+		tile_changed.emit(p)
+	for p in changed_roads:
+		road_changed.emit(p)
 
 
 func _copy_unit(info: UnitInfo, r: ViewFrame.UnitRecord) -> void:
@@ -304,10 +343,9 @@ func shots() -> Array[Dictionary]:
 
 # ---------------------------------------------------------------- the ground
 
-## The ground itself, for drawing it. (Terrain and deposits of ground the player has not explored are in here too: the
-## client draws them under the fog. A client of another machine would be told only what it has explored.)
+## The ground the player knows, for drawing it. (Terrain and deposits of ground it has not explored are not in it: see ClientMap.)
 func map() -> GameMap:
-	return _sim.state.map
+	return _map
 
 
 ## The fog that shows what the player has explored, for drawing it. (A god view has none.)
@@ -316,11 +354,7 @@ func fog() -> Fog:
 
 
 func map_size() -> Vector2i:
-	return Vector2i(_sim.state.map.w, _sim.state.map.h)
-
-
-func map_seed() -> int:
-	return _sim.state.map.seed_value
+	return Vector2i(_map.w, _map.h)
 
 
 func is_explored(tile: Vector2i) -> bool:
@@ -345,7 +379,7 @@ func explored_share() -> float:
 
 ## What lies on `tile` if the player has explored it (berries, trees, a mine, a herd, a field), or null.
 func deposit_at(tile: Vector2i) -> Deposit:
-	var d: Deposit = _sim.state.map.deposits.get(tile)
+	var d: Deposit = _map.deposits.get(tile)
 	if d == null or not (_god or _fog.is_explored(tile)):
 		return null
 	return d
@@ -354,7 +388,7 @@ func deposit_at(tile: Vector2i) -> Deposit:
 ## The explored tiles that have a deposit on them.
 func deposit_tiles() -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	for p: Vector2i in _sim.state.map.deposits:
+	for p: Vector2i in _map.deposits:
 		if is_explored(p):
 			out.append(p)
 	return out
@@ -363,7 +397,7 @@ func deposit_tiles() -> Array[Vector2i]:
 ## The explored tiles that have a herd or a shoal on them.
 func herd_tiles() -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	for p: Vector2i in _sim.state.map.herds:
+	for p: Vector2i in _map.herds:
 		if is_explored(p):
 			out.append(p)
 	return out
@@ -371,7 +405,7 @@ func herd_tiles() -> Array[Vector2i]:
 
 ## The tiles at exactly `r` tiles from `c` in a square ring, on the map (geometry only: it says nothing of what is there).
 func ring(c: Vector2i, r: int) -> Array[Vector2i]:
-	return _sim.state.map.ring(c, r)
+	return _map.ring(c, r)
 
 
 ## The footprints of the buildings the player knows of: its own and those on explored ground.
@@ -401,7 +435,7 @@ func road_error(tile: Vector2i) -> String:
 
 ## Closest spot to `near` where a building of `size` fits, on ground the player has explored (see GameMap.find_site).
 func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Array[Vector2i], avoid_rects: Array = []) -> Vector2i:
-	return _sim.state.map.find_site(size, near, min_r, max_r, avoid, avoid_rects, false, _fog)
+	return _sim.state.map.find_site(size, near, min_r, max_r, avoid, avoid_rects, false, _sim.state.fogs[owner])  # (the rules and the real ground: still asked of the Simulation)
 
 
 ## Why a `kind` of building cannot go on `tile`, or "" if it can (the rules' answer, asked on the player's behalf: it only

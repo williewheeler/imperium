@@ -48,6 +48,14 @@ func setup(p_game) -> void:
 	add_child(land)
 
 
+## The client was told of ground it did not know: the picture catches up shortly.
+func ground_changed(tiles: PackedInt32Array) -> void:
+	var map: GameMap = game.view.map()
+	for i in tiles:
+		_image.set_pixel(i % map.w, i / map.w, _colors[map.tiles[i]])
+	_dirty = true
+
+
 ## A tile changed terrain (a felled forest, a drained marsh); the picture catches up shortly.
 func tile_changed(p: Vector2i) -> void:
 	_image.set_pixel(p.x, p.y, _colors[game.view.map().tile(p.x, p.y)])

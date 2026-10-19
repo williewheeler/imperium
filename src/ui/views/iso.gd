@@ -32,9 +32,7 @@ static func set_terrain(w: int, h: int, levels: PackedByteArray) -> void:
 	_w = w
 	_h = h
 	_levels = levels
-	_max_level = 0
-	for l in levels:
-		_max_level = maxi(_max_level, l)
+	_max_level = GameMap.MAX_LEVEL  # (the highest terrace there can be, not the highest known: a client is not told of ground it has not explored)
 
 
 static func max_level() -> int:

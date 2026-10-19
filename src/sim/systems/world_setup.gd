@@ -43,7 +43,7 @@ func _open_books(owner: int) -> void:
 		for i in stock.size():
 			stock[i] += RUSH_STOCK[i]
 	sim.state.stocks[owner] = stock
-	sim.state.fogs[owner] = Fog.new(sim.state.map.w, sim.state.map.h, not sim.drawn_fogs.has(owner))
+	sim.state.fogs[owner] = Fog.new(sim.state.map.w, sim.state.map.h, true)  # (a client draws its own picture of what it knows)
 	sim.state.era_level[owner] = 0
 
 
@@ -142,7 +142,7 @@ func assign_sex(u: Unit) -> void:
 ## An AI to run player `owner_id`, whose town stands at `spot`. It knows only the ground its people have seen.
 func _make_ai(owner_id: int, faction: String, spot: Vector2i) -> void:
 	var ai := AI.new()
-	ai.client = HeadlessClient.new(sim, owner_id)
+	ai.client = HeadlessClient.new(sim, owner_id, 0, false, sim.drawn_fogs.has(owner_id))
 	ai.view = ai.client.view
 	ai.owner = owner_id
 	ai.faction = faction
@@ -152,5 +152,5 @@ func _make_ai(owner_id: int, faction: String, spot: Vector2i) -> void:
 	if sim.config.rush > 0.0:
 		ai.rush(sim.config.rush)
 	ai.rng.seed = sim.config.seed_value * 7919 + owner_id * 104729 + 1  # its own dice: the rules' stay out of its decisions
-	ai.fog = sim.state.fogs[owner_id]  # what its people have seen: it knows the ground round its town, and nothing else
+	ai.fog = ai.view.fog()  # what its people have seen, as its client knows it (for a spectator's panes)
 	sim.ais.append(ai)

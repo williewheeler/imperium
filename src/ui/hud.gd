@@ -79,7 +79,7 @@ func setup(game) -> void:
 	var tv := VBoxContainer.new()
 	top.add_child(tv)
 	var title := _label("", 12, GOLD)
-	_say(title, "Imperium  ·  sors %d" % _game.view.map_seed(), "Empire  ·  map seed %d" % _game.view.map_seed())
+	_say(title, "Imperium", "Empire")
 	tv.add_child(title)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 22)

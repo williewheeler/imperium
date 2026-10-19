@@ -92,16 +92,32 @@ func setup(p_game) -> void:
 			pane_fog.levels = game.view.map().levels
 			pane_fog.visibility_layer = Spectator.pane_bit(i)
 			add_child(pane_fog)
+			_fog_views.append(pane_fog)
 	else:
 		var fog_view := FogView.new()
 		fog_view.fog = game.fog
 		fog_view.map_size = game.view.map_size()
 		fog_view.levels = game.view.map().levels
 		add_child(fog_view)
+		_fog_views.append(fog_view)
 
 	var overlay := OverlayView.new()
 	overlay.game = game
 	add_child(overlay)
+
+
+## The client was told of ground it did not know (or its terraces changed): draw it, and let the scenery on it be made afresh.
+func ground_changed(tiles: PackedInt32Array) -> void:
+	var map: GameMap = game.view.map()
+	ground.reveal(tiles)
+	for fv in _fog_views:
+		fv.refresh_levels(map.levels)
+	var dirty := {}
+	for i in tiles:
+		dirty[Vector2i((i % map.w) / CHUNK, (i / map.w) / CHUNK)] = true
+	for c: Vector2i in dirty:
+		if _chunks.has(c):
+			_unload_chunk(c)  # (it is built again, from the ground now known, when the screen is near it)
 
 
 ## Roads were removed (debug era changes): repaint them.
@@ -129,6 +145,8 @@ func remove_tile_objects(p: Vector2i) -> void:
 			n.queue_free()
 	_tile_objects.erase(p)
 
+
+var _fog_views: Array[FogView] = []
 
 static var _shadow_cache := {}
 

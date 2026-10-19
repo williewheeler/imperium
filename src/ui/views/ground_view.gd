@@ -67,6 +67,23 @@ func set_rain(amount: float, delta: float) -> void:
 	mat.set_shader_parameter("flow", floor(_flow * 1.4))
 
 
+## The client has been told of ground it did not know (or its terraces changed): the terrain, relief and terrace pictures are taken
+## again from the map, and any roads on the new tiles are drawn.
+func reveal(tiles: PackedInt32Array) -> void:
+	_image = Image.create_from_data(_map.w, _map.h, false, Image.FORMAT_R8, _map.tiles)
+	_texture.update(_image)
+	_relief_texture.update(Image.create_from_data(_map.w, _map.h, false, Image.FORMAT_R8, _map.relief))
+	_levels_texture.update(Image.create_from_data(_map.w, _map.h, false, Image.FORMAT_R8, _map.levels))
+	var roads := false
+	for i in tiles:
+		if _map.road[i] != 0:
+			_stroke_tile(Vector2i(i % _map.w, i / _map.w))
+			roads = true
+	if roads:
+		_dirt_texture.update(_dirt_image)
+		_paved_texture.update(_paved_image)
+
+
 ## A tile changed terrain (a felled forest becomes grass).
 func set_tile(p: Vector2i, terrain: int) -> void:
 	_image.set_pixel(p.x, p.y, Color8(terrain, 0, 0))

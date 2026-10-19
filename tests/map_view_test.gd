@@ -1,0 +1,96 @@
+# Headless check that a client is told of the ground and the fog as it should be: exactly what it has explored, up to date where it
+# can see, nothing of what it has not: just map-view-test
+extends SceneTree
+var fails := 0
+
+
+func _check(name: String, ok: bool, detail := "") -> void:
+	print(("ok   " if ok else "FAIL ") + name + ("" if ok else "  " + detail))
+	if not ok:
+		fails += 1
+
+
+## Compares what `view` knows of the ground with the real thing: [tiles known that are not explored, explored tiles not known, visible
+## tiles whose ground differs, visible tiles whose deposit differs, unexplored tiles holding anything].
+func _compare(sim: Simulation, view: PlayerView) -> Array:
+	var real: Fog = sim.state.fogs[view.owner]
+	var cm := view.map() as ClientMap
+	var rm := sim.state.map
+	var out := [0, 0, 0, 0, 0]
+	for i in rm.w * rm.h:
+		var p := Vector2i(i % rm.w, i / rm.w)
+		var explored := real.state[i] != Fog.HIDDEN
+		if cm.known[i] == 1 and not explored:
+			out[0] += 1
+		if explored and cm.known[i] == 0:
+			out[1] += 1
+		if real.state[i] == Fog.VISIBLE:
+			if cm.tiles[i] != rm.tiles[i] or cm.levels[i] != rm.levels[i] or cm.relief[i] != rm.relief[i] or cm.biomes[i] != rm.biomes[i] or cm.road[i] != rm.road[i]:
+				out[2] += 1
+			var a: Deposit = cm.deposits.get(p)
+			var b: Deposit = rm.deposits.get(p)
+			if (a == null) != (b == null) or (a != null and (a.amount != b.amount or a.kind != b.kind or a.herd != b.herd or a.farm != b.farm)):
+				out[3] += 1
+		if not explored and (cm.tiles[i] != 0 or cm.levels[i] != 0 or cm.relief[i] != 0 or cm.deposits.has(p)):
+			out[4] += 1
+	return out
+
+
+func _init() -> void:
+	var c := SimConfig.new()
+	c.seed_value = 42
+	c.size_id = "small"
+	c.players = 3
+	c.peoples = Defs.AI_ORDER.duplicate()
+	c.humans = [0]
+	var sim := Simulation.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
+	sim.begin()
+	var mine := HeadlessClient.new(sim, 0, 1)  # a person's client: its people explore
+	var view := mine.view
+	var ai_view: PlayerView = sim.ais[0].view
+	var near := Vector2i(sim.state.start)
+	_check("a client is told the size of the map, and nothing else of it", view.map_size() == Vector2i(sim.state.map.w, sim.state.map.h) and not view.is_explored(near + Vector2i(60, 60)))
+	var ids: Array = sim.state.units.filter(func(u: Unit) -> bool: return u.owner == 0).map(func(u: Unit) -> int: return u.id)
+	mine.submit({"type": "explore", "units": ids})
+	for i in 150 * Simulation.TICKS_PER_SECOND:
+		sim.step()
+	view.catch_up()
+	ai_view.catch_up()
+	var seen := (view.map() as ClientMap).known.count(1)
+	_check("its people have explored some ground", seen > 3000, str(seen))
+	for pair in [["the person's client", view], ["an AI's client", ai_view]]:
+		var r := _compare(sim, pair[1])
+		_check("%s knows the ground it has explored, no more and no less" % pair[0], r[0] == 0 and r[1] == 0, str(r))
+		_check("%s is up to date on what it can see" % pair[0], r[2] == 0 and r[3] == 0, str(r))
+		_check("%s has nothing of ground it has not explored" % pair[0], r[4] == 0, str(r))
+		_check("%s has the fog as it is" % pair[0], (pair[1] as PlayerView).fog().state == sim.state.fogs[(pair[1] as PlayerView).owner].state)
+
+	# ground that changes where it can be seen reaches the client; where it cannot, only when it is next seen
+	var heard: Array[Vector2i] = []
+	view.tile_changed.connect(func(p: Vector2i) -> void: heard.append(p))
+	var tree := Vector2i(-1, -1)
+	for p: Vector2i in sim.state.map.deposits:
+		if sim.state.map.tile(p.x, p.y) == GameMap.Terrain.FOREST and sim.state.fogs[0].state[p.y * sim.state.map.w + p.x] == Fog.VISIBLE:
+			tree = p
+			break
+	_check("there is a tree in sight", tree.x >= 0)
+	if tree.x >= 0:
+		sim.state.map.remove_deposit(tree)  # (felled: the terrain is grass now)
+		sim.step()
+		view.catch_up()
+		_check("a tree felled in sight is gone for the client too", view.map().tile(tree.x, tree.y) == GameMap.Terrain.GRASS and view.deposit_at(tree) == null)
+		_check("and it said so", heard.has(tree), str(heard))
+
+	# the map laid open (a debug aid) is told as a whole, and the ground with it
+	sim.state.fogs[0].set_show_all(true)
+	sim.step()
+	view.catch_up()
+	var all := (view.map() as ClientMap).known.count(1)
+	_check("a map laid open tells the client of every tile", all == sim.state.map.w * sim.state.map.h, str(all))
+	_check("and the fog is open", view.fog().state.count(Fog.VISIBLE) == sim.state.map.w * sim.state.map.h)
+	sim.state.fogs[0].set_show_all(false)
+	sim.step()
+	view.catch_up()
+	_check("put back, the fog is as it was", view.fog().state == sim.state.fogs[0].state)
+	print("DONE fails=", fails)
+	quit(1 if fails > 0 else 0)

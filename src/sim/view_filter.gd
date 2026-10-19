@@ -11,6 +11,14 @@ var _sim: Simulation
 var _known := {}  # id -> true, for the units the last frame told the player of
 var _removed := {}  # id -> absorbed, for the known units that have left the game since
 var _events: Array[Array] = []
+var _fog_reader := 0  # this filter's place in the log of changes to the player's fog
+var _map_reader := 0  # and in the map's log of changed tiles
+var _fog_epoch := 0
+var _first := true  # the first frame tells the whole of what is known
+var _sent := PackedByteArray()  # what the client has been told of each tile's ground: five bytes a tile
+var _sent_known := PackedByteArray()  # per tile: 1 once the client has been told of it
+var _told := {}  # tile number -> a number that stands for the deposit the client was told of there
+var _stale := {}  # tile number -> true, for tiles that changed while the player could not see them: it is told when it next can
 
 
 func _init(sim: Simulation, p_player: int) -> void:
@@ -30,22 +38,22 @@ func _init(sim: Simulation, p_player: int) -> void:
 			_happened(["era_reached", e]))
 	sim.people_fell.connect(func(p: int) -> void: _happened(["people_fell", p]))
 	sim.game_won.connect(func(w: int) -> void: _happened(["game_won", w]))
-	sim.tile_changed.connect(func(p: Vector2i) -> void:
-		if _knows(p):
-			_happened(["tile_changed", p]))
-	sim.road_changed.connect(func(p: Vector2i) -> void:
-		if _knows(p):
-			_happened(["road_changed", p]))
+	if player < 0:  # a spectator reads the real ground, so is told when it changes; a player's client is told of the ground in its frames
+		sim.tile_changed.connect(func(p: Vector2i) -> void: _happened(["tile_changed", p]))
+		sim.road_changed.connect(func(p: Vector2i) -> void: _happened(["road_changed", p]))
+	else:
+		_fog_reader = sim.state.fogs[player].open_log()
+		_fog_epoch = sim.state.fogs[player].epoch
+		_map_reader = sim.state.map.open_touch_log()
+		var n: int = sim.state.map.w * sim.state.map.h
+		_sent.resize(n * 5)
+		_sent_known.resize(n)
 
 
 func _happened(what: Array) -> void:
 	_events.append(what)
 	if _events.size() > MAX_EVENTS:
 		_events.pop_front()
-
-
-func _knows(tile: Vector2i) -> bool:
-	return player < 0 or _sim.state.fogs[player].is_explored(tile)
 
 
 ## What a passer-by sees of an unfinished or burning unit's activity: not what it means to do, only what it is doing.
@@ -84,6 +92,8 @@ func build(with_paths: bool) -> ViewFrame:
 	_removed = {}
 	f.events = _events
 	_events = []
+	if not god:
+		_tell_of_ground(f, fog)
 	f.pop_limit = _sim.economy.pop_limit()
 	f.winner = state.winner
 	f.defeated = state.defeated.duplicate()
@@ -172,3 +182,86 @@ func _building_record(b: Building, mine: bool, full: bool) -> ViewFrame.Building
 		r.train_queue.assign(b.train_queue)
 		r.train_progress = b.train_progress
 	return r
+
+
+# ---------------------------------------------------------------- the ground and the fog
+
+## What the player's client is to be told of the fog and of the ground it can now see or has newly explored: the fog's
+## changes, and the ground and deposits that are new to it or that changed where it can see.
+func _tell_of_ground(f: ViewFrame, fog: Fog) -> void:
+	var map := _sim.state.map
+	var look := PackedInt32Array()  # the tiles to compare with what the client was told
+	var changes := fog.take_changes(_fog_reader)
+	var touched := map.take_touched(_map_reader)
+	if _first or fog.epoch != _fog_epoch:  # the whole fog: the first time, or after the map was laid open or put back
+		f.fog_all = fog.state.duplicate()
+		_fog_epoch = fog.epoch
+		if _first:
+			f.welcome = {"w": map.w, "h": map.h}
+			_first = false
+		for i in map.w * map.h:
+			if fog.state[i] != Fog.HIDDEN:
+				look.append(i)
+	else:
+		f.fog_changes = changes
+		for c in changes:
+			var i := c >> 2
+			if (c & 3) == Fog.VISIBLE and _stale.has(i):
+				_stale.erase(i)
+				look.append(i)
+			elif (c & 3) != Fog.HIDDEN and _sent_known[i] == 0:
+				look.append(i)  # newly explored
+		for i in touched:
+			var st := fog.state[i]
+			if st == Fog.VISIBLE:
+				look.append(i)
+			elif st == Fog.EXPLORED:
+				_stale[i] = true
+	for i in look:
+		_tell_of_tile(f, map, i)
+
+
+func _tell_of_tile(f: ViewFrame, map: GameMap, i: int) -> void:
+	var o := i * 5
+	var terrain := map.tiles[i]
+	var level := map.levels[i]
+	var rel := map.relief[i]
+	var biome := map.biomes[i]
+	var road := map.road[i]
+	if _sent_known[i] == 0 or _sent[o] != terrain or _sent[o + 1] != level or _sent[o + 2] != rel or _sent[o + 3] != biome or _sent[o + 4] != road:
+		_sent[o] = terrain
+		_sent[o + 1] = level
+		_sent[o + 2] = rel
+		_sent[o + 3] = biome
+		_sent[o + 4] = road
+		f.ground_at.append(i)
+		f.ground.append(terrain)
+		f.ground.append(level)
+		f.ground.append(rel)
+		f.ground.append(biome)
+		f.ground.append(road)
+	_sent_known[i] = 1
+	var p := Vector2i(i % map.w, i / map.w)
+	var d: Deposit = map.deposits.get(p)
+	var sig := -1
+	if d != null:
+		sig = d.amount | (d.max_amount << 16) | (d.kind << 32) | ((1 if d.farm else 0) | (2 if d.fish else 0) | (4 if d.herd else 0) | (8 if d.renews else 0)) << 36 | (d.owner + 1) << 40
+	if sig == int(_told.get(i, -1)):
+		return
+	var r := ViewFrame.DepositRecord.new()
+	r.tile = p
+	if d == null:
+		r.present = false
+		_told.erase(i)
+	else:
+		r.kind = d.kind
+		r.amount = d.amount
+		r.max_amount = d.max_amount
+		r.renews = d.renews
+		r.farm = d.farm
+		r.fish = d.fish
+		r.herd = d.herd
+		r.owner = d.owner
+		r.plot_rect = d.plot_rect
+		_told[i] = sig
+	f.deposits.append(r)

@@ -56,7 +56,29 @@ class BuildingRecord:
 	var train_progress := 0.0  # (own only)
 
 
+## What lies on one tile the player knows: its deposit (or that it has none now).
+class DepositRecord:
+	extends RefCounted
+	var tile := Vector2i.ZERO
+	var present := true  # false: whatever was there is gone
+	var kind := 0
+	var amount := 0
+	var max_amount := 0
+	var renews := false
+	var farm := false
+	var fish := false
+	var herd := false
+	var owner := 0
+	var plot_rect := Rect2i()
+
+
 var tick := 0
+var welcome := {}  # the first frame only: what is public of the map, {w, h}
+var fog_all := PackedByteArray()  # the whole fog (the first frame, or after the map was laid open); else empty
+var fog_changes := PackedInt32Array()  # tiles whose fog changed since the last frame, each tile * 4 + new state, in order
+var ground_at := PackedInt32Array()  # the tiles (as tile numbers) whose ground is told below, in order
+var ground := PackedByteArray()  # their ground, five bytes each: terrain, terrace, relief, biome, road
+var deposits: Array[DepositRecord] = []  # the deposits that are new or changed on the ground the player knows
 var units: Array[UnitRecord] = []  # everyone known: its own people and the others in sight
 var buildings: Array[BuildingRecord] = []  # its own, and the others on explored ground
 var removed := {}  # id -> true if it was absorbed, for the units known to the player that have left the game since the last frame
@@ -77,6 +99,14 @@ var events: Array[Array] = []  # what happened, in order: ["notice", key], ["bui
 ## Folds in a frame that was never read: this one is the world as it stands, but what happened in between must not be lost.
 func absorb(older: ViewFrame) -> void:
 	events = older.events + events
+	if welcome.is_empty():
+		welcome = older.welcome
+	if fog_all.is_empty():  # (a newer whole fog makes the older changes moot)
+		fog_all = older.fog_all
+		fog_changes = older.fog_changes + fog_changes
+	ground_at = older.ground_at + ground_at
+	ground = older.ground + ground
+	deposits = older.deposits + deposits
 	for id: int in older.removed:
 		if not removed.has(id):
 			removed[id] = older.removed[id]

@@ -53,7 +53,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 	if skirmish_look != Vector2.INF and not args.has("look"):
 		game.rig.pos = skirmish_look
 	if args.has("reveal"):  # debug: start with the whole map laid open (M toggles it)
-		game.fog.set_show_all(true)
+		game.sim.state.fogs[Main.LOCAL].set_show_all(true)  # (the real fog: the client is told what it holds)
 	if args.has("forum"):
 		game.person.set_selected_building(game.sim.state.buildings[0].id)
 	if args.has("builds"):  # debug: buildings at several stages of construction
@@ -146,7 +146,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 	if skirmish_look != Vector2.INF and not args.has("look"):
 		game.rig.pos = skirmish_look
 	if args.has("reveal"):  # debug: start with the whole map laid open (M toggles it)
-		game.fog.set_show_all(true)
+		game.sim.state.fogs[Main.LOCAL].set_show_all(true)  # (the real fog: the client is told what it holds)
 	if args.has("forum"):
 		game.person.set_selected_building(game.sim.state.buildings[0].id)
 	if args.has("builds"):  # debug: buildings at several stages of construction
@@ -258,7 +258,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 					skirmish_look = game.rig.pos
 				break
 	if args.has("dock"):  # debug: a dock on the nearest shore, a boat, and a school of fish off it
-		game.fog.reveal(Vector2(start), 300.0)
+		game.sim.state.fogs[Main.LOCAL].reveal(Vector2(start), 300.0)
 		var found := Vector2i(-1, -1)
 		for r in range(4, 160):
 			for p in game.sim.state.map.ring(start, r):

@@ -160,7 +160,7 @@ func cycle(step: int) -> void:
 	game.person.placing = ""
 	game.person.cancel_road_mode()
 	_undress()
-	game.fog.reveal(game.sim.state.buildings[0].center(), 17.0)
+	game.sim.state.fogs[Main.LOCAL].reveal(game.sim.state.buildings[0].center(), 17.0)
 	_dress_era_one()
 	if game.era >= 1:
 		_dress_era_two()
