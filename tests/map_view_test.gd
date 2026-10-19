@@ -43,17 +43,18 @@ func _init() -> void:
 	c.players = 3
 	c.peoples = Defs.AI_ORDER.duplicate()
 	c.humans = [0]
-	var sim := Simulation.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
-	sim.begin()
+	var host := Host.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
+	var sim := host.sim
+	host.begin()
 	var mine := HeadlessClient.new(sim, 0, 1)  # a person's client: its people explore
 	var view := mine.view
-	var ai_view: PlayerView = sim.ais[0].view
+	var ai_view: PlayerView = host.ais[0].view
 	var near := Vector2i(sim.state.start)
 	_check("a client is told the size of the map, and nothing else of it", view.map_size() == Vector2i(sim.state.map.w, sim.state.map.h) and not view.is_explored(near + Vector2i(60, 60)))
 	var ids: Array = sim.state.units.filter(func(u: Unit) -> bool: return u.owner == 0).map(func(u: Unit) -> int: return u.id)
 	mine.submit({"type": "explore", "units": ids})
 	for i in 150 * Simulation.TICKS_PER_SECOND:
-		sim.step()
+		host.step()
 	view.catch_up()
 	ai_view.catch_up()
 	var seen := (view.map() as ClientMap).known.count(1)

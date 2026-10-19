@@ -318,7 +318,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 
 func report_text() -> String:
 	var lines: Array[String] = ["stock=%s" % [game.sim.stock_of(Main.LOCAL)], "buildings lost=%d kills=%d defeated=%s winner=%d" % [game.sim.state.buildings_lost, game.sim.state.kills, game.sim.state.defeated.keys(), game.sim.state.winner]]
-	for ai: AI in game.sim.ais:
+	for ai: AI in game.host.ais:
 		var sm := ai.summary()
 		lines.append("AI %d: era=%d towns=%d explored=%d%% villagers=%d army=%d buildings=%d pop=%d/%d status=%s wave=%d" % [ai.owner, sm["era"], sm["towns"], int(float(sm["explored"]) * 100.0), sm["villagers"], sm["army"], sm["buildings"], sm["pop"], sm["cap"], sm["status"], ai.wave.size()])
 	for u in game.sim.state.units:

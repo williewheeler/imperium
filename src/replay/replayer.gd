@@ -1,7 +1,7 @@
 class_name Replayer
 extends RefCounted
-## Plays a Replay into a Simulation that was built from the same config and has its AIs switched off
-## (`ai_enabled = false`): at each tick it puts the commands that were given then on the command queue, as the players
+## Plays a Replay into a Simulation that was built from the same config and has no AIs beside it
+## (nobody gives it commands but the recording): at each tick it puts the commands that were given then on the command queue, as the players
 ## did, and as it goes it checks that the game answers each as it did and that its checksums are the original's. Anything else is
 ## `diverged`: the replay no longer plays out as the game it records.
 

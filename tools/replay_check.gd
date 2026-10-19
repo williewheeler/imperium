@@ -21,7 +21,6 @@ func _init() -> void:
 	print("replay: seed %d, %s, %s, %s, %d peoples, %d commands, %d checksums, %.0f game seconds" % [c.seed_value, c.map_type, c.size_id, c.terrain_id, c.players, replay.commands.size(), replay.checks.size(), replay.seconds()])
 	var t0 := Time.get_ticks_msec()
 	var sim := Simulation.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
-	sim.ai_enabled = false  # the commands come from the file
 	var player := Replayer.new(replay)
 	sim.begin()
 	while not player.finished(sim) and player.diverged == "":

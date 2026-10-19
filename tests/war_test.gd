@@ -25,9 +25,9 @@ func _process(dt: float) -> bool:
 	t_stage += dt  # already scaled by the engine
 	if stage == 0:
 		Engine.time_scale = 8.0
-		attacker = g.sim.ais[0]
-		victim = g.sim.ais[1]
-		for ai: AI in g.sim.ais:  # only the attacker thinks
+		attacker = g.host.ais[0]
+		victim = g.host.ais[1]
+		for ai: AI in g.host.ais:  # only the attacker thinks
 			if ai != attacker:
 				ai.think_interval = 1.0e9
 		attacker.attack_after = 0.0

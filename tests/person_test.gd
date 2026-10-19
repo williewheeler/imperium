@@ -46,7 +46,7 @@ func _process(_dt: float) -> bool:
 	var p: Person = g.person
 	match stage:
 		0:
-			g.sim.ais.clear()
+			g.host.ais.clear()
 			for i in 4:
 				g.sim.state.stocks[0][i] = 1000
 			villagers.assign(g.sim.state.units.filter(func(u: Unit) -> bool: return u.owner == 0 and u.kind == "villager"))

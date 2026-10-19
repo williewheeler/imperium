@@ -36,7 +36,7 @@ func _process(dt: float) -> bool:
 			Engine.time_scale = 10.0
 			for i in 4:
 				g.sim.state.stocks[0][i] = 1000
-			g.sim.ais.clear()  # no AI thinking: only what the test does
+			g.host.ais.clear()  # no AI thinking: only what the test does
 			# four soldiers of ours beside a finished enemy hut
 			var base := Vector2(g.sim.state.units[0].pos) + Vector2(12, 12)
 			var site: Vector2i = g.sim.state.map.find_site(Vector2i(1, 1), Vector2i(base), 0, 20, [])

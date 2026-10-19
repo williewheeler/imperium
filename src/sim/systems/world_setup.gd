@@ -1,7 +1,7 @@
 class_name WorldSetup
 extends RefCounted
-## Founding the players on a freshly made map: each people's town, villagers and stores, the Circus, and the
-## AIs that run the computer-run peoples.
+## Founding the players on a freshly made map: each people's town, villagers and stores, and the Circus. (The AIs that run the
+## computer-run peoples are made by the Host.)
 
 var sim: Simulation
 
@@ -20,9 +20,8 @@ func found_players(start: Vector2i) -> void:
 	sim.state.map.place_resources(start, _riches())  # after the Town Center, so berries and mines go around it
 	place_circus(start)
 	place_jupiter(start)
-	place_ais(start)
-	if not sim.config.is_human(0):
-		_make_ai(0, "romans", start)  # nobody plays the first town: it is an AI like the rest
+	sim.state.starts[0] = start
+	place_peoples(start)
 
 
 ## How much there is to gather, as the game was set up (see GameSettings.RESOURCES).
@@ -87,8 +86,8 @@ func place_jupiter(start: Vector2i) -> void:
 
 ## The other peoples each get a town of their own, spaced round the map like you (see
 ## GameMap.home_points), with five villagers and the same stores as ours. How many play is set on the
-## settings screen. Each is run by a AI.
-func place_ais(rome: Vector2i) -> void:
+## settings screen.
+func place_peoples(rome: Vector2i) -> void:
 	var connected: bool = GameSettings.type_info(sim.config.map_type)["connected"]
 	var middle := Vector2(0.5, 0.5)
 	var slot := 0
@@ -104,8 +103,8 @@ func place_ais(rome: Vector2i) -> void:
 			var want := Vector2i(((home + attempt) * sim.state.map.w).round()).clamp(Vector2i(12, 12), Vector2i(sim.state.map.w - 13, sim.state.map.h - 13))
 			var found := sim.state.map.find_start(want, rome if connected else Vector2i(-1, -1), 1)
 			var too_close := found.distance_to(Vector2(rome)) < 0.1 * sim.state.map.w
-			for r in sim.ais:
-				too_close = too_close or found.distance_to(Vector2(r.start)) < 0.1 * sim.state.map.w
+			for other: Vector2i in sim.state.starts.values():
+				too_close = too_close or found.distance_to(Vector2(other)) < 0.1 * sim.state.map.w
 			if not too_close:
 				spot = found
 				break
@@ -124,8 +123,7 @@ func place_ais(rome: Vector2i) -> void:
 		var town := sim.add_building("town_center", site, true, owner_id)
 		town.building_name = info["town"]
 		sim.state.map.place_start_resources(spot, _riches())
-		if not sim.config.is_human(owner_id):
-			_make_ai(owner_id, faction, spot)
+		sim.state.starts[owner_id] = spot
 
 
 ## Villagers alternate between men and women; fighting men take the kind's looks in turn.
@@ -137,20 +135,3 @@ func assign_sex(u: Unit) -> void:
 		var n: int = sim.state.looks_made.get(u.kind, 0)
 		u.look = n % int(Defs.UNIT_LOOKS[u.kind])
 		sim.state.looks_made[u.kind] = n + 1
-
-
-## An AI to run player `owner_id`, whose town stands at `spot`. It knows only the ground its people have seen.
-func _make_ai(owner_id: int, faction: String, spot: Vector2i) -> void:
-	var ai := AI.new()
-	ai.client = HeadlessClient.new(sim, owner_id, 0, false, sim.drawn_fogs.has(owner_id))
-	ai.view = ai.client.view
-	ai.owner = owner_id
-	ai.faction = faction
-	ai.start = spot
-	ai.set_difficulty(sim.config.difficulty_id)
-	ai.stagger(owner_id, sim.config.players)
-	if sim.config.rush > 0.0:
-		ai.rush(sim.config.rush)
-	ai.rng.seed = sim.config.seed_value * 7919 + owner_id * 104729 + 1  # its own dice: the rules' stay out of its decisions
-	ai.fog = ai.view.fog()  # what its people have seen, as its client knows it (for a spectator's panes)
-	sim.ais.append(ai)

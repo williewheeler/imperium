@@ -23,7 +23,8 @@ extends RefCounted
 ##   - what the simulation wants the person to hear or see is told by a signal, never done itself.
 ##
 ## The parts, one file each: Movement, Economy, Production, Eras, Vision, Wildlife, UnitBehavior (what a unit
-## does each tick), Combat, Orders, Commands, Placement, Roads, Victory, WorldSetup, and the AIs.
+## does each tick), Combat, Orders, Commands, Placement, Roads, Victory and WorldSetup. (The AIs are not part of it: they are clients,
+## run by the Host.)
 
 const TICKS_PER_SECOND := 30
 const TICK := 1.0 / TICKS_PER_SECOND  # seconds of game time one step covers
@@ -48,12 +49,9 @@ signal tainted_by(why: String)  # something other than commands has changed the 
 
 var config: SimConfig
 var state := GameState.new()  # the game: inert data that the systems act on
-var ais: Array[AI] = []
 var tainted: Array[String] = []  # what has changed the game other than by commands, so that a replay of it cannot be trusted
 var command_queue := CommandQueue.new()  # where the players' commands wait for the step
 var view_queues: Array[ViewQueue] = []  # where each player's views wait for its client (see `open_view`)
-var ai_enabled := true  # false when the commands come from somewhere else (a replay), so the AIs stay quiet
-var drawn_fogs: Array = []  # the AIs whose clients keep a picture of their fog, to draw it (set by the screen that shows them)
 
 var movement := Movement.new()
 var economy := Economy.new()
@@ -86,8 +84,6 @@ func begin() -> void:
 	state.start = map.find_start(Vector2i((map.homes[0] * map.w).round()), Vector2i(-1, -1), 0)  # the first player starts on the ring round the map like everyone else
 	setup.found_players(state.start)
 	vision.update(true)
-	for q in view_queues:  # the clients made while founding the players were told of a world nobody had looked at yet
-		publish_view(q)
 
 
 # ---------------------------------------------------------------- the clock
@@ -103,13 +99,8 @@ func step(publish_periodic := true) -> void:
 	var dt := TICK
 	for u in state.units:
 		u.prev_pos = u.pos
-	var t0 := Perf.start()
-	if ai_enabled:
-		for ai in ais:
-			ai.tick(dt)
-	Perf.stop("ais", t0)
 	drain_commands()
-	t0 = Perf.start()
+	var t0 := Perf.start()
 	movement.begin_tick()
 	for u in state.units:
 		if Perf.trace:  # name the state, so a slow tick says which kind of work was slow

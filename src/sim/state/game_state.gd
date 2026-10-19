@@ -12,6 +12,7 @@ var units: Array[Unit] = []
 var buildings: Array[Building] = []
 var stocks: Array = []  # every player's resources, by owner (null for a slot nobody plays)
 var fogs := {}  # owner -> the Fog that player has built up: what it has seen, and nothing more
+var starts := {}  # owner -> where that player's first town stands (not part of the checksum)
 var start := Vector2i.ZERO  # where the first player's town stands
 
 # time and chance

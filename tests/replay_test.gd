@@ -9,6 +9,7 @@ extends SceneTree
 const SECONDS := 90
 const PATH := "user://replay_test.replay"
 var fails := 0
+var _last: Host  # the host of the game last played
 
 
 func _check(name: String, ok: bool, detail := "") -> void:
@@ -29,13 +30,15 @@ func _config(seed_value: int, humans: Array) -> SimConfig:
 
 ## Plays SECONDS of a game, writing it to `path` unless that is empty. `person` (if valid) is called before each tick, to give commands as player 0.
 func _play(c: SimConfig, path: String, person := Callable(), close := true) -> Simulation:
-	var sim := Simulation.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
+	var host := Host.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
+	_last = host
+	var sim := host.sim
 	var rec: Recorder = Recorder.new(path, sim) if path != "" else null
-	sim.begin()
+	host.begin()
 	while sim.state.tick < SECONDS * Simulation.TICKS_PER_SECOND:
 		if person.is_valid():
 			person.call(sim)
-		sim.step()
+		host.step()
 	if rec != null and close:
 		rec.close()
 	return sim
@@ -45,7 +48,6 @@ func _play(c: SimConfig, path: String, person := Callable(), close := true) -> S
 func _replay(r: Replay) -> Array:
 	var c := r.config
 	var sim := Simulation.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
-	sim.ai_enabled = false
 	var player := Replayer.new(r)
 	sim.begin()
 	while not player.finished(sim) and player.diverged == "":
@@ -111,7 +113,7 @@ func _init() -> void:
 	# a person at the keyboard
 	var human_path := "user://replay_test_human.replay"
 	var h := _play(_config(5, [0]), human_path, _person)
-	_check("a game with a person in it has no AI for player 0", h.ais.size() == 2, "%d AIs" % h.ais.size())
+	_check("a game with a person in it has no AI for player 0", _last.ais.size() == 2, "%d AIs" % _last.ais.size())
 	var hr := Replay.load_file(human_path)
 	var mine := hr.commands.filter(func(c: Dictionary) -> bool: return int(c["cmd"].get("owner", -1)) == 0)
 	_check("the person's commands are in the record", mine.size() == 3, "%d" % mine.size())

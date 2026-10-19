@@ -32,18 +32,19 @@ func _init() -> void:
 
 	var t0 := Time.get_ticks_msec()
 	var map := GameMap.new(config.seed_value, config.tiles(), config.map_type, 0, config.players, config.terrain_id)
-	var sim := Simulation.new(config, map)
+	var host := Host.new(config, map)
+	var sim := host.sim
 	var recorder: Recorder = Recorder.new(out, sim) if out != "" else null
-	sim.begin()
+	host.begin()
 	print("game: seed %d, %s, %s, %s, %d peoples; map built and founded in %.1f s" % [config.seed_value, config.map_type, config.size_id, config.terrain_id, config.players, (Time.get_ticks_msec() - t0) / 1000.0])
 
 	var t1 := Time.get_ticks_msec()
 	var ticks := int(seconds * Simulation.TICKS_PER_SECOND)
 	var next_report := 0
 	while sim.state.tick < ticks:
-		sim.step()
+		host.step()
 		if sim.state.tick >= next_report:
-			print(summary(sim))
+			print(summary(host))
 			next_report += int(every * Simulation.TICKS_PER_SECOND)
 		if sim.state.winner >= 0:
 			print("won by player %d" % sim.state.winner)
@@ -51,7 +52,7 @@ func _init() -> void:
 	if recorder != null:
 		recorder.close()
 	var wall := (Time.get_ticks_msec() - t1) / 1000.0
-	print(summary(sim))
+	print(summary(host))
 	print("checksum %s" % sim.checksum())
 	if Perf.on:
 		print("ms per tick by part: ", Perf.report(sim.state.tick))
@@ -61,9 +62,10 @@ func _init() -> void:
 	quit(0)
 
 
-func summary(sim: Simulation) -> String:
+func summary(host: Host) -> String:
+	var sim := host.sim
 	var parts: Array[String] = []
-	for ai in sim.ais:
+	for ai in host.ais:
 		var s := ai.summary()
 		parts.append("p%d: era %d, %d towns, %d villagers, %d army" % [ai.owner, s["era"], s["towns"], s["villagers"], s["army"]])
 	return "t=%4.0fs tick %6d  %s  | %d units, %d buildings, %d lost, %d kills" % [sim.time(), sim.state.tick, " | ".join(parts), sim.state.units.size(), sim.state.buildings.size(), sim.state.buildings_lost, sim.state.kills]

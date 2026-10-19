@@ -16,10 +16,11 @@ func _init() -> void:
 	c.players = 3
 	c.peoples = Defs.AI_ORDER.duplicate()
 	c.humans = [0]  # player 0 is a person (no AI); 1 and 2 are AIs
-	var sim := Simulation.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
-	sim.begin()
-	sim.ai_enabled = false
-	var ai: AI = sim.ais[0]
+	var host := Host.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
+	var sim := host.sim
+	host.begin()
+	host.ai_enabled = false  # (the AIs stay quiet: the test acts for them)
+	var ai: AI = host.ais[0]
 	var client: HeadlessClient = ai.client
 	var view: PlayerView = ai.view
 	view.refresh()  # (the first thing the AI does: take the view the host built once the players were founded)
@@ -164,9 +165,9 @@ func _init() -> void:
 	_check("one it never saw does not: its end is not its business", not after.removed.has(unseen.id))
 
 	# and the AIs play a game through all this
-	sim.ai_enabled = true
+	host.ai_enabled = true
 	for i in 240 * Simulation.TICKS_PER_SECOND:
-		sim.step()
+		host.step()
 	var s: Dictionary = ai.summary()
 	_check("an AI that plays through its view grows", int(s["villagers"]) >= 9 and int(s["buildings"]) >= 4, str(s))
 	print("DONE fails=", fails)

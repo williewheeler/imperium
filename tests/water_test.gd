@@ -42,7 +42,7 @@ func _process(dt: float) -> bool:
 	match stage:
 		0:
 			Engine.time_scale = 10.0
-			g.sim.ais.clear()
+			g.host.ais.clear()
 			for i in 4:
 				g.sim.state.stocks[0][i] = 1000
 			g.sim.fog_of(0).reveal(Vector2(g.sim.state.map.w / 2.0, g.sim.state.map.h / 2.0), float(g.sim.state.map.w))  # the whole map is known

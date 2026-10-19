@@ -56,7 +56,7 @@ func _process(dt: float) -> bool:
 			Engine.time_scale = 10.0
 			for i in 4:
 				g.sim.state.stocks[0][i] = 1000
-			g.sim.ais.clear()
+			g.host.ais.clear()
 			var spot: Vector2i = g.sim.state.map.find_site(Vector2i(9, 9), Vector2i(g.sim.state.units[0].pos) + Vector2i(18, 18), 0, 40, [])
 			farm = g.sim.add_building("farm", spot, true, 0)
 			var plots := farm.plot_tiles()

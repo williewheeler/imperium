@@ -27,7 +27,6 @@ func _init() -> void:
 	c.humans = [0]
 	var sim := Simulation.new(c, GameMap.new(c.seed_value, c.tiles(), c.map_type, 0, c.players, c.terrain_id))
 	sim.begin()
-	sim.ai_enabled = false
 	var home := Vector2i(sim.state.units[0].pos)
 	var site: Vector2i = sim.state.map.find_site(Vector2i(1, 1), home + Vector2i(30, 0), 0, 30, [])
 	var hut := sim.add_building("hut", site, true, 1)

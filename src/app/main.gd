@@ -8,7 +8,8 @@ const LOCAL := 0  # the player at this keyboard
 const STEP_BUDGET_USEC := 40000  # the most of a frame the simulation may take, in microseconds, before the frame is drawn
 const TIP_WIDTH := 56  # tooltips are never one long line: they are broken into lines of about this many characters
 
-var sim: Simulation
+var host: Host  # the one simulation, and the AIs that run beside it
+var sim: Simulation  # (the host's)
 var client: HeadlessClient  # the player at this keyboard, with no screen of its own (null when spectating)
 var view: PlayerView  # what that player knows: everything the screen shows comes from here (when spectating: a view of the whole world)
 var fog: Fog  # what the player at this keyboard has seen, for drawing it (when spectating: a view that shows everything, which is not drawn)
@@ -155,21 +156,22 @@ func _ready() -> void:
 	if Perf.on:
 		print("PERF startup: map generated in ", Time.get_ticks_msec() - _t_a, " ms (engine up for ", Time.get_ticks_msec(), " ms)")
 
-	sim = Simulation.new(config, built[0])
-	sim.drawn_fogs = range(config.players) if spectating else [LOCAL]  # the fogs that are drawn keep a picture of themselves
+	host = Host.new(config, built[0])
+	sim = host.sim
+	host.drawn_fogs = range(config.players) if spectating else []  # the AIs whose clients keep a picture of their fog, to draw it (a spectator's panes)
 	if replay != null:
-		sim.ai_enabled = false  # the commands come from the file
+		host.ai_enabled = false  # the commands come from the file
 		replayer = Replayer.new(replay)
 	if args.has("replay-out"):  # --replay-out=FILE: write the game down as it is played
 		recorder = Recorder.new(String(args["replay-out"]), sim, {"colors": GameSettings.colors.duplicate(), "ai_peoples": GameSettings.ai_peoples.duplicate()})
-	sim.begin()
+	host.begin()
 	var map := sim.state.map
 	var start := sim.state.start
 	if spectating:
 		fog = Fog.new(map.w, map.h)  # nobody plays the first town: this view shows everything, and is not drawn
 		fog.set_show_all(true)
 		view = PlayerView.god(sim)  # a spectator sees every people at once
-		var by_owner: Array[AI] = sim.ais.duplicate()
+		var by_owner: Array[AI] = host.ais.duplicate()
 		by_owner.sort_custom(func(a: AI, b: AI) -> bool: return a.owner < b.owner)
 		viewers.assign(by_owner.slice(0, Spectator.MAX_PANES))
 	else:
@@ -475,7 +477,7 @@ func _step_sim() -> void:
 				_report_replay()
 			return
 		replayer.feed(sim)  # the commands that were given at this tick
-	sim.step(false)
+	host.step(false)
 
 
 ## The replay has played to its end: say whether it held, as the headless check does.

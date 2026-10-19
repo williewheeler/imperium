@@ -32,7 +32,7 @@ func _process(dt: float) -> bool:
 	if elapsed >= next_report or elapsed >= limit:
 		next_report += 150.0
 		print("--- %.0f game seconds: buildings lost=%d kills=%d defeated=%s winner=%d" % [elapsed, g.sim.state.buildings_lost, g.sim.state.kills, g.sim.state.defeated.keys(), g.sim.state.winner])
-		for ai: AI in g.sim.ais:
+		for ai: AI in g.host.ais:
 			var s := ai.summary()
 			var states := {}
 			for u in ai.wave:

@@ -74,7 +74,7 @@
   <path class="l" d="M45,1278 L90,1278"/><text class="s" x="100" y="1282">a call, or data flowing</text>
   <path class="d" d="M45,1300 L90,1300"/><text class="s" x="100" y="1304">a read that changes nothing</text>
   <rect class="prop" x="45" y="1314" width="45" height="20" rx="4"/><text class="s" x="100" y="1328">proposed, not built</text>
-  <text class="s" x="45" y="1356">Built: the clients (one for the local human, one for each AI), the queues,</text><text class="s" x="45" y="1371">the ground and fog in the views, and the rules on the client.</text><text class="s" x="45" y="1386">Not built: Networking. (The AIs still run inside the step.)</text>
+  <text class="s" x="45" y="1356">Built: the clients (one for the local human, one for each AI), the queues,</text><text class="s" x="45" y="1371">the ground and fog in the views, and the rules on the client.</text><text class="s" x="45" y="1386">Not built: Networking.</text>
   <text class="s" x="45" y="1411">Each player has a view queue, because each is sent only what it may see. Commands share one queue:</text><text class="s" x="45" y="1426">Networking sets a remote command's player from the connection. Networking is only for a client on</text><text class="s" x="45" y="1441">another machine; the AIs, and a human in the host's process, attach to the queues directly.</text>
 
   <!-- arrows -->
