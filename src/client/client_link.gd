@@ -12,9 +12,9 @@ func submit(_cmd: Dictionary) -> int:
 	return 0
 
 
-## The latest view the host has sent since the last call, or null.
-func take() -> ViewFrame:
-	return null
+## The frames the host has sent since the last call, oldest first (each is a set of changes to apply to what the client knows).
+func take() -> Array[ViewFrame]:
+	return []
 
 
 ## Asks the host to build this player's view at the end of the step that is running (for a client that has none every tick).

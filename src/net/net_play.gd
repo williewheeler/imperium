@@ -17,6 +17,8 @@ var _host: Host
 var _players := {}  # peer id -> {slot, queue}: the remote players
 var _tickets := {}  # the host's ticket for a command -> [peer id, the player's own ticket for it]
 
+const SEND_EVERY_MS := 60  # frames are sent in bundles about this often (some fifteen times a second), and interpolated between by the client
+
 
 func _init(p_session: NetSession) -> void:
 	session = p_session
@@ -32,17 +34,23 @@ func host_setup(sim: Simulation, host: Host) -> void:
 	_host = host
 	for p: Dictionary in session.config.get("people", []):
 		if int(p["slot"]) > 0:
-			_players[int(p["id"])] = {"slot": int(p["slot"]), "queue": sim.open_view(int(p["slot"]), 1, true)}
+			_players[int(p["id"])] = {"slot": int(p["slot"]), "queue": sim.open_view(int(p["slot"]), 1, true), "pending": [] as Array[ViewFrame], "sent_ms": 0}
 	sim.answered.connect(_on_answered)
 	session.multiplayer.peer_disconnected.connect(_on_peer_gone)
 
 
-## Host: sends each remote player the latest view of it, if there is a new one. Call after the step (the tick driver does).
+## Host: sends each remote player the frames made for it since the last, bundled and compressed together. Call after the step (the tick
+## driver does).
 func pump() -> void:
+	var now := Time.get_ticks_msec()
 	for id: int in _players:
-		var frame: ViewFrame = (_players[id]["queue"] as ViewQueue).take()
-		if frame != null:
-			_s_frame.rpc_id(id, frame.to_bytes())
+		var p: Dictionary = _players[id]
+		var pending: Array[ViewFrame] = p["pending"]
+		pending.append_array((p["queue"] as ViewQueue).take())
+		if not pending.is_empty() and now - int(p["sent_ms"]) >= SEND_EVERY_MS:
+			_s_frames.rpc_id(id, ViewFrame.pack_many(pending))
+			pending.clear()
+			p["sent_ms"] = now
 
 
 func _on_peer_gone(id: int) -> void:
@@ -79,11 +87,28 @@ func _c_command(cmd: Dictionary, ticket: int) -> void:
 	_tickets[host_ticket] = [id, ticket]
 
 
+## A remote player: asks the host to start it again from a snapshot (it fell too far behind to catch up).
+func request_snapshot() -> void:
+	_c_snapshot.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _c_snapshot() -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if _sim == null or not _players.has(id):
+		return
+	var p: Dictionary = _players[id]
+	(p["pending"] as Array).clear()
+	var queue: ViewQueue = p["queue"]
+	queue.take()
+	queue.filter.reset()
+	_sim.publish_view(queue)
+
+
 @rpc("authority", "call_remote", "reliable")
-func _s_frame(bytes: PackedByteArray) -> void:
-	var frame := ViewFrame.from_bytes(bytes)
-	if frame != null and link != null:
-		link.deliver(frame)
+func _s_frames(bytes: PackedByteArray) -> void:
+	if link != null:
+		link.deliver(ViewFrame.unpack_many(bytes))
 
 
 @rpc("authority", "call_remote", "reliable")

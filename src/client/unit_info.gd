@@ -12,6 +12,10 @@ extends Unit
 var own := false  # one of the player's own people
 var gone := false  # no longer known, though not dead: another people's unit that went out of sight
 var target_building_id := 0  # (own only) the building it was sent to, or 0
+var target_id := 0  # the unit it is fighting, when that can be seen
+var hurt_at := -1000.0  # game time it was last hurt (the flash and the health bar follow from it)
+var anim_bias := 0.0  # where in its idle and work cycles it is, so a crowd does not move as one
+var atk_bias := 0.0  # and in its swing
 
 # the client's own marks on it
 var selected := false

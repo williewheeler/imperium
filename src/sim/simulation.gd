@@ -177,7 +177,9 @@ func publish_views(periodic := true) -> void:
 ## Builds a view and puts it on `q` now. (The step does this for the views that are due; a debug aid or a test that has
 ## changed the game by hand uses it to bring a client up to date.)
 func publish_view(q: ViewQueue) -> void:
-	q.put(q.filter.build(q.paths))
+	if not q.put(q.filter.build(q.paths)):  # the client is far behind: it starts again from a snapshot
+		q.filter.reset()
+		q.put(q.filter.build(q.paths))
 	q.published(state.tick)
 
 

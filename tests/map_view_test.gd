@@ -31,7 +31,43 @@ func _compare(sim: Simulation, view: PlayerView) -> Array:
 			var b: Deposit = rm.deposits.get(p)
 			if (a == null) != (b == null) or (a != null and (a.amount != b.amount or a.kind != b.kind or a.herd != b.herd or a.farm != b.farm)):
 				out[3] += 1
+				print("  deposit differs at ", p, ": client ", (str(a.kind) + "/" + str(a.amount)) if a != null else "none", " engine ", (str(b.kind) + "/" + str(b.amount)) if b != null else "none")
 		if not explored and (cm.tiles[i] != 0 or cm.levels[i] != 0 or cm.relief[i] != 0 or cm.deposits.has(p)):
+			out[4] += 1
+	return out
+
+
+## How many of the units and buildings the engine says `view` knows of are not as the client has them: [units missing or extra, units wrong, in a different order, buildings missing or extra, buildings wrong].
+func _compare_things(sim: Simulation, view: PlayerView) -> Array:
+	var real: Fog = sim.state.fogs[view.owner]
+	var out := [0, 0, 0, 0, 0]
+	var want: Array[Unit] = []
+	for u: Unit in sim.state.units:
+		if u.dead or u.absorbed:
+			continue
+		if u.owner == view.owner or real.is_visible_now(Vector2i(u.pos)):
+			want.append(u)
+	var have := view.units()
+	if want.size() != have.size():
+		out[0] = absi(want.size() - have.size())
+	for i in mini(want.size(), have.size()):
+		if want[i].id != have[i].id:
+			out[2] += 1
+			continue
+		var u := want[i]
+		var info := have[i]
+		var own := u.owner == view.owner
+		if info.pos != u.pos or info.hp != u.hp or info.carry != u.carry or info.kind != u.kind or (own and (info.state != u.state or info.gather_kind != u.gather_kind)):
+			out[1] += 1
+	var rb: Array[Building] = []
+	for b: Building in sim.state.buildings:
+		if b.owner == view.owner or real.is_explored(Vector2i(b.center())):
+			rb.append(b)
+	var hb := view.buildings()
+	if rb.size() != hb.size():
+		out[3] = absi(rb.size() - hb.size())
+	for i in mini(rb.size(), hb.size()):
+		if rb[i].id != hb[i].id or rb[i].hp != hb[i].hp or rb[i].complete != hb[i].complete or rb[i].kind != hb[i].kind or (rb[i].owner == view.owner and rb[i].train_queue != hb[i].train_queue):
 			out[4] += 1
 	return out
 
@@ -65,6 +101,23 @@ func _init() -> void:
 		_check("%s is up to date on what it can see" % pair[0], r[2] == 0 and r[3] == 0, str(r))
 		_check("%s has nothing of ground it has not explored" % pair[0], r[4] == 0, str(r))
 		_check("%s has the fog as it is" % pair[0], (pair[1] as PlayerView).fog().state == sim.state.fogs[(pair[1] as PlayerView).owner].state)
+
+	# the units and buildings, told as changes, are as the engine has them (and in the order it keeps them)
+	for pair in [["the person's client", view], ["an AI's client", ai_view]]:
+		var r := _compare_things(sim, pair[1])
+		_check("%s has the units and buildings the engine says it should, as they are" % pair[0], r == [0, 0, 0, 0, 0], str(r))
+	# a client that is told to start again from a snapshot comes to the same
+	for i in 30:
+		host.step()
+	view.refresh()
+	for q in sim.view_queues:
+		if q.player == 0:
+			q.take()
+			q.filter.reset()
+			sim.publish_view(q)
+	view.refresh()
+	var after_reset := _compare_things(sim, view)
+	_check("a client that starts again from a snapshot knows the same", after_reset == [0, 0, 0, 0, 0], str(after_reset))
 
 	# the rules on the client's own picture give the engine's answers, for the ground it knows of
 	for pair in [["the person's client", view], ["an AI's client", ai_view]]:

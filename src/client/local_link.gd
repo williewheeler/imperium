@@ -22,7 +22,7 @@ func submit(cmd: Dictionary) -> int:
 	return ticket
 
 
-func take() -> ViewFrame:
+func take() -> Array[ViewFrame]:
 	return _queue.take()
 
 

@@ -138,17 +138,22 @@ func _init() -> void:
 	view.refresh()
 	_check("until it asks: the step builds one at its end", view.time() > stale)
 	var q := sim.open_view(me, 1)
-	var first := q.take()
-	_check("a view queue opens with a view on it", first != null and first.tick == sim.state.tick)
-	_check("a view is plain data, with nothing of the real game in it", first.units.size() > 0 and not (first.units as Array)[0] is Unit and not (first.buildings as Array)[0] is Building)
+	var first_frames := q.take()
+	var first := first_frames[0]
+	_check("a view queue opens with a view on it", first_frames.size() == 1 and first.tick == sim.state.tick)
+	_check("a view is plain data, with nothing of the real game in it", first.unit_full.size() > 0 and first.unit_full[0].all(func(v: Variant) -> bool: return not (v is Object)) and first.building_full.size() > 0)
 	sim.notice.emit(me, "msg.one")
 	sim.step()
 	sim.notice.emit(me, "msg.two")
 	sim.step()
 	sim.step()
-	var latest := q.take()
-	_check("a reader that skips views gets the latest, with what happened in between", latest != null and latest.tick == sim.state.tick and latest.events.map(func(e: Array) -> String: return e[1]) == ["msg.one", "msg.two"], str(latest.events if latest != null else []))
-	_check("and the queue is then empty", q.take() == null)
+	var behind := q.take()
+	var heard_between: Array = []
+	for fr in behind:
+		for e: Array in fr.events:
+			heard_between.append(e[1])
+	_check("a reader that was behind gets every frame, in order, with what happened in between", behind.size() == 3 and behind[2].tick == sim.state.tick and heard_between == ["msg.one", "msg.two"], "%d frames, %s" % [behind.size(), heard_between])
+	_check("and the queue is then empty", q.take().is_empty())
 	var unseen := Unit.new()
 	unseen.kind = "soldier"
 	unseen.owner = foe
@@ -160,9 +165,9 @@ func _init() -> void:
 	var known_one: Unit = sim.state.units.filter(func(u: Unit) -> bool: return u.owner == me)[0]
 	sim.combat.disband(known_one)
 	sim.step()
-	var after := q.take()
-	_check("a unit it knew leaves with word of it", after.removed.has(known_one.id))
-	_check("one it never saw does not: its end is not its business", not after.removed.has(unseen.id))
+	var after := q.take()[0]
+	_check("a unit it knew leaves with word of it", after.removed.has(known_one.id) and after.unit_lost.has(known_one.id))
+	_check("one it never saw does not: its end is not its business", not after.removed.has(unseen.id) and not after.unit_lost.has(unseen.id))
 
 	# and the AIs play a game through all this
 	host.ai_enabled = true

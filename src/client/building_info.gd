@@ -6,6 +6,7 @@ extends Building
 ## it is finished and how far, how hurt and whether it burns, and its name. Not what it is training or who lives in it.
 
 var own := false
+var hurt_at := -1000.0  # game time it was last hurt (the health bar follows from it)
 var era := 0  # the era of its owner, which decides how it looks and what it is called
 
 # the client's own mark on it

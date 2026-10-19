@@ -78,6 +78,17 @@ func _occupy(b: Building, blocked: int) -> void:
 				_set_open(y * w + x)
 
 
+## Forgets every deposit (the host is about to tell of them all again).
+func forget_deposits() -> void:
+	for p: Vector2i in deposits:
+		var i := p.y * w + p.x
+		if _blocked[i] == 1:
+			_blocked[i] = 0
+			_set_open(i)
+	deposits.clear()
+	herds.clear()
+
+
 ## Puts what the host told of the deposit on one tile.
 func set_deposit(r: ViewFrame.DepositRecord) -> void:
 	var i := r.tile.y * w + r.tile.x

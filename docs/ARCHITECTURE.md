@@ -272,11 +272,18 @@ just net-play-test       # a host and a remote player in two processes: its comm
                          #   refused, it sees its unit move, it is not told the seed or any ground it has not explored
 ```
 
-What is not done: a frame is the whole of what a player may see (the units and buildings in it are not sent as changes), so the traffic is a few
-hundred kilobytes a second in a big game, which a LAN does not mind and a poor link would; the channel is reliable and ordered, so a frame that is slow
-makes the next wait (a client takes only the latest of those that have come in); a client that fell out of step has no way to ask for a fresh
-snapshot (see *Known debts*); the remote player's view is drawn between frames by the time since the last came in, not smoothed; and a remote
-player cannot pause, change the speed or use the debug aids (the world is the host's).
+**What goes over the wire.** Frames are changes, not the whole picture (`ViewFrame`): a unit or building new to the client comes whole (what it is, which never
+changes, and what it is doing); after that only the fields that changed, with a mask saying which; and when it is gone, its number. The ground and the fog
+were already changes. What is only for drawing is not sent at all, the client works it out (`PlayerView`): the idle and work cycles and the swing are the game's
+time plus a bias per unit (so a crowd is not in step), the flash and the health bar follow from when it was last hurt, the walk cycle from how far it has walked,
+and where it stood a moment ago from the last frame. The client applies every frame in order; frames go to a remote player in bundles about fifteen a second,
+compressed together (zstd), over ENet's reliable ordered channel. A player that falls so far behind that frames pile up unread (a client whose frames
+are not taken, or a link that stalls) lets them go, and the host starts it again from a snapshot of everything it may know (`ViewFilter.reset`), which a remote
+player asks for with `NetPlay.request_snapshot`. In a game of eight peoples, 17 minutes in, with 460 units in the world, this came to about 20 KB/s to each remote player, down from about 180 KB/s as whole frames.
+
+What is not done: the channel is reliable and ordered, so a frame that is slow makes the next wait; a client has no check that it is in step beyond the snapshot
+when it falls behind (no sequence number or hash of the view); the remote player's view is drawn between frames by the time since the last came in, not smoothed
+further; and a remote player cannot pause, change the speed or use the debug aids (the world is the host's).
 
 ## Known debts
 
@@ -297,6 +304,16 @@ player cannot pause, change the speed or use the debug aids (the world is the ho
 - The views are still tied to one local viewer in normal play (`game.fog`, "owner 0 is mine": the client's fog). The spectator
   gets per-AI views with a parallel path (`viewers`, layers) rather than a viewer passed through every view;
   a single `Viewer` object would unify the two.
+- **`UnitInfo` and `BuildingInfo` are-a `Unit` and `Building`** so the views and the rules' helpers work on them, which carries every entity field
+  with it (only what the client may know is filled in). A record-and-model split (small data classes the rules and views share) would be cleaner.
+- **Views cost about half a millisecond a tick** in a game of several AIs (the filter walks every unit and building for each player that is
+  due). A person's is built once per frame, an AI's when it is about to think; deltas for units and buildings (not just the ground) would cut it.
+- **The debug scenes (`src/app/`) are god-mode scaffolding** and still touch the simulation directly (that is why they taint it), and a
+  spectator watches through a god view (which reads the real ground) and each AI's own view.
+- **A client is not yet checked against the engine.** Every frame overwrites the client's picture, but frames carry no sequence number and
+  no hash of the view, so a client cannot notice that it missed one or drifted. The plan: a sequence number and a hash of what the client should
+  now hold; on a gap or a mismatch the client asks for a snapshot of what it may know, which the first frame (and a fog laid open) already
+  sends and a resync would reuse. Over ENet's reliable channel a frame is not lost, so it matters when the transport is not reliable.
 - **`UnitInfo` and `BuildingInfo` are-a `Unit` and `Building`** so the views and the rules' helpers work on them, which carries every entity field
   with it (only what the client may know is filled in). A record-and-model split (small data classes the rules and views share) would be cleaner.
 - **Views cost about half a millisecond a tick** in a game of several AIs (the filter walks every unit and building for each player that is

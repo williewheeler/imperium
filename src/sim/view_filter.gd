@@ -8,7 +8,10 @@ const MAX_EVENTS := 500  # a client that never reads its views must not make thi
 
 var player: int
 var _sim: Simulation
-var _known := {}  # id -> true, for the units the last frame told the player of
+var _units_sent := {}  # id -> the changing fields of each unit the client was told of, as last sent: what to compare with
+var _buildings_sent := {}  # the same for buildings
+var _snapshot := false  # the next frame is to be the whole of what is known (the client starts again from it)
+var _resend := false  # and the whole fog and ground are told again
 var _removed := {}  # id -> absorbed, for the known units that have left the game since
 var _events: Array[Array] = []
 var _fog_reader := 0  # this filter's place in the log of changes to the player's fog
@@ -25,7 +28,7 @@ func _init(sim: Simulation, p_player: int) -> void:
 	_sim = sim
 	player = p_player
 	sim.unit_removed.connect(func(id: int, absorbed: bool) -> void:
-		if _known.has(id):
+		if _units_sent.has(id):
 			_removed[id] = absorbed)
 	sim.notice.connect(func(who: int, key: String) -> void:
 		if who == player:
@@ -71,23 +74,35 @@ func build(with_paths: bool) -> ViewFrame:
 	var fog: Fog = null if god else state.fogs[player]
 	var f := ViewFrame.new()
 	f.tick = state.tick
-	_known = {}
+	f.snapshot = _snapshot
+	_snapshot = false
+	var known := {}
 	for u: Unit in state.units:
 		if u.dead or u.absorbed:
 			continue
 		var mine := u.owner == player
 		if not mine and not god and not fog.is_visible_now(Vector2i(u.pos)):
 			continue
-		f.units.append(_unit_record(u, mine, mine or god, with_paths))
-		_known[u.id] = true
+		known[u.id] = true
+		_tell_of_unit(f, u, mine, mine or god, with_paths)
+	for id: int in _units_sent.keys():
+		if not known.has(id):
+			f.unit_lost.append(id)
+			_units_sent.erase(id)
 	var queued := 0
+	var known_buildings := {}
 	for b: Building in state.buildings:
 		var mine := b.owner == player
 		if not mine and not god and not fog.is_explored(Vector2i(b.center())):
 			continue
-		f.buildings.append(_building_record(b, mine, mine or god))
+		known_buildings[b.id] = true
+		_tell_of_building(f, b, mine, mine or god)
 		if mine:
 			queued += b.train_queue.size()
+	for id: int in _buildings_sent.keys():
+		if not known_buildings.has(id):
+			f.building_lost.append(id)
+			_buildings_sent.erase(id)
 	f.removed = _removed
 	_removed = {}
 	f.events = _events
@@ -126,63 +141,86 @@ func build(with_paths: bool) -> ViewFrame:
 	return f
 
 
-func _unit_record(u: Unit, mine: bool, full: bool, with_paths: bool) -> ViewFrame.UnitRecord:
-	var r := ViewFrame.UnitRecord.new()
-	r.id = u.id
-	r.kind = u.kind
-	r.owner = u.owner
-	r.own = mine
-	r.pos = u.pos
-	r.prev_pos = u.prev_pos
-	r.female = u.female
-	r.look = u.look
-	r.display = u.display
-	r.anim = u.anim
-	r.walk = u.walk
-	r.sdir = u.sdir
-	r.moving = u.moving
-	r.hp = u.hp
-	r.hit_flash = u.hit_flash
-	r.bar_t = u.bar_t
-	r.atk_t = u.atk_t
-	r.carry = u.carry
-	r.carry_kind = u.carry_kind
+## Forgets what the client was told: the next frame is a snapshot of everything it may know (for a client that fell behind and lost frames).
+func reset() -> void:
+	_units_sent = {}
+	_buildings_sent = {}
+	_told = {}
+	_stale = {}
+	if player >= 0:
+		_sent_known.fill(0)
+	_snapshot = true
+	_resend = true
+
+
+## Puts a unit in the frame: all of it if it is new to the client, else only the fields that changed since the client was told.
+func _tell_of_unit(f: ViewFrame, u: Unit, mine: bool, full: bool, with_paths: bool) -> void:
+	var now: Array = []
+	now.resize(ViewFrame.U_FIELDS)
+	var st: int = u.state if full else seen_state(u.state)
+	now[ViewFrame.U_POS] = u.pos
+	now[ViewFrame.U_SDIR] = u.sdir
+	now[ViewFrame.U_HP] = u.hp
+	now[ViewFrame.U_STATE] = st
+	now[ViewFrame.U_CARRY] = u.carry
+	now[ViewFrame.U_CARRY_KIND] = u.carry_kind
 	if full:
-		r.state = u.state
-		r.gather_kind = u.gather_kind
-		r.working_farm = u.working_farm
-		r.target_building_id = u.target_building.id if u.target_building != null else 0
-		if with_paths and mine:
-			r.path.assign(u.path)
+		now[ViewFrame.U_GATHER_KIND] = u.gather_kind
+		now[ViewFrame.U_WORKING_FARM] = u.working_farm
+		now[ViewFrame.U_TARGET_BUILDING] = u.target_building.id if u.target_building != null else 0
+		now[ViewFrame.U_PATH] = u.path.duplicate() if with_paths and mine else []
 	else:
-		r.state = seen_state(u.state)
-		var working := r.state == Unit.State.GATHERING
-		r.gather_kind = u.gather_kind if working else -1  # (what it is doing shows in its work)
-		r.working_farm = u.working_farm and working
-	r.target_id = u.target.id if u.target != null and r.state == Unit.State.ATTACKING else 0  # (who is fighting whom shows)
-	return r
+		var working := st == Unit.State.GATHERING
+		now[ViewFrame.U_GATHER_KIND] = u.gather_kind if working else -1  # (what it is doing shows in its work)
+		now[ViewFrame.U_WORKING_FARM] = u.working_farm and working
+		now[ViewFrame.U_TARGET_BUILDING] = 0
+		now[ViewFrame.U_PATH] = []
+	now[ViewFrame.U_TARGET] = u.target.id if u.target != null and st == Unit.State.ATTACKING else 0  # (who is fighting whom shows)
+	var old: Array = _units_sent.get(u.id, [])
+	if old.is_empty():
+		var whole: Array = [u.id, u.kind, u.owner, mine, u.female, u.look, u.display]
+		whole.append_array(now)
+		f.unit_full.append(whole)
+	else:
+		_tell_changes(f.unit_set, u.id, old, now)
+	_units_sent[u.id] = now
 
 
-func _building_record(b: Building, mine: bool, full: bool) -> ViewFrame.BuildingRecord:
-	var r := ViewFrame.BuildingRecord.new()
-	r.id = b.id
-	r.kind = b.kind
-	r.owner = b.owner
-	r.own = mine
-	r.tile = b.tile
-	r.size = b.size
-	r.complete = b.complete
-	r.work = b.work
-	r.hp = b.hp
-	r.burning = b.burning
-	r.bar_t = b.bar_t
-	r.building_name = b.building_name
-	r.era = _sim.era_of(b.owner)
-	if full:
-		r.citizens = b.citizens
-		r.train_queue.assign(b.train_queue)
-		r.train_progress = b.train_progress
-	return r
+func _tell_of_building(f: ViewFrame, b: Building, mine: bool, full: bool) -> void:
+	var now: Array = []
+	now.resize(ViewFrame.B_FIELDS)
+	now[ViewFrame.B_KIND] = b.kind  # a Settlement grows into a Town Center
+	now[ViewFrame.B_COMPLETE] = b.complete
+	now[ViewFrame.B_WORK] = b.work
+	now[ViewFrame.B_HP] = b.hp
+	now[ViewFrame.B_BURNING] = b.burning
+	now[ViewFrame.B_NAME] = b.building_name
+	now[ViewFrame.B_ERA] = _sim.era_of(b.owner)
+	now[ViewFrame.B_CITIZENS] = b.citizens if full else 0
+	now[ViewFrame.B_QUEUE] = b.train_queue.duplicate() if full else []
+	now[ViewFrame.B_PROGRESS] = b.train_progress if full else 0.0
+	var old: Array = _buildings_sent.get(b.id, [])
+	if old.is_empty():
+		var whole: Array = [b.id, b.owner, mine, b.tile, b.size]
+		whole.append_array(now)
+		f.building_full.append(whole)
+	else:
+		_tell_changes(f.building_set, b.id, old, now)
+	_buildings_sent[b.id] = now
+
+
+## Appends to `out` what changed from `old` to `now`: the id, a mask with a bit for each field that differs, and those fields' values.
+static func _tell_changes(out: Array, id: int, old: Array, now: Array) -> void:
+	var mask := 0
+	var values := []
+	for i in now.size():
+		if now[i] != old[i]:
+			mask |= 1 << i
+			values.append(now[i])
+	if mask != 0:
+		out.append(id)
+		out.append(mask)
+		out.append_array(values)
 
 
 # ---------------------------------------------------------------- the ground and the fog
@@ -194,9 +232,10 @@ func _tell_of_ground(f: ViewFrame, fog: Fog) -> void:
 	var look := PackedInt32Array()  # the tiles to compare with what the client was told
 	var changes := fog.take_changes(_fog_reader)
 	var touched := map.take_touched(_map_reader)
-	if _first or fog.epoch != _fog_epoch:  # the whole fog: the first time, or after the map was laid open or put back
+	if _first or _resend or fog.epoch != _fog_epoch:  # the whole fog: the first time, after the map was laid open or put back, or when the client starts again
 		f.fog_all = fog.state.duplicate()
 		_fog_epoch = fog.epoch
+		_resend = false
 		if _first:
 			f.welcome = {"w": map.w, "h": map.h, "start": _sim.state.starts.get(player, Vector2i.ZERO)}
 			_first = false

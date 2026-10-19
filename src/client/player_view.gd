@@ -38,6 +38,7 @@ var _picture := false  # does the fog keep a picture of itself, to be drawn?
 var _link: ClientLink  # where the views come from (the host's queue in this process, or the network)
 var _world: ClientWorld  # the rules' view of what the client knows
 var _start := Vector2i.ZERO  # where the player's first town stands, as the first frame told it
+var _lists_stale := true  # the units or buildings known have changed: the lists are made again
 var _frame := ViewFrame.new()  # the latest view taken
 var _units := {}  # id -> UnitInfo, for everyone known
 var _buildings := {}  # id -> BuildingInfo
@@ -67,11 +68,18 @@ func _init(p_owner: int, link: ClientLink, picture := false, god_map: GameMap = 
 
 # ---------------------------------------------------------------- keeping up to date
 
-## Brings the model up to date with the latest view the host has put on the queue (if it has put one since the last).
+## Brings the model up to date with what the host has sent since the last call: the frames, in order.
 func refresh() -> void:
-	var frame := _link.take()
-	if frame != null:
-		_apply(frame)
+	var frames := _link.take()
+	if frames.is_empty():
+		return
+	for info: UnitInfo in _units.values():
+		info.prev_pos = info.pos  # (where it stood when the screen last drew: it is drawn between there and where it is now)
+	for f in frames:
+		_apply(f)
+	_resolve_and_animate(frames[frames.size() - 1].tick)
+	if _lists_stale:
+		_rebuild_lists()
 
 
 ## Asks the host for a view at the end of the step that is running, for a client that does not have one every tick.
@@ -88,73 +96,86 @@ func catch_up() -> void:
 
 func _apply(f: ViewFrame) -> void:
 	_frame = f
+	var now := float(f.tick) * Simulation.TICK
 	if not _god:
 		_learn_ground(f)
-	var live_units := {}
-	_all_units = []
-	_mine_units = []
-	_seen_units = []
-	for r in f.units:
-		var info: UnitInfo = _units.get(r.id)
+	var stash_u := {}
+	var stash_b := {}
+	if f.snapshot:  # everything is told again: what is not, is gone
+		stash_u = _units
+		stash_b = _buildings
+		_units = {}
+		_buildings = {}
+		_lists_stale = true
+	# the units
+	for rec in f.unit_full:
+		var id: int = rec[0]
+		var info: UnitInfo = stash_u.get(id)
+		stash_u.erase(id)
 		if info == null:
 			info = UnitInfo.new()
-			info.id = r.id
-			info.kind = r.kind
-			info.owner = r.owner
-			info.own = r.own
-			_units[r.id] = info
-		_copy_unit(info, r)
-		_all_units.append(info)
-		if r.own:
-			_mine_units.append(info)
-		else:
-			_seen_units.append(info)
-		live_units[r.id] = true
-	for r in f.units:  # who is fighting whom, now that everyone known has a model
-		(_units[r.id] as UnitInfo).target = _units.get(r.target_id) if r.target_id != 0 else null
-	for id: int in _units.keys():
-		if not live_units.has(id):
-			var info: UnitInfo = _units[id]
-			if f.removed.has(id):
-				info.dead = true  # it left the game
-				info.absorbed = bool(f.removed[id])
-			else:
-				info.gone = true  # it is only out of sight
-			_units.erase(id)
-
-	var live_buildings := {}
-	_all_buildings = []
-	_my_buildings = []
-	_known_buildings = []
-	for r in f.buildings:
-		var info: BuildingInfo = _buildings.get(r.id)
-		var known_before := info != null
-		if info == null:
+			info.id = id
+			info.kind = rec[1]
+			info.owner = rec[2]
+			info.own = rec[3]
+			info.female = rec[4]
+			info.look = rec[5]
+			info.display = rec[6]
+			info.anim_bias = fposmod(float(id) * 0.7548776662, 1.0) * 30.0  # (the same head starts the engine gave)
+			info.walk = fposmod(float(id) * 0.6180339887, 1.0) * TAU
+			info.atk_bias = fposmod(float(id) * 0.3819660113, 1.0)
+		_units[id] = info
+		for bit in ViewFrame.U_FIELDS:
+			_set_unit_field(info, bit, rec[ViewFrame.U_STATIC + bit], now, false)
+		info.prev_pos = info.pos
+		_lists_stale = true
+	var at := 0
+	while at < f.unit_set.size():
+		var info: UnitInfo = _units.get(f.unit_set[at])
+		var mask: int = f.unit_set[at + 1]
+		at += 2
+		for bit in ViewFrame.U_FIELDS:
+			if mask & (1 << bit):
+				if info != null:
+					_set_unit_field(info, bit, f.unit_set[at], now, true)
+				at += 1
+	for id: int in f.unit_lost:
+		_lose_unit(id, _units.get(id), f)
+	for id: int in stash_u:
+		_lose_unit(id, stash_u[id], f)
+	# the buildings
+	for rec in f.building_full:
+		var id: int = rec[0]
+		var info: BuildingInfo = stash_b.get(id)
+		stash_b.erase(id)
+		var is_new := info == null
+		if is_new:
 			info = BuildingInfo.new()
-			info.id = r.id
-			info.kind = r.kind
-			info.owner = r.owner
-			info.tile = r.tile
-			info.size = r.size
-			info.own = r.own
-			_buildings[r.id] = info
-		_copy_building(info, r)
-		if not _god and not known_before:
+			info.id = id
+			info.owner = rec[1]
+			info.own = rec[2]
+			info.tile = rec[3]
+			info.size = rec[4]
+		_buildings[id] = info
+		for bit in ViewFrame.B_FIELDS:
+			_set_building_field(info, bit, rec[ViewFrame.B_STATIC + bit], now, false)
+		if is_new and not _god:
 			(_map as ClientMap).building_stands(info)
-		_all_buildings.append(info)
-		if r.own:
-			_my_buildings.append(info)
-		else:
-			_known_buildings.append(info)
-		live_buildings[r.id] = true
-	for id: int in _buildings.keys():
-		if not live_buildings.has(id):
-			var info: BuildingInfo = _buildings[id]
-			info.dead = true
-			_buildings.erase(id)
-			if not _god:
-				(_map as ClientMap).building_gone(info)
-			building_destroyed.emit(info)
+		_lists_stale = true
+	at = 0
+	while at < f.building_set.size():
+		var info: BuildingInfo = _buildings.get(f.building_set[at])
+		var mask: int = f.building_set[at + 1]
+		at += 2
+		for bit in ViewFrame.B_FIELDS:
+			if mask & (1 << bit):
+				if info != null:
+					_set_building_field(info, bit, f.building_set[at], now, true)
+				at += 1
+	for id: int in f.building_lost:
+		_lose_building(_buildings.get(id), id)
+	for id: int in stash_b:
+		_lose_building(stash_b[id], id)
 
 	for e in f.events:  # what happened, in order
 		match e[0]:
@@ -175,6 +196,135 @@ func _apply(f: ViewFrame) -> void:
 				road_changed.emit(e[1])
 
 
+func _lose_unit(id: int, info: UnitInfo, f: ViewFrame) -> void:
+	_units.erase(id)
+	_lists_stale = true
+	if info == null:
+		return
+	if f.removed.has(id):
+		info.dead = true  # it left the game
+		info.absorbed = bool(f.removed[id])
+	else:
+		info.gone = true  # it is only out of sight
+
+
+func _lose_building(info: BuildingInfo, id: int) -> void:
+	_buildings.erase(id)
+	_lists_stale = true
+	if info == null:
+		return
+	info.dead = true
+	if not _god:
+		(_map as ClientMap).building_gone(info)
+	building_destroyed.emit(info)
+
+
+func _set_unit_field(info: UnitInfo, bit: int, v: Variant, now: float, notice_hurt: bool) -> void:
+	match bit:
+		ViewFrame.U_POS:
+			info.pos = v
+		ViewFrame.U_SDIR:
+			info.sdir = v
+		ViewFrame.U_HP:
+			if notice_hurt and v < info.hp:
+				info.hurt_at = now
+			info.hp = v
+		ViewFrame.U_STATE:
+			info.state = v
+		ViewFrame.U_CARRY:
+			info.carry = v
+		ViewFrame.U_CARRY_KIND:
+			info.carry_kind = v
+		ViewFrame.U_GATHER_KIND:
+			info.gather_kind = v
+		ViewFrame.U_WORKING_FARM:
+			info.working_farm = v
+		ViewFrame.U_TARGET_BUILDING:
+			info.target_building_id = v
+		ViewFrame.U_TARGET:
+			info.target_id = v
+		ViewFrame.U_PATH:
+			info.path.assign(v)
+
+
+func _set_building_field(info: BuildingInfo, bit: int, v: Variant, now: float, notice_hurt: bool) -> void:
+	match bit:
+		ViewFrame.B_KIND:
+			info.kind = v
+		ViewFrame.B_COMPLETE:
+			info.complete = v
+		ViewFrame.B_WORK:
+			info.work = v
+		ViewFrame.B_HP:
+			if notice_hurt and v < info.hp:
+				info.hurt_at = now
+			info.hp = v
+		ViewFrame.B_BURNING:
+			info.burning = v
+		ViewFrame.B_NAME:
+			info.building_name = v
+		ViewFrame.B_ERA:
+			info.era = v
+		ViewFrame.B_CITIZENS:
+			info.citizens = v
+		ViewFrame.B_QUEUE:
+			info.train_queue.assign(v)
+		ViewFrame.B_PROGRESS:
+			info.train_progress = v
+
+
+## Who is fighting whom, now that everyone known has a model; and the parts of how a unit looks that are only for drawing, which the host does not send:
+## they follow from the game's time (the idle and work cycles and the swing go on with it, each unit a little out of step with the next), from how far
+## the unit has walked (the walk cycle), and from when it was last hurt (the flash and the health bar).
+func _resolve_and_animate(tick: int) -> void:
+	var now := float(tick) * Simulation.TICK
+	for info: UnitInfo in _units.values():
+		info.target = _units.get(info.target_id) if info.target_id != 0 else null
+		info.anim = info.anim_bias + now
+		var moved := info.pos.distance_to(info.prev_pos)
+		info.moving = moved > 0.0005
+		info.walk += moved * Movement.WALK_CYCLE_PER_TILE
+		var since := now - info.hurt_at
+		info.hit_flash = maxf(0.0, 1.0 - since * 5.0)
+		info.bar_t = maxf(0.0, Combat.BAR_TIME - since)
+		if info.state == Unit.State.ATTACKING:
+			var cooldown := float(Defs.UNITS[info.kind]["cooldown"])
+			info.atk_t = fposmod(now + info.atk_bias * cooldown, cooldown)
+		else:
+			info.atk_t = 0.0
+	for b: BuildingInfo in _buildings.values():
+		b.bar_t = maxf(0.0, Combat.BAR_TIME - (now - b.hurt_at))
+
+
+## The lists the views and the AIs read, in the order the game keeps its units and buildings (by number: those are handed out in turn).
+func _rebuild_lists() -> void:
+	_lists_stale = false
+	_all_units = []
+	_mine_units = []
+	_seen_units = []
+	var ids: Array = _units.keys()
+	ids.sort()
+	for id: int in ids:
+		var info: UnitInfo = _units[id]
+		_all_units.append(info)
+		if info.own:
+			_mine_units.append(info)
+		else:
+			_seen_units.append(info)
+	_all_buildings = []
+	_my_buildings = []
+	_known_buildings = []
+	ids = _buildings.keys()
+	ids.sort()
+	for id: int in ids:
+		var info: BuildingInfo = _buildings[id]
+		_all_buildings.append(info)
+		if info.own:
+			_my_buildings.append(info)
+		else:
+			_known_buildings.append(info)
+
+
 ## Folds in what the host told of the fog and the ground.
 func _learn_ground(f: ViewFrame) -> void:
 	if not f.welcome.is_empty():
@@ -186,6 +336,8 @@ func _learn_ground(f: ViewFrame) -> void:
 	if not f.fog_changes.is_empty():
 		_fog.apply(f.fog_changes)
 	var cm := _map as ClientMap
+	if f.snapshot:
+		cm.forget_deposits()
 	var fresh := PackedInt32Array()
 	var changed_tiles: Array[Vector2i] = []
 	var changed_roads: Array[Vector2i] = []
@@ -207,44 +359,6 @@ func _learn_ground(f: ViewFrame) -> void:
 		tile_changed.emit(p)
 	for p in changed_roads:
 		road_changed.emit(p)
-
-
-func _copy_unit(info: UnitInfo, r: ViewFrame.UnitRecord) -> void:
-	info.pos = r.pos
-	info.prev_pos = r.prev_pos
-	info.female = r.female
-	info.look = r.look
-	info.display = r.display
-	info.anim = r.anim
-	info.walk = r.walk
-	info.sdir = r.sdir
-	info.moving = r.moving
-	info.hp = r.hp
-	info.hit_flash = r.hit_flash
-	info.bar_t = r.bar_t
-	info.atk_t = r.atk_t
-	info.carry = r.carry
-	info.carry_kind = r.carry_kind
-	info.state = r.state
-	info.gather_kind = r.gather_kind
-	info.working_farm = r.working_farm
-	info.target_building_id = r.target_building_id
-	if r.own:
-		info.path = r.path  # (empty unless the client asked the host for routes)
-
-
-func _copy_building(info: BuildingInfo, r: ViewFrame.BuildingRecord) -> void:
-	info.kind = r.kind  # a Settlement grows into a Town Center
-	info.complete = r.complete
-	info.work = r.work
-	info.hp = r.hp
-	info.burning = r.burning
-	info.bar_t = r.bar_t
-	info.building_name = r.building_name
-	info.era = r.era
-	info.citizens = r.citizens
-	info.train_queue = r.train_queue
-	info.train_progress = r.train_progress
 
 
 # ---------------------------------------------------------------- the player's own
