@@ -8,7 +8,7 @@ const RES_NAMES := ["Lignum", "Cibus", "Lapis", "Aurum"]  # wood, food, stone, g
 const RES_ENGLISH := ["Wood", "Food", "Stone", "Gold"]
 const DEPOSIT_LATIN := ["Silva", "Baccae", "Lapis", "Aurum"]  # woods, berries, stone, gold
 const DEPOSIT_ENGLISH := ["Trees", "Berry bushes", "Stone", "Gold"]
-const DEPOSIT_AMOUNT := [100, 150, 300, 300]
+const DEPOSIT_AMOUNT := [100, 150, 5000, 5000]  # (a mine is for a whole game; a tree or a berry bush is soon used up)
 const GATHER_RATE := [1.0, 1.2, 0.8, 0.7]  # units per second
 # Herds: grazing animals, a food deposit that breeds. While at least HERD_BREED_MIN of it is left it gains
 # HERD_BREED_GAIN every HERD_BREED_EVERY seconds up to HERD_AMOUNT; hunt it to nothing and it is gone for good.

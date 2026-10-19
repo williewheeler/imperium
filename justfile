@@ -95,7 +95,7 @@ farm-test:
 
 # Headless check of the sparse start and of herds that breed and can be hunted out
 herd-test:
-    {{godot}} --headless --path . --script tests/herd_test.gd -- --nosplash --seed=42 --players=3
+    {{godot}} --headless --path . --script tests/herd_test.gd -- --nosplash --seed=42 --players=3 --map=anulus --size=small --terrain=temperate --resources=normal --difficulty=normal
 
 # Headless check of docks, fish and fishing boats
 water-test:
@@ -120,7 +120,7 @@ replay file *args:
 
 # Headless check of the person's driver (selecting, ordering, the keys) on a real game
 person-test:
-    {{godot}} --headless --path . --script tests/person_test.gd -- --nosplash --seed=42 --players=3
+    {{godot}} --headless --path . --script tests/person_test.gd -- --nosplash --seed=42 --players=3 --map=continens --size=medium --terrain=temperate --resources=normal --difficulty=normal
 
 # Headless check of the headless client: what a player's view shows, hides and lets it do
 view-test:
