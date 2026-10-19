@@ -18,7 +18,7 @@ in the code, or marked as not built.
 |---|---|
 | `src/sim/` | **The simulation**: everything that decides what happens, and nothing that shows it. No scene, no window, no input, no clock. At the top, `Simulation` (`step()`, and the owner of the parts), `SimConfig` (the choices that shape a game), the queues that are its interface (`CommandQueue`, and `ViewQueue` with `ViewFilter`, the fog, and `ViewFrame`, what is put on it) and the world the rules are run on (`RulesWorld`, `SimWorld`). |
 | `src/sim/state/` | The **game state**, inert data: `Unit`, `Building`, `Deposit`, `GameMap` and `TerrainGen` (the ground), `Fog` (what each people has seen), and `Defs` (the rules' tables: five resources, wood, food, stone, gold and iron). |
-| `src/sim/systems/` | The **game systems**, which act on the state: `Commands`, `Orders`, `Movement` (with `UnitGrid`), `Economy`, `Production`, `Eras`, `Vision`, `Wildlife`, `UnitBehavior`, `Combat`, `Placement`, `Roads` (whose rules, `Placement.check` and `Roads.check`, are run on a `RulesWorld`), `Victory`, `WorldSetup`. |
+| `src/sim/systems/` | The **game systems**, which act on the state: `Commands`, `Orders`, `Movement` (with `UnitGrid`), `Economy`, `Production`, `Eras`, `Vision`, `Wildlife`, `Climate`, `UnitBehavior`, `Combat`, `Placement`, `Roads` (whose rules, `Placement.check` and `Roads.check`, are run on a `RulesWorld`), `Victory`, `WorldSetup`. |
 | `src/client/` | The **headless client**: `ClientLink` (where a client's views come from and its commands go: `LocalLink` for the host's own process, `NetLink` for the network), `HeadlessClient` (a player's end of the queues, with no screen: a way to act, and the latest view), `PlayerView` (that view, and questions about it: what the player may know, the news that concerns it, and where things may be built), `ClientMap` (the ground it has been told of), `ClientWorld` (what the rules are run on, on the client), `UnitInfo` and `BuildingInfo` (a unit or building as the client knows it: kept up to date, carrying the client's own marks, selection included). A *god* view (`PlayerView.god`) knows everything, for a spectator. |
 | `src/host/` | `Host`: the one `Simulation` and the AIs beside it. It founds the players, gives each computer-run people its `AI` and a headless client, and its `step` is what the tick driver calls: the AIs think (they put commands on the queue), then the Simulation steps. |
 | `src/ai/` | The computer players: `AI` and one class per goal. They read the game only through a `PlayerView` and act only through a `HeadlessClient`. See *The AIs*. |
@@ -402,8 +402,10 @@ lettering (capitals, V for U). See `LATIN.md` for the vocabulary.
 
 ## Weather and fog
 
-Weather (`src/ui/views/weather.gd`) is cosmetic: a small state machine that drives `WeatherView`, the ground
-shading and the music's mood. It does not affect play, and is not worth a module of its own. Fog (`Fog`,
+Which weather it is belongs to the world: `Climate` (`src/sim/systems/climate.gd`) is a small Markov chain in the simulation, one sky for
+everyone, told to each client in its frames (`ViewFrame.weather`, `PlayerView.weather()`), so that every player, remote ones too, sees the same
+weather. It does not affect play and is not in the checksum. How it looks is the client's: `Weather` (`src/ui/views/weather.gd`) follows the world's
+state and eases its look (the tint, the rain, the lightning, which is the client's own), and drives `WeatherView`, the ground shading and the music's mood. Fog (`Fog`,
 in `src/sim/state/`) is different: it is per-player simulation state (`Simulation.fogs`, by owner) that the filter and the rules
 read to decide what a player may see, explore and build on, and each client holds a copy of its own, kept in step by the changes in
 its frames. `FogView` draws the client's.

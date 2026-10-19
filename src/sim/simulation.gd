@@ -58,6 +58,7 @@ var economy := Economy.new()
 var production := Production.new()
 var eras := Eras.new()
 var vision := Vision.new()
+var climate := Climate.new()  # the weather: one for the world
 var wildlife := Wildlife.new()
 var behavior := UnitBehavior.new()
 var combat := Combat.new(self)  # who fights whom
@@ -74,7 +75,8 @@ func _init(p_config: SimConfig, p_map: GameMap) -> void:
 	config = p_config
 	state.map = p_map
 	state.rng.seed = config.seed_value * 2654435761 + 9176
-	for part: Variant in [movement, economy, production, eras, vision, wildlife, behavior, orders, commands, placement, roads, victory, setup]:
+	state.weather_rng.seed = config.seed_value + 424242
+	for part: Variant in [movement, economy, production, eras, vision, climate, wildlife, behavior, orders, commands, placement, roads, victory, setup]:
 		part.sim = self
 
 
@@ -83,6 +85,7 @@ func begin() -> void:
 	var map := state.map
 	state.start = map.find_start(Vector2i((map.homes[0] * map.w).round()), Vector2i(-1, -1), 0)  # the first player starts on the ring round the map like everyone else
 	setup.found_players(state.start)
+	climate.begin()
 	vision.update(true)
 
 
@@ -122,6 +125,7 @@ func step(publish_periodic := true) -> void:
 	combat.update_projectiles(dt)
 	combat.update_buildings(dt)
 	wildlife.update(dt)
+	climate.update(dt)
 	victory.tick(dt)
 	combat.flush_dead()  # the dead leave the game now that the loops over the units are done
 	Perf.stop("combat", t0)

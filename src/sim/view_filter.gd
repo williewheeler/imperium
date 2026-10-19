@@ -96,6 +96,7 @@ func build(with_paths: bool) -> ViewFrame:
 		_tell_of_ground(f, fog)
 	f.pop_limit = _sim.economy.pop_limit()
 	f.winner = state.winner
+	f.weather = state.weather
 	f.defeated = state.defeated.duplicate()
 	for p: Dictionary in state.projectiles:  # the shots it can see, and its own
 		var target: Unit = p["target"]

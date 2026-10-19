@@ -166,6 +166,7 @@ var advance := {}  # the next advance: {data, requirements, advancing, progress,
 var shots: Array[Dictionary] = []  # shots in flight that the player can see: {tile, k}
 var road_plans := {}  # tile -> true, for the planned roads on explored ground
 var winner := -1
+var weather := 0  # the sky: a Climate.State, the same for everyone
 var defeated := {}  # the peoples that have fallen
 var events: Array[Array] = []  # what happened, in order: ["notice", key], ["building_completed", id], ["era_reached", era], ["people_fell", people], ["game_won", people], ["tile_changed", tile], ["road_changed", tile]
 
@@ -192,7 +193,7 @@ func absorb(older: ViewFrame) -> void:
 func to_bytes() -> PackedByteArray:
 	var d := {"tick": tick, "welcome": welcome, "fog_all": fog_all, "fog_changes": fog_changes, "ground_at": ground_at, "ground": ground,
 		"removed": removed, "stock": stock, "era": era, "pop_used": pop_used, "pop_cap": pop_cap, "pop_limit": pop_limit, "pop_room": pop_room,
-		"advance": advance, "shots": shots, "road_plans": road_plans, "winner": winner, "defeated": defeated, "events": events}
+		"advance": advance, "shots": shots, "road_plans": road_plans, "winner": winner, "weather": weather, "defeated": defeated, "events": events}
 	d["deposits"] = deposits.map(func(r: DepositRecord) -> Array: return r.pack())
 	d["units"] = units.map(func(r: UnitRecord) -> Array: return r.pack())
 	d["buildings"] = buildings.map(func(r: BuildingRecord) -> Array: return r.pack())
@@ -230,6 +231,7 @@ static func from_bytes(bytes: PackedByteArray) -> ViewFrame:
 	f.shots.assign(d["shots"])
 	f.road_plans = d["road_plans"]
 	f.winner = d["winner"]
+	f.weather = d["weather"]
 	f.defeated = d["defeated"]
 	for e: Array in d["events"]:
 		f.events.append(e)

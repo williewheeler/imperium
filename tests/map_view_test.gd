@@ -99,6 +99,16 @@ func _init() -> void:
 		_check("and of where a site is to be found", site_mine == site_real and site_mine.x >= 0, "%s and %s" % [site_mine, site_real])
 	_check("a unit's speed is known to the client as to the engine", Movement.unit_speed(sim.state.units[0]) == sim.movement.unit_speed(sim.state.units[0]))
 
+	# the weather is the world's: every client is told the one state
+	var seen_states := {}
+	for i in 3000:
+		sim.climate.update(1.0)  # (twenty game minutes of weather, a second at a time)
+		seen_states[sim.state.weather] = true
+	view.catch_up()
+	ai_view.catch_up()
+	_check("the weather goes through its states", seen_states.size() >= 3, str(seen_states.keys()))
+	_check("every client is told the same weather as the world has", view.weather() == sim.state.weather and ai_view.weather() == sim.state.weather, "%d, %d, %d" % [view.weather(), ai_view.weather(), sim.state.weather])
+
 	# ground that changes where it can be seen reaches the client; where it cannot, only when it is next seen
 	var heard: Array[Vector2i] = []
 	view.tile_changed.connect(func(p: Vector2i) -> void: heard.append(p))

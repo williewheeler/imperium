@@ -145,7 +145,6 @@ func _ready() -> void:
 	var loading := Loading.new()
 	add_child(loading)
 	var start := Vector2i.ZERO  # where this player's first town stands
-	var weather_seed := 0
 	if remote:  # the world is the host's: wait for its first view, which says how big it is and where our town is
 		me = session.my_slot()
 		client = HeadlessClient.new(me, session.play.link, true)
@@ -194,7 +193,6 @@ func _ready() -> void:
 		host.begin()
 		var map := sim.state.map
 		start = sim.state.start
-		weather_seed = map.seed_value
 		if spectating:
 			fog = Fog.new(map.w, map.h)  # nobody plays the first town: this view shows everything, and is not drawn
 			fog.set_show_all(true)
@@ -222,7 +220,7 @@ func _ready() -> void:
 	person = Person.new(self)
 
 	weather = Weather.new()
-	weather.setup(weather_seed)
+	weather.follow(view.weather())  # the sky is the world's: it is the same for every player
 	add_child(weather)
 	var weather_view := WeatherView.new()
 	weather_view.weather = weather
@@ -594,6 +592,7 @@ func _process(delta: float) -> void:
 	_run_sim(delta)
 	t0 = Perf.start()
 	view.refresh()  # the client's picture of the world, as the last ticks left it
+	weather.follow(view.weather())
 	Perf.stop("view refresh", t0)
 	person.update(delta)
 	if debug.show_on:

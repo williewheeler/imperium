@@ -19,6 +19,11 @@ var start := Vector2i.ZERO  # where the first player's town stands
 var tick := 0  # steps taken so far
 var rng := RandomNumberGenerator.new()  # the rules' dice: Wildlife, and whatever else the rules leave to chance
 
+# the sky (cosmetic: not part of the checksum)
+var weather := 0  # a Climate.State
+var weather_left := 0.0  # seconds until it changes
+var weather_rng := RandomNumberGenerator.new()  # its own dice, so the rules' are not disturbed by it
+
 # what the systems keep between ticks
 var era_level := {}  # owner -> the era the people is in, an index into Defs.ERAS (a player not listed is in Era I)
 var era_advancing := {}  # owner -> true while an advance is being researched

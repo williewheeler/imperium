@@ -465,6 +465,11 @@ func unit_speed(u: Unit) -> float:
 
 # ---------------------------------------------------------------- what everyone knows
 
+## The weather in the world (a Climate.State): the same for everyone.
+func weather() -> int:
+	return _frame.weather
+
+
 func time() -> float:
 	return _frame.tick * Simulation.TICK
 
