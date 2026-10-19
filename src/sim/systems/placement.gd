@@ -30,43 +30,46 @@ func find_site(kind: String, near: Vector2i, min_r: int) -> Vector2i:
 
 ## Empty string if `owner` can build `kind` with its top-left at `tile`, else the reason it can't.
 func error(kind: String, tile: Vector2i, owner := 0) -> String:
+	return check(SimWorld.new(sim, owner), kind, tile)
+
+
+## The rules for where a building may go, run on whatever world they are given (see RulesWorld): the Simulation's own, or a client's.
+static func check(world: RulesWorld, kind: String, tile: Vector2i) -> String:
+	var map := world.map()
 	var def: Dictionary = Defs.BUILDINGS[kind]
 	var rect := Rect2i(tile, def["size"])
-	for rt in sim.state.road_plans:
-		if rect.has_point(rt):
-			return "err.spot_taken"
-	for other: Building in sim.state.buildings:  # checked first so the message says why (a field's crop tile isn't "free land")
-		if other.rect().intersects(rect):
-			return "err.spot_taken"
+	for y in range(rect.position.y, rect.end.y):  # a tile paid for as a road is taken
+		for x in range(rect.position.x, rect.end.x):
+			if world.road_planned(Vector2i(x, y)):
+				return "err.spot_taken"
+	if world.building_near(rect):  # checked first so the message says why (a field's crop tile isn't "free land")
+		return "err.spot_taken"
 	if def.get("shore", false):  # a dock stands in the shallows, touching the shore
 		for y in range(rect.position.y, rect.end.y):
 			for x in range(rect.position.x, rect.end.x):
 				var q := Vector2i(x, y)
-				if not sim.fog_of(owner).is_explored(q):
+				if not world.is_explored(q):
 					return "err.unexplored"
-				if sim.state.map.tile(x, y) != GameMap.Terrain.SHALLOW or sim.state.map.deposits.has(q) or sim.state.map.blocked_water.has(q):
+				if map.tile(x, y) != GameMap.Terrain.SHALLOW or map.deposits.has(q) or map.blocked_water.has(q):
 					return "err.need_shore"
-		if not sim.state.map.land_adjacent(rect):
+		if not map.land_adjacent(rect):
 			return "err.need_shore"
-		return "" if sim.economy.can_afford(def["cost"], owner) else "err.cant_afford"
+		return "" if world.can_afford(def["cost"]) else "err.cant_afford"
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var p := Vector2i(x, y)
-			if not sim.fog_of(owner).is_explored(p):
+			if not world.is_explored(p):
 				return "err.unexplored"
-			if not sim.state.map.is_free_land(p):
+			if not map.is_free_land(p):
 				return "err.need_level"
-	if not sim.state.map.is_level(rect):  # everything stands on one terrace
+	if not map.is_level(rect):  # everything stands on one terrace
 		return "err.need_level"
 	if not def.get("walkable", false):
-		for u: Unit in sim.state.units:
-			if rect.has_point(Vector2i(u.pos)):
-				return "err.villagers_in_way"
+		if world.someone_on(rect):
+			return "err.villagers_in_way"
 	elif def.get("solid_center", false):  # a farm's granary stands on its middle tile
-		var middle := Rect2i(tile + (def["size"] as Vector2i) / 2, Vector2i.ONE)
-		for u: Unit in sim.state.units:
-			if middle.has_point(Vector2i(u.pos)):
-				return "err.villagers_in_way"
-	if not sim.economy.can_afford(def["cost"], owner):
+		if world.someone_on(Rect2i(tile + (def["size"] as Vector2i) / 2, Vector2i.ONE)):
+			return "err.villagers_in_way"
+	if not world.can_afford(def["cost"]):
 		return "err.cant_afford"
 	return ""

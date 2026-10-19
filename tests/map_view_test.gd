@@ -65,6 +65,39 @@ func _init() -> void:
 		_check("%s has nothing of ground it has not explored" % pair[0], r[4] == 0, str(r))
 		_check("%s has the fog as it is" % pair[0], (pair[1] as PlayerView).fog().state == sim.state.fogs[(pair[1] as PlayerView).owner].state)
 
+	# the rules on the client's own picture give the engine's answers, for the ground it knows of
+	for pair in [["the person's client", view], ["an AI's client", ai_view]]:
+		var v: PlayerView = pair[1]
+		var around := Vector2i(v.my_buildings()[0].center())
+		var tried := 0
+		var differ := 0
+		var first := ""
+		for kind in ["hut", "house", "storehouse", "farm", "dock", "castra"]:
+			for y in range(around.y - 22, around.y + 23, 2):
+				for x in range(around.x - 22, around.x + 23, 2):
+					var p := Vector2i(x, y)
+					if not v.is_visible(p):  # (where it cannot see, what it was told may be out of date: that is as it should be)
+						continue
+					var guess := v.placement_error(kind, p)
+					var real := sim.placement.error(kind, p, v.owner)
+					tried += 1
+					if guess != real and real != "err.villagers_in_way" and guess != "err.villagers_in_way":
+						differ += 1
+						if first == "":
+							first = "%s at %s: client %s, engine %s" % [kind, p, guess, real]
+		_check("%s says what the engine says of where buildings may go (%d places)" % [pair[0], tried], tried > 300 and differ == 0, "%d differ, e.g. %s" % [differ, first])
+		var road_differ := 0
+		for y in range(around.y - 20, around.y + 21):
+			for x in range(around.x - 20, around.x + 21):
+				var p := Vector2i(x, y)
+				if v.is_visible(p) and v.road_error(p) != sim.roads.tile_error(p, v.owner):
+					road_differ += 1
+		_check("and of where roads may go" % [], road_differ == 0, str(road_differ))
+		var site_mine := v.find_site(Vector2i(3, 3), around, 3, 20, [])
+		var site_real := sim.state.map.find_site(Vector2i(3, 3), around, 3, 20, [], v.building_rects(), false, sim.state.fogs[v.owner])
+		_check("and of where a site is to be found", site_mine == site_real and site_mine.x >= 0, "%s and %s" % [site_mine, site_real])
+	_check("a unit's speed is known to the client as to the engine", Movement.unit_speed(sim.state.units[0]) == sim.movement.unit_speed(sim.state.units[0]))
+
 	# ground that changes where it can be seen reaches the client; where it cannot, only when it is next seen
 	var heard: Array[Vector2i] = []
 	view.tile_changed.connect(func(p: Vector2i) -> void: heard.append(p))

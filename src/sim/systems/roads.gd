@@ -30,11 +30,16 @@ static func line(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 
 ## Empty if `owner` can have a paved road laid on `p`, otherwise the reason it can't.
 func tile_error(p: Vector2i, owner := 0) -> String:
-	if not sim.fog_of(owner).is_explored(p):
+	return check(SimWorld.new(sim, owner), p)
+
+
+## The rules for a paved road, run on whatever world they are given (see RulesWorld).
+static func check(world: RulesWorld, p: Vector2i) -> String:
+	if not world.is_explored(p):
 		return "err.unexplored"
-	if not sim.state.map.can_pave(p) or sim.placement.building_at(p) != null:
+	if not world.map().can_pave(p) or world.has_building_at(p):
 		return "err.need_level"
-	if sim.state.road_plans.has(p):
+	if world.road_planned(p):
 		return "err.spot_taken"
 	return ""
 

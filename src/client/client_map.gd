@@ -6,12 +6,14 @@ extends GameMap
 ## people first explore it, and again when it changes where the client can see it.
 
 var known := PackedByteArray()  # per tile: 1 once the host has told this client of it
+var _blocked := PackedByteArray()  # per tile: 1 where a building or a mine stands, which no one can walk through
 
 
 func _init(p_w: int, p_h: int) -> void:
 	super(0, p_w, "continens", 0, 2, "temperate", true)
 	h = p_h
 	known.resize(p_w * p_h)
+	_blocked.resize(p_w * p_h)
 
 
 func is_known(p: Vector2i) -> bool:
@@ -37,14 +39,54 @@ func set_ground(i: int, terrain: int, level: int, rel: int, biome: int, road_lev
 	relief[i] = rel
 	biomes[i] = biome
 	road[i] = road_level
+	_set_open(i)
 	return changed
+
+
+## What is blocked on a tile, as the engine's grid has it: water and mountains always, and wherever a building or a mine stands.
+func _set_open(i: int) -> void:
+	var p := Vector2i(i % w, i / w)
+	astar.set_point_solid(p, _blocked[i] == 1 or is_inf(MOVE_COST[tiles[i]]))
+	if is_water(p):
+		if _blocked[i] == 1:
+			blocked_water[p] = true
+		else:
+			blocked_water.erase(p)
+
+
+## A building the client knows of stands on its footprint (or, for a farm, on its granary): no one can walk there.
+func building_stands(b: Building) -> void:
+	_occupy(b, 1)
+
+
+## A building the client knew of is gone.
+func building_gone(b: Building) -> void:
+	_occupy(b, 0)
+
+
+func _occupy(b: Building, blocked: int) -> void:
+	var def: Dictionary = Defs.BUILDINGS[b.kind]
+	var rect := Rect2i()
+	if not def.get("walkable", false):
+		rect = b.rect()
+	elif def.get("solid_center", false):
+		rect = Rect2i(b.granary_tile(), Vector2i.ONE)
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			if in_bounds(Vector2i(x, y)):
+				_blocked[y * w + x] = blocked
+				_set_open(y * w + x)
 
 
 ## Puts what the host told of the deposit on one tile.
 func set_deposit(r: ViewFrame.DepositRecord) -> void:
+	var i := r.tile.y * w + r.tile.x
 	if not r.present:
 		deposits.erase(r.tile)
 		herds.erase(r.tile)
+		if _blocked[i] == 1:  # (a mine that is worked out)
+			_blocked[i] = 0
+			_set_open(i)
 		return
 	var d: Deposit = deposits.get(r.tile)
 	if d == null or d.kind != r.kind:
@@ -60,3 +102,9 @@ func set_deposit(r: ViewFrame.DepositRecord) -> void:
 	d.plot_rect = r.plot_rect
 	if r.herd and not herds.has(r.tile):
 		herds.append(r.tile)
+	if r.kind >= Defs.Res.STONE and not r.farm:  # a mine is an obstacle: gatherers stand beside it
+		_blocked[i] = 1
+		_set_open(i)
+
+
+

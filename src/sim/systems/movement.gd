@@ -228,7 +228,7 @@ func _nudge(u: Unit, v: Vector2) -> void:
 
 
 ## How fast `u` walks over open ground, in tiles a second.
-func unit_speed(u: Unit) -> float:
+static func unit_speed(u: Unit) -> float:
 	return walk_speed(u, 1.0)
 
 
@@ -236,7 +236,7 @@ func unit_speed(u: Unit) -> float:
 ## Tiles per second for `u` over ground with the given move cost (1.0 = open grass). Horses are much
 ## faster than a man on open ground, but rough ground (forest, hills) slows them more, so there
 ## the gap closes.
-func walk_speed(u: Unit, cost: float) -> float:
+static func walk_speed(u: Unit, cost: float) -> float:
 	if Defs.UNITS[u.kind].get("water", false):  # a boat has no ground to slow it
 		return VILLAGER_SPEED * float(Defs.UNITS[u.kind].get("speed", 1.0))
 	if Defs.UNITS[u.kind].get("rough", false):  # a dog is not slowed by forest, marsh or hills

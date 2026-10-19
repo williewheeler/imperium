@@ -59,5 +59,12 @@ for f in glob.glob('src/ui/**/*.gd', recursive=True):
             if re.search(word, code):
                 print('%s:%d: the UI may not touch the simulation (%s); use game.view and game.client' % (f, n, code.strip()[:60])); bad += 1
                 break
+# a client reads nothing of the simulation but its own frames: the only touches are attaching to the queues (and asking for a view now)
+ALLOWED_CLIENT = ('_sim.open_view(', '_sim.publish_view(', '_sim.put_command(', 'sim.answered.connect(', 'Simulation.TICK')
+for f in glob.glob('src/client/*.gd'):
+    for n, line in enumerate(open(f).read().split('\n'), 1):
+        code = line.split('#')[0]
+        if re.search(r'\b_?sim\.|\bGameState\b|\.state\.', code) and not any(a in code for a in ALLOWED_CLIENT):
+            print('%s:%d: a client may not read the simulation (%s); it has its frames' % (f, n, code.strip()[:60])); bad += 1
 print('check_members: %d problems' % bad)
 sys.exit(1 if bad else 0)

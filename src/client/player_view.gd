@@ -15,9 +15,10 @@ extends RefCounted
 ## A *god* view (`PlayerView.god`) knows everything: it is for a spectator, who watches every people at once.
 ##
 ## The ground comes in the frames too: the map (a ClientMap) and the fog are filled in from what the host tells the client, as its
-## people explore and as the ground changes where they can see (a spectator's god view reads the real ground instead). What is
-## still not through the queue, and reads the Simulation in place: the questions the rules answer (`find_site`, `placement_error`,
-## `road_error`, `unit_speed`), which a client would put to the rules itself.
+## people explore and as the ground changes where they can see (a spectator's god view reads the real ground instead). And the
+## questions the rules answer (`find_site`, `placement_error`, `road_error`, `unit_speed`) are answered on the client's own picture
+## by the same rules the engine runs (see RulesWorld); the engine still checks each command when it is carried out. Nothing here
+## reads the Simulation but to attach to its queues.
 
 signal notice(key: String)  # a message for the player, as a phrase key
 signal building_completed(b: BuildingInfo)
@@ -35,7 +36,8 @@ var _paths := false
 var _fog: Fog  # what the player has explored, as the host told it (null for a god view)
 var _map: GameMap  # the ground the player knows (a ClientMap; a god view reads the real one)
 var _picture := false  # does the fog keep a picture of itself, to be drawn?
-var _sim: Simulation  # for the rules' answers (see above); the world itself comes in the frames
+var _sim: Simulation  # only to attach to the host's queues (and, for a test or a debug aid, to ask for a view now)
+var _world: ClientWorld  # the rules' view of what the client knows
 var _queue: ViewQueue  # where the host puts what the player may see
 var _frame := ViewFrame.new()  # the latest view taken
 var _units := {}  # id -> UnitInfo, for everyone known
@@ -63,6 +65,7 @@ func _init(sim: Simulation, p_owner: int, every := 1, paths := false, picture :=
 	_picture = picture
 	if _god:
 		_map = sim.state.map
+	_world = ClientWorld.new(self)
 	_queue = sim.open_view(p_owner, every, paths)
 	refresh()
 
@@ -130,6 +133,7 @@ func _apply(f: ViewFrame) -> void:
 	_known_buildings = []
 	for r in f.buildings:
 		var info: BuildingInfo = _buildings.get(r.id)
+		var known_before := info != null
 		if info == null:
 			info = BuildingInfo.new()
 			info.id = r.id
@@ -140,6 +144,8 @@ func _apply(f: ViewFrame) -> void:
 			info.own = r.own
 			_buildings[r.id] = info
 		_copy_building(info, r)
+		if not _god and not known_before:
+			(_map as ClientMap).building_stands(info)
 		_all_buildings.append(info)
 		if r.own:
 			_my_buildings.append(info)
@@ -151,6 +157,8 @@ func _apply(f: ViewFrame) -> void:
 			var info: BuildingInfo = _buildings[id]
 			info.dead = true
 			_buildings.erase(id)
+			if not _god:
+				(_map as ClientMap).building_gone(info)
 			building_destroyed.emit(info)
 
 	for e in f.events:  # what happened, in order
@@ -430,23 +438,23 @@ func has_road_plan(tile: Vector2i) -> bool:
 
 ## Why a road cannot be laid on `tile`, or "" if it can.
 func road_error(tile: Vector2i) -> String:
-	return _sim.roads.tile_error(tile, owner)
+	return Roads.check(_world, tile)
 
 
 ## Closest spot to `near` where a building of `size` fits, on ground the player has explored (see GameMap.find_site).
 func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Array[Vector2i], avoid_rects: Array = []) -> Vector2i:
-	return _sim.state.map.find_site(size, near, min_r, max_r, avoid, avoid_rects, false, _sim.state.fogs[owner])  # (the rules and the real ground: still asked of the Simulation)
+	return _map.find_site(size, near, min_r, max_r, avoid, avoid_rects, false, _fog)
 
 
 ## Why a `kind` of building cannot go on `tile`, or "" if it can (the rules' answer, asked on the player's behalf: it only
 ## looks at ground the player has explored).
 func placement_error(kind: String, tile: Vector2i) -> String:
-	return _sim.placement.error(kind, tile, owner)
+	return Placement.check(_world, kind, tile)
 
 
 ## How fast a unit of this kind walks over open ground, in tiles a second.
 func unit_speed(u: Unit) -> float:
-	return _sim.movement.unit_speed(u)
+	return Movement.unit_speed(u)
 
 
 # ---------------------------------------------------------------- what everyone knows
