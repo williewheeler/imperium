@@ -2,7 +2,8 @@ class_name Combat
 extends RefCounted
 ## Fighting. Every player is the enemy of every other. Fighting men attack what they are told to; idle ones
 ## (and ones attack-moving) notice enemies in sight and engage them; and after a kill a fighter goes after the
-## next enemy that is not too far away. A unit given a plain move order ignores the enemy until it arrives, so
+## next enemy that is not too far away. An army razes buildings whenever it sees no defenders (fighters) about; one at a
+## building that sees a defender turn up drops it and takes on the defender first, and goes back to the building after. A unit given a plain move order ignores the enemy until it arrives, so
 ## the player can pull units back or reposition them (micromanagement). Slingers shoot from a distance; the
 ## rest must reach their target. Villagers cannot fight and run for the town when hurt.
 ##
@@ -11,6 +12,7 @@ extends RefCounted
 
 const ACQUIRE := 7.0  # tiles: how far an idle fighter notices an enemy (ranged fighters notice a little past their range)
 const CHASE := 8.0  # tiles: after a kill, the next enemy this near is chased
+const RAZE := 16.0  # tiles: how far an army on the attack looks for a building to burn down, when there are no defenders in sight
 const STRIKE_MELEE := 0.42  # how far through the blow's cycle it lands (the animation winds up first)
 const STRIKE_RANGED := 0.76  # a slinger lets go as the arm swings through (the last frame)
 const PROJECTILE_SPEED := 13.0  # tiles/sec
@@ -91,6 +93,20 @@ func nearest_enemy(u: Unit, radius: float) -> Unit:
 	return best
 
 
+## The nearest enemy fighter (a defender: villagers do not count) within `radius` tiles that its people can see, or null.
+func nearest_enemy_fighter(u: Unit, radius: float) -> Unit:
+	var best: Unit = null
+	var best_d2 := radius * radius
+	for t: Unit in sim.state.units:
+		if t.dead or t.owner == u.owner or not fights(t):
+			continue
+		var d2 := u.pos.distance_squared_to(t.pos)
+		if d2 < best_d2 and can_see(u.owner, t):
+			best_d2 = d2
+			best = t
+	return best
+
+
 ## The nearest enemy building within `radius` tiles that its people have explored (a building stays where it
 ## was seen), or null. Fields and landmarks do not count.
 func nearest_enemy_building(u: Unit, radius: float) -> Building:
@@ -124,6 +140,7 @@ func order_attack_building(u: Unit, b: Building, auto := false) -> void:
 	u.target_building = null
 	u.target = null
 	u.atk_building = b
+	u.auto_siege = auto
 	u.lost_for = 0.0
 	u.path.clear()
 	u.detour = Vector2.INF
@@ -186,8 +203,8 @@ func tick_unit(u: Unit, delta: float) -> void:
 			var foe := nearest_enemy(u, maxf(ACQUIRE, reach(u) + 1.5))
 			if foe != null:
 				order_attack(u, foe, true)
-			else:
-				var house := nearest_enemy_building(u, maxf(ACQUIRE, reach(u) + 1.5))
+			else:  # no one to fight in sight: an army on the attack looks further for a building to burn down
+				var house := nearest_enemy_building(u, maxf(RAZE if u.amove else ACQUIRE, reach(u) + 1.5))
 				if house != null:
 					order_attack_building(u, house, true)
 
@@ -245,6 +262,14 @@ func _update_siege(u: Unit, delta: float) -> void:
 	if b == null or b.dead or not sim.state.buildings.has(b):
 		_after_kill(u)
 		return
+	if u.auto_siege or u.amove:  # (one the person sent at this building keeps to it)
+		u.scan_t -= delta
+		if u.scan_t <= 0.0:  # a defender turns up: it comes first, and the building is taken up again after
+			u.scan_t = SCAN_EVERY
+			var defender := nearest_enemy_fighter(u, maxf(ACQUIRE, reach(u) + 1.5))
+			if defender != null:
+				order_attack(u, defender, true)
+				return
 	var d := rect_distance(u.pos, b.rect())
 	if u.state == Unit.State.ATTACK_GO:
 		if d <= reach(u):
@@ -397,7 +422,7 @@ func _after_kill(u: Unit) -> void:
 	if next != null:
 		order_attack(u, next, true)
 		return
-	var house := nearest_enemy_building(u, CHASE)  # then the next building, if any is near
+	var house := nearest_enemy_building(u, RAZE if u.amove else CHASE)  # then the next building, if any is near
 	if house != null:
 		order_attack_building(u, house, true)
 		return

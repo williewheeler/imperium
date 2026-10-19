@@ -11,7 +11,7 @@ func priority() -> float:
 
 func act() -> void:
 	var villagers := ai.villagers()
-	var busy := [0, 0, 0, 0]
+	var busy := [0, 0, 0, 0, 0]
 	for u in villagers:
 		if u.state in [Unit.State.GATHER_GO, Unit.State.GATHERING, Unit.State.RETURN] and u.gather_kind >= 0:
 			busy[u.gather_kind] += 1
@@ -45,7 +45,7 @@ func _share(kind: int) -> float:
 func _kinds_by_need(busy: Array, total: int) -> Array:
 	var kinds := [Defs.Res.WOOD, Defs.Res.FOOD]
 	if total >= 8:
-		kinds.append_array([Defs.Res.STONE, Defs.Res.GOLD])
+		kinds.append_array([Defs.Res.STONE, Defs.Res.GOLD, Defs.Res.IRON])
 	kinds.sort_custom(func(a: int, b: int) -> bool:
 		return float(busy[a]) / maxf(1.0, total) - _share(a) < float(busy[b]) / maxf(1.0, total) - _share(b))
 	return kinds
@@ -57,7 +57,7 @@ func _rebalance(villagers: Array[UnitInfo]) -> void:
 	var have := ai.stock()
 	var rich := -1
 	var poor := -1
-	for kind in [Defs.Res.WOOD, Defs.Res.FOOD, Defs.Res.STONE, Defs.Res.GOLD]:
+	for kind in [Defs.Res.WOOD, Defs.Res.FOOD, Defs.Res.STONE, Defs.Res.GOLD, Defs.Res.IRON]:
 		if have[kind] > 1000 and (rich < 0 or have[kind] > have[rich]):
 			rich = kind
 		if have[kind] < 150 and (poor < 0 or have[kind] < have[poor]):

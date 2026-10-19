@@ -432,7 +432,7 @@ func advance_tooltip() -> String:
 		return "No further advance is available yet."
 	var next: Dictionary = Defs.ERAS[era + 1]
 	var cost_parts: Array[String] = []
-	for i in 4:
+	for i in (data["cost"] as Array).size():
 		if data["cost"][i] > 0:
 			cost_parts.append("%d %s" % [data["cost"][i], Defs.RES_ENGLISH[i].to_lower()])
 	var lines: Array[String] = [
@@ -450,15 +450,20 @@ func advance_tooltip() -> String:
 func _run_sim(delta: float) -> void:
 	if _report:
 		_step_sim()  # one tick a frame, so a headless run is the same every time
+		sim.publish_views()
 		return
 	_sim_acc += delta
 	var t0 := Time.get_ticks_usec()
+	var stepped := false
 	while _sim_acc >= Simulation.TICK:
 		_step_sim()
+		stepped = true
 		_sim_acc -= Simulation.TICK
 		if Time.get_ticks_usec() - t0 > STEP_BUDGET_USEC:
 			_sim_acc = minf(_sim_acc, Simulation.TICK)  # the machine cannot keep up with the speed asked for: the game runs slower rather than freeze
 			break
+	if stepped:
+		sim.publish_views()  # the screen's view is of the last tick of the frame (the ticks before it did not build one)
 
 
 func _step_sim() -> void:
@@ -470,7 +475,7 @@ func _step_sim() -> void:
 				_report_replay()
 			return
 		replayer.feed(sim)  # the commands that were given at this tick
-	sim.step()
+	sim.step(false)
 
 
 ## The replay has played to its end: say whether it held, as the headless check does.

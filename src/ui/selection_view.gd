@@ -252,6 +252,8 @@ func _show_deposit(d: Deposit) -> void:
 		key = "stone:0"
 	elif d.kind == Defs.Res.GOLD:
 		key = "gold:0"
+	elif d.kind == Defs.Res.IRON:
+		key = "iron:0"
 	elif d.kind == Defs.Res.WOOD:
 		key = "oak:0"
 	_show_portrait(Art.tex(key))

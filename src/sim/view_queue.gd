@@ -36,8 +36,10 @@ func want() -> void:
 	_asked = true
 
 
-func due(tick: int) -> bool:
-	return _asked or (every > 0 and tick >= _next)
+## Is a view to be built now? One asked for is always; one a client takes every so many ticks only if `periodic` (a client
+## that draws once a frame needs the view of the last tick of the frame, not of each).
+func due(tick: int, periodic := true) -> bool:
+	return _asked or (periodic and every > 0 and tick >= _next)
 
 
 func published(tick: int) -> void:

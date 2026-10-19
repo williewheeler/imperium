@@ -2,14 +2,14 @@ class_name Defs
 extends RefCounted
 ## Static game data: resources, buildings, unit stats.
 
-enum Res { WOOD, FOOD, STONE, GOLD }
+enum Res { WOOD, FOOD, STONE, GOLD, IRON }
 
-const RES_NAMES := ["Lignum", "Cibus", "Lapis", "Aurum"]  # wood, food, stone, gold
-const RES_ENGLISH := ["Wood", "Food", "Stone", "Gold"]
-const DEPOSIT_LATIN := ["Silva", "Baccae", "Lapis", "Aurum"]  # woods, berries, stone, gold
-const DEPOSIT_ENGLISH := ["Trees", "Berry bushes", "Stone", "Gold"]
-const DEPOSIT_AMOUNT := [100, 150, 5000, 5000]  # (a mine is for a whole game; a tree or a berry bush is soon used up)
-const GATHER_RATE := [1.0, 1.2, 0.8, 0.7]  # units per second
+const RES_NAMES := ["Lignum", "Cibus", "Lapis", "Aurum", "Ferrum"]  # wood, food, stone, gold, iron
+const RES_ENGLISH := ["Wood", "Food", "Stone", "Gold", "Iron"]
+const DEPOSIT_LATIN := ["Silva", "Baccae", "Lapis", "Aurum", "Ferrum"]  # woods, berries, stone, gold, iron
+const DEPOSIT_ENGLISH := ["Trees", "Berry bushes", "Stone", "Gold", "Iron"]
+const DEPOSIT_AMOUNT := [100, 150, 5000, 5000, 5000]  # (a mine is for a whole game; a tree or a berry bush is soon used up)
+const GATHER_RATE := [1.0, 1.2, 0.8, 0.7, 0.7]  # units per second
 # Herds: grazing animals, a food deposit that breeds. While at least HERD_BREED_MIN of it is left it gains
 # HERD_BREED_GAIN every HERD_BREED_EVERY seconds up to HERD_AMOUNT; hunt it to nothing and it is gone for good.
 const HERD_AMOUNT := 240
@@ -22,17 +22,18 @@ const HERD_MOVE_EVERY := 7.0  # seconds between steps
 const CARRY_CAP := 15
 const MAX_WORKERS := 6  # most units that can work one deposit at a time (a farm plot takes one)
 
-# Costs are [wood, food, stone, gold].
-const START_STOCK := [0, 0, 0, 0]  # nobody starts with anything in store: the first food and wood are gathered
+# Costs are [wood, food, stone, gold, iron]; one that stops short (most do) asks nothing more. Fighting men are paid for in
+# food and either iron (the heavy kinds) or gold (the light ones): arms need a mine.
+const START_STOCK := [0, 0, 0, 0, 0]  # nobody starts with anything in store: the first food and wood are gathered
 const VILLAGER_COST := [0, 50, 0, 0]
 const VILLAGER_TRAIN_TIME := 8.0
 const DOG_COST := [0, 30, 0, 0]
-const SOLDIER_COST := [30, 50, 0, 0]
+const SOLDIER_COST := [0, 50, 0, 0, 30]
 const SOLDIER_TRAIN_TIME := 12.0
 
 # What a building's "trains" entry produces.
-const SPEARMAN_COST := [20, 30, 0, 0]
-const SLINGER_COST := [0, 20, 10, 0]
+const SPEARMAN_COST := [0, 30, 0, 0, 20]
+const SLINGER_COST := [0, 20, 0, 10]
 const HORSEMAN_COST := [0, 70, 0, 40]
 # Fighting stats. `attack` is damage per blow and `cooldown` the seconds between blows; `range` is how far a
 # ranged fighter shoots, in tiles (0 for a melee fighter, who must be at arm's length); `armor` is the share of

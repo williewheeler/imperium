@@ -717,7 +717,7 @@
 		"aedes": [
 			"buildings.png",
 			151,
-			419,
+			697,
 			66,
 			70
 		],
@@ -744,7 +744,7 @@
 		],
 		"alder:1:1": [
 			"scenery.png",
-			55,
+			136,
 			127,
 			15,
 			19
@@ -752,42 +752,49 @@
 		"aqueduct": [
 			"buildings.png",
 			1,
-			419,
+			697,
 			82,
 			82
 		],
 		"arx": [
 			"buildings.png",
-			100,
-			148,
+			1,
+			430,
 			98,
 			92
 		],
 		"berries": [
 			"scenery.png",
-			81,
+			64,
 			147,
 			19,
 			15
 		],
 		"castra": [
 			"buildings.png",
-			100,
-			334,
+			1,
+			612,
 			98,
 			84
 		],
 		"circus": [
 			"buildings.png",
 			1,
-			1,
+			169,
 			226,
 			146
 		],
-		"curia": [
+		"city_center": [
 			"buildings.png",
 			1,
-			242,
+			316,
+			98,
+			113
+		],
+		"curia": [
+			"buildings.png",
+			100,
+			430,
 			98,
 			91
 		],
@@ -805,31 +812,38 @@
 			11,
 			26
 		],
+		"dock": [
+			"buildings.png",
+			135,
+			1049,
+			66,
+			58
+		],
 		"farm:0": [
 			"buildings.png",
 			1,
-			771,
+			1049,
 			98,
 			64
 		],
 		"farm:1": [
 			"buildings.png",
 			100,
-			706,
+			984,
 			98,
 			64
 		],
 		"farm:2": [
 			"buildings.png",
 			1,
-			706,
+			984,
 			98,
 			64
 		],
 		"farm:3": [
 			"buildings.png",
-			100,
-			638,
+			135,
+			916,
 			98,
 			64
 		],
@@ -849,17 +863,24 @@
 		],
 		"gold:0": [
 			"scenery.png",
-			71,
+			152,
 			127,
 			26,
 			19
 		],
 		"gold:1": [
 			"scenery.png",
-			98,
+			109,
 			127,
 			26,
 			19
+		],
+		"granary": [
+			"buildings.png",
+			1,
+			1114,
+			34,
+			48
 		],
 		"ground:0:0": [
 			"ground_tiles.png",
@@ -1578,51 +1599,86 @@
 		"house": [
 			"buildings.png",
 			68,
-			502,
+			916,
 			66,
 			67
 		],
 		"hut": [
 			"buildings.png",
-			100,
-			771,
+			202,
+			1049,
 			34,
 			48
 		],
 		"icon:food": [
 			"scenery.png",
-			49,
+			100,
 			147,
 			15,
 			15
 		],
 		"icon:gold": [
 			"scenery.png",
-			17,
+			132,
+			147,
+			15,
+			15
+		],
+		"icon:iron": [
+			"scenery.png",
+			148,
 			147,
 			15,
 			15
 		],
 		"icon:pop": [
 			"scenery.png",
-			1,
+			164,
 			147,
 			15,
 			15
 		],
 		"icon:stone": [
 			"scenery.png",
-			33,
+			116,
 			147,
 			15,
 			15
 		],
 		"icon:wood": [
 			"scenery.png",
-			65,
+			84,
 			147,
 			15,
 			15
+		],
+		"iron:0": [
+			"scenery.png",
+			82,
+			127,
+			26,
+			19
+		],
+		"iron:1": [
+			"scenery.png",
+			55,
+			127,
+			26,
+			19
+		],
+		"jupiter": [
+			"buildings.png",
+			1,
+			1,
+			162,
+			167
+		],
+		"large_granary": [
+			"buildings.png",
+			100,
+			1049,
+			34,
+			60
 		],
 		"lupa": [
 			"scenery.png",
@@ -1703,105 +1759,126 @@
 		],
 		"pack:0:0": [
 			"scenery.png",
-			1,
-			163,
+			119,
+			166,
 			7,
 			6
 		],
 		"pack:0:1": [
 			"scenery.png",
-			229,
-			147,
+			79,
+			166,
 			7,
 			8
 		],
 		"pack:0:2": [
 			"scenery.png",
-			143,
+			222,
 			147,
 			7,
 			10
 		],
 		"pack:1:0": [
 			"scenery.png",
-			9,
-			163,
+			111,
+			166,
 			7,
 			6
 		],
 		"pack:1:1": [
 			"scenery.png",
-			205,
-			147,
+			71,
+			166,
 			7,
 			8
 		],
 		"pack:1:2": [
 			"scenery.png",
-			197,
+			230,
 			147,
 			7,
 			10
 		],
 		"pack:2:0": [
 			"scenery.png",
-			237,
-			147,
+			103,
+			166,
 			7,
 			6
 		],
 		"pack:2:1": [
 			"scenery.png",
-			213,
-			147,
+			63,
+			166,
 			7,
 			8
 		],
 		"pack:2:2": [
 			"scenery.png",
-			159,
+			238,
 			147,
 			7,
 			10
 		],
 		"pack:3:0": [
 			"scenery.png",
-			245,
-			147,
+			95,
+			166,
 			7,
 			6
 		],
 		"pack:3:1": [
 			"scenery.png",
-			221,
-			147,
+			47,
+			166,
 			7,
 			8
 		],
 		"pack:3:2": [
 			"scenery.png",
-			151,
-			147,
+			16,
+			166,
+			7,
+			10
+		],
+		"pack:4:0": [
+			"scenery.png",
+			87,
+			166,
+			7,
+			6
+		],
+		"pack:4:1": [
+			"scenery.png",
+			55,
+			166,
+			7,
+			8
+		],
+		"pack:4:2": [
+			"scenery.png",
+			39,
+			166,
 			7,
 			10
 		],
 		"pennant:0": [
 			"scenery.png",
-			101,
+			208,
 			147,
 			13,
 			11
 		],
 		"pennant:1": [
 			"scenery.png",
-			115,
+			194,
 			147,
 			13,
 			11
 		],
 		"pennant:2": [
 			"scenery.png",
-			129,
+			180,
 			147,
 			13,
 			11
@@ -1843,38 +1920,45 @@
 		],
 		"reeds:0": [
 			"scenery.png",
-			232,
-			127,
+			28,
+			147,
 			17,
 			16
 		],
 		"reeds:1": [
 			"scenery.png",
-			214,
-			127,
+			46,
+			147,
 			17,
 			16
 		],
 		"regia": [
 			"buildings.png",
-			100,
-			242,
+			1,
+			523,
 			98,
 			88
 		],
 		"scrub:0": [
 			"scenery.png",
-			167,
-			147,
+			24,
+			166,
 			14,
 			10
 		],
 		"scrub:1": [
 			"scenery.png",
-			182,
-			147,
+			1,
+			166,
 			14,
 			10
+		],
+		"settlement": [
+			"buildings.png",
+			100,
+			523,
+			98,
+			86
 		],
 		"slinger:attack:b:0": [
 			"troops.png",
@@ -3404,43 +3488,43 @@
 		],
 		"stabulum": [
 			"buildings.png",
-			1,
-			334,
+			100,
+			612,
 			98,
 			84
 		],
 		"stone:0": [
 			"scenery.png",
-			125,
+			214,
 			127,
 			26,
 			18
 		],
 		"stone:1": [
 			"scenery.png",
-			152,
-			127,
+			1,
+			147,
 			26,
 			18
 		],
 		"storehouse": [
 			"buildings.png",
 			1,
-			502,
+			916,
 			66,
 			67
 		],
 		"temple": [
 			"buildings.png",
 			84,
-			419,
+			697,
 			66,
 			72
 		],
 		"town_center": [
 			"buildings.png",
-			1,
-			148,
+			100,
+			316,
 			98,
 			93
 		],
@@ -4461,29 +4545,29 @@
 		],
 		"vineyard:0": [
 			"buildings.png",
-			135,
-			502,
+			1,
+			780,
 			98,
 			67
 		],
 		"vineyard:1": [
 			"buildings.png",
-			1,
-			570,
+			100,
+			780,
 			98,
 			67
 		],
 		"vineyard:2": [
 			"buildings.png",
-			100,
-			570,
+			1,
+			848,
 			98,
 			67
 		],
 		"vineyard:3": [
 			"buildings.png",
-			1,
-			638,
+			100,
+			848,
 			98,
 			67
 		],

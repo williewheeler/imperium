@@ -84,17 +84,17 @@ func setup(game) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 22)
 	tv.add_child(row)
-	for i in 5:  # wood, food, stone, gold, then population: a little picture and its number
+	for i in 6:  # wood, food, stone, gold, iron, then population: a little picture and its number
 		var pair := HBoxContainer.new()
 		pair.add_theme_constant_override("separation", 6)
-		var icon := _icon("icon:" + ["wood", "food", "stone", "gold", "pop"][i])
+		var icon := _icon("icon:" + ["wood", "food", "stone", "gold", "iron", "pop"][i])
 		pair.add_child(icon)
 		_res_icons.append(icon)
 		var l := _label("", 16)
 		pair.add_child(l)
 		row.add_child(pair)
 		_res_labels.append(l)
-	_pop_label = _res_labels[4]
+	_pop_label = _res_labels[5]
 
 	var banner := _panel(0, 0)  # which era we're in, top center
 	banner.anchor_left = 0.5
@@ -265,7 +265,7 @@ func set_world_tip(text: String) -> void:
 func refresh() -> void:
 	CommandButton.era = _game.era
 	var stock: Array[int] = _game.view.stock()
-	for i in 4:
+	for i in 5:
 		var tip := "%s (%s): %d" % [Defs.RES_NAMES[i], Defs.RES_ENGLISH[i].to_lower(), stock[i]]
 		_say(_res_labels[i], "%d" % stock[i], tip)
 		_res_icons[i].tooltip_text = tip
@@ -273,7 +273,7 @@ func refresh() -> void:
 	var cap: int = _game.view.pop_cap()
 	var pop_tip := "Populus (population): %d of %d people (build Casae and Domus to raise the limit; no one may have more than %d, the game's %d shared out between the peoples)" % [pop, cap, _game.view.pop_limit(), Defs.POP_LIMIT]
 	_say(_pop_label, "%d/%d" % [pop, cap], pop_tip)
-	_res_icons[4].tooltip_text = pop_tip
+	_res_icons[5].tooltip_text = pop_tip
 
 	if _game.era != _chrome_era:  # a new era brings new chrome
 		_chrome_era = _game.era

@@ -95,8 +95,9 @@ func time() -> float:
 	return state.tick * TICK
 
 
-## One tick: everything that happens in the world in the next 1/30 second.
-func step() -> void:
+## One tick: everything that happens in the world in the next 1/30 second. (`publish_periodic` is false for a client that runs
+## several ticks before it next draws: it calls `publish_views` after the last, so that the views it takes every tick are built once.)
+func step(publish_periodic := true) -> void:
 	var dt := TICK
 	for u in state.units:
 		u.prev_pos = u.pos
@@ -137,7 +138,7 @@ func step() -> void:
 	Perf.stop("fog", t0)
 	state.tick += 1
 	t0 = Perf.start()
-	publish_views()
+	publish_views(publish_periodic)
 	Perf.stop("views", t0)
 	stepped.emit()
 
@@ -170,9 +171,9 @@ func open_view(player: int, every := 1, paths := false) -> ViewQueue:
 
 
 ## The end of a step: builds the views that are due, one for each player that is to have one.
-func publish_views() -> void:
+func publish_views(periodic := true) -> void:
 	for q in view_queues:
-		if q.due(state.tick):
+		if q.due(state.tick, periodic):
 			publish_view(q)
 
 

@@ -26,7 +26,7 @@ func _process(_dt: float) -> bool:
 	var people := g.sim.state.units.filter(func(u): return u.owner == 0)
 	_check("a people starts with five citizens", people.filter(func(u): return u.kind == "villager").size(), 5)
 	_check("and nothing else: no army", people.size(), 5)
-	_check("with nothing in store", g.sim.stock_of(0), [0, 0, 0, 0])
+	_check("with nothing in store", g.sim.stock_of(0), [0, 0, 0, 0, 0])
 	var tc: Building = g.sim.state.buildings.filter(func(b): return b.owner == 0 and b.kind == "town_center")[0]
 	var c := tc.center()
 	var berries := 0

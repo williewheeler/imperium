@@ -423,6 +423,8 @@ func _build_chunk(c: Vector2i) -> void:
 					key = "stone:%d" % int(Pixel.hash2(x, y, 80) * 2.0)
 				elif d.kind == Defs.Res.GOLD:
 					key = "gold:%d" % int(Pixel.hash2(x, y, 81) * 2.0)
+				elif d.kind == Defs.Res.IRON:
+					key = "iron:%d" % int(Pixel.hash2(x, y, 82) * 2.0)
 				_deposit_nodes[p] = _sprite(key, Iso.to_screen_on(Vector2(x + 0.5, y + 0.5), Iso.level_of(p)) + Vector2(0, 4))
 			if not list.is_empty():
 				_tile_objects[p] = list

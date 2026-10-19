@@ -54,8 +54,9 @@ const BELT := Color("3e2a16")
 const TEAM_KEY := [Color("ff00ff"), Color("c800c8"), Color("8c008c")]
 const OUT_VILLAGER := Color("3a2018")
 
-## Resource colors (wood, food, stone, gold) used by the UI.
-const RES_COLORS := [Color("8a5a2b"), Color("d94a4a"), Color("a8a8a8"), Color("ffd24a")]
+## Resource colors (wood, food, stone, gold, iron) used by the UI.
+const RES_COLORS := [Color("8a5a2b"), Color("d94a4a"), Color("a8a8a8"), Color("ffd24a"), Color("7d8fa6")]
+const IRON := [Color("c8d0dc"), Color("8a97aa"), Color("5e6b7e")]  # bars and ore: cold blue-grey
 
 ## Footprint size (tiles) and roof height of each building, which fix where its ground corner is.
 const BUILDING_GEOM := {
@@ -134,6 +135,8 @@ static func image(key: String) -> Image:
 			return _stone_deposit(variant)
 		"gold":
 			return _gold_deposit(variant)
+		"iron":
+			return _iron_deposit(variant)
 		"villager":  # villager:<anim>:<f|b>:<frame>
 			return _villager(parts[1], parts[2] == "b", int(parts[3]))
 		"pack":  # pack:<resource>:<level 0-2>
@@ -144,7 +147,7 @@ static func image(key: String) -> Image:
 			return _via_tile()
 		"advance":
 			return _standard()
-		"icon":  # icon:<wood|food|stone|gold|pop>, the resource symbols for the HUD
+		"icon":  # icon:<wood|food|stone|gold|iron|pop>, the resource symbols for the HUD
 			return _resource_icon(parts[1])
 		"frame":  # frame:<era>
 			return _frame(variant)
@@ -408,6 +411,20 @@ static func _gold_deposit(seed_v: int) -> Image:
 		Pixel.rect(img, p.x, p.y, 2, 2, GOLD[1])
 		Pixel.put(img, p.x, p.y, GOLD[0])
 		Pixel.put(img, p.x + 1, p.y + 1, GOLD[2])
+	return Pixel.outlined(img, OUT_ROCK)
+
+
+static func _iron_deposit(seed_v: int) -> Image:
+	var img := Pixel.blank(24, 17)
+	var dark := [Color("7c7f88"), Color("5e616b"), Color("484b54"), Color("34363e")]
+	_boulder(img, 8, 10, 7.5, 5.5, dark, seed_v)
+	_boulder(img, 16, 10, 6.5, 4.5, dark, seed_v + 4)
+	_boulder(img, 12, 6, 5, 3.5, dark, seed_v + 8)
+	var rust := [Color("e0a070"), Color("b8643a"), Color("7a3e24")]  # the red of the ore showing through
+	for p in [Vector2i(5, 9), Vector2i(9, 5), Vector2i(16, 7), Vector2i(19, 11), Vector2i(12, 10), Vector2i(7, 12)]:
+		Pixel.rect(img, p.x, p.y, 2, 2, rust[1])
+		Pixel.put(img, p.x, p.y, rust[0])
+		Pixel.put(img, p.x + 1, p.y + 1, rust[2])
 	return Pixel.outlined(img, OUT_ROCK)
 
 
@@ -719,7 +736,7 @@ static func _villager(anim: String, back: bool, frame: int, kit := "", look := 0
 
 ## A little sack/bundle carried on the back, bigger as it fills up (level 0..2).
 static func _pack(res: int, level: int) -> Image:
-	var cols := [WOOD[1], BERRY, ROCK[1], GOLD[1]]
+	var cols := [WOOD[1], BERRY, ROCK[1], GOLD[1], IRON[1]]
 	var h := 4 + level * 2
 	var img := Pixel.blank(5, h)
 	var c: Color = cols[res]
@@ -829,7 +846,9 @@ static func scenery_keys() -> Array[String]:
 		k.append("stone:%d" % i)
 	for i in 2:
 		k.append("gold:%d" % i)
-	for r in 4:
+	for i in 2:
+		k.append("iron:%d" % i)
+	for r in 5:
 		for l in 3:
 			k.append("pack:%d:%d" % [r, l])
 	k.append("via")
@@ -845,7 +864,7 @@ static func scenery_keys() -> Array[String]:
 		k.append("snag:%d" % i)
 		k.append("scrub:%d" % i)
 	k.append("advance")
-	for n in ["wood", "food", "stone", "gold", "pop"]:
+	for n in ["wood", "food", "stone", "gold", "iron", "pop"]:
 		k.append("icon:" + n)
 	for e in FRAME_STYLES.size():
 		k.append("frame:%d" % e)
@@ -1413,6 +1432,13 @@ static func _resource_icon(which: String) -> Image:
 				Pixel.poly(img, [Vector2(x + 2, y), Vector2(x + 7, y), Vector2(x + 5, y + 2), Vector2(x, y + 2)], GOLD[0])
 				Pixel.rect(img, x, y + 2, 5, 3, GOLD[1])
 				Pixel.poly(img, [Vector2(x + 5, y + 2), Vector2(x + 7, y), Vector2(x + 7, y + 3), Vector2(x + 5, y + 5)], GOLD[2])
+		"iron":  # a stack of bars
+			for bar in [Vector2(0, 8), Vector2(6, 8), Vector2(3, 4)]:
+				var x := int(bar.x)
+				var y := int(bar.y)
+				Pixel.poly(img, [Vector2(x + 2, y), Vector2(x + 7, y), Vector2(x + 5, y + 2), Vector2(x, y + 2)], IRON[0])
+				Pixel.rect(img, x, y + 2, 5, 3, IRON[1])
+				Pixel.poly(img, [Vector2(x + 5, y + 2), Vector2(x + 7, y), Vector2(x + 7, y + 3), Vector2(x + 5, y + 5)], IRON[2])
 		"pop":  # a villager's head and shoulders
 			Pixel.poly(img, [Vector2(0.5, 13), Vector2(1.5, 8), Vector2(11.5, 8), Vector2(12.5, 13)], TUNIC[1])
 			Pixel.rect(img, 1, 8, 2, 5, TUNIC[0])

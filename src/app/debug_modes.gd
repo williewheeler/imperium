@@ -23,7 +23,7 @@ func apply(args: Dictionary, start: Vector2i) -> void:
 		if args.has(flag):
 			game.sim.taint("--" + flag)
 	if args.has("rich") or args.has("buildout") or args.has("town") or args.has("demo") or args.has("showcase") or args.has("builds") or args.has("era") or args.has("cycle"):
-		for i in 4:
+		for i in 5:
 			game.sim.state.stocks[0][i] = 1000  # the real game starts with nothing in store: scenes for looking at things do not
 	if args.has("demo"):
 		run_demo(start)

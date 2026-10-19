@@ -263,7 +263,7 @@ func _refresh_stats() -> void:
 		var labels: Array[Label] = p["labels"]
 		labels[0].text = Latin.t(Defs.faction_of(ai.owner)["latin"])
 		labels[1].text = Latin.t("Coloni %d · Milites %d · Populus %d/%d" % [s["villagers"], s["army"], s["pop"], s["cap"]])
-		labels[2].text = Latin.t("%s %d · %s %d · %s %d · %s %d" % [Defs.RES_NAMES[0], stock[0], Defs.RES_NAMES[1], stock[1], Defs.RES_NAMES[2], stock[2], Defs.RES_NAMES[3], stock[3]])
+		labels[2].text = Latin.t("%s %d · %s %d · %s %d · %s %d · %s %d" % [Defs.RES_NAMES[0], stock[0], Defs.RES_NAMES[1], stock[1], Defs.RES_NAMES[2], stock[2], Defs.RES_NAMES[3], stock[3], Defs.RES_NAMES[4], stock[4]])
 		labels[3].text = Latin.t("Aetas %s · Oppida %d · Terra nota %d%%" % [Defs.ERAS[s["era"]]["numeral"], s["towns"], int(float(s["explored"]) * 100.0)])
 		labels[4].text = Latin.t(Phrases.latin(s["status"]))
 		(p["panel"] as Control).tooltip_text = "%s: %s" % [Defs.faction_of(ai.owner)["english"], Phrases.english(s["status"])]

@@ -15,8 +15,12 @@ func act() -> void:
 	var hubs := ai.hubs()
 	if hubs.is_empty():
 		return
+	var t0 := Perf.start()
 	_train(ai.towns(), hubs.size())
+	Perf.stop("growth train", t0)
+	t0 = Perf.start()
 	_build(hubs)
+	Perf.stop("growth build", t0)
 
 
 func _train(towns: Array[BuildingInfo], hub_count: int) -> void:
@@ -94,7 +98,7 @@ func _storehouse(hubs: Array[BuildingInfo]) -> bool:
 	if stores.size() >= 2 + hubs.size():
 		return false
 	var dropoffs := ai.mine_of(["storehouse", "settlement", "town_center", "city_center"], true)
-	for kind in [Defs.Res.STONE, Defs.Res.GOLD, Defs.Res.WOOD]:
+	for kind in [Defs.Res.STONE, Defs.Res.GOLD, Defs.Res.IRON, Defs.Res.WOOD]:
 		for hub in hubs:
 			var tile := ai.nearest_deposit(kind, hub.center(), 4)
 			if tile.x < 0:

@@ -49,6 +49,9 @@ func _pick_kind() -> String:
 	w["spearman"] += 1.5 * float(seen.get("horseman", 0.0)) / 3.0
 	w["soldier"] += 1.5 * float(seen.get("spearman", 0.0)) / 3.0
 	w["slinger"] += 1.5 * float(seen.get("soldier", 0.0)) / 3.0
+	for k: String in w:  # it favors what it can pay for (the heavy kinds need iron, the slinger gold)
+		if not ai.afford(Defs.UNITS[k]["cost"]):
+			w[k] = float(w[k]) * 0.15
 	var total := 0.0
 	for k: String in w:
 		total += float(w[k])

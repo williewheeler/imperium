@@ -274,6 +274,11 @@ and sends state back is still open, but the first no longer waits on the simulat
   with it (only what the client may know is filled in). The AIs still run inside `Simulation.step()` (they are clients and belong in the host,
   outside the step), and `Simulation.step()` is where the command queue is drained and the views are built. The debug scenes (`src/app/`) are
   god-mode scaffolding and still touch the simulation directly, and a spectator watches through a god view and each AI's own view.
+- **Sync with the engine's truth (when the clients get the ground and the rules their own).** The plan: the map and fog come to a client as
+  deltas on its view queue (what newly became explored, what is visible now, what changed), never the whole map or the seed; the
+  rules run on the client's own data for instant answers (is this site good?), and the engine still checks every command at the
+  drain. Every frame is authoritative and overwrites the client's picture; frames carry a sequence number and a hash of the view, and a
+  client that sees a gap or a mismatch asks for a full snapshot of what it may know (which is also sent when it joins).
 - Saved games are not built. The pieces are there (the whole state is plain data), but a replay can only begin from the start.
 
 ## The AIs  (**built**)

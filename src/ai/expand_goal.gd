@@ -6,8 +6,8 @@ extends AIGoal
 ## citizens until it grows into a town. (A storehouse is the fallback when there is no ground for one: see GrowthGoal.) It also carries the AI towards its neighbors, where the fighting starts.
 
 const CELL := 12  # tiles: deposits are counted in squares of this size
-const WEIGHT := [0.5, 1.0, 4.0, 5.0]  # what a deposit is worth, by resource: wood, food, stone, gold (woods are everywhere)
-const CAP := [8.0, 8.0, 99.0, 99.0]  # most a cell is credited for one resource: a forest should not outweigh a mine
+const WEIGHT := [0.5, 1.0, 4.0, 5.0, 4.5]  # what a deposit is worth, by resource: wood, food, stone, gold, iron (woods are everywhere)
+const CAP := [8.0, 8.0, 99.0, 99.0, 99.0]  # most a cell is credited for one resource: a forest should not outweigh a mine
 const MIN_FROM_OWN := 16.0  # tiles from its own towns
 const MAX_FROM_OWN := 80.0
 const MIN_FROM_ENEMY := 22.0
@@ -85,12 +85,12 @@ func _find_site() -> Vector2i:
 			continue
 		var c := _cell(p)
 		if not per_kind.has(c):
-			per_kind[c] = [0.0, 0.0, 0.0, 0.0]
+			per_kind[c] = [0.0, 0.0, 0.0, 0.0, 0.0]
 		per_kind[c][d.kind] += float(WEIGHT[d.kind]) * minf(float(d.amount), 300.0) / 100.0
 	var worth := {}
 	for c: Vector2i in per_kind:
 		var total := 0.0
-		for k in 4:
+		for k in 5:
 			var need := 2.0 if int(have[k]) < 150 else 1.0  # worth more if it is short of that
 			total += minf(float(per_kind[c][k]), float(CAP[k])) * need
 		worth[c] = total

@@ -11,6 +11,8 @@ extends RefCounted
 
 const MIN_THINK := 0.3
 const SEARCH_RADIUS := 26  # tiles around a town to look for something to gather
+const NO_DEPOSIT_FOR := 10.0  # seconds before it looks again for a kind of deposit where it found none
+const NO_SITE_FOR := 20.0  # seconds before it looks again for a site where it found none
 const CLOSE := 0.5  # a goal reserves resources once it has this share of what it wants
 
 var client: HeadlessClient  # how it acts: it submits commands through it
@@ -27,7 +29,7 @@ var grow_seconds := 25.0  # it aims for one more villager for every this many se
 var villagers_per_town := 30  # how many villagers one town supports
 var max_towns := 3  # how many towns it tries to have
 var max_builds := 2  # foundations it works on at once
-var shares := [0.3, 0.55, 0.09, 0.06]  # how its villagers divide among wood, food, stone and gold
+var shares := [0.3, 0.55, 0.09, 0.06, 0.06]  # how its villagers divide among wood, food, stone, gold and iron
 var army_ratio := 0.5  # fighters it aims to keep for every villager
 var wave_size := 8  # fighters it gathers before it sends them against someone
 var attack_after := 600.0  # seconds of its history before it sends anyone at all
@@ -36,8 +38,8 @@ var attack_after := 600.0  # seconds of its history before it sends anyone at al
 var age := 0.0  # seconds of its history
 var blocked := {}  # deposit tile -> seconds before it is tried again (no way to reach it)
 var seen_kinds := {}  # kind of enemy unit -> the most of them it has seen at once lately (it picks counters from this)
-var reserved := [0, 0, 0, 0]  # resources a more pressing goal is saving for this think
-var pending := [0, 0, 0, 0]  # resources it has put commands on the queue to spend this think (the store shows it once they are carried out)
+var reserved := [0, 0, 0, 0, 0]  # resources a more pressing goal is saving for this think
+var pending := [0, 0, 0, 0, 0]  # resources it has put commands on the queue to spend this think (the store shows it once they are carried out)
 var settle_possible := true  # ExpandGoal knows of ground for another settlement (else a storehouse will do)
 var under_attack := false  # enemy fighters are near its buildings
 var threat_at := Vector2.ZERO  # where
@@ -48,6 +50,11 @@ var scouts: Array[UnitInfo] = []  # villagers sent exploring (the work goal leav
 var wave: Array[UnitInfo] = []  # the force it has sent out against someone
 var goals: Array[AIGoal] = []
 
+var _deposits := {}  # what `nearest_deposit` found in this think
+var _deposit_think := -1
+var _think_count := 0
+var _no_deposit := {}  # where a search for a kind of deposit found none -> the age at which to look again
+var _no_site := {}  # kind and place -> the age at which to look again, where a search for a site found none
 var _refusals := {}  # ticket -> what to do if the game refuses that command
 var _housing_refused := false  # a command to train was refused for want of houses since the last think
 var _timer := 0.0
@@ -75,7 +82,15 @@ func set_difficulty(id: String) -> void:
 	wave_size = int(d["wave"])
 	attack_after = float(d["attack_after"])
 	var food := float(d["food"])  # a sharper player puts more hands on the food that grows the town
-	shares = [0.35, food, 0.15, 0.15]  # (what is in store shifts this: see WorkersGoal)
+	shares = [0.35, food, 0.15, 0.15, 0.15]  # (what is in store shifts this: see WorkersGoal)
+
+
+## Puts its first think a share of the way through its interval, by player number, so that the AIs do not all think on the
+## same tick (which makes one tick as slow as all of them together).
+func stagger(player: int, players: int) -> void:
+	var share := float(player) / float(maxi(1, players))
+	_timer = think_interval * share
+	_see_timer = 0.5 * share
 
 
 ## A game to watch fights in (see SimConfig.rush): the first army goes out by `seconds` at the latest, and it sends smaller
@@ -108,8 +123,9 @@ func tick(delta: float) -> void:
 
 
 func _think() -> void:
-	reserved = [0, 0, 0, 0]
-	pending = [0, 0, 0, 0]
+	_think_count += 1
+	reserved = [0, 0, 0, 0, 0]
+	pending = [0, 0, 0, 0, 0]
 	need_housing = _housing_refused  # (the answers have come in since it last thought)
 	_housing_refused = false
 	_sense()
@@ -314,13 +330,19 @@ func place(kind: String, near: Vector2, min_r: int, crew_size := 2, max_r := 20)
 		if view.era() >= int(def.get("era", 0)):
 			reserve(def["cost"])
 		return false
+	var spot := "%s:%d:%d" % [kind, int(near.x) / 4, int(near.y) / 4]
+	if float(_no_site.get(spot, 0.0)) > age:
+		return false  # it looked here lately and found no room: the ground changes slowly, and the search is dear
 	var avoid: Array[Vector2i] = []
 	for u in view.my_units():  # it keeps off the people it can see, which are its own and whoever is in sight
 		avoid.append(Vector2i(u.pos))
 	for u in view.seen_units():
 		avoid.append(Vector2i(u.pos))
+	var t_site := Perf.start()
 	var site: Vector2i = view.find_site(def["size"], Vector2i(near), min_r, max_r, avoid, view.building_rects())
+	Perf.stop("ai find_site", t_site)
 	if site.x < 0:
+		_no_site[spot] = age + NO_SITE_FOR
 		return false
 	var crew := crew_for(Vector2(site) + Vector2(def["size"]) / 2.0, crew_size)
 	do({"type": "place", "kind": kind, "tile": site, "units": crew.map(func(u: UnitInfo) -> int: return u.id)})
@@ -354,6 +376,15 @@ func crew_for(pos: Vector2, n: int) -> Array[UnitInfo]:
 ## from `from` in square rings, among the ground it has explored.
 func nearest_deposit(kind: int, from: Vector2, min_r: int, wild_only := false) -> Vector2i:
 	var c := Vector2i(from)
+	var key := Vector3i(c.x, c.y, kind * 64 + min_r + (4096 if wild_only else 0))
+	if _deposit_think != _think_count:  # what it knows does not change while it thinks, so a search made twice gets the same answer
+		_deposit_think = _think_count
+		_deposits.clear()
+	if _deposits.has(key):
+		return _deposits[key]
+	if float(_no_deposit.get(key, 0.0)) > age:
+		return Vector2i(-1, -1)  # there was none lately, and a search that finds none looks at every tile
+	var found := Vector2i(-1, -1)
 	for r in range(min_r, SEARCH_RADIUS):
 		for p in view.ring(c, r):  # just the cells on the ring, not the whole square again
 			var d := view.deposit_at(p)  # (null for ground it has not explored)
@@ -361,8 +392,14 @@ func nearest_deposit(kind: int, from: Vector2, min_r: int, wild_only := false) -
 				continue  # it cannot work what it has not found
 			if d.farm and (wild_only or d.owner != owner):
 				continue
-			return p
-	return Vector2i(-1, -1)
+			found = p
+			break
+		if found.x >= 0:
+			break
+	_deposits[key] = found
+	if found.x < 0:
+		_no_deposit[key] = age + NO_DEPOSIT_FOR
+	return found
 
 
 ## The enemy buildings it has seen (the ground it has explored), nearest `from` first.

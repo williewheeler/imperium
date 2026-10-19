@@ -876,38 +876,56 @@ func _start_tiles(start: Vector2i) -> Array[Vector2i]:
 ## on clear grass, with a walkable ring around it and none of the `avoid` tiles inside it. With `known`, only ground
 ## that fog has explored counts. Returns (-1, -1) if there is none.
 func find_site(size: Vector2i, near: Vector2i, min_r: int, max_r: int, avoid: Array[Vector2i], avoid_rects: Array = [], loose := false, known: Fog = null) -> Vector2i:
-	for r in range(min_r, max_r + 1):
+	for r in range(min_r, max_r + 1):  # ring by ring, each in reading order (top row, then the two ends of each row, then the bottom row)
 		for y in range(near.y - r, near.y + r + 1):
-			for x in range(near.x - r, near.x + r + 1):
-				if maxi(absi(x - near.x), absi(y - near.y)) != r:
-					continue
+			var edge := y == near.y - r or y == near.y + r
+			var x := near.x - r
+			while x <= near.x + r:
 				if _site_fits(Rect2i(Vector2i(x, y), size), loose, avoid, avoid_rects, known):
 					return Vector2i(x, y)
+				x += 1 if edge or r == 0 else 2 * r  # (only the ends of a row between the top and the bottom)
 	return Vector2i(-1, -1)
 
 
 ## Does a building with this footprint fit: level (or clearable, if `loose`), on free land with a walkable ring round it,
 ## away from the `avoid` tiles and rects, and (with `known`) on explored ground? Stops at the first thing that says no.
 func _site_fits(rect: Rect2i, loose: bool, avoid: Array[Vector2i], avoid_rects: Array, known: Fog) -> bool:
-	if not (loose or is_level(rect)):  # a loose search will clear woods and level the ground itself
-		return false
+	var x0 := rect.position.x
+	var y0 := rect.position.y
+	var x1 := rect.end.x
+	var y1 := rect.end.y
+	if x0 < 1 or y0 < 1 or x1 >= w or y1 >= h:
+		return false  # (a tile of the ring round it would be off the map)
+	if not loose:  # a loose search will clear woods and level the ground itself
+		var first := levels[y0 * w + x0]
+		for y in range(y0, y1):
+			var row := y * w
+			for x in range(x0, x1):
+				if levels[row + x] != first:
+					return false
 	for other: Rect2i in avoid_rects:  # keep a tile of space around existing buildings
 		if rect.grow(1).intersects(other):
 			return false
 	for p in avoid:
 		if rect.has_point(p):
 			return false
-	for yy in range(rect.position.y - 1, rect.end.y + 1):
-		for xx in range(rect.position.x - 1, rect.end.x + 1):
-			var p := Vector2i(xx, yy)
-			if known != null and not known.is_explored(p):
+	var seen := known.state if known != null else PackedByteArray()
+	for yy in range(y0 - 1, y1 + 1):
+		var row := yy * w
+		var inside_y := yy >= y0 and yy < y1
+		for xx in range(x0 - 1, x1 + 1):
+			if known != null and seen[row + xx] == Fog.HIDDEN:
 				return false
-			if not ((is_free_land(p) or (loose and is_clearable(p))) if rect.has_point(p) else is_walkable(p)):
+			var p := Vector2i(xx, yy)
+			if inside_y and xx >= x0 and xx < x1:
+				if not (is_free_land(p) or (loose and is_clearable(p))):
+					return false
+			elif astar.is_point_solid(p):
 				return false
 	return true
 
 
-## Berries, stone and gold near the start, plus scattered mines elsewhere to explore for.
+## Berries, stone and iron near the start, plus scattered mines elsewhere to explore for.
 func place_resources(start: Vector2i, density := 1.0) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
@@ -929,6 +947,7 @@ func _place_start_clusters(rng: RandomNumberGenerator, start: Vector2i, density:
 	for i in maxi(1, int(round(2.0 * density))):
 		_place_herd(rng, start, 6.0, 14.0)
 	_place_cluster(rng, start, 16.0, 24.0, Defs.Res.STONE, 2, 1)
+	_place_cluster(rng, start, 20.0, 30.0, Defs.Res.IRON, 2, 1)  # and a little iron, a bit further: arms need it
 	_place_fish(rng, start, 26.0, 2)  # a school or two off the shore, if the town is near the sea
 
 
@@ -965,8 +984,8 @@ func _land_within(p: Vector2i, r: int) -> bool:
 
 func _place_scattered(rng: RandomNumberGenerator, density: float) -> void:
 	var blocks := maxi(1, w * h / 6400)  # one for every 80x80 tiles
-	for i in int(round(3 * blocks * density)):  # a few mines scattered over the whole world, for exploring armies and villagers to find
-		var kind: int = Defs.Res.STONE if i % 2 == 0 else Defs.Res.GOLD
+	for i in int(round(4.5 * blocks * density)):  # a few mines scattered over the whole world, for exploring armies and villagers to find
+		var kind: int = [Defs.Res.STONE, Defs.Res.GOLD, Defs.Res.IRON][i % 3]
 		for attempt in 30:
 			var c := Vector2i(rng.randi_range(4, w - 5), rng.randi_range(4, h - 5))
 			if _mine_too_near(c, kind):
@@ -988,11 +1007,11 @@ func _place_scattered(rng: RandomNumberGenerator, density: float) -> void:
 
 
 ## A herd of grazing animals on one tile, somewhere between `min_r` and `max_r` tiles from `center`.
-## Is there a mine of this kind too close to `c`? Gold is kept well apart (28 tiles); stone a little closer (16).
+## Is there a mine of this kind too close to `c`? Gold is kept well apart (28 tiles), iron a little closer (22), stone closer still (16).
 func _mine_too_near(c: Vector2i, kind: int) -> bool:
-	var gap := 28.0 if kind == Defs.Res.GOLD else 16.0
+	var gap := 28.0 if kind == Defs.Res.GOLD else (22.0 if kind == Defs.Res.IRON else 16.0)
 	for home in homes:  # and none right at anyone's starting town
-		if Vector2(home * float(w)).distance_to(Vector2(c)) < (26.0 if kind == Defs.Res.GOLD else 18.0):
+		if Vector2(home * float(w)).distance_to(Vector2(c)) < (26.0 if kind == Defs.Res.GOLD else (22.0 if kind == Defs.Res.IRON else 18.0)):
 			return true
 	for p: Vector2i in mines.get(kind, []):
 		if Vector2(p).distance_to(Vector2(c)) < gap:

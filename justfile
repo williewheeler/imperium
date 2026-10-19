@@ -118,6 +118,10 @@ replay-check file:
 replay file *args:
     ./run.sh --windowed --nosplash --replay={{file}} {{args}}
 
+# Headless check of how an army fights: razes what it sees, drops a building for a defender, and goes back to it
+raze-test:
+    {{godot}} --headless --path . --script tests/raze_test.gd
+
 # Headless check of the person's driver (selecting, ordering, the keys) on a real game
 person-test:
     {{godot}} --headless --path . --script tests/person_test.gd -- --nosplash --seed=42 --players=3 --map=continens --size=medium --terrain=temperate --resources=normal --difficulty=normal
