@@ -279,7 +279,7 @@ time plus a bias per unit (so a crowd is not in step), the flash and the health 
 and where it stood a moment ago from the last frame. The client applies every frame in order; frames go to a remote player in bundles about fifteen a second,
 compressed together (zstd), over ENet's reliable ordered channel. A player that falls so far behind that frames pile up unread (a client whose frames
 are not taken, or a link that stalls) lets them go, and the host starts it again from a snapshot of everything it may know (`ViewFilter.reset`), which a remote
-player asks for with `NetPlay.request_snapshot`. In a game of eight peoples, 17 minutes in, with 460 units in the world, this came to about 20 KB/s to each remote player, down from about 180 KB/s as whole frames.
+player asks for with `NetPlay.request_snapshot`. In a game of eight peoples, 17 minutes in, with 460 units in the world, this came to about 18 KB/s to each remote player (bundles of about 1.3 KB, at most 3.4 KB), down from about 183 KB/s as whole frames.
 
 What is not done: the channel is reliable and ordered, so a frame that is slow makes the next wait; a client has no check that it is in step beyond the snapshot
 when it falls behind (no sequence number or hash of the view); the remote player's view is drawn between frames by the time since the last came in, not smoothed
